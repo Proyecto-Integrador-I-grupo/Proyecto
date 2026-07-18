@@ -1,6 +1,6 @@
-const { procesarMatricula } = require('../services/matriculaService');
+import { procesarMatricula } from "../services/matriculaServiceP.js";
 
-async function crearMatricula(req, res) {
+export async function crearMatricula(req, res) {
   try {
     const resultado = await procesarMatricula(req.body);
     res.status(201).json(resultado);
@@ -9,4 +9,4 @@ async function crearMatricula(req, res) {
   }
 }
 
-module.exports = { crearMatricula };
+export default crearMatricula;

@@ -3,6 +3,8 @@ import cors from "cors";
 
 // Importar las rutas
 import personaRoutes from "./routes/personaRoutes.js";
+import matriculaProcessRoutes from "./routes/matriculaProcessRoutes.js";
+import asistenciaProcessRoutes from "./routes/asistenciaProcessRoutes.js";
 
 const app = express();
 
@@ -19,7 +21,7 @@ app.get("/", (req, res) => {
 
 // Rutas del módulo Persona
 app.use("/api/personas", personaRoutes);
-app.use('/api/procesos', require('./routes/matriculaProcessRoutes'));
-app.use('/api/procesos', require('./routes/asistenciaProcessRoutes'));
+app.use("/api/procesos", matriculaProcessRoutes);
+app.use("/api/procesos", asistenciaProcessRoutes);
 
 export default app;

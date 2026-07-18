@@ -1,7 +1,8 @@
-const express = require('express');
+import express from "express";
+import { crearAsistencia } from "../controllers/asistenciaProcessController.js";
+
 const router = express.Router();
-const { crearAsistencia } = require('../controllers/asistenciaProcessController');
 
-router.post('/asistencia', crearAsistencia);
+router.post("/asistencia", crearAsistencia);
 
-module.exports = router;
+export default router;

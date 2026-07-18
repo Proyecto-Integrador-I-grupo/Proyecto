@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+import pool from "../config/database.js";
 
 /**
  * Proceso completo de matrícula:
@@ -8,7 +8,7 @@ const pool = require('../config/database');
  * 4. Asigna al estudiante al grupo (sp_asignar_estudiante_grupo)
  * Todo dentro de una transacción: si algo falla, se revierte todo.
  */
-async function procesarMatricula(datos) {
+export async function procesarMatricula(datos) {
   const {
     fecha,
     periodo,
@@ -28,45 +28,45 @@ async function procesarMatricula(datos) {
 
     // 1. Verificar que el estudiante esté activo
     const [estudianteRows] = await connection.query(
-      'SELECT estado FROM estudiante WHERE id_estudiante = ?',
+      "SELECT estado FROM estudiante WHERE id_estudiante = ?",
       [id_estudiante]
     );
 
     if (estudianteRows.length === 0) {
-      throw new Error('El estudiante no existe.');
+      throw new Error("El estudiante no existe.");
     }
     if (!estudianteRows[0].estado) {
-      throw new Error('No se puede matricular a un estudiante inactivo.');
+      throw new Error("No se puede matricular a un estudiante inactivo.");
     }
 
     // 2. Verificar cupo disponible en el grupo (usa fn_estudiantes_grupo)
     const [grupoRows] = await connection.query(
-      'SELECT capacidad, fn_estudiantes_grupo(?) AS ocupados FROM grupo WHERE id_grupo = ?',
+      "SELECT capacidad, fn_estudiantes_grupo(?) AS ocupados FROM grupo WHERE id_grupo = ?",
       [id_grupo, id_grupo]
     );
 
     if (grupoRows.length === 0) {
-      throw new Error('El grupo no existe.');
+      throw new Error("El grupo no existe.");
     }
     const { capacidad, ocupados } = grupoRows[0];
     if (ocupados >= capacidad) {
-      throw new Error('El grupo ya no tiene cupo disponible.');
+      throw new Error("El grupo ya no tiene cupo disponible.");
     }
 
     // 3. Registrar matrícula vía stored procedure
     await connection.query(
-      'CALL sp_registrar_matricula(?, ?, ?, ?, ?, ?, ?, ?)',
+      "CALL sp_registrar_matricula(?, ?, ?, ?, ?, ?, ?, ?)",
       [fecha, periodo, anio, tipo, estado, observaciones, id_estudiante, id_usuario]
     );
 
     // 4. Asignar estudiante al grupo vía stored procedure
     await connection.query(
-      'CALL sp_asignar_estudiante_grupo(?, ?, ?)',
+      "CALL sp_asignar_estudiante_grupo(?, ?, ?)",
       [fecha, id_grupo, id_estudiante]
     );
 
     await connection.commit();
-    return { success: true, message: 'Matrícula procesada correctamente.' };
+    return { success: true, message: "Matrícula procesada correctamente." };
 
   } catch (error) {
     await connection.rollback();
@@ -76,4 +76,4 @@ async function procesarMatricula(datos) {
   }
 }
 
-module.exports = { procesarMatricula };
+export default procesarMatricula;

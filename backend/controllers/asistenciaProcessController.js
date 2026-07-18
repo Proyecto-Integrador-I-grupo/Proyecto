@@ -1,6 +1,6 @@
-const { registrarAsistenciaProceso } = require('../services/asistenciaServiceP');
+import { registrarAsistenciaProceso } from "../services/asistenciaServiceP.js";
 
-async function crearAsistencia(req, res) {
+export async function crearAsistencia(req, res) {
   try {
     const resultado = await registrarAsistenciaProceso(req.body);
     res.status(201).json(resultado);
@@ -9,4 +9,4 @@ async function crearAsistencia(req, res) {
   }
 }
 
-module.exports = { crearAsistencia };
+export default crearAsistencia;

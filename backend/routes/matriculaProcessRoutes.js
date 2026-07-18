@@ -1,12 +1,8 @@
-const { procesarMatricula } = require('../services/matriculaService');
+import express from "express";
+import { crearMatricula } from "../controllers/matriculaProcessController.js";
 
-async function crearMatricula(req, res) {
-  try {
-    const resultado = await procesarMatricula(req.body);
-    res.status(201).json(resultado);
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-}
+const router = express.Router();
 
-module.exports = { crearMatricula };
+router.post("/matricula", crearMatricula);
+
+export default router;

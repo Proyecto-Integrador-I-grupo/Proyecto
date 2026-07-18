@@ -1,4 +1,4 @@
-const { procesarMatricula } = require('../services/matriculaService');
+const { procesarMatricula } = require('../services/matriculaServiceP');
 
 async function crearMatricula(req, res) {
   try {

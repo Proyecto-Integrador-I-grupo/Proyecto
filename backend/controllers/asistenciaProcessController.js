@@ -1,4 +1,4 @@
-const { registrarAsistenciaProceso } = require('../services/asistenciaService');
+const { registrarAsistenciaProceso } = require('../services/asistenciaServiceP');
 
 async function crearAsistencia(req, res) {
   try {

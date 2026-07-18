@@ -19,5 +19,7 @@ app.get("/", (req, res) => {
 
 // Rutas del módulo Persona
 app.use("/api/personas", personaRoutes);
+app.use('/api/procesos', require('./routes/matriculaProcessRoutes'));
+app.use('/api/procesos', require('./routes/asistenciaProcessRoutes'));
 
 export default app;

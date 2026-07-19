@@ -89,10 +89,9 @@ export const actualizarPersona = async (req, res) => {
     try {
 
         const { id } = req.params;
+        const personaExiste = await personaModel.obtenerPersonaPorId(id);
 
-        const resultado = await personaModel.actualizarPersona(id, req.body);
-
-        if (resultado.affectedRows === 0) {
+        if (!personaExiste) {
 
             return res.status(404).json({
 
@@ -102,9 +101,12 @@ export const actualizarPersona = async (req, res) => {
 
         }
 
+        const resultado = await personaModel.actualizarPersona(id, req.body);
+
         res.status(200).json({
 
-            mensaje: "Persona actualizada correctamente."
+            mensaje: "Persona actualizada correctamente.",
+            cambios: resultado.changedRows ?? 0
 
         });
 

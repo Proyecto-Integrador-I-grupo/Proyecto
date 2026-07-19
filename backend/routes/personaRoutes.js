@@ -21,6 +21,8 @@ router.post("/", registrarPersona);
 
 // Actualizar una persona
 router.put("/:id", actualizarPersona);
+router.patch("/:id", actualizarPersona);
+router.post("/:id", actualizarPersona);
 
 // Eliminar una persona (borrado lógico)
 router.delete("/:id", eliminarPersona);

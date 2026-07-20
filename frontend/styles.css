@@ -1,0 +1,415 @@
+/* ===== Reskin de Bootstrap con variables propias ===== */
+:root{
+  --bs-primary: #1F3159;
+  --bs-primary-rgb: 31, 49, 89;
+  --bs-body-font-family: 'Inter', system-ui, sans-serif;
+  --bs-body-bg: #FAF9F4;
+  --bs-body-color: #20232C;
+  --bs-border-radius: .6rem;
+  --bs-border-radius-lg: .9rem;
+  --bs-border-color: #E6E2D3;
+  --bs-link-color: #1F3159;
+  --bs-link-hover-color: #16233F;
+
+  --navy: #16233F;
+  --navy-2: #1F3159;
+  --gold: #C9A227;
+  --gold-soft: #EFE0AC;
+  --ink-soft: #6B6F7B;
+  --success: #2F7A52;
+  --danger: #B23A32;
+
+  --role-admin: #8A3B4E;
+  --role-admin-soft: #F3E3E7;
+  --role-asistente: #3C7A5E;
+  --role-asistente-soft: #E4F0EA;
+}
+
+body{
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .card-title-serif{
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* ===== Sidebar ===== */
+.sidebar{
+  width: 250px;
+  background: linear-gradient(185deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #EDEFF5;
+}
+
+.brand-mark{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-name{
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: #fff;
+}
+
+.sidebar .nav-link{
+  color: #C7CDDB;
+  font-size: 14.5px;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  border-radius: 0 .5rem .5rem 0;
+  padding: .6rem .75rem;
+}
+
+.sidebar .nav-link i{
+  color: #8E96AC;
+  width: 18px;
+}
+
+.sidebar .nav-link:hover{
+  background: rgba(255,255,255,.06);
+  color: #fff;
+}
+
+.sidebar .nav-link.active{
+  background: rgba(201,162,39,.16) !important;
+  border-left-color: var(--gold);
+  color: #fff;
+}
+
+.sidebar .nav-link.active i{
+  color: var(--gold);
+}
+
+.sidebar-footer{
+  color: #8E96AC;
+  border-color: rgba(255,255,255,.12) !important;
+  font-size: 12.5px;
+}
+
+/* ===== Topbar ===== */
+.eyebrow{
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0;
+}
+
+.avatar{
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--navy);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== Hero card ===== */
+.hero-card{
+  background: linear-gradient(135deg, rgba(31,49,89,.96), rgba(22,35,63,.96));
+  color: #fff;
+}
+
+.hero-card .eyebrow{
+  color: var(--gold-soft);
+}
+
+.hero-card h2,
+.hero-card p{
+  color: #fff;
+}
+
+.hero-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .7rem .95rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.hero-pill i{
+  color: var(--gold);
+}
+
+/* ===== Dashboard stat cards ===== */
+.stat-card{
+  border-top: 3px solid var(--gold) !important;
+}
+
+.stat-label{
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.stat-value{
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* ===== Card titles ===== */
+.card-title-serif{
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.card-title-serif i{
+  color: var(--gold);
+  font-size: 16px;
+}
+
+/* ===== Forms ===== */
+.form-label{
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ink-soft);
+}
+
+.form-control:focus,
+.form-select:focus{
+  border-color: var(--gold);
+  box-shadow: 0 0 0 .2rem rgba(201,162,39,.18);
+}
+
+.form-result{
+  margin-top: 14px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+/* ===== Table ===== */
+#personas-table thead th{
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink-soft);
+  border-bottom: 2px solid var(--navy);
+}
+
+#personas-table tbody td:first-child{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+#personas-table tbody tr:hover{
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.action-btn{
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.action-btn.edit{
+  background: #FBF3DC;
+  color: #8A6A0E;
+  border-color: #EFDFA6;
+}
+
+.action-btn.edit:hover{ background: #F5E8BE; }
+
+.action-btn.del{
+  background: #FBEAE8;
+  color: var(--danger);
+  border-color: #F3CFC8;
+}
+
+.action-btn.del:hover{ background: #F7DAD5; }
+
+/* ===== Empty state ===== */
+.empty-state i{
+  font-size: 34px;
+  color: var(--gold);
+  margin-bottom: 14px;
+  display: inline-block;
+}
+
+/* ===== Toast (independiente del componente Toast de Bootstrap) ===== */
+.toast{
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 14px 20px;
+  border-radius: var(--bs-border-radius-lg);
+  background: #fff;
+  color: var(--bs-body-color);
+  box-shadow: 0 14px 34px rgba(21,34,56,.14);
+  border-left: 4px solid var(--success);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 999;
+  max-width: 320px;
+}
+
+.toast:not(.hidden){ display: block !important; }
+.toast.hidden{ display: none !important; }
+.toast.error{ border-left-color: var(--danger); }
+.toast.success{ border-left-color: var(--success); }
+
+/* ===== Utilidad compartida ===== */
+.hidden{ display: none !important; }
+
+/* ===== Buttons and interactions ===== */
+.btn-primary{
+  background: linear-gradient(135deg, var(--navy-2), var(--navy));
+  border: 0;
+  box-shadow: 0 10px 24px rgba(31,49,89,.18);
+}
+
+.btn-primary:hover,
+.btn-primary:focus{
+  filter: brightness(1.04);
+}
+
+.btn-outline-secondary:hover{
+  border-color: var(--navy-2);
+  color: var(--navy-2);
+}
+
+/* ===== Login ===== */
+.login-screen{
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(201,162,39,.10), transparent 45%),
+    linear-gradient(185deg, var(--navy) 0%, var(--navy-2) 100%);
+  padding: 24px;
+}
+
+.login-card{
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: var(--bs-border-radius-lg);
+  padding: 40px 34px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.25);
+}
+
+.brand-mark-lg{
+  width: 54px;
+  height: 54px;
+  font-size: 20px;
+  display: inline-flex;
+}
+
+.login-error{
+  background: #FBEAE8;
+  color: var(--danger);
+  border: 1px solid #F3CFC8;
+  border-radius: var(--bs-border-radius);
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* ===== Role badges ===== */
+.role-badge{
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.role-badge-admin{
+  background: var(--role-admin-soft);
+  color: var(--role-admin);
+}
+
+.role-badge-asistente{
+  background: var(--role-asistente-soft);
+  color: var(--role-asistente);
+}
+
+/* Sobre fondo oscuro (sidebar) los badges necesitan más contraste */
+.sidebar .role-badge-admin{ background: rgba(138,59,78,.35); color: #F3C4D0; }
+.sidebar .role-badge-asistente{ background: rgba(60,122,94,.35); color: #B9E4CE; }
+
+/* ===== Sidebar: tarjeta de usuario ===== */
+.sidebar-user{
+  border-color: rgba(255,255,255,.12) !important;
+}
+
+.avatar-sm{
+  width: 30px;
+  height: 30px;
+  font-size: 11.5px;
+}
+
+.min-w-0{ min-width: 0; }
+
+#logout-btn{
+  border-color: rgba(255,255,255,.25);
+  color: #EDEFF5;
+  font-size: 12.5px;
+}
+
+#logout-btn:hover{
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  border-color: rgba(255,255,255,.4);
+}
+
+/* ===== Buscador de estudiantes ===== */
+.search-box{
+  width: 220px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 880px){
+  .d-flex.vh-100{ flex-direction: column; height: auto !important; }
+  .sidebar{
+    width: 100%;
+    flex-direction: row !important;
+    align-items: center;
+    overflow-x: auto;
+  }
+  .sidebar .nav-pills{ flex-direction: row !important; }
+  .sidebar .nav-link{ white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; border-radius: .5rem; }
+  .sidebar .nav-link.active{ border-left: 0; border-bottom-color: var(--gold); }
+  .sidebar-user{ display: none; }
+  .search-box{ width: 100%; }
+}

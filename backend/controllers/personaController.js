@@ -59,7 +59,9 @@ export const registrarPersona = async (req, res) => {
 
     try {
 
-        const resultado = await personaModel.crearPersona(req.body);
+        const idUsuario = req.usuarioActual?.id_usuario ?? null;
+
+        const resultado = await personaModel.crearPersona(req.body, idUsuario);
 
         res.status(201).json({
 
@@ -89,6 +91,7 @@ export const actualizarPersona = async (req, res) => {
     try {
 
         const { id } = req.params;
+        const idUsuario = req.usuarioActual?.id_usuario ?? null;
         const personaExiste = await personaModel.obtenerPersonaPorId(id);
 
         if (!personaExiste) {
@@ -101,7 +104,7 @@ export const actualizarPersona = async (req, res) => {
 
         }
 
-        const resultado = await personaModel.actualizarPersona(id, req.body);
+        const resultado = await personaModel.actualizarPersona(id, req.body, idUsuario);
 
         res.status(200).json({
 
@@ -131,8 +134,9 @@ export const eliminarPersona = async (req, res) => {
     try {
 
         const { id } = req.params;
+        const idUsuario = req.usuarioActual?.id_usuario ?? null;
 
-        const resultado = await personaModel.eliminarPersona(id);
+        const resultado = await personaModel.eliminarPersona(id, idUsuario);
 
         if (resultado.affectedRows === 0) {
 

@@ -8,23 +8,25 @@ import {
     eliminarPersona
 } from "../controllers/personaController.js";
 
+import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
 
-// Obtener todas las personas
-router.get("/", listarPersonas);
+// Obtener todas las personas (cualquier usuario logueado)
+router.get("/", requireAuth, listarPersonas);
 
 // Obtener una persona por ID
-router.get("/:id", obtenerPersona);
+router.get("/:id", requireAuth, obtenerPersona);
 
-// Registrar una nueva persona
-router.post("/", registrarPersona);
+// Registrar una nueva persona (administrador o asistente)
+router.post("/", requireAuth, requireRole("Administrador", "Asistente"), registrarPersona);
 
-// Actualizar una persona
-router.put("/:id", actualizarPersona);
-router.patch("/:id", actualizarPersona);
-router.post("/:id", actualizarPersona);
+// Actualizar una persona (administrador o asistente)
+router.put("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
+router.patch("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
+router.post("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
 
-// Eliminar una persona (borrado lógico)
-router.delete("/:id", eliminarPersona);
+// Eliminar una persona (solo administrador)
+router.delete("/:id", requireAuth, requireRole("Administrador"), eliminarPersona);
 
 export default router;

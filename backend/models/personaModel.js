@@ -1,4 +1,4 @@
-import conexion from "../config/database.js";
+import conexion, { queryConSesion } from "../config/database.js";
 
 // Obtener todas las personas
 export const obtenerPersonas = async () => {
@@ -12,7 +12,7 @@ export const obtenerPersonas = async () => {
             fecha_nacimiento,
             genero,
             estado
-        FROM tb_persona
+        FROM persona
         WHERE estado = 1
         ORDER BY id_persona;
     `;
@@ -35,7 +35,7 @@ export const obtenerPersonaPorId = async (id) => {
             fecha_nacimiento,
             genero,
             estado
-        FROM tb_persona
+        FROM persona
         WHERE id_persona = ?
         LIMIT 1;
     `;
@@ -48,10 +48,10 @@ export const obtenerPersonaPorId = async (id) => {
 
 
 // Registrar una persona
-export const crearPersona = async (persona) => {
+export const crearPersona = async (persona, idUsuario) => {
 
     const sql = `
-        INSERT INTO tb_persona
+        INSERT INTO persona
         (
             nombre,
             apellido1,
@@ -63,7 +63,7 @@ export const crearPersona = async (persona) => {
         VALUES (?, ?, ?, ?, ?, ?);
     `;
 
-    const [resultado] = await conexion.query(sql, [
+    const resultado = await queryConSesion(sql, [
 
         persona.nombre,
         persona.apellido1,
@@ -72,7 +72,7 @@ export const crearPersona = async (persona) => {
         persona.genero,
         1
 
-    ]);
+    ], idUsuario);
 
     return resultado;
 
@@ -80,10 +80,10 @@ export const crearPersona = async (persona) => {
 
 
 // Actualizar una persona
-export const actualizarPersona = async (id, persona) => {
+export const actualizarPersona = async (id, persona, idUsuario) => {
 
     const sql = `
-        UPDATE tb_persona
+        UPDATE persona
         SET
             nombre = ?,
             apellido1 = ?,
@@ -93,7 +93,7 @@ export const actualizarPersona = async (id, persona) => {
         WHERE id_persona = ?;
     `;
 
-    const [resultado] = await conexion.query(sql, [
+    const resultado = await queryConSesion(sql, [
 
         persona.nombre,
         persona.apellido1,
@@ -102,7 +102,7 @@ export const actualizarPersona = async (id, persona) => {
         persona.genero,
         id
 
-    ]);
+    ], idUsuario);
 
     return resultado;
 
@@ -110,15 +110,15 @@ export const actualizarPersona = async (id, persona) => {
 
 
 // Eliminar una persona (Borrado lógico)
-export const eliminarPersona = async (id) => {
+export const eliminarPersona = async (id, idUsuario) => {
 
     const sql = `
-        UPDATE tb_persona
+        UPDATE persona
         SET estado = 0
         WHERE id_persona = ?;
     `;
 
-    const [resultado] = await conexion.query(sql, [id]);
+    const resultado = await queryConSesion(sql, [id], idUsuario);
 
     return resultado;
 

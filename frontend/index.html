@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EduControl · Sistema Escolar</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <div id="login-screen" class="login-screen d-flex align-items-center justify-content-center">
+    <div class="login-card">
+      <div class="text-center mb-4">
+        <span class="brand-mark brand-mark-lg mx-auto mb-3">EC</span>
+        <h1 class="h3 mb-1">EduControl</h1>
+        <p class="text-muted mb-0">Ingresa con tu cuenta de administrador o asistente</p>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="mb-3">
+          <label class="form-label" for="login-correo">Correo</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input id="login-correo" type="email" class="form-control" placeholder="tucorreo@educontrol.com" required autocomplete="username">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="login-contrasena">Contraseña</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input id="login-contrasena" type="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" id="toggle-password" class="btn btn-outline-secondary" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="login-error" class="login-error hidden"></div>
+
+        <button type="submit" id="login-submit" class="btn btn-primary w-100 mt-2">
+          <i class="bi bi-box-arrow-in-right"></i> Iniciar sesión
+        </button>
+      </form>
+
+      <p class="text-muted text-center small mt-4 mb-0">
+        Solo cuentas de <strong>Administrador</strong> o <strong>Asistente</strong> pueden acceder. Los estudiantes no tienen inicio de sesión.
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app-shell" class="d-flex vh-100 overflow-hidden hidden">
+
+    <!-- Sidebar -->
+    <aside class="sidebar d-flex flex-column flex-shrink-0 p-3">
+      <div class="d-flex align-items-center gap-2 px-1 mb-4">
+        <span class="brand-mark">EC</span>
+        <span class="brand-name">EduControl</span>
+      </div>
+
+      <ul class="nav nav-pills flex-column gap-1 mb-auto">
+        <li class="nav-item">
+          <button type="button" data-view="dashboard" class="nav-link active w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+          </button>
+        </li>
+        <li class="nav-item">
+          <button type="button" data-view="matricula" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-journal-plus"></i> Matrícula
+          </button>
+        </li>
+        <li class="nav-item">
+          <button type="button" data-view="estudiantes" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-people-fill"></i> Estudiantes
+          </button>
+        </li>
+        <li class="nav-item">
+          <button type="button" data-view="asistencia" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-calendar2-check"></i> Asistencia
+          </button>
+        </li>
+        <li class="nav-item">
+          <button type="button" data-view="reportes" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-bar-chart-line"></i> Reportes
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tarjeta de usuario -->
+      <div class="sidebar-user pt-3 mt-3 border-top">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span id="sidebar-avatar" class="avatar avatar-sm">--</span>
+          <div class="lh-sm flex-grow-1 min-w-0">
+            <div id="sidebar-user-name" class="fw-semibold small text-truncate">—</div>
+            <span id="sidebar-role-badge" class="role-badge">—</span>
+          </div>
+        </div>
+        <button type="button" id="logout-btn" class="btn btn-sm btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-box-arrow-left"></i> Cerrar sesión
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-grow-1 d-flex flex-column overflow-hidden">
+
+      <header class="topbar d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
+        <div>
+          <p class="eyebrow mb-1">Panel administrativo</p>
+          <h1 id="view-title" class="h3 mb-0">Dashboard</h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span id="topbar-avatar" class="avatar">--</span>
+          <div class="lh-sm">
+            <div id="topbar-user-name" class="fw-semibold small">—</div>
+            <span id="topbar-role-badge" class="role-badge">—</span>
+          </div>
+        </div>
+      </header>
+
+      <main id="content" class="flex-grow-1 overflow-auto p-4">
+        <div id="toast" class="toast hidden"></div>
+
+        <section class="hero-card card border-0 shadow-sm mb-4">
+          <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+              <p class="eyebrow mb-2">Gestión escolar</p>
+              <h2 class="h4 mb-1">Tu panel de administración, listo para trabajar</h2>
+              <p class="text-muted mb-0">Navega entre matrícula, estudiantes y asistencia desde un mismo lugar con una experiencia más clara.</p>
+            </div>
+            <div class="hero-pill">
+              <i class="bi bi-lightning-charge"></i>
+              <span>Registro ágil y respuestas inmediatas</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dashboard -->
+        <section id="dashboard-view" class="view">
+          <p class="text-muted mb-4">Bienvenido al panel. Usa el menú de la izquierda para gestionar matrícula, estudiantes y asistencia.</p>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Estudiantes activos</span>
+                  <div id="cnt-personas" class="stat-value">–</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Asistencia hoy</span>
+                  <div class="stat-value">–– %</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Matrículas · Mes</span>
+                  <div class="stat-value">––</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Estudiantes -->
+        <section id="estudiantes-view" class="view hidden">
+          <div class="row g-3">
+            <div class="col-lg-4">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="card-title-serif mb-0"><i class="bi bi-person-plus"></i> <span id="persona-form-title">Agregar estudiante</span></h2>
+                  </div>
+                  <form id="persona-form">
+                    <input type="hidden" id="persona-id">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label" for="nombre"><i class="bi bi-person"></i> Nombre</label>
+                        <input id="nombre" class="form-control" placeholder="Nombre" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label" for="apellido1">Apellido 1</label>
+                        <input id="apellido1" class="form-control" placeholder="Apellido 1" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label" for="apellido2">Apellido 2</label>
+                        <input id="apellido2" class="form-control" placeholder="Apellido 2">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label" for="fecha_nacimiento"><i class="bi bi-calendar3"></i> Nacimiento</label>
+                        <input id="fecha_nacimiento" type="date" class="form-control" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label" for="genero">Género</label>
+                        <select id="genero" class="form-select" required>
+                          <option value="">Seleccionar</option>
+                          <option value="M">Masculino</option>
+                          <option value="F">Femenino</option>
+                          <option value="O">Otro</option>
+                        </select>
+                      </div>
+                      <div class="col-12 d-flex gap-2 pt-1">
+                        <button type="submit" id="persona-submit" class="btn btn-primary flex-grow-1">
+                          <i class="bi bi-check2-circle"></i> Guardar
+                        </button>
+                        <button type="button" id="cancel-edit" class="btn btn-outline-secondary hidden">Cancelar</button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+                    <h2 class="card-title-serif mb-0"><i class="bi bi-list-ul"></i> Estudiantes</h2>
+                    <div class="d-flex gap-2 align-items-center">
+                      <div class="input-group input-group-sm search-box">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input id="persona-search" type="text" class="form-control" placeholder="Buscar por nombre...">
+                      </div>
+                      <button type="button" id="btn-nuevo-estudiante" class="btn btn-sm btn-outline-primary text-nowrap">
+                        <i class="bi bi-plus-lg"></i> Nuevo
+                      </button>
+                    </div>
+                  </div>
+                  <div class="table-responsive">
+                    <table id="personas-table" class="table table-hover align-middle mb-0">
+                      <thead>
+                        <tr><th>ID</th><th>Nombre</th><th>Apellidos</th><th>Nac.</th><th class="text-end">Acciones</th></tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Matrícula -->
+        <section id="matricula-view" class="view hidden">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <h2 class="card-title-serif"><i class="bi bi-journal-plus"></i> Registrar matrícula</h2>
+                  <form id="matricula-form">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Estudiante</label>
+                        <select id="mat-persona" class="form-select"></select>
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">ID de grupo</label>
+                        <input id="mat-id-grupo" class="form-control" placeholder="Ej. 101" required>
+                      </div>
+                      <div class="col-12">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Crear matrícula</button>
+                      </div>
+                    </div>
+                  </form>
+                  <div id="mat-result" class="form-result"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Asistencia -->
+        <section id="asistencia-view" class="view hidden">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <h2 class="card-title-serif"><i class="bi bi-calendar2-check"></i> Registrar asistencia</h2>
+                  <form id="asistencia-form">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Estudiante</label>
+                        <select id="asis-persona" class="form-select"></select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">ID de grupo</label>
+                        <input id="asis-id-grupo" class="form-control" placeholder="Ej. 101" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">ID de profesor</label>
+                        <input id="asis-id-profesor" class="form-control" placeholder="Ej. 12" required>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">Estado</label>
+                        <select id="asis-estado" class="form-select">
+                          <option value="presente">Presente</option>
+                          <option value="ausente">Ausente</option>
+                          <option value="tarde">Tarde</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">Fecha</label>
+                        <input id="asis-fecha" type="date" class="form-control" required>
+                      </div>
+                      <div class="col-12">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Guardar asistencia</button>
+                      </div>
+                    </div>
+                  </form>
+                  <div id="asis-result" class="form-result"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Reportes -->
+        <section id="reportes-view" class="view hidden">
+          <div class="empty-state text-center py-5">
+            <i class="bi bi-bar-chart-line"></i>
+            <h2 class="card-title-serif justify-content-center">Aún no hay reportes configurados</h2>
+            <p class="text-muted mb-0">Cuando el backend exponga endpoints de reportes, aparecerán aquí.</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="ui.js?v=4"></script>
+</body>
+</html>

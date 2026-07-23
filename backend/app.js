@@ -3,6 +3,7 @@ import cors from "cors";
 
 // Importar las rutas
 import authRoutes from "./routes/authRoutes.js";
+import usuarioRoutes from "./routes/usuarioRoutes.js";
 import personaRoutes from "./routes/personaRoutes.js";
 import matriculaProcessRoutes from "./routes/matriculaProcessRoutes.js";
 import asistenciaProcessRoutes from "./routes/asistenciaProcessRoutes.js";
@@ -25,6 +26,7 @@ app.get("/", (req, res) => {
 
 // Rutas de autenticación
 app.use("/api/auth", authRoutes);
+app.use("/api/usuarios", usuarioRoutes);
 
 // Rutas del módulo Persona
 app.use("/api/personas", personaRoutes);

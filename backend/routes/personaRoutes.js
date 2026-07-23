@@ -9,6 +9,8 @@ import {
 } from "../controllers/personaController.js";
 
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { personaRules, idPersonaParam } from "../validators/personaValidator.js";
+import { validarCampos } from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
 
@@ -16,17 +18,17 @@ const router = express.Router();
 router.get("/", requireAuth, listarPersonas);
 
 // Obtener una persona por ID
-router.get("/:id", requireAuth, obtenerPersona);
+router.get("/:id", requireAuth, idPersonaParam, validarCampos, obtenerPersona);
 
 // Registrar una nueva persona (administrador o asistente)
-router.post("/", requireAuth, requireRole("Administrador", "Asistente"), registrarPersona);
+router.post("/", requireAuth, requireRole("Administrador", "Asistente"), personaRules, validarCampos, registrarPersona);
 
 // Actualizar una persona (administrador o asistente)
-router.put("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
-router.patch("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
-router.post("/:id", requireAuth, requireRole("Administrador", "Asistente"), actualizarPersona);
+router.put("/:id", requireAuth, requireRole("Administrador", "Asistente"), idPersonaParam, personaRules, validarCampos, actualizarPersona);
+router.patch("/:id", requireAuth, requireRole("Administrador", "Asistente"), idPersonaParam, personaRules, validarCampos, actualizarPersona);
+router.post("/:id", requireAuth, requireRole("Administrador", "Asistente"), idPersonaParam, personaRules, validarCampos, actualizarPersona);
 
 // Eliminar una persona (solo administrador)
-router.delete("/:id", requireAuth, requireRole("Administrador"), eliminarPersona);
+router.delete("/:id", requireAuth, requireRole("Administrador"), idPersonaParam, validarCampos, eliminarPersona);
 
 export default router;

@@ -3,7 +3,7 @@ import mysql from "mysql2";
 const conexion = mysql.createPool({
     host: "localhost",
     user: "root",
-    password: "Yugrant@13",
+    password: "1234",//cambiar la contraseña
     database: "sistema_escolar_db",
     port: 3306,
     waitForConnections: true,

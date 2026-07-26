@@ -1,0 +1,201 @@
+import conexionPromise from "../config/database.js";
+
+/**
+ * Obtiene la lista de estudiantes pendientes de matrícula (pre-registro).
+ * IMPORTANTE: esto consulta la tabla `estudiante`, NO la tabla `persona` completa.
+ * Así los profesores (que también tienen fila en `persona`) nunca aparecen aquí.
+ * Además, excluye a quien YA tiene un grupo activo asignado (grupo_estudiante.estado = TRUE),
+ * es decir, a quien ya se matriculó de verdad desde el módulo de Procesos. Así, en cuanto
+ * se procesa una matrícula, el estudiante desaparece automáticamente de este listado.
+ */
+export const obtenerEstudiantesService = async () => {
+  const query = `
+    SELECT 
+      e.id_estudiante,
+      e.id_persona,
+      p.nombre,
+      p.apellido1,
+      p.apellido2,
+      p.fecha_nacimiento,
+      p.genero,
+      e.fecha_ingreso,
+      e.estado
+    FROM estudiante e
+    INNER JOIN persona p ON e.id_persona = p.id_persona
+    WHERE e.estado = TRUE
+      AND NOT EXISTS (
+        SELECT 1 FROM grupo_estudiante ge
+        WHERE ge.id_estudiante = e.id_estudiante AND ge.estado = TRUE
+      )
+    ORDER BY e.id_estudiante DESC
+  `;
+  const [rows] = await conexionPromise.query(query);
+  return rows;
+};
+
+/**
+ * Obtiene un estudiante puntual por su id_estudiante (no por id_persona).
+ */
+export const obtenerEstudiantePorIdService = async (id_estudiante) => {
+  const query = `
+    SELECT 
+      e.id_estudiante,
+      e.id_persona,
+      p.nombre,
+      p.apellido1,
+      p.apellido2,
+      p.fecha_nacimiento,
+      p.genero,
+      e.fecha_ingreso,
+      e.estado
+    FROM estudiante e
+    INNER JOIN persona p ON e.id_persona = p.id_persona
+    WHERE e.id_estudiante = ?
+    LIMIT 1
+  `;
+  const [rows] = await conexionPromise.query(query, [id_estudiante]);
+  return rows[0];
+};
+
+/**
+ * Registra un estudiante insertando la persona y el estudiante dentro de una transacción.
+ * Misma lógica de transacción que profesorService.crearProfesorService, pero apuntando
+ * a la tabla `estudiante` en vez de `profesor`.
+ */
+export const crearEstudianteService = async (datos, idUsuario = null) => {
+  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, fecha_ingreso } = datos;
+
+  if (!nombre || !apellido1 || !fecha_nacimiento || !genero) {
+    throw new Error("Faltan campos obligatorios para registrar al estudiante.");
+  }
+
+  const connection = await conexionPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Desactivamos temporalmente los triggers en esta sesión para evitar el bloqueo de auditoría
+    await connection.query(`SET @DISABLE_TRIGGERS = 1`);
+
+    // 1. Insertar persona
+    const queryPersona = `
+      INSERT INTO persona (nombre, apellido1, apellido2, fecha_nacimiento, genero, estado)
+      VALUES (?, ?, ?, ?, ?, TRUE)
+    `;
+    const [resPersona] = await connection.query(queryPersona, [
+      nombre.trim(),
+      apellido1.trim(),
+      apellido2 ? apellido2.trim() : null,
+      fecha_nacimiento,
+      genero
+    ]);
+
+    const id_persona = resPersona.insertId;
+
+    // 2. Insertar estudiante enlazado
+    const queryEstudiante = `
+      INSERT INTO estudiante (id_persona, fecha_ingreso, estado)
+      VALUES (?, ?, TRUE)
+    `;
+    const [resEstudiante] = await connection.query(queryEstudiante, [
+      id_persona,
+      fecha_ingreso || new Date().toISOString().split("T")[0]
+    ]);
+
+    // Reactivamos los triggers
+    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
+
+    await connection.commit();
+
+    return {
+      id_estudiante: resEstudiante.insertId,
+      id_persona,
+      nombre,
+      apellido1,
+      apellido2,
+      fecha_ingreso,
+      estado: 1
+    };
+  } catch (error) {
+    await connection.rollback();
+    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
+
+    throw new Error(error.message || "Error interno al registrar el estudiante en la base de datos.");
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Actualiza los datos personales del estudiante (persona asociada).
+ * Recibe id_estudiante, resuelve internamente el id_persona correspondiente.
+ */
+export const actualizarEstudianteService = async (id_estudiante, datos, idUsuario = null) => {
+  const { nombre, apellido1, apellido2, fecha_nacimiento, genero } = datos;
+
+  const connection = await conexionPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [estRows] = await connection.query(
+      `SELECT id_persona FROM estudiante WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
+    if (estRows.length === 0) {
+      throw new Error("Estudiante no encontrado.");
+    }
+
+    const id_persona = estRows[0].id_persona;
+
+    await connection.query(
+      `UPDATE persona 
+       SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ?
+       WHERE id_persona = ?`,
+      [nombre, apellido1, apellido2 || null, fecha_nacimiento, genero, id_persona]
+    );
+
+    await connection.commit();
+    return { id_estudiante, id_persona, mensaje: "Estudiante actualizado correctamente" };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Elimina (borrado lógico) a un estudiante, marcando estado = FALSE en la tabla `estudiante`.
+ * Esto es distinto de eliminar la persona: la persona se conserva por trazabilidad/auditoría.
+ */
+export const eliminarEstudianteService = async (id_estudiante) => {
+  const connection = await conexionPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [estRows] = await connection.query(
+      `SELECT id_estudiante FROM estudiante WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
+    if (estRows.length === 0) {
+      throw new Error("Estudiante no encontrado.");
+    }
+
+    await connection.query(
+      `UPDATE estudiante SET estado = FALSE WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
+    await connection.commit();
+    return { id_estudiante, mensaje: "Estudiante eliminado correctamente" };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};

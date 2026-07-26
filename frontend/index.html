@@ -10,25 +10,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="icon" type="image/png" href="../backend/images/favucon.jpg">
 </head>
 <body>
 
-  <!-- ===================== LOGIN ===================== -->
+  <!-- PANTALLA DE LOGIN -->
   <div id="login-screen" class="login-screen d-flex align-items-center justify-content-center">
     <div class="login-card">
       <div class="text-center mb-4">
         <span class="brand-mark brand-mark-lg mx-auto mb-3">EC</span>
         <h1 class="h3 mb-1">EduControl</h1>
-        <p class="text-muted mb-0">Ingresa con tu cuenta de administrador o asistente</p>
+        <p class="text-muted small mb-0">Ingresa con tus credenciales asignadas</p>
       </div>
 
       <form id="login-form" novalidate>
         <div class="mb-3">
-          <label class="form-label" for="login-correo">Correo</label>
+          <label class="form-label" for="login-correo">Correo electrónico</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-            <input id="login-correo" type="email" class="form-control" placeholder="tucorreo@educontrol.com" required autocomplete="username">
+            <input id="login-correo" type="email" class="form-control" placeholder="usuario@educontrol.com" required autocomplete="username">
           </div>
         </div>
         <div class="mb-3">
@@ -44,21 +45,17 @@
 
         <div id="login-error" class="login-error hidden"></div>
 
-        <button type="submit" id="login-submit" class="btn btn-primary w-100 mt-2">
+        <button type="submit" id="login-submit" class="btn btn-primary w-100 mt-2 py-2">
           <i class="bi bi-box-arrow-in-right"></i> Iniciar sesión
         </button>
       </form>
-
-      <p class="text-muted text-center small mt-4 mb-0">
-        Solo cuentas de <strong>Administrador</strong> o <strong>Asistente</strong> pueden acceder. Los estudiantes no tienen inicio de sesión.
-      </p>
     </div>
   </div>
 
-  <!-- ===================== APP ===================== -->
+  <!-- APLICACIÓN PRINCIPAL -->
   <div id="app-shell" class="d-flex vh-100 overflow-hidden hidden">
 
-    <!-- Sidebar -->
+    <!-- SIDEBAR -->
     <aside class="sidebar d-flex flex-column flex-shrink-0 p-3">
       <div class="d-flex align-items-center gap-2 px-1 mb-4">
         <span class="brand-mark">EC</span>
@@ -82,19 +79,28 @@
           </button>
         </li>
         <li class="nav-item">
+          <button type="button" data-view="profesores" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-person-badge"></i> Profesores
+          </button>
+        </li>
+        <li class="nav-item">
           <button type="button" data-view="asistencia" class="nav-link w-100 text-start d-flex align-items-center gap-2">
             <i class="bi bi-calendar2-check"></i> Asistencia
           </button>
         </li>
-        <li class="nav-item">
+        <li class="nav-item admin-only">
           <button type="button" data-view="reportes" class="nav-link w-100 text-start d-flex align-items-center gap-2">
             <i class="bi bi-bar-chart-line"></i> Reportes
           </button>
         </li>
+        <li class="nav-item">
+          <button type="button" data-view="perfil" class="nav-link w-100 text-start d-flex align-items-center gap-2">
+            <i class="bi bi-person-gear"></i> Mi Perfil
+          </button>
+        </li>
       </ul>
 
-      <!-- Tarjeta de usuario -->
-      <div class="sidebar-user pt-3 mt-3 border-top">
+      <div class="sidebar-user pt-3 mt-3 border-top border-secondary">
         <div class="d-flex align-items-center gap-2 mb-2">
           <span id="sidebar-avatar" class="avatar avatar-sm">--</span>
           <div class="lh-sm flex-grow-1 min-w-0">
@@ -108,19 +114,24 @@
       </div>
     </aside>
 
-    <!-- Main -->
+    <!-- ÁREA DE CONTENIDO -->
     <div class="flex-grow-1 d-flex flex-column overflow-hidden">
 
       <header class="topbar d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
         <div>
-          <p class="eyebrow mb-1">Panel administrativo</p>
-          <h1 id="view-title" class="h3 mb-0">Dashboard</h1>
+          <p class="eyebrow mb-0">Gestión Académica</p>
+          <h1 id="view-title" class="h4 mb-0">Dashboard</h1>
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <span id="topbar-avatar" class="avatar">--</span>
-          <div class="lh-sm">
-            <div id="topbar-user-name" class="fw-semibold small">—</div>
-            <span id="topbar-role-badge" class="role-badge">—</span>
+        <div class="d-flex align-items-center gap-3">
+          <div id="assistant-permission-notice" class="asistente-notice hidden">
+            <i class="bi bi-shield-lock"></i> Módulo de Asistente
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span id="topbar-avatar" class="avatar">--</span>
+            <div class="lh-sm">
+              <div id="topbar-user-name" class="fw-semibold small">—</div>
+              <span id="topbar-role-badge" class="role-badge">—</span>
+            </div>
           </div>
         </div>
       </header>
@@ -128,93 +139,237 @@
       <main id="content" class="flex-grow-1 overflow-auto p-4">
         <div id="toast" class="toast hidden"></div>
 
-        <section class="hero-card card border-0 shadow-sm mb-4">
-          <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        <section class="hero-card p-4 mb-4">
+          <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
             <div>
-              <p class="eyebrow mb-2">Gestión escolar</p>
-              <h2 class="h4 mb-1">Tu panel de administración, listo para trabajar</h2>
-              <p class="text-muted mb-0">Navega entre matrícula, estudiantes y asistencia desde un mismo lugar con una experiencia más clara.</p>
+              <p class="eyebrow mb-1">Panel de Control</p>
+              <h2 class="h4 mb-1">Bienvenido a EduControl</h2>
+              <p class="mb-0 text-white-50 small">Administración integral de matrículas, profesores, asistencia y expedientes.</p>
             </div>
             <div class="hero-pill">
-              <i class="bi bi-lightning-charge"></i>
-              <span>Registro ágil y respuestas inmediatas</span>
+              <i class="bi bi-check-circle-fill"></i>
+              <span>Sistema Operativo</span>
             </div>
           </div>
         </section>
 
-        <!-- Dashboard -->
+        <!-- VISTA: DASHBOARD -->
         <section id="dashboard-view" class="view">
-          <p class="text-muted mb-4">Bienvenido al panel. Usa el menú de la izquierda para gestionar matrícula, estudiantes y asistencia.</p>
           <div class="row g-3">
             <div class="col-md-4">
-              <div class="card stat-card border-0 shadow-sm h-100">
+              <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
-                  <span class="stat-label">Estudiantes activos</span>
+                  <span class="stat-label">Estudiantes Activos</span>
                   <div id="cnt-personas" class="stat-value">–</div>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
-              <div class="card stat-card border-0 shadow-sm h-100">
+              <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
-                  <span class="stat-label">Asistencia hoy</span>
-                  <div class="stat-value">–– %</div>
+                  <span class="stat-label">Profesores Registrados</span>
+                  <div id="cnt-profesores" class="stat-value">--</div>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
-              <div class="card stat-card border-0 shadow-sm h-100">
+              <div class="card stat-card shadow-sm h-100">
                 <div class="card-body">
-                  <span class="stat-label">Matrículas · Mes</span>
-                  <div class="stat-value">––</div>
+                  <span class="stat-label">Estado de Plataforma</span>
+                  <div class="stat-value text-success fs-4 mt-2"><i class="bi bi-shield-check"></i> Activo</div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- Estudiantes -->
+        <!-- VISTA: ESTUDIANTES -->
         <section id="estudiantes-view" class="view hidden">
-          <div class="row g-3">
-            <div class="col-lg-4">
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="card-title-serif mb-0"><i class="bi bi-person-plus"></i> <span id="persona-form-title">Agregar estudiante</span></h2>
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+                <h2 class="card-title-serif h5 mb-0"><i class="bi bi-people-fill"></i> Pre-registro de Estudiantes</h2>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  <div class="input-group input-group-sm search-box">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="persona-search" type="text" class="form-control" placeholder="Buscar por nombre...">
                   </div>
-                  <form id="persona-form">
-                    <input type="hidden" id="persona-id">
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-abrir-modal-estudiante" data-bs-toggle="modal" data-bs-target="#modalEstudiante">
+                    <i class="bi bi-plus-lg"></i> Agregar Estudiante
+                  </button>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">
+                <i class="bi bi-info-circle"></i>
+                Este es el pre-registro del estudiante. La asignación a un grupo se hace luego desde el módulo de <strong>Matrícula</strong>.
+              </p>
+              <div class="table-responsive">
+                <table id="personas-table" class="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre Completo</th>
+                      <th>Nacimiento</th>
+                      <th>Ingreso</th>
+                      <th>Estado</th>
+                      <th class="text-end">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VISTA: PROFESORES -->
+        <section id="profesores-view" class="view hidden">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+                <h2 class="card-title-serif h5 mb-0"><i class="bi bi-person-badge"></i> Cuerpo Docente</h2>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalProfesor">
+                  <i class="bi bi-plus-lg"></i> Agregar Profesor
+                </button>
+              </div>
+              <div class="table-responsive">
+                <table id="profesores-table" class="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre Completo</th>
+                      <th>Materia</th>
+                      <th>Ingreso</th>
+                      <th>Estado</th>
+                      <th class="text-end">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VISTA: MATRÍCULA -->
+        <section id="matricula-view" class="view hidden">
+          <div class="row g-4">
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3 h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                  <i class="bi bi-journal-plus text-primary fs-1 mb-2"></i>
+                  <h3 class="h5">Nueva Matrícula</h3>
+                  <p class="text-muted small mb-3">Asigna un estudiante a un grupo de clase.</p>
+                  <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalMatricula">Procesar Matrícula</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3 h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                  <i class="bi bi-person-badge text-primary fs-1 mb-2"></i>
+                  <h3 class="h5">Profesores</h3>
+                  <p class="text-muted small mb-3">Registra y edita el cuerpo docente.</p>
+                  <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalProfesor">Agregar Profesor</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm text-center p-3 h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                  <i class="bi bi-people text-primary fs-1 mb-2"></i>
+                  <h3 class="h5">Grupos</h3>
+                  <p class="text-muted small mb-3">Configura las aulas y capacidades.</p>
+                  <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalGrupo">Crear Grupo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VISTA: ASISTENCIA -->
+        <section id="asistencia-view" class="view hidden">
+
+          <!-- Resumen rápido del historial filtrado -->
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+              <div class="card stat-card stat-card-sm shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Registros</span>
+                  <div id="hist-stat-total" class="stat-value stat-value-sm">0</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="card stat-card stat-card-sm stat-card-success shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Presentes</span>
+                  <div id="hist-stat-presente" class="stat-value stat-value-sm">0</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="card stat-card stat-card-sm stat-card-danger shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Ausentes</span>
+                  <div id="hist-stat-ausente" class="stat-value stat-value-sm">0</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="card stat-card stat-card-sm stat-card-gold shadow-sm h-100">
+                <div class="card-body">
+                  <span class="stat-label">Tardías / Justificadas</span>
+                  <div id="hist-stat-otros" class="stat-value stat-value-sm">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <!-- Formulario de registro -->
+            <div class="col-lg-5">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <h2 class="card-title-serif h5 mb-3"><i class="bi bi-calendar2-check"></i> Registrar Asistencia</h2>
+                  <form id="asistencia-form">
                     <div class="row g-3">
                       <div class="col-12">
-                        <label class="form-label" for="nombre"><i class="bi bi-person"></i> Nombre</label>
-                        <input id="nombre" class="form-control" placeholder="Nombre" required>
+                        <label class="form-label">Grupo</label>
+                        <select id="asis-id-grupo" class="form-select" required></select>
+                        <div class="form-text" id="asis-grupo-hint">Elige primero el grupo: así se cargan solo sus estudiantes y su profesor.</div>
                       </div>
-                      <div class="col-6">
-                        <label class="form-label" for="apellido1">Apellido 1</label>
-                        <input id="apellido1" class="form-control" placeholder="Apellido 1" required>
-                      </div>
-                      <div class="col-6">
-                        <label class="form-label" for="apellido2">Apellido 2</label>
-                        <input id="apellido2" class="form-control" placeholder="Apellido 2">
-                      </div>
-                      <div class="col-6">
-                        <label class="form-label" for="fecha_nacimiento"><i class="bi bi-calendar3"></i> Nacimiento</label>
-                        <input id="fecha_nacimiento" type="date" class="form-control" required>
-                      </div>
-                      <div class="col-6">
-                        <label class="form-label" for="genero">Género</label>
-                        <select id="genero" class="form-select" required>
-                          <option value="">Seleccionar</option>
-                          <option value="M">Masculino</option>
-                          <option value="F">Femenino</option>
-                          <option value="O">Otro</option>
+                      <div class="col-12">
+                        <label class="form-label">Estudiante</label>
+                        <select id="asis-persona" class="form-select" required disabled>
+                          <option value="" disabled selected>Primero selecciona un grupo</option>
                         </select>
                       </div>
-                      <div class="col-12 d-flex gap-2 pt-1">
-                        <button type="submit" id="persona-submit" class="btn btn-primary flex-grow-1">
-                          <i class="bi bi-check2-circle"></i> Guardar
-                        </button>
-                        <button type="button" id="cancel-edit" class="btn btn-outline-secondary hidden">Cancelar</button>
+                      <div class="col-12">
+                        <label class="form-label">Profesor</label>
+                        <select id="asis-id-profesor" class="form-select" required disabled>
+                          <option value="" disabled selected>Primero selecciona un grupo</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">Estado</label>
+                        <select id="asis-estado" class="form-select">
+                          <option value="presente" selected>Presente</option>
+                          <option value="ausente">Ausente</option>
+                          <option value="tardia">Tardía</option>
+                          <option value="justificada">Justificada</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label">Fecha</label>
+                        <input id="asis-fecha" type="date" class="form-control" required>
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Observaciones (opcional)</label>
+                        <input id="asis-observaciones" type="text" class="form-control" maxlength="250" placeholder="Ej. Llegó 15 minutos tarde por transporte">
+                      </div>
+                      <div class="col-12 pt-2">
+                        <button type="submit" id="asis-submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle"></i> Guardar Asistencia</button>
                       </div>
                     </div>
                   </form>
@@ -222,27 +377,74 @@
               </div>
             </div>
 
-            <div class="col-lg-8">
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
+            <!-- Historial + filtros -->
+            <div class="col-lg-7">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-                    <h2 class="card-title-serif mb-0"><i class="bi bi-list-ul"></i> Estudiantes</h2>
-                    <div class="d-flex gap-2 align-items-center">
-                      <div class="input-group input-group-sm search-box">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input id="persona-search" type="text" class="form-control" placeholder="Buscar por nombre...">
+                    <h2 class="card-title-serif h5 mb-0"><i class="bi bi-clock-history"></i> Historial de Asistencia</h2>
+                    <button type="button" id="hist-refrescar" class="btn btn-outline-secondary btn-sm">
+                      <i class="bi bi-arrow-clockwise"></i> Refrescar
+                    </button>
+                  </div>
+
+                  <!-- Barra de filtros -->
+                  <div class="filter-bar mb-3">
+                    <div class="row g-2">
+                      <div class="col-6 col-md-4">
+                        <label class="form-label">Grupo</label>
+                        <select id="hist-filtro-grupo" class="form-select form-select-sm">
+                          <option value="">Todos los grupos</option>
+                        </select>
                       </div>
-                      <button type="button" id="btn-nuevo-estudiante" class="btn btn-sm btn-outline-primary text-nowrap">
-                        <i class="bi bi-plus-lg"></i> Nuevo
-                      </button>
+                      <div class="col-6 col-md-4">
+                        <label class="form-label">Estado</label>
+                        <select id="hist-filtro-estado" class="form-select form-select-sm">
+                          <option value="">Todos los estados</option>
+                          <option value="presente">Presente</option>
+                          <option value="ausente">Ausente</option>
+                          <option value="tardia">Tardía</option>
+                          <option value="justificada">Justificada</option>
+                        </select>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <label class="form-label">Buscar estudiante</label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text"><i class="bi bi-search"></i></span>
+                          <input id="hist-filtro-busqueda" type="text" class="form-control" placeholder="Nombre o apellido...">
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <label class="form-label">Desde</label>
+                        <input id="hist-filtro-fecha-desde" type="date" class="form-control form-control-sm">
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <label class="form-label">Hasta</label>
+                        <input id="hist-filtro-fecha-hasta" type="date" class="form-control form-control-sm">
+                      </div>
+                      <div class="col-12 col-md-4 d-flex align-items-end">
+                        <button type="button" id="hist-limpiar-filtros" class="btn btn-outline-secondary btn-sm w-100">
+                          <i class="bi bi-x-circle"></i> Limpiar filtros
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div class="table-responsive">
-                    <table id="personas-table" class="table table-hover align-middle mb-0">
+
+                  <div class="table-responsive flex-grow-1">
+                    <table id="asistencia-historial-table" class="table table-hover align-middle mb-0">
                       <thead>
-                        <tr><th>ID</th><th>Nombre</th><th>Apellidos</th><th>Nac.</th><th class="text-end">Acciones</th></tr>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Estudiante</th>
+                          <th>Grupo</th>
+                          <th>Profesor</th>
+                          <th>Estado</th>
+                          <th>Observaciones</th>
+                        </tr>
                       </thead>
-                      <tbody></tbody>
+                      <tbody id="asistencia-historial-body">
+                        <tr><td colspan="6" class="text-center py-4 text-muted">Cargando historial...</td></tr>
+                      </tbody>
                     </table>
                   </div>
                 </div>
@@ -251,86 +453,73 @@
           </div>
         </section>
 
-        <!-- Matrícula -->
-        <section id="matricula-view" class="view hidden">
-          <div class="row">
-            <div class="col-lg-6">
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                  <h2 class="card-title-serif"><i class="bi bi-journal-plus"></i> Registrar matrícula</h2>
-                  <form id="matricula-form">
-                    <div class="row g-3">
-                      <div class="col-12">
-                        <label class="form-label">Estudiante</label>
-                        <select id="mat-persona" class="form-select"></select>
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">ID de grupo</label>
-                        <input id="mat-id-grupo" class="form-control" placeholder="Ej. 101" required>
-                      </div>
-                      <div class="col-12">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Crear matrícula</button>
-                      </div>
-                    </div>
-                  </form>
-                  <div id="mat-result" class="form-result"></div>
-                </div>
-              </div>
-            </div>
+        <!-- VISTA: REPORTES (ADMIN) -->
+        <section id="reportes-view" class="view hidden admin-only">
+          <div class="text-center py-5">
+            <i class="bi bi-bar-chart-line fs-1 text-muted"></i>
+            <h2 class="h5 mt-2">Módulo de Reportes</h2>
+            <p class="text-muted small">Los reportes se generarán automáticamente en base a las asistencias y matrículas activas.</p>
           </div>
         </section>
 
-        <!-- Asistencia -->
-        <section id="asistencia-view" class="view hidden">
-          <div class="row">
-            <div class="col-lg-6">
+        <!-- VISTA: PERFIL -->
+        <section id="perfil-view" class="view hidden">
+          <div class="row justify-content-center">
+            <div class="col-lg-8">
               <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                  <h2 class="card-title-serif"><i class="bi bi-calendar2-check"></i> Registrar asistencia</h2>
-                  <form id="asistencia-form">
+                  <h2 class="card-title-serif h5 mb-4"><i class="bi bi-person-gear"></i> Mi Perfil</h2>
+                  <form id="perfil-form">
                     <div class="row g-3">
-                      <div class="col-12">
-                        <label class="form-label">Estudiante</label>
-                        <select id="asis-persona" class="form-select"></select>
+                      <div class="col-md-4 text-center mb-3">
+                        <img id="perfil-foto-preview" src="https://via.placeholder.com/120" alt="Foto" class="rounded-circle mb-2" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid var(--accent);">
+                        <div>
+                          <label for="perfil-foto-input" class="btn btn-sm btn-outline-primary">Cambiar Foto</label>
+                          <input type="file" id="perfil-foto-input" accept="image/*" class="d-none">
+                        </div>
                       </div>
-                      <div class="col-6">
-                        <label class="form-label">ID de grupo</label>
-                        <input id="asis-id-grupo" class="form-control" placeholder="Ej. 101" required>
+                      <div class="col-md-8">
+                        <div class="row g-3">
+                          <div class="col-12">
+                            <label class="form-label">Nombre</label>
+                            <input id="perfil-nombre" class="form-control" required>
+                          </div>
+                          <div class="col-6">
+                            <label class="form-label">Primer Apellido</label>
+                            <input id="perfil-apellido1" class="form-control" required>
+                          </div>
+                          <div class="col-6">
+                            <label class="form-label">Segundo Apellido</label>
+                            <input id="perfil-apellido2" class="form-control">
+                          </div>
+                          <div class="col-12">
+                            <label class="form-label">Correo Electrónico</label>
+                            <input id="perfil-correo" type="email" class="form-control" required>
+                          </div>
+                        </div>
                       </div>
-                      <div class="col-6">
-                        <label class="form-label">ID de profesor</label>
-                        <input id="asis-id-profesor" class="form-control" placeholder="Ej. 12" required>
+                      <div class="col-12"><hr class="my-3"></div>
+                      <h3 class="h6 fw-bold mb-3">Seguridad</h3>
+                      <div class="col-md-4">
+                        <label class="form-label">Clave Actual</label>
+                        <input id="perfil-clave-actual" type="password" class="form-control">
                       </div>
-                      <div class="col-6">
-                        <label class="form-label">Estado</label>
-                        <select id="asis-estado" class="form-select">
-                          <option value="presente">Presente</option>
-                          <option value="ausente">Ausente</option>
-                          <option value="tarde">Tarde</option>
-                        </select>
+                      <div class="col-md-4">
+                        <label class="form-label">Nueva Clave</label>
+                        <input id="perfil-clave-nueva" type="password" class="form-control">
                       </div>
-                      <div class="col-6">
-                        <label class="form-label">Fecha</label>
-                        <input id="asis-fecha" type="date" class="form-control" required>
+                      <div class="col-md-4">
+                        <label class="form-label">Confirmar Clave</label>
+                        <input id="perfil-clave-confirmar" type="password" class="form-control">
                       </div>
-                      <div class="col-12">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Guardar asistencia</button>
+                      <div class="col-12 pt-3">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Guardar Cambios</button>
                       </div>
                     </div>
                   </form>
-                  <div id="asis-result" class="form-result"></div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- Reportes -->
-        <section id="reportes-view" class="view hidden">
-          <div class="empty-state text-center py-5">
-            <i class="bi bi-bar-chart-line"></i>
-            <h2 class="card-title-serif justify-content-center">Aún no hay reportes configurados</h2>
-            <p class="text-muted mb-0">Cuando el backend exponga endpoints de reportes, aparecerán aquí.</p>
           </div>
         </section>
 
@@ -338,6 +527,378 @@
     </div>
   </div>
 
-  <script src="ui.js?v=4"></script>
+  <!-- MODAL: MATRÍCULA -->
+  <div class="modal fade" id="modalMatricula" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-journal-plus"></i> Registrar Matrícula</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="matricula-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Estudiante</label>
+                <select id="mat-persona" class="form-select" required></select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Grupo Destino</label>
+                <select id="mat-id-grupo" class="form-select" required></select>
+                <div class="form-text" id="mat-grupo-info">Selecciona un grupo para ver el cupo disponible.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Tipo de Matrícula</label>
+                <select id="mat-tipo" class="form-select" required>
+                  <option value="regular" selected>Regular</option>
+                  <option value="traslado">Traslado</option>
+                  <option value="reingreso">Reingreso</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Trimestre</label>
+                <select id="mat-periodo" class="form-select" required>
+                  <option value="1" selected>I Trimestre</option>
+                  <option value="2">II Trimestre</option>
+                  <option value="3">III Trimestre</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Fecha</label>
+                <input id="mat-fecha" type="date" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Observaciones (opcional)</label>
+                <input id="mat-observaciones" type="text" class="form-control" maxlength="20" placeholder="Máx. 20 caracteres">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="mat-submit" class="btn btn-sm btn-primary">Completar Matrícula</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PROFESOR -->
+  <div class="modal fade" id="modalProfesor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-plus-fill text-primary-emphasis"></i> Registro de Cuerpo Docente
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="profesor-form">
+          <div class="modal-body p-4 bg-light">
+            <div class="alert alert-info py-2 small mb-4 d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill"></i>
+              <span>Complete los datos personales y seleccione una de las 8 materias básicas institucionales.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Nombre</label>
+                <input id="prof-nombre" class="form-control" placeholder="Ej. Ana" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Primer Apellido</label>
+                <input id="prof-apellido1" class="form-control" placeholder="Ej. Pérez" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Segundo Apellido</label>
+                <input id="prof-apellido2" class="form-control" placeholder="Ej. Gómez">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha de Nacimiento</label>
+                <input id="prof-fecha-nac" type="date" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Género</label>
+                <select id="prof-genero" class="form-select" required>
+                  <option value="" disabled selected>Seleccione género</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="O">Otro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Materia Básica Asignada</label>
+                <select id="prof-materia" class="form-select" required>
+                  <option value="" disabled selected>Seleccione la materia básica</option>
+                  <option value="Matemáticas">Matemáticas</option>
+                  <option value="Español">Español</option>
+                  <option value="Ciencias Naturales">Ciencias Naturales</option>
+                  <option value="Estudios Sociales">Estudios Sociales</option>
+                  <option value="Inglés">Inglés</option>
+                  <option value="Educación Física">Educación Física</option>
+                  <option value="Artes Plásticas">Artes Plásticas</option>
+                  <option value="Música">Música</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha de Ingreso</label>
+                <input id="prof-fecha-ingreso" type="date" class="form-control" required>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-white px-4 py-3">
+            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2-circle"></i> Guardar Profesor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ESTUDIANTE -->
+  <div class="modal fade" id="modalEstudiante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-vcard-fill text-primary-emphasis"></i>
+            <span id="persona-form-title">Pre-registro de Estudiante</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="persona-form">
+          <input type="hidden" id="persona-id">
+          <div class="modal-body p-4 bg-light">
+            <div class="alert alert-info py-2 small mb-4 d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill"></i>
+              <span>Estos son los datos personales básicos del estudiante. La matrícula a un grupo se procesa después, desde el módulo de Matrícula.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="nombre">Nombre</label>
+                <input id="nombre" class="form-control" placeholder="Ej. Sofía" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="apellido1">Primer Apellido</label>
+                <input id="apellido1" class="form-control" placeholder="Ej. Rodríguez" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="apellido2">Segundo Apellido</label>
+                <input id="apellido2" class="form-control" placeholder="Ej. Vargas">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="fecha_nacimiento">Fecha de Nacimiento</label>
+                <input id="fecha_nacimiento" type="date" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="genero">Género</label>
+                <select id="genero" class="form-select" required>
+                  <option value="" disabled selected>Seleccione género</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="O">Otro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="persona-fecha-ingreso">Fecha de Ingreso</label>
+                <input id="persona-fecha-ingreso" type="date" class="form-control">
+                <div class="form-text">Si la dejas vacía, se usa la fecha de hoy.</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-white px-4 py-3">
+            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="persona-submit" class="btn btn-primary px-4">
+              <i class="bi bi-check2-circle"></i> Guardar Estudiante
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ELIMINAR ESTUDIANTE -->
+  <div class="modal fade" id="modalEliminarEstudiante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-trash text-danger"></i> Eliminar Estudiante
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="mb-0">
+            ¿Seguro que deseas eliminar a <strong id="eliminar-nombre-estudiante">-</strong>?
+            El estudiante quedará marcado como inactivo y dejará de aparecer en el listado.
+          </p>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-eliminar-estudiante-btn" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SECCIÓN ACADÉMICA -->
+  <div class="modal fade" id="modalSeccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-diagram-3"></i> Nueva Sección Académica</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="seccion-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label">Nombre</label>
+                <input id="seccion-nombre" class="form-control" placeholder="Ej. 10" maxlength="10" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Año Lectivo</label>
+                <input id="seccion-periodo" type="number" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Nivel</label>
+                <input id="seccion-nivel" class="form-control" placeholder="Ej. Tercer Ciclo" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <input id="seccion-descripcion" class="form-control" placeholder="Ej. Sección regular diurna" required>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary">Crear Sección</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GRUPO -->
+  <div class="modal fade" id="modalGrupo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-grid-plus"></i> Crear Nuevo Grupo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="grupo-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Nombre del Grupo</label>
+                <input id="grupo-nombre" class="form-control" placeholder="Ej. 10-A" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label d-flex justify-content-between align-items-center mb-0">
+                  <span>Sección Académica</span>
+                  <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#modalSeccion">
+                    <i class="bi bi-plus-circle"></i> Nueva sección
+                  </button>
+                </label>
+                <select id="grupo-seccion" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar sección</option>
+                </select>
+                <div class="form-text" id="grupo-seccion-empty-hint">No hay secciones creadas todavía. Crea una con el enlace de arriba.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Capacidad Máxima</label>
+                <input id="grupo-capacidad" type="number" min="1" class="form-control" value="30" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Aula (opcional)</label>
+                <input id="grupo-aula" class="form-control" placeholder="Ej. Edificio B - 4">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Profesor Encargado</label>
+                <select id="grupo-profesor" class="form-select" required></select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary">Crear Grupo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Destituir / Incapacitar Profesor -->
+  <div class="modal fade" id="modalDestituir" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-slash text-danger"></i> Destituir / Incapacitar Profesor
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="mb-3">
+            Vas a destituir/incapacitar a <strong id="destituir-nombre-profesor">-</strong>.
+            Esta acción lo marcará como inactivo y lo retirará automáticamente de todos los grupos que tenga asignados.
+          </p>
+          <label class="form-label">Motivo</label>
+          <textarea id="destituir-motivo" class="form-control" rows="3" placeholder="Ej. Incapacidad médica, renuncia, etc.">Incapacidad médica / Salida</textarea>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-destituir-btn" class="btn btn-danger">
+            <i class="bi bi-person-slash"></i> Confirmar Destitución
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Eliminar Profesor definitivamente -->
+  <div class="modal fade" id="modalEliminarProfesor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-trash text-danger"></i> Eliminar Profesor
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="mb-0">
+            ¿Seguro que deseas eliminar permanentemente a <strong id="eliminar-nombre-profesor">-</strong>?
+            Esta acción no se puede deshacer. Si el profesor tiene grupos o asistencias asociadas,
+            usa <strong>"Destituir"</strong> en su lugar para conservar el historial.
+          </p>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-eliminar-btn" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar definitivamente
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal genérico de resultado -->
+  <div class="modal fade" id="modalResultado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-body p-4 text-center">
+          <i id="resultado-icono" class="bi bi-check-circle-fill text-success" style="font-size: 42px;"></i>
+          <h5 id="resultado-titulo" class="mt-3 mb-2">Éxito</h5>
+          <p id="resultado-mensaje" class="text-muted mb-4">Operación realizada correctamente.</p>
+          <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="ui.js?v=11"></script>
 </body>
 </html>

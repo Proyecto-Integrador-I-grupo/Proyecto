@@ -301,11 +301,22 @@ function initApp() {
     });
   }
 
+  const grupoSeccionSearch = document.getElementById('grupo-seccion-search');
+  if (grupoSeccionSearch && !grupoSeccionSearch.dataset.wired) {
+    grupoSeccionSearch.dataset.wired = '1';
+    grupoSeccionSearch.addEventListener('input', () => {
+      filtrarSeccionesGrupo(grupoSeccionSearch.value);
+    });
+  }
+
   const grupoSeccionSel = document.getElementById('grupo-seccion');
   if (grupoSeccionSel && !grupoSeccionSel.dataset.wired) {
     grupoSeccionSel.dataset.wired = '1';
     grupoSeccionSel.addEventListener('change', () => {
-      poblarNombresGrupoBase();
+      const hint = document.getElementById('grupo-seccion-empty-hint');
+      if (hint) {
+        hint.textContent = 'La sección elegida quedará asociada al grupo que crearás.';
+      }
     });
   }
 
@@ -1711,27 +1722,6 @@ async function populateGruposSelects() {
   }
 }
 
-function poblarNombresGrupoBase() {
-  const select = document.getElementById('grupo-nombre');
-  if (!select) return;
-
-  const nombresBase = [];
-  for (let nivel = 1; nivel <= 6; nivel += 1) {
-    nombresBase.push(`${nivel}-A`, `${nivel}-B`);
-  }
-
-  select.innerHTML = '<option value="" disabled selected>Seleccionar nombre de grupo</option>';
-  nombresBase.forEach((nombre) => {
-    select.add(new Option(nombre, nombre));
-  });
-
-  const seccionVal = document.getElementById('grupo-seccion')?.value;
-  if (seccionVal) {
-    const opcionPorDefecto = nombresBase[0];
-    select.value = opcionPorDefecto;
-  }
-}
-
 function filtrarGruposMatricula(termino) {
   const select = document.getElementById('mat-id-grupo');
   const busqueda = (termino || '').trim().toLowerCase();
@@ -1784,11 +1774,14 @@ async function populateSeccionesSelect() {
     const sel = document.getElementById('grupo-seccion');
     const deleteSel = document.getElementById('seccion-delete-select');
     const hint = document.getElementById('grupo-seccion-empty-hint');
+
     if (sel) {
       sel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
       secciones.forEach((s) => {
         const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
-        sel.add(new Option(etiqueta, s.id_seccion));
+        const option = new Option(etiqueta, s.id_seccion);
+        option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''}`.toLowerCase();
+        sel.add(option);
       });
     }
     if (deleteSel) {
@@ -1804,6 +1797,17 @@ async function populateSeccionesSelect() {
     console.error('Error poblando secciones', error);
     return [];
   }
+}
+
+function filtrarSeccionesGrupo(termino) {
+  const select = document.getElementById('grupo-seccion');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
+    option.hidden = !!busqueda && !texto.includes(busqueda);
+  });
 }
 
 async function populateProfesoresSelects() {

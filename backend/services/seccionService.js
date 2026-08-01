@@ -43,12 +43,50 @@ export const crearSeccionService = async (datos) => {
 };
 
 export const obtenerSeccionesService = async () => {
-  const [rows] = await conexionPromise.query(`
-    SELECT id_seccion, nombre_seccion AS nombre, nivel, periodo_lectivo AS anio_lectivo, descripcion, estado 
-    FROM seccion 
-    WHERE estado = TRUE
-  `);
-  return rows;
+  const connection = await conexionPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const [existingRows] = await connection.query(`
+      SELECT id_seccion, nombre_seccion AS nombre, nivel, periodo_lectivo AS anio_lectivo, descripcion, estado
+      FROM seccion
+      WHERE estado = TRUE
+      ORDER BY periodo_lectivo DESC, nombre_seccion ASC
+    `);
+
+    const baseSeed = [];
+    for (let nivel = 1; nivel <= 6; nivel += 1) {
+      baseSeed.push({ nombre: `${nivel}-A`, nivel, anio_lectivo: new Date().getFullYear(), descripcion: `Sección base institucional ${nivel}-A` });
+      baseSeed.push({ nombre: `${nivel}-B`, nivel, anio_lectivo: new Date().getFullYear(), descripcion: `Sección base institucional ${nivel}-B` });
+    }
+
+    const existingNames = new Set((existingRows || []).map((row) => String(row.nombre || '').trim().toLowerCase()));
+    const baseToInsert = baseSeed.filter((item) => !existingNames.has(item.nombre.toLowerCase()));
+
+    for (const item of baseToInsert) {
+      await connection.query(
+        `INSERT INTO seccion (nombre_seccion, nivel, periodo_lectivo, descripcion, estado)
+         VALUES (?, ?, ?, ?, TRUE)`,
+        [item.nombre, item.nivel, item.anio_lectivo, item.descripcion]
+      );
+    }
+
+    await connection.commit();
+
+    const [rows] = await connection.query(`
+      SELECT id_seccion, nombre_seccion AS nombre, nivel, periodo_lectivo AS anio_lectivo, descripcion, estado
+      FROM seccion
+      WHERE estado = TRUE
+      ORDER BY periodo_lectivo DESC, nombre_seccion ASC
+    `);
+
+    return rows;
+  } catch (error) {
+    await connection.rollback();
+    throw new Error(error.message || "Error al consultar las secciones.");
+  } finally {
+    connection.release();
+  }
 };
 
 export const eliminarSeccionService = async (idSeccion) => {

@@ -7,13 +7,18 @@ function normalizarEstado(estado) {
 }
 
 function construirCondicionesAsistencia(filtros = {}) {
-    const { id_grupo, fecha_inicio, fecha_fin, estado_asistencia } = filtros;
+    const { id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, busqueda } = filtros;
     const condiciones = ["a.estado = TRUE"];
     const valores = [];
 
     if (id_grupo) {
         condiciones.push("a.id_grupo = ?");
         valores.push(Number(id_grupo));
+    }
+
+    if (id_estudiante) {
+        condiciones.push("a.id_estudiante = ?");
+        valores.push(Number(id_estudiante));
     }
 
     if (fecha_inicio) {
@@ -33,6 +38,23 @@ function construirCondicionesAsistencia(filtros = {}) {
         }
         condiciones.push("a.estado_asistencia = ?");
         valores.push(estadoNormalizado);
+    }
+
+    if (busqueda && String(busqueda).trim()) {
+        const textoBusqueda = `%${String(busqueda).trim()}%`;
+        condiciones.push(`(
+            a.id_estudiante IN (
+                SELECT e.id_estudiante
+                FROM estudiante e
+                INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                WHERE pe.nombre LIKE ?
+                   OR pe.apellido1 LIKE ?
+                   OR pe.apellido2 LIKE ?
+                   OR CAST(pe.id_persona AS CHAR) LIKE ?
+                   OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            )
+        )`);
+        valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
     }
 
     return { condiciones, valores };
@@ -61,6 +83,34 @@ export async function generarReporteResumen(filtros = {}) {
             (SELECT COUNT(*) FROM matricula WHERE estado = TRUE) AS total_matriculas`
     );
 
+    const grupoCondiciones = ["g.estado = TRUE"];
+    const grupoValores = [];
+
+    if (filtros.id_grupo) {
+        grupoCondiciones.push("g.id_grupo = ?");
+        grupoValores.push(Number(filtros.id_grupo));
+    }
+
+    if (filtros.id_estudiante) {
+        grupoCondiciones.push("a.id_estudiante = ?");
+        grupoValores.push(Number(filtros.id_estudiante));
+    }
+
+    if (filtros.busqueda && String(filtros.busqueda).trim()) {
+        grupoCondiciones.push(`a.id_estudiante IN (
+            SELECT e.id_estudiante
+            FROM estudiante e
+            INNER JOIN persona pe ON pe.id_persona = e.id_persona
+            WHERE pe.nombre LIKE ?
+               OR pe.apellido1 LIKE ?
+               OR pe.apellido2 LIKE ?
+               OR CAST(pe.id_persona AS CHAR) LIKE ?
+               OR CAST(e.id_estudiante AS CHAR) LIKE ?
+        )`);
+        const textoBusqueda = `%${String(filtros.busqueda).trim()}%`;
+        grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+    }
+
     const [detallePorGrupo] = await pool.query(
         `SELECT
             g.id_grupo,
@@ -74,11 +124,11 @@ export async function generarReporteResumen(filtros = {}) {
             SUM(CASE WHEN a.estado_asistencia = 'ausente' THEN 1 ELSE 0 END) AS ausentes
          FROM grupo g
          INNER JOIN seccion s ON s.id_seccion = g.id_seccion
-         LEFT JOIN asistencia a ON a.id_grupo = g.id_grupo
-         ${filtros.id_grupo ? "WHERE g.id_grupo = ?" : "WHERE g.estado = TRUE"}
+         LEFT JOIN asistencia a ON a.id_grupo = g.id_grupo AND a.estado = TRUE
+         WHERE ${grupoCondiciones.join(" AND ")}
          GROUP BY g.id_grupo, g.nombre_grupo, s.nombre_seccion, s.nivel, g.capacidad
          ORDER BY g.nombre_grupo`,
-        filtros.id_grupo ? [Number(filtros.id_grupo)] : []
+        grupoValores
     );
 
     const base = totalesSistema[0] || {};

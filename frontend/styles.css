@@ -450,6 +450,49 @@ h1, h2, h3, .card-title-serif {
   font-size: 13px;
 }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #reportes-view,
+  #reportes-view * {
+    visibility: visible;
+  }
+
+  #reportes-view {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .hero-card,
+  #report-aplicar,
+  #report-limpiar,
+  #report-imprimir-pdf,
+  .filter-bar,
+  .nav-sidebar,
+  .app-shell,
+  .topbar,
+  .sidebar,
+  .report-shell .card:nth-child(2) .card-body > div:not(.table-responsive),
+  .report-shell .card:nth-child(2) .card-body .d-flex,
+  .report-shell .card:nth-child(2) .card-body .table-responsive {
+    display: none !important;
+  }
+
+  .report-shell {
+    gap: 0;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 880px) {
   .sidebar { width: 100%; }
 }

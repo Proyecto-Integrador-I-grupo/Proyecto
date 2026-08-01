@@ -1,5 +1,4 @@
 import conexionPromise from "../config/database.js";
-
 export const obtenerProfesoresService = async () => {
   const query = `
     SELECT 
@@ -47,9 +46,6 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
 
   try {
     await connection.beginTransaction();
-
-    // Evita duplicar al mismo profesor: mismo nombre + apellidos + fecha de nacimiento
-    // ya registrados (sin importar si ese registro está activo o inactivo).
     const [duplicados] = await connection.query(
       `SELECT pr.id_profesor, pr.estado
        FROM profesor pr
@@ -57,17 +53,16 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
        WHERE LOWER(TRIM(p.nombre)) = LOWER(?)
          AND LOWER(TRIM(p.apellido1)) = LOWER(?)
          AND LOWER(TRIM(COALESCE(p.apellido2, ''))) = LOWER(TRIM(COALESCE(?, '')))
-         AND p.fecha_nacimiento = ?
        LIMIT 1`,
-      [nombreLimpio, apellido1Limpio, apellido2Limpio, fecha_nacimiento]
+      [nombreLimpio, apellido1Limpio, apellido2Limpio]
     );
 
     if (duplicados.length > 0) {
       const yaActivo = duplicados[0].estado == 1 || duplicados[0].estado === true;
       throw new Error(
         yaActivo
-          ? `Ya existe un profesor activo (ID ${duplicados[0].id_profesor}) con ese nombre, apellidos y fecha de nacimiento.`
-          : `Ya existe un registro de ese profesor (ID ${duplicados[0].id_profesor}), pero está inactivo/destituido. Usa "Reintegrar" en lugar de crear uno nuevo.`
+          ? `Ya existe un profesor activo (ID ${duplicados[0].id_profesor}) con ese mismo nombre y apellidos.`
+          : `Ya existe un registro de ese profesor (ID ${duplicados[0].id_profesor}) con ese mismo nombre y apellidos, pero está inactivo/destituido. Usa "Reintegrar" en lugar de crear uno nuevo.`
       );
     }
 
@@ -304,6 +299,8 @@ export const eliminarProfesorService = async (id_profesor) => {
     await connection.rollback();
     try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
 
+    // Error típico de MySQL cuando hay registros hijos (grupo_profesor, asistencia,
+    // profesor_suplencia, etc.)
     if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
       throw new Error(
         "No se puede eliminar: este profesor tiene grupos, asistencias o coberturas de suplencia asociadas. " +

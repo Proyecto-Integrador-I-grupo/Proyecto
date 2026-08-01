@@ -444,6 +444,14 @@ function initApp() {
     matGrupoSel.addEventListener('change', actualizarInfoCupoGrupo);
   }
 
+  const matGrupoSearch = document.getElementById('mat-grupo-search');
+  if (matGrupoSearch && !matGrupoSearch.dataset.wired) {
+    matGrupoSearch.dataset.wired = '1';
+    matGrupoSearch.addEventListener('input', () => {
+      filtrarGruposMatricula(matGrupoSearch.value);
+    });
+  }
+
   const confirmarDestituirBtn = document.getElementById('confirmar-destituir-btn');
   if (confirmarDestituirBtn && !confirmarDestituirBtn.dataset.wired) {
     confirmarDestituirBtn.dataset.wired = '1';
@@ -1658,6 +1666,7 @@ async function populateGruposSelects() {
 
       if (matGrupoSel) {
         const optMat = new Option(etiqueta, id);
+        optMat.dataset.nombre = (g.nombre_grupo ?? '').toLowerCase();
         optMat.disabled = lleno;
         matGrupoSel.add(optMat);
       }
@@ -1667,8 +1676,26 @@ async function populateGruposSelects() {
     });
 
     actualizarInfoCupoGrupo();
+    filtrarGruposMatricula(document.getElementById('mat-grupo-search')?.value || '');
   } catch (error) {
     console.error('Error poblando grupos', error);
+  }
+}
+
+function filtrarGruposMatricula(termino) {
+  const select = document.getElementById('mat-id-grupo');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const nombre = (option.dataset.nombre || option.textContent || '').toLowerCase();
+    const coincide = !busqueda || nombre.includes(busqueda);
+    option.hidden = !coincide;
+  });
+
+  const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
+  if (primerVisible) {
+    select.value = primerVisible.value;
   }
 }
 

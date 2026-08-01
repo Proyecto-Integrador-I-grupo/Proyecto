@@ -173,6 +173,7 @@
               </div>
               <div class="col-12">
                 <label class="form-label">Grupo Destino</label>
+                <input id="mat-grupo-search" type="text" class="form-control mb-2" placeholder="Buscar grupo por nombre...">
                 <select id="mat-id-grupo" class="form-select" required></select>
                 <div class="form-text" id="mat-grupo-info">Selecciona un grupo para ver el cupo disponible.</div>
               </div>
@@ -443,7 +444,8 @@
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Nombre del Grupo</label>
-                <input id="grupo-nombre" class="form-control" placeholder="Ej. 10-A" required>
+                <input id="grupo-nombre" class="form-control" placeholder="Ej. 1-A, 1-B, 2-A..." required>
+                <div class="form-text">Los grupos base de la institución quedan estructurados por niveles 1–6 con letras A/B. Si hace falta, el administrador puede crear grupos adicionales.</div>
               </div>
               <div class="col-12">
                 <label class="form-label d-flex justify-content-between align-items-center mb-0">

@@ -381,6 +381,25 @@ h1, h2, h3, .card-title-serif {
   margin-bottom: 3px;
 }
 
+/* Reportes educativos */
+.report-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.report-stat-card {
+  min-height: 120px;
+}
+
+.stat-card-primary {
+  border-top-color: var(--accent) !important;
+}
+
+.stat-card-primary .stat-value-sm {
+  color: var(--accent);
+}
+
 /* Badges de estado de asistencia */
 .attendance-badge {
   display: inline-flex;

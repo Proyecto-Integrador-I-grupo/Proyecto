@@ -5,7 +5,7 @@ const conexion = mysql.createPool({
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "Yugrant@13",
     database: process.env.DB_NAME || "sistema_escolar_db",
-    port: process.env.DB_PORT || 3306,
+    port: process.env.DB_PORT || 18817,
     ssl: {
         rejectUnauthorized: false
     },

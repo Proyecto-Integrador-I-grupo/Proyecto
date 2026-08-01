@@ -17,6 +17,7 @@ let profesorPendienteId = null;
 let estudiantePendienteId = null;
 let profesorReintegrarId = null;
 let profesorFiltroEstado = 'todos';
+let profesorBusqueda = '';
 
 window.addEventListener('DOMContentLoaded', () => {
   wireLoginScreen();
@@ -221,7 +222,16 @@ function initApp() {
     profFiltroEstado.dataset.wired = '1';
     profFiltroEstado.addEventListener('change', () => {
       profesorFiltroEstado = profFiltroEstado.value;
-      renderProfesoresTable(filtrarProfesoresPorEstado(allProfesores));
+      renderProfesoresTable(filtrarProfesores(allProfesores));
+    });
+  }
+
+  const profSearch = document.getElementById('prof-search');
+  if (profSearch && !profSearch.dataset.wired) {
+    profSearch.dataset.wired = '1';
+    profSearch.addEventListener('input', () => {
+      profesorBusqueda = profSearch.value.trim().toLowerCase();
+      renderProfesoresTable(filtrarProfesores(allProfesores));
     });
   }
 
@@ -446,6 +456,9 @@ function setActiveView(viewName) {
 
   const sections = document.querySelectorAll('.view');
   sections.forEach((section) => section.classList.toggle('hidden', section.id !== `${viewName}-view`));
+
+  const heroCard = document.getElementById('dashboard-hero');
+  if (heroCard) heroCard.classList.toggle('hidden', viewName !== 'dashboard');
 
   const titleElement = document.getElementById('view-title');
   if (titleElement) {
@@ -679,21 +692,48 @@ async function loadProfesores() {
     const res = await apiFetch('/api/profesores');
     if (!res.ok) throw new Error('No se pudo cargar la lista de profesores');
     allProfesores = await res.json();
-    renderProfesoresTable(filtrarProfesoresPorEstado(allProfesores));
+    actualizarStatsProfesores(allProfesores);
+    renderProfesoresTable(filtrarProfesores(allProfesores));
   } catch (error) {
     profTableBody.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-3">Error al cargar profesores.</td></tr>';
     showToast(error.message || 'Error al obtener datos', 'error');
   }
 }
 
-function filtrarProfesoresPorEstado(profesores) {
+function filtrarProfesores(profesores) {
+  let resultado = profesores;
+
   if (profesorFiltroEstado === 'activos') {
-    return profesores.filter((p) => p.estado == 1 || p.estado === true);
+    resultado = resultado.filter((p) => p.estado == 1 || p.estado === true);
+  } else if (profesorFiltroEstado === 'inactivos') {
+    resultado = resultado.filter((p) => !(p.estado == 1 || p.estado === true));
   }
-  if (profesorFiltroEstado === 'inactivos') {
-    return profesores.filter((p) => !(p.estado == 1 || p.estado === true));
+
+  if (profesorBusqueda) {
+    resultado = resultado.filter((p) => {
+      const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.toLowerCase();
+      const materia = (p.materia ?? '').toLowerCase();
+      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda);
+    });
   }
-  return profesores;
+
+  return resultado;
+}
+
+function actualizarStatsProfesores(profesores) {
+  const total = profesores.length;
+  const activos = profesores.filter((p) => p.estado == 1 || p.estado === true).length;
+  const inactivos = total - activos;
+  const pendientes = profesores.reduce((acc, p) => acc + Number(p.grupos_pendientes ?? 0), 0);
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  setText('prof-cnt-total', total);
+  setText('prof-cnt-activos', activos);
+  setText('prof-cnt-inactivos', inactivos);
+  setText('prof-cnt-pendientes', pendientes);
 }
 
 function renderProfesoresTable(profesores) {
@@ -704,7 +744,10 @@ function renderProfesoresTable(profesores) {
   const esAdmin = (currentUser?.rol || '').toLowerCase() === 'administrador';
 
   if (!profesores.length) {
-    profTableBody.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-4">No hay profesores que coincidan con el filtro seleccionado.</td></tr>';
+    const mensaje = (profesorFiltroEstado !== 'todos' || profesorBusqueda)
+      ? 'No hay profesores que coincidan con la búsqueda o el filtro seleccionado.'
+      : 'No hay profesores registrados.';
+    profTableBody.innerHTML = `<tr><td colspan="7" class="text-muted text-center py-4">${mensaje}</td></tr>`;
     return;
   }
 
@@ -727,6 +770,7 @@ function renderProfesoresTable(profesores) {
           : '<span class="text-muted small">Sin grupos pendientes</span>');
 
     const tr = document.createElement('tr');
+    if (!activo) tr.classList.add('profesor-row-inactivo');
     tr.innerHTML = `
       <td>${idProf}</td>
       <td>${nombreComp}</td>
@@ -735,26 +779,35 @@ function renderProfesoresTable(profesores) {
       <td>${celdaGrupos}</td>
       <td>${badgeEstado}</td>
       <td class="text-end">
-        ${activo && esAdmin ? `
-          <button class="action-btn del destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
-            <i class="bi bi-person-slash"></i> Destituir
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary rounded-circle action-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones">
+            <i class="bi bi-three-dots"></i>
           </button>
-        ` : ''}
-        ${!activo && esAdmin ? `
-          <button class="action-btn restore reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
-            <i class="bi bi-person-check-fill"></i> Reintegrar
-          </button>
-        ` : ''}
-        ${!activo && esAdmin && grupoPendientes > 0 ? `
-          <button class="action-btn warn sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
-            <i class="bi bi-person-lines-fill"></i> Asignar sustituto
-          </button>
-        ` : ''}
-        ${esAdmin ? `
-          <button class="action-btn del eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
-            <i class="bi bi-trash"></i> Eliminar
-          </button>
-        ` : ''}
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            ${activo && esAdmin ? `
+              <li><a class="dropdown-item destituir-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
+                <i class="bi bi-person-slash text-danger me-2"></i>Destituir
+              </a></li>
+            ` : ''}
+            ${!activo && esAdmin ? `
+              <li><a class="dropdown-item reintegrar-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
+                <i class="bi bi-person-check-fill text-success me-2"></i>Reintegrar
+              </a></li>
+            ` : ''}
+            ${!activo && esAdmin && grupoPendientes > 0 ? `
+              <li><a class="dropdown-item sustituto-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
+                <i class="bi bi-person-lines-fill text-warning me-2"></i>Asignar sustituto
+              </a></li>
+            ` : ''}
+            ${esAdmin ? `
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger eliminar-profesor-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
+                <i class="bi bi-trash me-2"></i>Eliminar
+              </a></li>
+            ` : ''}
+            ${!esAdmin ? `<li><span class="dropdown-item-text text-muted small">Sin acciones disponibles</span></li>` : ''}
+          </ul>
+        </div>
       </td>
     `;
     profTableBody.appendChild(tr);
@@ -817,6 +870,10 @@ function handleProfesorTableClick(e) {
   const btnEliminar = e.target.closest('.eliminar-profesor-btn');
   const btnReintegrar = e.target.closest('.reintegrar-btn');
   const btnSustituto = e.target.closest('.sustituto-btn');
+
+  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto) {
+    e.preventDefault();
+  }
 
   if (btnDestituir) {
     profesorPendienteId = btnDestituir.dataset.id;

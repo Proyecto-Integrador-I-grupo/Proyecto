@@ -29,6 +29,8 @@
   --role-admin-soft: #FEE2E2;
   --role-asistente: #166534;
   --role-asistente-soft: #DCFCE7;
+  --role-profesor: #6D28D9;
+  --role-profesor-soft: #EDE9FE;
 }
 
 body {
@@ -319,6 +321,11 @@ h1, h2, h3, .card-title-serif {
 .role-badge-asistente {
   background: var(--role-asistente-soft);
   color: var(--role-asistente);
+}
+
+.role-badge-profesor {
+  background: var(--role-profesor-soft);
+  color: var(--role-profesor);
 }
 
 /* Pantalla de Login */

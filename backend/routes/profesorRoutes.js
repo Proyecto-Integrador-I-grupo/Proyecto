@@ -8,15 +8,20 @@ import {
   reasignarGrupo,
   getSuplenciasPendientes
 } from "../controllers/profesorController.js";
+import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-router.get("/", getProfesores);
-router.get("/suplencias/pendientes", getSuplenciasPendientes);
-router.post("/", createProfesor);
-router.put("/:id/destituir", destituirProfesor);
-router.put("/:id/reintegrar", reintegrarProfesor);
-router.put("/reasignar", reasignarGrupo);
-router.delete("/:id", eliminarProfesor);
+// Cualquier usuario autenticado (Administrador, Asistente o Profesor) puede consultar la lista,
+// ya que el dashboard y otros módulos la necesitan para mostrar conteos.
+router.get("/", requireAuth, getProfesores);
+
+// Gestión del cuerpo docente: solo el Administrador contrata, destituye, reintegra o elimina profesores.
+router.get("/suplencias/pendientes", requireAuth, requireRole("Administrador"), getSuplenciasPendientes);
+router.post("/", requireAuth, requireRole("Administrador"), createProfesor);
+router.put("/:id/destituir", requireAuth, requireRole("Administrador"), destituirProfesor);
+router.put("/:id/reintegrar", requireAuth, requireRole("Administrador"), reintegrarProfesor);
+router.put("/reasignar", requireAuth, requireRole("Administrador"), reasignarGrupo);
+router.delete("/:id", requireAuth, requireRole("Administrador"), eliminarProfesor);
 
 export default router;

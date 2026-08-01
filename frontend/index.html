@@ -451,19 +451,18 @@
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Nombre del Grupo</label>
-                <select id="grupo-nombre" class="form-select" required>
-                  <option value="" disabled selected>Seleccionar nombre de grupo</option>
-                </select>
-                <div class="form-text">Los nombres base se cargan automáticamente para los niveles 1–6 con letras A/B y luego pueden añadirse grupos extra.</div>
+                <input id="grupo-nombre" class="form-control" placeholder="Ej. 3-C" maxlength="20" required>
+                <div class="form-text">Escribe el nombre del grupo manualmente. Los niveles base y sus letras aparecen luego en la sección académica.</div>
               </div>
               <div class="col-12">
                 <label class="form-label d-flex justify-content-between align-items-center mb-0">
                   <span>Sección Académica</span>
                 </label>
+                <input id="grupo-seccion-search" type="text" class="form-control mb-2" placeholder="Filtrar sección por nivel o nombre...">
                 <select id="grupo-seccion" class="form-select" required>
                   <option value="" disabled selected>Seleccionar sección</option>
                 </select>
-                <div class="form-text" id="grupo-seccion-empty-hint">Seleccione una sección para ver los grupos base disponibles.</div>
+                <div class="form-text" id="grupo-seccion-empty-hint">Las secciones base y las creadas por el administrador quedan disponibles para elegir.</div>
               </div>
               <div class="col-6">
                 <label class="form-label">Capacidad Máxima</label>

@@ -293,10 +293,39 @@ function initApp() {
     grupoForm.addEventListener('submit', handleGrupoSubmit);
   }
 
+  const grupoProfSearch = document.getElementById('grupo-profesor-search');
+  if (grupoProfSearch && !grupoProfSearch.dataset.wired) {
+    grupoProfSearch.dataset.wired = '1';
+    grupoProfSearch.addEventListener('input', () => {
+      filtrarProfesoresGrupo(grupoProfSearch.value);
+    });
+  }
+
+  const grupoSeccionSel = document.getElementById('grupo-seccion');
+  if (grupoSeccionSel && !grupoSeccionSel.dataset.wired) {
+    grupoSeccionSel.dataset.wired = '1';
+    grupoSeccionSel.addEventListener('change', () => {
+      poblarNombresGrupoBase();
+    });
+  }
+
   const seccionForm = document.getElementById('seccion-form');
   if (seccionForm && !seccionForm.dataset.wired) {
     seccionForm.dataset.wired = '1';
     seccionForm.addEventListener('submit', handleSeccionSubmit);
+  }
+
+  const btnBorrarSeccion = document.getElementById('btn-borrar-seccion');
+  if (btnBorrarSeccion && !btnBorrarSeccion.dataset.wired) {
+    btnBorrarSeccion.dataset.wired = '1';
+    btnBorrarSeccion.addEventListener('click', async () => {
+      const idSeccion = document.getElementById('seccion-delete-select')?.value;
+      if (!idSeccion) {
+        showToast('Selecciona una sección para borrar.', 'error');
+        return;
+      }
+      await borrarSeccion(idSeccion);
+    });
   }
   setDefaultSeccionPeriodo();
 
@@ -1682,6 +1711,27 @@ async function populateGruposSelects() {
   }
 }
 
+function poblarNombresGrupoBase() {
+  const select = document.getElementById('grupo-nombre');
+  if (!select) return;
+
+  const nombresBase = [];
+  for (let nivel = 1; nivel <= 6; nivel += 1) {
+    nombresBase.push(`${nivel}-A`, `${nivel}-B`);
+  }
+
+  select.innerHTML = '<option value="" disabled selected>Seleccionar nombre de grupo</option>';
+  nombresBase.forEach((nombre) => {
+    select.add(new Option(nombre, nombre));
+  });
+
+  const seccionVal = document.getElementById('grupo-seccion')?.value;
+  if (seccionVal) {
+    const opcionPorDefecto = nombresBase[0];
+    select.value = opcionPorDefecto;
+  }
+}
+
 function filtrarGruposMatricula(termino) {
   const select = document.getElementById('mat-id-grupo');
   const busqueda = (termino || '').trim().toLowerCase();
@@ -1732,14 +1782,20 @@ async function populateSeccionesSelect() {
     if (!res.ok) return [];
     const secciones = await res.json();
     const sel = document.getElementById('grupo-seccion');
+    const deleteSel = document.getElementById('seccion-delete-select');
     const hint = document.getElementById('grupo-seccion-empty-hint');
     if (sel) {
       sel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
-      // OJO: seccionService.js devuelve "nombre" y "anio_lectivo" (con alias),
-      // no "nombre_seccion"/"periodo_lectivo" como en el resto de la app.
       secciones.forEach((s) => {
         const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
         sel.add(new Option(etiqueta, s.id_seccion));
+      });
+    }
+    if (deleteSel) {
+      deleteSel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
+      secciones.forEach((s) => {
+        const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        deleteSel.add(new Option(etiqueta, s.id_seccion));
       });
     }
     if (hint) hint.classList.toggle('hidden', secciones.length > 0);
@@ -1768,12 +1824,26 @@ async function populateProfesoresSelects() {
     profesoresActivos.forEach((p) => {
       const id = p.id_profesor ?? p.id;
       const opt = new Option(`${p.nombre} ${p.apellido1} (${p.materia || 'General'})`, id);
+      opt.dataset.busqueda = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''} ${p.materia ?? ''}`.toLowerCase();
       if (grupoProfSel) grupoProfSel.add(opt.cloneNode(true));
       if (asisProfSel) asisProfSel.add(opt.cloneNode(true));
     });
+
+    filtrarProfesoresGrupo(document.getElementById('grupo-profesor-search')?.value || '');
   } catch (error) {
     console.error('Error poblando profesores', error);
   }
+}
+
+function filtrarProfesoresGrupo(termino) {
+  const select = document.getElementById('grupo-profesor');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
+    option.hidden = !!busqueda && !texto.includes(busqueda);
+  });
 }
 
 async function handleMatriculaSubmit(e) {

@@ -420,11 +420,18 @@
                 <label class="form-label">Descripción</label>
                 <input id="seccion-descripcion" class="form-control" placeholder="Ej. Sección regular diurna" required>
               </div>
+              <div class="col-12">
+                <label class="form-label">Secciones existentes</label>
+                <select id="seccion-delete-select" class="form-select"></select>
+              </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-sm btn-primary">Crear Sección</button>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" id="btn-borrar-seccion" class="btn btn-sm btn-outline-danger">Borrar sección</button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-sm btn-primary">Crear Sección</button>
+            </div>
           </div>
         </form>
       </div>
@@ -444,20 +451,19 @@
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Nombre del Grupo</label>
-                <input id="grupo-nombre" class="form-control" placeholder="Ej. 1-A, 1-B, 2-A..." required>
-                <div class="form-text">Los grupos base de la institución quedan estructurados por niveles 1–6 con letras A/B. Si hace falta, el administrador puede crear grupos adicionales.</div>
+                <select id="grupo-nombre" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar nombre de grupo</option>
+                </select>
+                <div class="form-text">Los nombres base se cargan automáticamente para los niveles 1–6 con letras A/B y luego pueden añadirse grupos extra.</div>
               </div>
               <div class="col-12">
                 <label class="form-label d-flex justify-content-between align-items-center mb-0">
                   <span>Sección Académica</span>
-                  <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#modalSeccion">
-                    <i class="bi bi-plus-circle"></i> Nueva sección
-                  </button>
                 </label>
                 <select id="grupo-seccion" class="form-select" required>
                   <option value="" disabled selected>Seleccionar sección</option>
                 </select>
-                <div class="form-text" id="grupo-seccion-empty-hint">No hay secciones creadas todavía. Crea una con el enlace de arriba.</div>
+                <div class="form-text" id="grupo-seccion-empty-hint">Seleccione una sección para ver los grupos base disponibles.</div>
               </div>
               <div class="col-6">
                 <label class="form-label">Capacidad Máxima</label>
@@ -469,6 +475,7 @@
               </div>
               <div class="col-12">
                 <label class="form-label">Profesor Encargado</label>
+                <input id="grupo-profesor-search" type="text" class="form-control mb-2" placeholder="Buscar profesor por nombre o materia...">
                 <select id="grupo-profesor" class="form-select" required></select>
               </div>
             </div>

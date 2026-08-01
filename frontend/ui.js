@@ -1810,6 +1810,29 @@ function filtrarSeccionesGrupo(termino) {
   });
 }
 
+async function borrarSeccion(idSeccion) {
+  try {
+    const res = await apiFetch(`/api/procesos/secciones/${idSeccion}`, {
+      method: 'DELETE'
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showToast(json.error || json.mensaje || 'No se pudo borrar la sección.', 'error');
+      return;
+    }
+
+    showToast('Sección eliminada correctamente.', 'success');
+    document.getElementById('seccion-form')?.reset();
+    setDefaultSeccionPeriodo();
+    await populateSeccionesSelect();
+  } catch (error) {
+    console.error('Error al borrar sección', error);
+    showToast('Error al borrar la sección.', 'error');
+  }
+}
+
 async function populateProfesoresSelects() {
   try {
     const res = await apiFetch('/api/profesores');

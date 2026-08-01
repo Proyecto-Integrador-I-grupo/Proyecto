@@ -14,7 +14,7 @@ export const getProfesores = async (req, res) => {
 export const createProfesor = async (req, res) => {
   try {
     const idUsuario = req.usuarioActual?.id_usuario ?? null;
-    
+
     const nuevoProfesor = await profesorService.crearProfesorService(req.body, idUsuario);
     try {
       await auditoriaModel.crearAuditoria({
@@ -39,20 +39,45 @@ export const destituirProfesor = async (req, res) => {
     const { id } = req.params;
     const { motivo } = req.body;
     const resultado = await profesorService.destituirProfesorService(id, motivo);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "profesor",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify({ id_profesor: id, estado: true }),
+        datos_nuevos: JSON.stringify({ id_profesor: id, estado: false, motivo, accion: "destituir", ...resultado })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.json({ message: "Profesor destituido correctamente", resultado });
-  try {
-    await auditoriaModel.crearAuditoria({
-      nombre_tabla: "profesor",
-      accion_usuario: "UPDATE",
-      datos_anteriores: JSON.stringify({ id_profesor: id }),
-      datos_nuevos: JSON.stringify({ id_profesor: id, motivo })
-    }, req.usuarioActual?.id_usuario ?? null);
-  } catch (e) {
-    console.error("Error registrando auditoría:", e);
-  }
   } catch (error) {
     console.error("Error en destituirProfesor:", error);
     res.status(400).json({ error: error.message || "Error al destituir al profesor." });
+  }
+};
+
+export const reintegrarProfesor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const resultado = await profesorService.reintegrarProfesorService(id);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "profesor",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify({ id_profesor: id, estado: false }),
+        datos_nuevos: JSON.stringify({ id_profesor: id, estado: true, accion: "reintegrar", ...resultado })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
+    res.json({ message: "Profesor reintegrado correctamente", resultado });
+  } catch (error) {
+    console.error("Error en reintegrarProfesor:", error);
+    res.status(400).json({ error: error.message || "Error al reintegrar al profesor." });
   }
 };
 
@@ -60,17 +85,19 @@ export const eliminarProfesor = async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await profesorService.eliminarProfesorService(id);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "profesor",
+        accion_usuario: "DELETE",
+        datos_anteriores: JSON.stringify({ id_profesor: id }),
+        datos_nuevos: ""
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.json({ message: "Profesor eliminado correctamente", resultado });
-  try {
-    await auditoriaModel.crearAuditoria({
-      nombre_tabla: "profesor",
-      accion_usuario: "DELETE",
-      datos_anteriores: JSON.stringify({ id_profesor: id }),
-      datos_nuevos: ""
-    }, req.usuarioActual?.id_usuario ?? null);
-  } catch (e) {
-    console.error("Error registrando auditoría:", e);
-  }
   } catch (error) {
     console.error("Error en eliminarProfesor:", error);
     res.status(400).json({ error: error.message || "Error al eliminar al profesor." });
@@ -81,9 +108,31 @@ export const reasignarGrupo = async (req, res) => {
   try {
     const { profesorId, grupoId, profesorAnteriorId } = req.body;
     const resultado = await profesorService.reasignarGrupoProfesorService(grupoId, profesorId, profesorAnteriorId);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "grupo_profesor",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify({ id_grupo: grupoId, id_profesor_anterior: profesorAnteriorId ?? null }),
+        datos_nuevos: JSON.stringify({ id_grupo: grupoId, id_profesor_nuevo: profesorId, ...resultado })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.json({ message: "Grupo reasignado exitosamente", resultado });
   } catch (error) {
     console.error("Error en reasignarGrupo:", error);
-    res.status(500).json({ error: "Error al reasignar el grupo." });
+    res.status(400).json({ error: error.message || "Error al reasignar el grupo." });
+  }
+};
+
+export const getSuplenciasPendientes = async (req, res) => {
+  try {
+    const suplencias = await profesorService.obtenerSuplenciasPendientesService();
+    res.json(suplencias);
+  } catch (error) {
+    console.error("Error en getSuplenciasPendientes:", error);
+    res.status(500).json({ error: "Error al obtener las coberturas pendientes." });
   }
 };

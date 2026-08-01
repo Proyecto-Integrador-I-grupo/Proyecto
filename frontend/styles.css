@@ -222,6 +222,18 @@ h1, h2, h3, .card-title-serif {
   border-color: rgba(220, 38, 38, 0.2);
 }
 
+.action-btn.restore {
+  background: #DCFCE7;
+  color: var(--success);
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.action-btn.warn {
+  background: var(--gold-soft);
+  color: var(--gold);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
 .action-btn:hover {
   filter: brightness(0.95);
   transform: translateY(-1px);

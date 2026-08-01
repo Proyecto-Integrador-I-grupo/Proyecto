@@ -228,9 +228,16 @@
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
                 <h2 class="card-title-serif h5 mb-0"><i class="bi bi-person-badge"></i> Cuerpo Docente</h2>
-                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalProfesor">
-                  <i class="bi bi-plus-lg"></i> Agregar Profesor
-                </button>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <select id="prof-filtro-estado" class="form-select form-select-sm" style="width: auto;">
+                    <option value="todos">Todos los profesores</option>
+                    <option value="activos">Solo activos</option>
+                    <option value="inactivos">Solo inactivos / destituidos</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalProfesor">
+                    <i class="bi bi-plus-lg"></i> Agregar Profesor
+                  </button>
+                </div>
               </div>
               <div class="table-responsive">
                 <table id="profesores-table" class="table table-hover align-middle mb-0">
@@ -240,6 +247,7 @@
                       <th>Nombre Completo</th>
                       <th>Materia</th>
                       <th>Ingreso</th>
+                      <th>Grupos</th>
                       <th>Estado</th>
                       <th class="text-end">Acciones</th>
                     </tr>
@@ -456,6 +464,17 @@
         <!-- VISTA: REPORTES (ADMIN) -->
         <section id="reportes-view" class="view hidden admin-only">
           <div class="report-shell">
+            <div class="hero-card p-4 p-lg-5 mb-4">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                  <p class="eyebrow mb-2">Panel administrativo</p>
+                  <h2 class="card-title-serif h3 mb-2">Módulo de reportes académicos</h2>
+                  <p class="mb-0 text-white-50">Consulta el rendimiento de asistencia, distribución por grupo y evolución de matrículas con filtros educativos.</p>
+                </div>
+                <span class="hero-pill"><i class="bi bi-graph-up-arrow"></i> Generación en tiempo real</span>
+              </div>
+            </div>
+
             <div class="card border-0 shadow-sm mb-4">
               <div class="card-body">
                 <div class="filter-bar mb-3">
@@ -583,7 +602,31 @@
               </div>
             </div>
 
-
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                  <h3 class="card-title-serif h5 mb-0"><i class="bi bi-list-ul"></i> Detalle del reporte</h3>
+                  <span class="text-muted small">Visualiza el comportamiento de asistencia por fecha y estudiante.</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Estudiante</th>
+                        <th>Grupo</th>
+                        <th>Profesor</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-detalle-body">
+                      <tr><td colspan="6" class="text-center py-4 text-muted">Sin registros aún.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1004,6 +1047,65 @@
           <button type="button" id="confirmar-eliminar-btn" class="btn btn-danger">
             <i class="bi bi-trash"></i> Eliminar definitivamente
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reintegrar Profesor -->
+  <div class="modal fade" id="modalReintegrar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-check-fill text-success"></i> Reintegrar Profesor
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="mb-2">
+            Vas a reintegrar a <strong id="reintegrar-nombre-profesor">-</strong>.
+            Quedará marcado como activo nuevamente.
+          </p>
+          <p class="mb-0 small text-muted">
+            Si tenía grupos asignados al momento de ser destituido, se le restaurarán automáticamente
+            (retirando al profesor sustituto que haya quedado cubriéndolos, si aplica). Si algún grupo ya
+            no existe, esa cobertura simplemente se cerrará sin restaurar nada.
+          </p>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-reintegrar-btn" class="btn btn-success">
+            <i class="bi bi-person-check-fill"></i> Confirmar Reintegración
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Asignar Sustituto a grupos pendientes -->
+  <div class="modal fade" id="modalAsignarSustituto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-lines-fill text-primary-emphasis"></i>
+            Grupos pendientes de <span id="sustituto-nombre-profesor">-</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="small text-muted mb-3">
+            Estos grupos quedaron sin su profesor titular. Puedes asignarles un profesor sustituto de forma
+            provisional: en cuanto el titular sea reintegrado, se le devolverá el grupo automáticamente y el
+            sustituto será retirado.
+          </p>
+          <div id="sustituto-lista" class="d-flex flex-column gap-2">
+            <p class="text-muted text-center py-3 mb-0">Cargando grupos pendientes...</p>
+          </div>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

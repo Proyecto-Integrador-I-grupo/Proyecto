@@ -326,10 +326,22 @@ function initApp() {
     });
   }
 
+  const reportTipo = document.getElementById('report-filtro-tipo');
+  if (reportTipo && !reportTipo.dataset.wired) {
+    reportTipo.dataset.wired = '1';
+    reportTipo.addEventListener('change', async () => {
+      await cargarReporteResumen();
+      imprimirReportePdf();
+    });
+  }
+
   const reportPrint = document.getElementById('report-imprimir-pdf');
   if (reportPrint && !reportPrint.dataset.wired) {
     reportPrint.dataset.wired = '1';
-    reportPrint.addEventListener('click', imprimirReportePdf);
+    reportPrint.addEventListener('click', async () => {
+      await cargarReporteResumen();
+      imprimirReportePdf();
+    });
   }
 
   // Ninguno de los dos triggers de BD permite fecha futura (matrícula por
@@ -1031,7 +1043,6 @@ async function cargarReporteResumen() {
       detalle: Array.isArray(detalleJson) ? detalleJson : []
     };
     renderReporteResumen(resumenJson);
-    renderReporteDetalle(detalleJson);
   } catch (error) {
     console.error('Error cargando reportes', error);
     document.getElementById('report-grupos-body').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el resumen.</td></tr>';

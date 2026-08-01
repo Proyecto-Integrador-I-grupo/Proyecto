@@ -299,6 +299,29 @@ function initApp() {
     histRefrescar.addEventListener('click', cargarHistorialAsistencia);
   }
 
+  const reportApply = document.getElementById('report-aplicar');
+  if (reportApply && !reportApply.dataset.wired) {
+    reportApply.dataset.wired = '1';
+    reportApply.addEventListener('click', cargarReporteResumen);
+  }
+
+  const reportClear = document.getElementById('report-limpiar');
+  if (reportClear && !reportClear.dataset.wired) {
+    reportClear.dataset.wired = '1';
+    reportClear.addEventListener('click', () => {
+      const grupoSel = document.getElementById('report-filtro-grupo');
+      const estadoSel = document.getElementById('report-filtro-estado');
+      const fechaDesde = document.getElementById('report-filtro-fecha-desde');
+      const fechaHasta = document.getElementById('report-filtro-fecha-hasta');
+
+      if (grupoSel) grupoSel.value = '';
+      if (estadoSel) estadoSel.value = '';
+      if (fechaDesde) fechaDesde.value = '';
+      if (fechaHasta) fechaHasta.value = '';
+      cargarReporteResumen();
+    });
+  }
+
   // Ninguno de los dos triggers de BD permite fecha futura (matrícula por
   // sentido común, asistencia por trigger explícito), así que se limita
   // también en el input para no dejar que el usuario ni lo intente.
@@ -404,6 +427,7 @@ function setActiveView(viewName) {
   if (viewName === 'profesores') loadProfesores();
   if (viewName === 'matricula') loadMatriculaData();
   if (viewName === 'asistencia') loadAsistenciaData();
+  if (viewName === 'reportes') loadReportesData();
 }
 
 async function refreshDashboardCounts() {
@@ -850,6 +874,126 @@ async function loadAsistenciaData() {
   await cargarRosterGrupoAsistencia();
   poblarFiltroGrupoHistorial();
   await cargarHistorialAsistencia();
+}
+
+async function loadReportesData() {
+  await populateGruposSelects();
+  poblarFiltroGrupoReportes();
+  await cargarReporteResumen();
+}
+
+function poblarFiltroGrupoReportes() {
+  const sel = document.getElementById('report-filtro-grupo');
+  if (!sel) return;
+  const valorActual = sel.value;
+  sel.innerHTML = '<option value="">Todos los grupos</option>';
+  allGrupos.forEach((g) => {
+    const id = g.id_grupo ?? g.id;
+    sel.add(new Option(g.nombre_grupo ?? `Grupo ${id}`, id));
+  });
+  sel.value = valorActual || '';
+}
+
+async function cargarReporteResumen() {
+  const params = new URLSearchParams();
+  const idGrupo = document.getElementById('report-filtro-grupo')?.value || '';
+  const estado = document.getElementById('report-filtro-estado')?.value || '';
+  const fechaDesde = document.getElementById('report-filtro-fecha-desde')?.value || '';
+  const fechaHasta = document.getElementById('report-filtro-fecha-hasta')?.value || '';
+
+  if (idGrupo) params.set('id_grupo', idGrupo);
+  if (estado) params.set('estado_asistencia', estado);
+  if (fechaDesde) params.set('fecha_inicio', fechaDesde);
+  if (fechaHasta) params.set('fecha_fin', fechaHasta);
+
+  try {
+    const resumenRes = await apiFetch(`/api/procesos/reportes/resumen?${params.toString()}`);
+    const detalleRes = await apiFetch(`/api/procesos/reportes/detalle?${params.toString()}`);
+
+    if (!resumenRes.ok) throw new Error('No se pudo cargar el resumen del reporte');
+    if (!detalleRes.ok) throw new Error('No se pudo cargar el detalle del reporte');
+
+    const resumenJson = await resumenRes.json();
+    const detalleJson = await detalleRes.json();
+    renderReporteResumen(resumenJson);
+    renderReporteDetalle(detalleJson);
+  } catch (error) {
+    console.error('Error cargando reportes', error);
+    document.getElementById('report-grupos-body').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el resumen.</td></tr>';
+    document.getElementById('report-detalle-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al cargar el detalle.</td></tr>';
+  }
+}
+
+function renderReporteResumen(data) {
+  const resumen = data?.resumen || {};
+  const grupos = data?.detalle_por_grupo || [];
+
+  document.getElementById('report-total-estudiantes').textContent = resumen.total_estudiantes ?? 0;
+  document.getElementById('report-total-profesores').textContent = resumen.total_profesores ?? 0;
+  document.getElementById('report-total-grupos').textContent = resumen.total_grupos ?? 0;
+  document.getElementById('report-tasa-presentismo').textContent = `${resumen.tasa_presentismo ?? 0}%`;
+  document.getElementById('report-presentes').textContent = resumen.presentes ?? 0;
+  document.getElementById('report-ausentes').textContent = resumen.ausentes ?? 0;
+  document.getElementById('report-tardias').textContent = resumen.tardias ?? 0;
+  document.getElementById('report-justificadas').textContent = resumen.justificadas ?? 0;
+
+  const body = document.getElementById('report-grupos-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  if (!grupos.length) {
+    body.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">No hay grupos con registros en el periodo filtrado.</td></tr>';
+    return;
+  }
+
+  grupos.forEach((g) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${g.nombre_grupo ?? '-'}</td>
+      <td>${g.nombre_seccion ?? '-'}</td>
+      <td>${g.ocupados ?? 0}</td>
+      <td>${g.capacidad ?? 0}</td>
+      <td>${g.asistencias_registradas ?? 0}</td>
+      <td>${g.presentes ?? 0}</td>
+      <td>${g.ausentes ?? 0}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderReporteDetalle(registros) {
+  const body = document.getElementById('report-detalle-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  if (!registros.length) {
+    body.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No hay registros detallados con estos filtros.</td></tr>';
+    return;
+  }
+
+  const etiquetasEstado = {
+    presente: 'Presente',
+    ausente: 'Ausente',
+    tardia: 'Tardía',
+    justificada: 'Justificada'
+  };
+
+  registros.forEach((r) => {
+    const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
+    const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
+    const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
+    const estado = (r.estado_asistencia || '').toLowerCase();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fecha}</td>
+      <td>${estudiante || '-'}</td>
+      <td>${r.nombre_grupo ?? '-'}</td>
+      <td>${profesor || '-'}</td>
+      <td><span class="attendance-badge attendance-${estado}">${etiquetasEstado[estado] || r.estado_asistencia || '-'}</span></td>
+      <td class="observaciones-cell" title="${r.observaciones ?? ''}">${r.observaciones || '—'}</td>
+    `;
+    body.appendChild(tr);
+  });
 }
 
 /**

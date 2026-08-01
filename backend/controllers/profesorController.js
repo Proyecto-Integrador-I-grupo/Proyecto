@@ -30,7 +30,7 @@ export const createProfesor = async (req, res) => {
     res.status(201).json(nuevoProfesor);
   } catch (error) {
     console.error("DETALLE DEL ERROR AL CREAR PROFESOR:", error);
-    res.status(500).json({ error: error.message || "Error al registrar el profesor." });
+    res.status(400).json({ error: error.message || "Error al registrar el profesor." });
   }
 };
 

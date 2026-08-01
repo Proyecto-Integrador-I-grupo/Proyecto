@@ -39,10 +39,37 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     throw new Error("Faltan campos obligatorios para registrar al profesor.");
   }
 
+  const nombreLimpio = nombre.trim();
+  const apellido1Limpio = apellido1.trim();
+  const apellido2Limpio = apellido2 ? apellido2.trim() : null;
+
   const connection = await conexionPromise.getConnection();
 
   try {
     await connection.beginTransaction();
+
+    // Evita duplicar al mismo profesor: mismo nombre + apellidos + fecha de nacimiento
+    // ya registrados (sin importar si ese registro está activo o inactivo).
+    const [duplicados] = await connection.query(
+      `SELECT pr.id_profesor, pr.estado
+       FROM profesor pr
+       INNER JOIN persona p ON p.id_persona = pr.id_persona
+       WHERE LOWER(TRIM(p.nombre)) = LOWER(?)
+         AND LOWER(TRIM(p.apellido1)) = LOWER(?)
+         AND LOWER(TRIM(COALESCE(p.apellido2, ''))) = LOWER(TRIM(COALESCE(?, '')))
+         AND p.fecha_nacimiento = ?
+       LIMIT 1`,
+      [nombreLimpio, apellido1Limpio, apellido2Limpio, fecha_nacimiento]
+    );
+
+    if (duplicados.length > 0) {
+      const yaActivo = duplicados[0].estado == 1 || duplicados[0].estado === true;
+      throw new Error(
+        yaActivo
+          ? `Ya existe un profesor activo (ID ${duplicados[0].id_profesor}) con ese nombre, apellidos y fecha de nacimiento.`
+          : `Ya existe un registro de ese profesor (ID ${duplicados[0].id_profesor}), pero está inactivo/destituido. Usa "Reintegrar" en lugar de crear uno nuevo.`
+      );
+    }
 
     // Desactivamos temporalmente los triggers en esta sesión para evitar el bloqueo de auditoría
     await connection.query(`SET @DISABLE_TRIGGERS = 1`);
@@ -53,9 +80,9 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       VALUES (?, ?, ?, ?, ?, TRUE)
     `;
     const [resPersona] = await connection.query(queryPersona, [
-      nombre.trim(),
-      apellido1.trim(),
-      apellido2 ? apellido2.trim() : null,
+      nombreLimpio,
+      apellido1Limpio,
+      apellido2Limpio,
       fecha_nacimiento,
       genero
     ]);
@@ -164,16 +191,6 @@ export const destituirProfesorService = async (id_profesor, motivo = '') => {
   }
 };
 
-/**
- * Reintegra a un profesor previamente destituido/incapacitado:
- *  - Lo marca como activo (estado = TRUE).
- *  - Busca sus suplencias pendientes (profesor_suplencia con estado = TRUE).
- *  - Si un grupo tiene un suplente cubriéndolo, se le retira ese grupo (cierre lógico
- *    de su fila en grupo_profesor).
- *  - Se le restaura al titular el grupo original con una nueva fila en grupo_profesor.
- *  - Si el grupo fue eliminado/desactivado mientras el profesor estaba fuera, esa
- *    suplencia se cierra sin restaurar nada (no hay grupo al cual regresarlo).
- */
 export const reintegrarProfesorService = async (id_profesor) => {
   const connection = await conexionPromise.getConnection();
 
@@ -260,13 +277,6 @@ export const reintegrarProfesorService = async (id_profesor) => {
   }
 };
 
-/**
- * Elimina PERMANENTEMENTE el registro de un profesor (borrado físico de la tabla `profesor`).
- * Distinto de "destituir": aquí el registro desaparece del sistema.
- * No se borra la persona asociada (puede seguir existiendo como usuario, estudiante, etc.).
- * Si el profesor tiene grupos, asistencias o suplencias asociadas (FK RESTRICT), se informa
- * al usuario que use "Destituir" en su lugar, ya que un borrado físico rompería ese historial.
- */
 export const eliminarProfesorService = async (id_profesor) => {
   const connection = await conexionPromise.getConnection();
 
@@ -294,8 +304,6 @@ export const eliminarProfesorService = async (id_profesor) => {
     await connection.rollback();
     try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
 
-    // Error típico de MySQL cuando hay registros hijos (grupo_profesor, asistencia,
-    // profesor_suplencia, etc.)
     if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
       throw new Error(
         "No se puede eliminar: este profesor tiene grupos, asistencias o coberturas de suplencia asociadas. " +
@@ -309,16 +317,6 @@ export const eliminarProfesorService = async (id_profesor) => {
   }
 };
 
-/**
- * Reasigna un nuevo profesor activo a un grupo determinado.
- *
- * Si `id_profesor_anterior` corresponde a un titular destituido que dejó ese grupo con
- * una suplencia pendiente (profesor_suplencia con estado = TRUE y sin suplente aún),
- * este reasignamiento queda automáticamente vinculado como cobertura PROVISIONAL: al
- * reintegrar al titular, ese suplente será retirado y el grupo regresará a su dueño
- * original. Si no existe tal suplencia pendiente, es simplemente una reasignación
- * normal/definitiva y no queda ligada a ningún proceso de reintegración.
- */
 export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor, id_profesor_anterior) => {
   const connection = await conexionPromise.getConnection();
 
@@ -385,12 +383,6 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
   }
 };
 
-/**
- * Lista todas las suplencias pendientes de restaurar: grupos que se quedaron sin su
- * profesor titular (por destitución) y que aún no han sido devueltos. Incluye el
- * suplente actual, si ya se le asignó alguno. Pensado para alimentar el filtro/listado
- * de "Profesores inactivos con grupos por cubrir o restaurar" en la interfaz.
- */
 export const obtenerSuplenciasPendientesService = async () => {
   const query = `
     SELECT 

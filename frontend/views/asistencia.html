@@ -1,0 +1,159 @@
+<section id="asistencia-view" class="view hidden">
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card stat-card-sm shadow-sm h-100">
+        <div class="card-body">
+          <span class="stat-label">Registros</span>
+          <div id="hist-stat-total" class="stat-value stat-value-sm">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card stat-card-sm stat-card-success shadow-sm h-100">
+        <div class="card-body">
+          <span class="stat-label">Presentes</span>
+          <div id="hist-stat-presente" class="stat-value stat-value-sm">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card stat-card-sm stat-card-danger shadow-sm h-100">
+        <div class="card-body">
+          <span class="stat-label">Ausentes</span>
+          <div id="hist-stat-ausente" class="stat-value stat-value-sm">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-card stat-card-sm stat-card-gold shadow-sm h-100">
+        <div class="card-body">
+          <span class="stat-label">Tardías / Justificadas</span>
+          <div id="hist-stat-otros" class="stat-value stat-value-sm">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="card-title-serif h5 mb-3"><i class="bi bi-calendar2-check"></i> Registrar Asistencia</h2>
+          <form id="asistencia-form">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Grupo</label>
+                <select id="asis-id-grupo" class="form-select" required></select>
+                <div class="form-text" id="asis-grupo-hint">Elige primero el grupo: así se cargan solo sus estudiantes y su profesor.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Estudiante</label>
+                <select id="asis-persona" class="form-select" required disabled>
+                  <option value="" disabled selected>Primero selecciona un grupo</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Profesor</label>
+                <select id="asis-id-profesor" class="form-select" required disabled>
+                  <option value="" disabled selected>Primero selecciona un grupo</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Estado</label>
+                <select id="asis-estado" class="form-select">
+                  <option value="presente" selected>Presente</option>
+                  <option value="ausente">Ausente</option>
+                  <option value="tardia">Tardía</option>
+                  <option value="justificada">Justificada</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Fecha</label>
+                <input id="asis-fecha" type="date" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Observaciones (opcional)</label>
+                <input id="asis-observaciones" type="text" class="form-control" maxlength="250" placeholder="Ej. Llegó 15 minutos tarde por transporte">
+              </div>
+              <div class="col-12 pt-2">
+                <button type="submit" id="asis-submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle"></i> Guardar Asistencia</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+            <h2 class="card-title-serif h5 mb-0"><i class="bi bi-clock-history"></i> Historial de Asistencia</h2>
+            <button type="button" id="hist-refrescar" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-clockwise"></i> Refrescar
+            </button>
+          </div>
+
+          <div class="filter-bar mb-3">
+            <div class="row g-2">
+              <div class="col-6 col-md-4">
+                <label class="form-label">Grupo</label>
+                <select id="hist-filtro-grupo" class="form-select form-select-sm">
+                  <option value="">Todos los grupos</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label">Estado</label>
+                <select id="hist-filtro-estado" class="form-select form-select-sm">
+                  <option value="">Todos los estados</option>
+                  <option value="presente">Presente</option>
+                  <option value="ausente">Ausente</option>
+                  <option value="tardia">Tardía</option>
+                  <option value="justificada">Justificada</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label">Buscar estudiante</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input id="hist-filtro-busqueda" type="text" class="form-control" placeholder="Nombre o apellido...">
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label">Desde</label>
+                <input id="hist-filtro-fecha-desde" type="date" class="form-control form-control-sm">
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label">Hasta</label>
+                <input id="hist-filtro-fecha-hasta" type="date" class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-md-4 d-flex align-items-end">
+                <button type="button" id="hist-limpiar-filtros" class="btn btn-outline-secondary btn-sm w-100">
+                  <i class="bi bi-x-circle"></i> Limpiar filtros
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive flex-grow-1">
+            <table id="asistencia-historial-table" class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Estudiante</th>
+                  <th>Grupo</th>
+                  <th>Profesor</th>
+                  <th>Estado</th>
+                  <th>Observaciones</th>
+                </tr>
+              </thead>
+              <tbody id="asistencia-historial-body">
+                <tr><td colspan="6" class="text-center py-4 text-muted">Cargando historial...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

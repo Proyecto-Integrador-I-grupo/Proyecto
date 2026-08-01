@@ -9,6 +9,7 @@ let currentUser = null;
 let views = [];
 let personaForm = null;
 let personaTableBody = null;
+let appViewsReady = false;
 
 let allPersonas = [];
 let allProfesores = [];
@@ -22,6 +23,13 @@ let profesorBusqueda = '';
 window.addEventListener('DOMContentLoaded', () => {
   wireLoginScreen();
   restoreSession();
+});
+
+window.addEventListener('app:views-ready', () => {
+  appViewsReady = true;
+  if (currentUser) {
+    initApp();
+  }
 });
 
 /* ==========================================
@@ -127,7 +135,9 @@ function showApp() {
   document.getElementById('login-screen')?.classList.add('hidden');
   document.getElementById('app-shell')?.classList.remove('hidden');
   renderUserInfo();
-  initApp();
+  if (appViewsReady) {
+    initApp();
+  }
 }
 
 // Módulos a los que el rol "Profesor" NO tiene acceso todavía.

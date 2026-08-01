@@ -31,3 +31,26 @@ export const createSeccion = async (req, res) => {
     res.status(500).json({ error: error.message || "Error al crear la sección." });
   }
 };
+
+export const deleteSeccion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const seccionBorrada = await seccionService.eliminarSeccionService(Number(id));
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "seccion",
+        accion_usuario: "DELETE",
+        datos_anteriores: JSON.stringify({ id_seccion: Number(id) }),
+        datos_nuevos: JSON.stringify(seccionBorrada)
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
+    res.json({ mensaje: "Sección borrada correctamente.", seccion: seccionBorrada });
+  } catch (error) {
+    console.error("Error al borrar sección:", error);
+    res.status(500).json({ error: error.message || "Error al borrar la sección." });
+  }
+};

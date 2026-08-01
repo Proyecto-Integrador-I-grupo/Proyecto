@@ -28,13 +28,23 @@ export const reporteRules = [
         .optional({ nullable: true })
         .isInt({ min: 1 })
         .withMessage("El grupo debe ser un identificador válido."),
+    query("id_estudiante")
+        .optional({ nullable: true })
+        .isInt({ min: 1 })
+        .withMessage("El estudiante debe ser un identificador válido."),
     query("estado_asistencia")
         .optional({ nullable: true })
         .isIn(["presente", "ausente", "tardia", "justificada"])
         .withMessage("El estado de asistencia debe ser presente, ausente, tardia o justificada."),
+    query("busqueda")
+        .optional({ nullable: true })
+        .isString()
+        .trim()
+        .isLength({ min: 1, max: 120 })
+        .withMessage("La búsqueda debe contener entre 1 y 120 caracteres."),
     query("tipo_reporte")
         .optional({ nullable: true })
-        .isIn(["resumen", "detalle"])
-        .withMessage("El tipo de reporte debe ser resumen o detalle."),
+        .isIn(["resumen", "detalle", "individual", "grupo"])
+        .withMessage("El tipo de reporte debe ser resumen, detalle, individual o grupo."),
     query().custom(validarRangoFechas)
 ];

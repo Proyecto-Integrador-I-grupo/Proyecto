@@ -211,7 +211,57 @@ h1, h2, h3, .card-title-serif {
   gap: 4px;
   transition: all 0.15s ease;
 }
+.action-menu-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px !important;
+  border: 1px solid #93C5FD !important;
+  background: #FFFFFF !important;
+  color: #2563EB !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
 
+.action-menu-btn:hover,
+.action-menu-btn:focus,
+.action-menu-btn.show {
+  background: #EFF6FF !important;
+  border-color: #2563EB !important;
+  color: #1D4ED8 !important;
+}
+
+.dropdown-menu {
+  border-radius: 12px !important;
+  border: 1px solid #CBD5E1;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14) !important;
+  padding: 0.35rem;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: #EFF6FF;
+  color: #0F172A;
+}
+
+.dropdown-item.text-danger,
+.dropdown-item.text-danger:hover,
+.dropdown-item.text-danger:focus {
+  color: #B91C1C !important;
+  background: #FEF2F2;
+}
 .action-btn.edit {
   background: var(--accent-soft);
   color: var(--accent);

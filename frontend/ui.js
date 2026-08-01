@@ -879,7 +879,7 @@ function renderProfesoresTable(profesores) {
       <td>${badgeEstado}</td>
       <td class="text-end">
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary rounded-circle action-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones">
+          <button class="btn btn-sm action-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones">
             <i class="bi bi-three-dots"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm">

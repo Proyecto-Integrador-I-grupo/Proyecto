@@ -1,4 +1,5 @@
 import * as personaModel from "../models/personaModel.js";
+import * as auditoriaModel from "../models/auditoriaModel.js";
 
 // Obtener todas las personas
 export const listarPersonas = async (req, res) => {
@@ -63,12 +64,24 @@ export const registrarPersona = async (req, res) => {
 
         const resultado = await personaModel.crearPersona(req.body, idUsuario);
 
-        res.status(201).json({
+            // Registrar auditoría
+            try {
+                await auditoriaModel.crearAuditoria({
+                    nombre_tabla: "persona",
+                    accion_usuario: "INSERT",
+                    datos_anteriores: "",
+                    datos_nuevos: JSON.stringify(req.body)
+                }, idUsuario);
+            } catch (e) {
+                console.error("Error registrando auditoría:", e);
+            }
 
-            mensaje: "Persona registrada correctamente.",
-            id: resultado.insertId
+            res.status(201).json({
 
-        });
+                mensaje: "Persona registrada correctamente.",
+                id: resultado.insertId
+
+            });
 
     } catch (error) {
 
@@ -105,6 +118,18 @@ export const actualizarPersona = async (req, res) => {
         }
 
         const resultado = await personaModel.actualizarPersona(id, req.body, idUsuario);
+
+        // Registrar auditoría (intentar obtener datos anteriores)
+        try {
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "persona",
+                accion_usuario: "UPDATE",
+                datos_anteriores: JSON.stringify(personaExiste),
+                datos_nuevos: JSON.stringify(req.body)
+            }, idUsuario);
+        } catch (e) {
+            console.error("Error registrando auditoría:", e);
+        }
 
         res.status(200).json({
 
@@ -146,6 +171,18 @@ export const eliminarPersona = async (req, res) => {
 
             });
 
+        }
+
+        // Registrar auditoría del borrado lógico
+        try {
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "persona",
+                accion_usuario: "DELETE",
+                datos_anteriores: JSON.stringify(personaExiste),
+                datos_nuevos: JSON.stringify({ ...personaExiste, estado: 0 })
+            }, idUsuario);
+        } catch (e) {
+            console.error("Error registrando auditoría:", e);
         }
 
         res.status(200).json({

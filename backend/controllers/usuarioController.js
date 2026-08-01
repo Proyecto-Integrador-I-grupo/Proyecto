@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import * as usuarioModel from "../models/usuarioModel.js";
+import * as auditoriaModel from "../models/auditoriaModel.js";
 
 export const listarUsuarios = async (req, res) => {
     try {
@@ -39,6 +40,18 @@ export const crearUsuario = async (req, res) => {
         const hash = await bcrypt.hash(contrasena, 10);
         const resultado = await usuarioModel.crearUsuario({ correo, contrasena: hash, id_persona, id_rol, estado }, req.usuarioActual?.id_usuario ?? null);
 
+        // Registrar auditoría
+        try {
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "usuario",
+                accion_usuario: "INSERT",
+                datos_anteriores: "",
+                datos_nuevos: JSON.stringify({ correo, id_persona, id_rol, estado })
+            }, req.usuarioActual?.id_usuario ?? null);
+        } catch (e) {
+            console.error("Error registrando auditoría:", e);
+        }
+
         res.status(201).json({ mensaje: "Usuario creado correctamente.", id: resultado.insertId });
     } catch (error) {
         console.error(error);
@@ -73,6 +86,18 @@ export const actualizarUsuario = async (req, res) => {
 
         const resultado = await usuarioModel.actualizarUsuario(id, datosActualizados, req.usuarioActual?.id_usuario ?? null);
 
+        // Auditoría
+        try {
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "usuario",
+                accion_usuario: "UPDATE",
+                datos_anteriores: JSON.stringify(usuario),
+                datos_nuevos: JSON.stringify(datosActualizados)
+            }, req.usuarioActual?.id_usuario ?? null);
+        } catch (e) {
+            console.error("Error registrando auditoría:", e);
+        }
+
         res.status(200).json({ mensaje: "Usuario actualizado correctamente.", cambios: resultado.changedRows ?? 0 });
     } catch (error) {
         console.error(error);
@@ -90,6 +115,18 @@ export const eliminarUsuario = async (req, res) => {
         }
 
         const resultado = await usuarioModel.eliminarUsuario(id, req.usuarioActual?.id_usuario ?? null);
+
+        // Auditoría de eliminación (borrado lógico)
+        try {
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "usuario",
+                accion_usuario: "DELETE",
+                datos_anteriores: JSON.stringify(usuario),
+                datos_nuevos: JSON.stringify({ ...usuario, estado: 0 })
+            }, req.usuarioActual?.id_usuario ?? null);
+        } catch (e) {
+            console.error("Error registrando auditoría:", e);
+        }
 
         res.status(200).json({ mensaje: "Usuario eliminado correctamente." });
     } catch (error) {

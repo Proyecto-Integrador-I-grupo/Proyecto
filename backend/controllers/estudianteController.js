@@ -1,4 +1,5 @@
 import * as estudianteService from "../services/estudianteService.js";
+import * as auditoriaModel from "../models/auditoriaModel.js";
 
 export const getEstudiantes = async (req, res) => {
   try {
@@ -31,6 +32,18 @@ export const createEstudiante = async (req, res) => {
     const idUsuario = req.usuarioActual?.id_usuario ?? null;
 
     const nuevoEstudiante = await estudianteService.crearEstudianteService(req.body, idUsuario);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "estudiante",
+        accion_usuario: "INSERT",
+        datos_anteriores: "",
+        datos_nuevos: JSON.stringify(nuevoEstudiante)
+      }, idUsuario);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.status(201).json(nuevoEstudiante);
   } catch (error) {
     console.error("DETALLE DEL ERROR AL CREAR ESTUDIANTE:", error);
@@ -43,7 +56,22 @@ export const updateEstudiante = async (req, res) => {
     const { id } = req.params;
     const idUsuario = req.usuarioActual?.id_usuario ?? null;
 
+    // obtener datos anteriores para auditoría
+    const anterior = await estudianteService.obtenerEstudiantePorIdService(id);
+
     const resultado = await estudianteService.actualizarEstudianteService(id, req.body, idUsuario);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "estudiante",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify(anterior),
+        datos_nuevos: JSON.stringify(req.body)
+      }, idUsuario);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.json({ message: "Estudiante actualizado correctamente", resultado });
   } catch (error) {
     console.error("Error en updateEstudiante:", error);
@@ -55,7 +83,21 @@ export const deleteEstudiante = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const anterior = await estudianteService.obtenerEstudiantePorIdService(id);
+
     const resultado = await estudianteService.eliminarEstudianteService(id);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "estudiante",
+        accion_usuario: "DELETE",
+        datos_anteriores: JSON.stringify(anterior),
+        datos_nuevos: JSON.stringify({ ...anterior, estado: 0 })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.json({ message: "Estudiante eliminado correctamente", resultado });
   } catch (error) {
     console.error("Error en deleteEstudiante:", error);

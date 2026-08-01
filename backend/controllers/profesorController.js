@@ -1,4 +1,5 @@
 import * as profesorService from "../services/profesorService.js";
+import * as auditoriaModel from "../models/auditoriaModel.js";
 
 export const getProfesores = async (req, res) => {
   try {
@@ -15,6 +16,17 @@ export const createProfesor = async (req, res) => {
     const idUsuario = req.usuarioActual?.id_usuario ?? null;
     
     const nuevoProfesor = await profesorService.crearProfesorService(req.body, idUsuario);
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "profesor",
+        accion_usuario: "INSERT",
+        datos_anteriores: "",
+        datos_nuevos: JSON.stringify(nuevoProfesor)
+      }, idUsuario);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
     res.status(201).json(nuevoProfesor);
   } catch (error) {
     console.error("DETALLE DEL ERROR AL CREAR PROFESOR:", error);
@@ -28,6 +40,16 @@ export const destituirProfesor = async (req, res) => {
     const { motivo } = req.body;
     const resultado = await profesorService.destituirProfesorService(id, motivo);
     res.json({ message: "Profesor destituido correctamente", resultado });
+  try {
+    await auditoriaModel.crearAuditoria({
+      nombre_tabla: "profesor",
+      accion_usuario: "UPDATE",
+      datos_anteriores: JSON.stringify({ id_profesor: id }),
+      datos_nuevos: JSON.stringify({ id_profesor: id, motivo })
+    }, req.usuarioActual?.id_usuario ?? null);
+  } catch (e) {
+    console.error("Error registrando auditoría:", e);
+  }
   } catch (error) {
     console.error("Error en destituirProfesor:", error);
     res.status(400).json({ error: error.message || "Error al destituir al profesor." });
@@ -39,6 +61,16 @@ export const eliminarProfesor = async (req, res) => {
     const { id } = req.params;
     const resultado = await profesorService.eliminarProfesorService(id);
     res.json({ message: "Profesor eliminado correctamente", resultado });
+  try {
+    await auditoriaModel.crearAuditoria({
+      nombre_tabla: "profesor",
+      accion_usuario: "DELETE",
+      datos_anteriores: JSON.stringify({ id_profesor: id }),
+      datos_nuevos: ""
+    }, req.usuarioActual?.id_usuario ?? null);
+  } catch (e) {
+    console.error("Error registrando auditoría:", e);
+  }
   } catch (error) {
     console.error("Error en eliminarProfesor:", error);
     res.status(400).json({ error: error.message || "Error al eliminar al profesor." });

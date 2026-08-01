@@ -11,6 +11,7 @@ import matriculaProcessRoutes from "./routes/matriculaProcessRoutes.js";
 import asistenciaProcessRoutes from "./routes/asistenciaProcessRoutes.js";
 import seccionRoutes from "./routes/seccionRoutes.js";
 import reporteRoutes from "./routes/reporteRoutes.js";
+import auditoriaRoutes from "./routes/auditoriaRoutes.js";
 
 import { identificarUsuario } from "./middleware/authMiddleware.js";
 
@@ -59,5 +60,7 @@ app.use("/api/procesos/secciones", seccionRoutes);
 app.use("/api/procesos", matriculaProcessRoutes);
 app.use("/api/procesos", asistenciaProcessRoutes);
 app.use("/api/procesos", reporteRoutes);
+// Rutas de auditoría
+app.use("/api/auditorias", auditoriaRoutes);
 
 export default app;

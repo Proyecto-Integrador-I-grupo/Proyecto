@@ -507,17 +507,6 @@
         <!-- VISTA: REPORTES (ADMIN) -->
         <section id="reportes-view" class="view hidden admin-only">
           <div class="report-shell">
-            <div class="hero-card p-4 p-lg-5 mb-4">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-                <div>
-                  <p class="eyebrow mb-2">Panel administrativo</p>
-                  <h2 class="card-title-serif h3 mb-2">Módulo de reportes académicos</h2>
-                  <p class="mb-0 text-white-50">Consulta el rendimiento de asistencia, distribución por grupo y evolución de matrículas con filtros educativos.</p>
-                </div>
-                <span class="hero-pill"><i class="bi bi-graph-up-arrow"></i> Generación en tiempo real</span>
-              </div>
-            </div>
-
             <div class="card border-0 shadow-sm mb-4">
               <div class="card-body">
                 <div class="filter-bar mb-3">
@@ -852,6 +841,28 @@
               <div class="col-md-6">
                 <label class="form-label">Fecha de Ingreso</label>
                 <input id="prof-fecha-ingreso" type="date" class="form-control" required>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="alert alert-info py-2 small mb-3 d-flex align-items-center gap-2">
+              <i class="bi bi-shield-lock-fill"></i>
+              <span>Estas credenciales le permitirán al docente ingresar al sistema con acceso limitado a Dashboard, Asistencia y Reportes.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Correo de acceso</label>
+                <input id="prof-correo" type="email" class="form-control" placeholder="docente@colegio.com" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Contraseña de acceso</label>
+                <div class="input-group">
+                  <input id="prof-contrasena" type="password" class="form-control" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                  <button type="button" id="toggle-prof-password" class="btn btn-outline-secondary" tabindex="-1">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

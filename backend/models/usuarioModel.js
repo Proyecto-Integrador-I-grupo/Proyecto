@@ -1,7 +1,7 @@
 import conexion, { queryConSesion } from "../config/database.js";
 
 // Roles que tienen permitido iniciar sesión en el panel administrativo
-export const ROLES_PERMITIDOS = ["administrador", "asistente"];
+export const ROLES_PERMITIDOS = ["administrador", "asistente", "profesor"];
 
 // Buscar un usuario (activo) por correo, junto con su rol y su nombre de persona
 export const obtenerUsuarioPorCorreo = async (correo) => {

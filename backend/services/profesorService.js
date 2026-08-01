@@ -1,4 +1,5 @@
 import conexionPromise from "../config/database.js";
+import bcrypt from "bcryptjs";
 export const obtenerProfesoresService = async () => {
   const query = `
     SELECT 
@@ -32,15 +33,24 @@ export const obtenerProfesoresService = async () => {
  * Registra un profesor insertando la persona y el profesor dentro de una transacción.
  */
 export const crearProfesorService = async (datos, idUsuario = null) => {
-  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, materia, fecha_ingreso } = datos;
+  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, materia, fecha_ingreso, correo, contrasena } = datos;
 
   if (!nombre || !apellido1 || !materia || !fecha_nacimiento || !genero) {
     throw new Error("Faltan campos obligatorios para registrar al profesor.");
   }
 
+  if (!correo || !contrasena) {
+    throw new Error("El correo y la contraseña de acceso son obligatorios para registrar al profesor.");
+  }
+
+  if (contrasena.length < 6) {
+    throw new Error("La contraseña de acceso debe tener al menos 6 caracteres.");
+  }
+
   const nombreLimpio = nombre.trim();
   const apellido1Limpio = apellido1.trim();
   const apellido2Limpio = apellido2 ? apellido2.trim() : null;
+  const correoLimpio = correo.trim().toLowerCase();
 
   const connection = await conexionPromise.getConnection();
 
@@ -65,6 +75,25 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
           : `Ya existe un registro de ese profesor (ID ${duplicados[0].id_profesor}) con ese mismo nombre y apellidos, pero está inactivo/destituido. Usa "Reintegrar" en lugar de crear uno nuevo.`
       );
     }
+
+    const [correoExistente] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE correo = ? LIMIT 1`,
+      [correoLimpio]
+    );
+
+    if (correoExistente.length > 0) {
+      throw new Error("Ya existe un usuario registrado con ese correo.");
+    }
+
+    const [rolProfesor] = await connection.query(
+      `SELECT id_rol FROM rol WHERE LOWER(TRIM(nom_rol)) = 'profesor' LIMIT 1`
+    );
+
+    if (rolProfesor.length === 0) {
+      throw new Error("No se encontró el rol 'Profesor' configurado en el sistema.");
+    }
+
+    const id_rol_profesor = rolProfesor[0].id_rol;
 
     // Desactivamos temporalmente los triggers en esta sesión para evitar el bloqueo de auditoría
     await connection.query(`SET @DISABLE_TRIGGERS = 1`);
@@ -95,6 +124,19 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       fecha_ingreso || new Date().toISOString().split("T")[0]
     ]);
 
+    // 3. Insertar el usuario de acceso del profesor (rol "Profesor", acceso limitado)
+    const hashContrasena = await bcrypt.hash(contrasena, 10);
+    const queryUsuario = `
+      INSERT INTO usuario (correo, contrasena, id_persona, id_rol, estado)
+      VALUES (?, ?, ?, ?, TRUE)
+    `;
+    const [resUsuario] = await connection.query(queryUsuario, [
+      correoLimpio,
+      hashContrasena,
+      id_persona,
+      id_rol_profesor
+    ]);
+
     // Reactivamos los triggers
     await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
 
@@ -103,17 +145,23 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     return {
       id_profesor: resProfesor.insertId,
       id_persona,
+      id_usuario: resUsuario.insertId,
       nombre,
       apellido1,
       apellido2,
       materia,
       fecha_ingreso,
+      correo: correoLimpio,
       estado: 1
     };
   } catch (error) {
     await connection.rollback();
     // Asegurar limpieza de la variable en caso de error
     try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new Error("Ya existe un usuario registrado con ese correo.");
+    }
 
     if (error.sqlState === '45000' || error.message) {
       throw new Error(error.message);

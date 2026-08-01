@@ -130,13 +130,19 @@ function showApp() {
   initApp();
 }
 
+// Módulos a los que el rol "Profesor" NO tiene acceso todavía.
+// (Dashboard, Asistencia, Reportes y Mi Perfil sí quedan disponibles.)
+const VISTAS_RESTRINGIDAS_PROFESOR = ['matricula', 'estudiantes', 'profesores'];
+
 function renderUserInfo() {
   if (!currentUser) return;
   const nombreCompleto = `${currentUser.nombre ?? ''} ${currentUser.apellido1 ?? ''}`.trim();
   const iniciales = `${(currentUser.nombre || '?')[0] ?? ''}${(currentUser.apellido1 || '?')[0] ?? ''}`.toUpperCase();
   const rol = currentUser.rol || '—';
-  const esAdmin = rol.toLowerCase() === 'administrador';
-  const rolClase = esAdmin ? 'role-badge-admin' : 'role-badge-asistente';
+  const rolNormalizado = rol.toLowerCase();
+  const esAdmin = rolNormalizado === 'administrador';
+  const esProfesor = rolNormalizado === 'profesor';
+  const rolClase = esAdmin ? 'role-badge-admin' : (esProfesor ? 'role-badge-profesor' : 'role-badge-asistente');
 
   [
     ['sidebar-avatar', iniciales], ['topbar-avatar', iniciales],
@@ -154,12 +160,28 @@ function renderUserInfo() {
   });
 
   document.body.classList.toggle('is-admin', esAdmin);
-  document.body.classList.toggle('is-asistente', !esAdmin);
+  document.body.classList.toggle('is-asistente', !esAdmin && !esProfesor);
+  document.body.classList.toggle('is-profesor', esProfesor);
 
   const assistantBanner = document.getElementById('assistant-permission-notice');
   if (assistantBanner) {
     assistantBanner.classList.toggle('hidden', esAdmin);
   }
+
+  aplicarRestriccionesModulos(rolNormalizado);
+}
+
+// Oculta del sidebar los módulos que el rol actual no puede usar todavía.
+// Por ahora solo el Profesor tiene módulos apagados; queda listo para sumar más roles/vistas después.
+function aplicarRestriccionesModulos(rolNormalizado) {
+  const esProfesor = rolNormalizado === 'profesor';
+
+  document.querySelectorAll('.sidebar button[data-view]').forEach((btn) => {
+    const vista = btn.dataset.view;
+    const restringida = esProfesor && VISTAS_RESTRINGIDAS_PROFESOR.includes(vista);
+    const item = btn.closest('.nav-item') || btn;
+    item.classList.toggle('hidden', restringida);
+  });
 }
 
 async function apiFetch(path, options = {}) {
@@ -209,6 +231,20 @@ function initApp() {
   if (profForm && !profForm.dataset.wired) {
     profForm.dataset.wired = '1';
     profForm.addEventListener('submit', handleProfesorSubmit);
+  }
+
+  const toggleProfPassword = document.getElementById('toggle-prof-password');
+  if (toggleProfPassword && !toggleProfPassword.dataset.wired) {
+    toggleProfPassword.dataset.wired = '1';
+    toggleProfPassword.addEventListener('click', () => {
+      const input = document.getElementById('prof-contrasena');
+      const icon = toggleProfPassword.querySelector('i');
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      icon?.classList.toggle('bi-eye', showing);
+      icon?.classList.toggle('bi-eye-slash', !showing);
+    });
   }
 
   const profTableBody = document.querySelector('#profesores-table tbody');
@@ -446,6 +482,11 @@ function initApp() {
 }
 
 function setActiveView(viewName) {
+  const rolNormalizado = (currentUser?.rol || '').toLowerCase();
+  if (rolNormalizado === 'profesor' && VISTAS_RESTRINGIDAS_PROFESOR.includes(viewName)) {
+    viewName = 'dashboard';
+  }
+
   const targetSection = document.getElementById(`${viewName}-view`);
   if (!targetSection) return;
 
@@ -820,9 +861,21 @@ async function handleProfesorSubmit(e) {
   const nombre = document.getElementById('prof-nombre')?.value.trim();
   const apellido1 = document.getElementById('prof-apellido1')?.value.trim();
   const materia = document.getElementById('prof-materia')?.value;
+  const correo = document.getElementById('prof-correo')?.value.trim();
+  const contrasena = document.getElementById('prof-contrasena')?.value || '';
 
   if (!nombre || !apellido1 || !materia) {
     showToast('Por favor completa el nombre, apellido y selecciona una materia.', 'error');
+    return;
+  }
+
+  if (!correo || !contrasena) {
+    showToast('Ingresa el correo y la contraseña de acceso del docente.', 'error');
+    return;
+  }
+
+  if (contrasena.length < 6) {
+    showToast('La contraseña de acceso debe tener al menos 6 caracteres.', 'error');
     return;
   }
 
@@ -833,7 +886,9 @@ async function handleProfesorSubmit(e) {
     fecha_nacimiento: document.getElementById('prof-fecha-nac')?.value || null,
     genero: document.getElementById('prof-genero')?.value || null,
     materia: materia,
-    fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null
+    fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null,
+    correo: correo,
+    contrasena: contrasena
   };
 
   try {

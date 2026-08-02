@@ -2,6 +2,8 @@
    MÓDULO DE ASISTENCIA OPTIMIZADO
    ========================================== */
 
+let asistenciaChartInstance = null;
+
 function wireAsistenciaEvents() {
   const asisForm = document.getElementById('asistencia-form');
   if (asisForm && !asisForm.dataset.wired) {
@@ -221,6 +223,7 @@ async function cargarHistorialAsistencia() {
   } catch (error) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
     actualizarStatsHistorial([]);
+    actualizarGraficosAsistencia([]);
   }
 }
 
@@ -238,6 +241,7 @@ function renderHistorialAsistencia(registros) {
         </td>
       </tr>
     `;
+    actualizarGraficosAsistencia([]);
     return;
   }
 
@@ -266,13 +270,24 @@ function renderHistorialAsistencia(registros) {
       <td><span class="attendance-badge attendance-${estado}">${etiqueta}</span></td>
       <td class="observaciones-cell" title="${observaciones}">${observaciones}</td>
       <td class="text-end">
-        <button type="button" class="btn btn-outline-primary btn-sm px-2 py-1" onclick="abrirModalModificarAsistencia(${idAsis}, '${estudiante.replace(/'/g, "")}', '${estado}', '${(r.observaciones || '').replace(/'/g, "")}')" title="Modificar estado">
+        <button type="button" class="btn btn-outline-primary btn-sm px-2 py-1 btn-modificar-asistencia" title="Modificar estado">
           <i class="bi bi-pencil-square"></i> Modificar
         </button>
       </td>
     `;
+    
+    // Evita redirección al dashboard y abre el modal correctamente
+    const btnMod = tr.querySelector('.btn-modificar-asistencia');
+    btnMod.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      abrirModalModificarAsistencia(idAsis, estudiante, estado, r.observaciones || '');
+    });
+
     tbody.appendChild(tr);
   });
+
+  actualizarGraficosAsistencia(registros);
 }
 
 function abrirModalModificarAsistencia(idAsistencia, estudianteNombre, estadoActual, observacionesActuales) {
@@ -337,6 +352,55 @@ function actualizarStatsHistorial(registros) {
   setTexto('hist-stat-presente', presentes);
   setTexto('hist-stat-ausente', ausentes);
   setTexto('hist-stat-otros', otros);
+}
+
+function actualizarGraficosAsistencia(registros) {
+  const total = registros.length;
+  const presentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'presente').length;
+  const ausentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'ausente').length;
+  const tardias = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'tardia').length;
+  const justificadas = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'justificada').length;
+
+  const elTotal = document.getElementById('graf-total');
+  const elEfectiva = document.getElementById('graf-efectiva');
+  const elAusentismo = document.getElementById('graf-ausentismo');
+
+  if (elTotal) elTotal.textContent = total;
+  const ef = total > 0 ? ((presentes / total) * 100).toFixed(1) : 0;
+  const aus = total > 0 ? ((ausentes / total) * 100).toFixed(1) : 0;
+  if (elEfectiva) elEfectiva.textContent = `${ef}%`;
+  if (elAusentismo) elAusentismo.textContent = `${aus}%`;
+
+  const ctx = document.getElementById('chartAsistenciaEstados');
+  if (!ctx) return;
+
+  if (asistenciaChartInstance) {
+    asistenciaChartInstance.destroy();
+  }
+
+  if (typeof Chart !== 'undefined') {
+    asistenciaChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Presentes', 'Ausentes', 'Tardías', 'Justificadas'],
+        datasets: [{
+          data: [presentes, ausentes, tardias, justificadas],
+          backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
 }
 
 async function handleAsistenciaSubmit(e) {

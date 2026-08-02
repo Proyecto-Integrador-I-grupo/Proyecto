@@ -59,3 +59,15 @@
   color: var(--ink-muted);
   font-size: 13px;
 }
+
+/* Ajustes para contenedor de gráficos estadísticos de asistencia */
+#collapseGraficosAsistencia .card-body {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+#chartAsistenciaEstados {
+  max-height: 200px;
+  width: 100% !important;
+}

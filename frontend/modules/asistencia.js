@@ -1,24 +1,5 @@
-(function () {
-  const moduleName = 'asistencia';
-  window.EduControlModules = window.EduControlModules || {};
-  window.EduControlModules[moduleName] = {
-    name: moduleName,
-    init() {
-      const section = document.getElementById(`${moduleName}-view`);
-      if (!section) return;
-      section.dataset.module = moduleName;
-      wireAsistenciaEvents();
-    }
-  };
-
-  if (document.readyState !== 'loading') {
-    window.dispatchEvent(new CustomEvent('app:module-ready', { detail: { module: moduleName } }));
-  }
-})();
-
 /* ==========================================
-   MÓDULO DE ASISTENCIA
-   Registro diario y consulta del historial de asistencia por grupo.
+   MÓDULO DE ASISTENCIA OPTIMIZADO
    ========================================== */
 
 function wireAsistenciaEvents() {
@@ -28,17 +9,32 @@ function wireAsistenciaEvents() {
     asisForm.addEventListener('submit', handleAsistenciaSubmit);
   }
 
+  const modForm = document.getElementById('modificar-asistencia-form');
+  if (modForm && !modForm.dataset.wired) {
+    modForm.dataset.wired = '1';
+    modForm.addEventListener('submit', handleModificarAsistenciaSubmit);
+  }
+
   const asisGrupoSelEl = document.getElementById('asis-id-grupo');
   if (asisGrupoSelEl && !asisGrupoSelEl.dataset.wired) {
     asisGrupoSelEl.dataset.wired = '1';
     asisGrupoSelEl.addEventListener('change', cargarRosterGrupoAsistencia);
   }
 
-  // --- Filtros del historial de asistencia ---
+  // --- Filtros del historial en cascada ---
   const histGrupoSel = document.getElementById('hist-filtro-grupo');
   if (histGrupoSel && !histGrupoSel.dataset.wired) {
     histGrupoSel.dataset.wired = '1';
-    histGrupoSel.addEventListener('change', cargarHistorialAsistencia);
+    histGrupoSel.addEventListener('change', async () => {
+      await poblarFiltroEstudiantesHistorial(histGrupoSel.value);
+      cargarHistorialAsistencia();
+    });
+  }
+
+  const histEstudianteSel = document.getElementById('hist-filtro-estudiante');
+  if (histEstudianteSel && !histEstudianteSel.dataset.wired) {
+    histEstudianteSel.dataset.wired = '1';
+    histEstudianteSel.addEventListener('change', cargarHistorialAsistencia);
   }
 
   const histEstadoSel = document.getElementById('hist-filtro-estado');
@@ -72,8 +68,10 @@ function wireAsistenciaEvents() {
   const histLimpiar = document.getElementById('hist-limpiar-filtros');
   if (histLimpiar && !histLimpiar.dataset.wired) {
     histLimpiar.dataset.wired = '1';
-    histLimpiar.addEventListener('click', () => {
+    histLimpiar.addEventListener('click', async () => {
       if (histGrupoSel) histGrupoSel.value = '';
+      await poblarFiltroEstudiantesHistorial('');
+      if (histEstudianteSel) histEstudianteSel.value = '';
       if (histEstadoSel) histEstadoSel.value = '';
       if (histDesde) histDesde.value = '';
       if (histHasta) histHasta.value = '';
@@ -88,8 +86,6 @@ function wireAsistenciaEvents() {
     histRefrescar.addEventListener('click', cargarHistorialAsistencia);
   }
 
-  // Igual que en Matrícula: el trigger de BD rechaza fecha futura, así que
-  // se limita también en el input para no dejar que el usuario ni lo intente.
   const hoyISO = new Date().toISOString().split('T')[0];
   const asisFechaInput = document.getElementById('asis-fecha');
   if (asisFechaInput) { asisFechaInput.max = hoyISO; if (!asisFechaInput.value) asisFechaInput.value = hoyISO; }
@@ -97,10 +93,9 @@ function wireAsistenciaEvents() {
 
 async function loadAsistenciaData() {
   await populateGruposSelects();
-  // Si ya había un grupo elegido de una visita anterior a esta vista, refresca su roster;
-  // si no, deja los selects de estudiante/profesor deshabilitados hasta que se elija uno.
   await cargarRosterGrupoAsistencia();
   poblarFiltroGrupoHistorial();
+  await poblarFiltroEstudiantesHistorial('');
   await cargarHistorialAsistencia();
 }
 
@@ -141,17 +136,13 @@ async function cargarRosterGrupoAsistencia() {
       profesorSel.add(new Option(texto, p.id_profesor));
     });
     profesorSel.disabled = (detalle.profesores || []).length === 0;
-    // Si solo hay un profesor asignado al grupo (lo normal), se autoselecciona.
     if ((detalle.profesores || []).length === 1) {
       profesorSel.value = detalle.profesores[0].id_profesor;
     }
 
     if (hint) {
       if ((detalle.estudiantes || []).length === 0) {
-        hint.textContent = 'Este grupo todavía no tiene estudiantes matriculados.';
-        hint.classList.add('text-danger');
-      } else if ((detalle.profesores || []).length === 0) {
-        hint.textContent = 'Este grupo no tiene un profesor asignado activo.';
+        hint.textContent = 'Este grupo no tiene estudiantes matriculados.';
         hint.classList.add('text-danger');
       } else {
         hint.textContent = '';
@@ -160,8 +151,6 @@ async function cargarRosterGrupoAsistencia() {
     }
   } catch (error) {
     console.error('Error cargando roster del grupo', error);
-    personaSel.innerHTML = '<option value="" disabled selected>Error al cargar</option>';
-    profesorSel.innerHTML = '<option value="" disabled selected>Error al cargar</option>';
   }
 }
 
@@ -170,11 +159,36 @@ function poblarFiltroGrupoHistorial() {
   if (!sel) return;
   const valorActual = sel.value;
   sel.innerHTML = '<option value="">Todos los grupos</option>';
-  allGrupos.forEach((g) => {
-    const id = g.id_grupo ?? g.id;
-    sel.add(new Option(g.nombre_grupo ?? `Grupo ${id}`, id));
-  });
+  if (typeof allGrupos !== 'undefined') {
+    allGrupos.forEach((g) => {
+      const id = g.id_grupo ?? g.id;
+      sel.add(new Option(g.nombre_grupo ?? `Grupo ${id}`, id));
+    });
+  }
   sel.value = valorActual || '';
+}
+
+async function poblarFiltroEstudiantesHistorial(idGrupo) {
+  const sel = document.getElementById('hist-filtro-estudiante');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todos los estudiantes</option>';
+  
+  if (!idGrupo) {
+    sel.disabled = false;
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/detalle`);
+    if (!res.ok) return;
+    const detalle = await res.json();
+    (detalle.estudiantes || []).forEach((e) => {
+      const texto = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
+      sel.add(new Option(texto, e.id_estudiante));
+    });
+  } catch (e) {
+    console.error('Error cargando estudiantes para filtro', e);
+  }
 }
 
 async function cargarHistorialAsistencia() {
@@ -182,6 +196,7 @@ async function cargarHistorialAsistencia() {
   if (!tbody) return;
 
   const idGrupo = document.getElementById('hist-filtro-grupo')?.value || '';
+  const idEstudiante = document.getElementById('hist-filtro-estudiante')?.value || '';
   const estado = document.getElementById('hist-filtro-estado')?.value || '';
   const fechaDesde = document.getElementById('hist-filtro-fecha-desde')?.value || '';
   const fechaHasta = document.getElementById('hist-filtro-fecha-hasta')?.value || '';
@@ -189,23 +204,23 @@ async function cargarHistorialAsistencia() {
 
   const params = new URLSearchParams();
   if (idGrupo) params.set('id_grupo', idGrupo);
+  if (idEstudiante) params.set('id_estudiante', idEstudiante);
   if (estado) params.set('estado_asistencia', estado);
   if (fechaDesde) params.set('fecha_inicio', fechaDesde);
   if (fechaHasta) params.set('fecha_fin', fechaHasta);
   if (busqueda) params.set('busqueda', busqueda);
 
-  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Cargando historial...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Cargando historial...</td></tr>';
 
   try {
     const res = await apiFetch(`/api/procesos/asistencia?${params.toString()}`);
-    if (!res.ok) throw new Error('No se pudo cargar el historial de asistencia');
+    if (!res.ok) throw new Error('No se pudo cargar el historial');
     const registros = await res.json();
     renderHistorialAsistencia(registros);
     actualizarStatsHistorial(registros);
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
     actualizarStatsHistorial([]);
-    console.error('Error cargando historial de asistencia', error);
   }
 }
 
@@ -217,7 +232,7 @@ function renderHistorialAsistencia(registros) {
   if (!registros.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center py-5">
+        <td colspan="7" class="text-center py-5">
           <i class="bi bi-calendar-x display-6 text-muted d-block mb-2"></i>
           <span class="text-muted">No hay registros de asistencia con estos filtros.</span>
         </td>
@@ -234,6 +249,7 @@ function renderHistorialAsistencia(registros) {
   };
 
   registros.forEach((r) => {
+    const idAsis = r.id_asistencia ?? r.id;
     const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
     const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
     const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
@@ -244,21 +260,73 @@ function renderHistorialAsistencia(registros) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${fecha}</td>
-      <td>${estudiante || '-'}</td>
+      <td class="fw-semibold">${estudiante || '-'}</td>
       <td>${r.nombre_grupo ?? '-'}</td>
       <td>${profesor || '-'}</td>
       <td><span class="attendance-badge attendance-${estado}">${etiqueta}</span></td>
       <td class="observaciones-cell" title="${observaciones}">${observaciones}</td>
+      <td class="text-end">
+        <button type="button" class="btn btn-outline-primary btn-sm px-2 py-1" onclick="abrirModalModificarAsistencia(${idAsis}, '${estudiante.replace(/'/g, "")}', '${estado}', '${(r.observaciones || '').replace(/'/g, "")}')" title="Modificar estado">
+          <i class="bi bi-pencil-square"></i> Modificar
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function abrirModalModificarAsistencia(idAsistencia, estudianteNombre, estadoActual, observacionesActuales) {
+  document.getElementById('mod-id-asistencia').value = idAsistencia;
+  document.getElementById('mod-estudiante-nombre').value = estudianteNombre;
+  document.getElementById('mod-estado').value = estadoActual;
+  document.getElementById('mod-observaciones').value = observacionesActuales !== '—' ? observacionesActuales : '';
+  
+  const modalEl = document.getElementById('modalModificarAsistencia');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+}
+
+async function handleModificarAsistenciaSubmit(e) {
+  e.preventDefault();
+  const idAsistencia = document.getElementById('mod-id-asistencia').value;
+  const payload = {
+    estado_asistencia: document.getElementById('mod-estado').value,
+    observaciones: document.getElementById('mod-observaciones').value.trim() || null
+  };
+
+  const btn = document.getElementById('mod-submit');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
+
+  try {
+    const res = await apiFetch(`/api/procesos/asistencia/${idAsistencia}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      showToast('Registro de asistencia actualizado correctamente');
+      const modalEl = document.getElementById('modalModificarAsistencia');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      await cargarHistorialAsistencia();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.error || 'No se pudo actualizar el registro', 'error');
+    }
+  } catch (e) {
+    showToast('Error de conexión al actualizar asistencia', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Actualizar Registro'; }
+  }
 }
 
 function actualizarStatsHistorial(registros) {
   const total = registros.length;
   const presentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'presente').length;
   const ausentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'ausente').length;
-  const otros = total - presentes - ausentes; // tardía + justificada
+  const otros = total - presentes - ausentes;
 
   const setTexto = (id, valor) => {
     const el = document.getElementById(id);
@@ -301,21 +369,18 @@ async function handleAsistenciaSubmit(e) {
       body: JSON.stringify(payload) 
     });
     
-    const json = await res.json().catch(() => ({}));
-
     if (res.ok) {
       showToast('Asistencia guardada correctamente');
-      // Se conserva el grupo elegido (lo normal es pasar lista a varios
-      // estudiantes seguidos del mismo grupo) y solo se limpian estudiante y observaciones.
       document.getElementById('asis-observaciones').value = '';
       personaSel.value = '';
       await cargarHistorialAsistencia();
     } else {
+      const json = await res.json().catch(() => ({}));
       showToast(json.error || json.mensaje || 'Error guardando asistencia', 'error');
     }
   } catch {
     showToast('Error guardando asistencia', 'error');
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar Asistencia'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar Registro de Asistencia'; }
   }
 }

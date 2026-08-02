@@ -1,0 +1,33 @@
+/* Estilos específicos para el Módulo de Consultas */
+
+.consultas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.consulta-result-card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background-color: #FFFFFF;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.consulta-result-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.consulta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  padding-bottom: 0.5rem;
+}
+
+.consulta-meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+}

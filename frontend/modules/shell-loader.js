@@ -5,9 +5,9 @@ const viewFiles = {
   matricula: 'views/matricula.html',
   asistencia: 'views/asistencia.html',
   reportes: 'views/reportes.html',
+  consultas: 'views/consultas.html',
   perfil: 'views/perfil.html'
 };
-
 async function loadViewModule(viewName) {
   const file = viewFiles[viewName];
   if (!file) return;

@@ -35,3 +35,224 @@
     </div>
   </div>
 </section>
+
+<!-- Modales del módulo Matrícula -->
+  <!-- MODAL: MATRÍCULA -->
+  <div class="modal fade" id="modalMatricula" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-journal-plus"></i> Registrar Matrícula</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="matricula-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Estudiante</label>
+                <select id="mat-persona" class="form-select" required></select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Grupo Destino</label>
+                <input id="mat-grupo-search" type="text" class="form-control mb-2" placeholder="Buscar grupo por nombre...">
+                <select id="mat-id-grupo" class="form-select" required></select>
+                <div class="form-text" id="mat-grupo-info">Selecciona un grupo para ver el cupo disponible.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Tipo de Matrícula</label>
+                <select id="mat-tipo" class="form-select" required>
+                  <option value="regular" selected>Regular</option>
+                  <option value="traslado">Traslado</option>
+                  <option value="reingreso">Reingreso</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Trimestre</label>
+                <select id="mat-periodo" class="form-select" required>
+                  <option value="1" selected>I Trimestre</option>
+                  <option value="2">II Trimestre</option>
+                  <option value="3">III Trimestre</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Fecha</label>
+                <input id="mat-fecha" type="date" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Observaciones (opcional)</label>
+                <input id="mat-observaciones" type="text" class="form-control" maxlength="20" placeholder="Máx. 20 caracteres">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="mat-submit" class="btn btn-sm btn-primary">Completar Matrícula</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GRUPO -->
+  <div class="modal fade" id="modalGrupo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-grid-plus"></i> Crear Nuevo Grupo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="grupo-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Nombre del Grupo</label>
+                <input id="grupo-nombre" class="form-control" placeholder="Ej. 3-C" maxlength="20" required>
+                <div class="form-text">Escribe el nombre del grupo manualmente. Los niveles base y sus letras aparecen luego en la sección académica.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label d-flex justify-content-between align-items-center mb-0">
+                  <span>Sección Académica</span>
+                </label>
+                <input id="grupo-seccion-search" type="text" class="form-control mb-2" placeholder="Filtrar sección por nivel o nombre...">
+                <select id="grupo-seccion" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar sección</option>
+                </select>
+                <div class="form-text" id="grupo-seccion-empty-hint">Las secciones base y las creadas por el administrador quedan disponibles para elegir.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Capacidad Máxima</label>
+                <input id="grupo-capacidad" type="number" min="1" class="form-control" value="30" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Aula (opcional)</label>
+                <select id="grupo-aula" class="form-select">
+                  <option value="" selected>Seleccionar aula</option>
+                  <option value="100">100</option>
+                  <option value="101">101</option>
+                  <option value="102">102</option>
+                  <option value="103">103</option>
+                  <option value="200">200</option>
+                  <option value="201">201</option>
+                  <option value="202">202</option>
+                  <option value="203">203</option>
+                  <option value="300">300</option>
+                  <option value="301">301</option>
+                  <option value="302">302</option>
+                  <option value="303">303</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Profesor Encargado</label>
+                <input id="grupo-profesor-search" type="text" class="form-control mb-2" placeholder="Buscar profesor por nombre o materia...">
+                <select id="grupo-profesor" class="form-select" required></select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary">Crear Grupo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTIONAR GRUPO -->
+  <div class="modal fade" id="modalGestionGrupo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-people-fill"></i> Gestionar Grupo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="gestion-grupo-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Grupo existente</label>
+                <select id="gestion-grupo-select" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar grupo</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Capacidad Máxima</label>
+                <input id="gestion-grupo-capacidad" type="number" min="1" class="form-control" value="30" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Aula</label>
+                <select id="gestion-grupo-aula" class="form-select">
+                  <option value="" selected>Seleccionar aula</option>
+                  <option value="100">100</option>
+                  <option value="101">101</option>
+                  <option value="102">102</option>
+                  <option value="103">103</option>
+                  <option value="200">200</option>
+                  <option value="201">201</option>
+                  <option value="202">202</option>
+                  <option value="203">203</option>
+                  <option value="300">300</option>
+                  <option value="301">301</option>
+                  <option value="302">302</option>
+                  <option value="303">303</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Profesor Encargado</label>
+                <input id="gestion-profesor-search" type="text" class="form-control mb-2" placeholder="Buscar profesor por nombre o materia...">
+                <select id="gestion-grupo-profesor" class="form-select" required></select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SECCIÓN ACADÉMICA -->
+  <div class="modal fade" id="modalSeccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-diagram-3"></i> Nueva Sección Académica</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="seccion-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label">Nombre</label>
+                <input id="seccion-nombre" class="form-control" placeholder="Ej. 10" maxlength="10" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Año Lectivo</label>
+                <input id="seccion-periodo" type="number" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Nivel</label>
+                <input id="seccion-nivel" class="form-control" placeholder="Ej. Tercer Ciclo" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <input id="seccion-descripcion" class="form-control" placeholder="Ej. Sección regular diurna" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Secciones existentes</label>
+                <select id="seccion-delete-select" class="form-select"></select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" id="btn-borrar-seccion" class="btn btn-sm btn-outline-danger">Borrar sección</button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-sm btn-primary">Crear Sección</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>

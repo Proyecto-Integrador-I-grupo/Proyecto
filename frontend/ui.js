@@ -583,7 +583,7 @@ function setActiveView(viewName) {
 if (modulo && typeof modulo.init === 'function') {
   modulo.init();
 }
-
+ 
   views.forEach((button) => {
     const isActive = button.dataset.view === viewName;
     button.classList.toggle('active', isActive);

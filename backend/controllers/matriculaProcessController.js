@@ -3,30 +3,21 @@ import {
   obtenerGruposService,
   crearGrupoService,
   actualizarGrupoService,
-  obtenerDetalleGrupoService
+  obtenerDetalleGrupoService,
+  listarMatriculasService
 } from "../services/matriculaServiceP.js";
-import * as auditoriaModel from "../models/auditoriaModel.js";
 
-export async function crearMatricula(req, res) {
+export async function obtenerMatriculas(req, res) {
   try {
-    const resultado = await procesarMatricula(req.body);
-    try {
-      await auditoriaModel.crearAuditoria({
-        nombre_tabla: "matricula",
-        accion_usuario: "INSERT",
-        datos_anteriores: "",
-        datos_nuevos: JSON.stringify(req.body)
-      }, req.usuarioActual?.id_usuario ?? null);
-    } catch (e) {
-      console.error("Error registrando auditoría:", e);
-    }
+    const matriculas = await listarMatriculasService(req.query);
 
-    res.status(201).json(resultado);
+    res.status(200).json(matriculas);
   } catch (error) {
-    res.status(400).json({ mensaje: error.message });
+    res.status(400).json({
+      mensaje: error.message
+    });
   }
-}
-
+} 
 export async function obtenerGrupos(req, res) {
   try {
     const grupos = await obtenerGruposService();

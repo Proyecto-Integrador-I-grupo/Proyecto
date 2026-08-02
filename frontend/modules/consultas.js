@@ -117,7 +117,7 @@ let asistencias = [];
       'No se pudo cargar la información.'
     );
   }
-}
+} 
 
   /* ==========================================
    RESUMEN GENERAL DE CONSULTAS

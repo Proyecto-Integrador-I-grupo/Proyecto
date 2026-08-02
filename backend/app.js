@@ -63,4 +63,4 @@ app.use("/api/procesos", reporteRoutes);
 // Rutas de auditoría
 app.use("/api/auditorias", auditoriaRoutes);
 
-export default app;
+export default app; 

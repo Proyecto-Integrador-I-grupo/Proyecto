@@ -293,4 +293,111 @@ export async function obtenerDetalleGrupoService(id_grupo) {
   return { estudiantes, profesores };
 }
 
+export async function listarMatriculasService(filtros = {}) {
+  const {
+    id_grupo,
+    estado,
+    periodo,
+    anio,
+    fecha_inicio,
+    fecha_fin,
+    busqueda
+  } = filtros;
+
+  const condiciones = ["m.estado = TRUE"];
+  const valores = [];
+
+  if (id_grupo) {
+    condiciones.push("dm.id_grupo = ?");
+    valores.push(id_grupo);
+  }
+
+  if (estado) {
+    condiciones.push("m.estado_matricula = ?");
+    valores.push(String(estado).trim());
+  }
+
+  if (periodo) {
+    condiciones.push("m.periodo_lectivo = ?");
+    valores.push(periodo);
+  }
+
+  if (anio) {
+    condiciones.push("m.anio_lectivo = ?");
+    valores.push(anio);
+  }
+
+  if (fecha_inicio) {
+    condiciones.push("m.fecha >= ?");
+    valores.push(fecha_inicio);
+  }
+
+  if (fecha_fin) {
+    condiciones.push("m.fecha <= ?");
+    valores.push(fecha_fin);
+  }
+
+  if (busqueda && String(busqueda).trim()) {
+    condiciones.push(`
+      (
+        p.nombre LIKE ?
+        OR p.apellido1 LIKE ?
+        OR p.apellido2 LIKE ?
+        OR g.nombre_grupo LIKE ?
+      )
+    `);
+
+    const texto = `%${String(busqueda).trim()}%`;
+    valores.push(texto, texto, texto, texto);
+  }
+
+  const [filas] = await pool.query(
+    `SELECT
+        m.id_matricula,
+        m.fecha,
+        m.periodo_lectivo,
+        m.anio_lectivo,
+        m.tipo_matricula,
+        m.estado_matricula,
+        m.observaciones,
+        m.id_estudiante,
+
+        p.nombre AS estudiante_nombre,
+        p.apellido1 AS estudiante_apellido1,
+        p.apellido2 AS estudiante_apellido2,
+
+        dm.id_grupo,
+        g.nombre_grupo,
+
+        s.nombre_seccion,
+        s.nivel
+
+     FROM matricula m
+
+     INNER JOIN estudiante e
+       ON m.id_estudiante = e.id_estudiante
+
+     INNER JOIN persona p
+       ON e.id_persona = p.id_persona
+
+     LEFT JOIN detalle_matricula dm
+       ON m.id_matricula = dm.id_matricula
+       AND dm.estado = TRUE
+
+     LEFT JOIN grupo g
+       ON dm.id_grupo = g.id_grupo
+
+     LEFT JOIN seccion s
+       ON g.id_seccion = s.id_seccion
+
+     WHERE ${condiciones.join(" AND ")}
+
+     ORDER BY m.fecha DESC, m.id_matricula DESC
+     LIMIT 500`,
+    valores
+  ); 
+
+  return filas;
+}
+
 export default procesarMatricula;

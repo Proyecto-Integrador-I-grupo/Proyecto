@@ -578,6 +578,11 @@ function setActiveView(viewName) {
 
   const targetSection = document.getElementById(`${viewName}-view`);
   if (!targetSection) return;
+  const modulo = window.EduControlModules?.[viewName];
+
+if (modulo && typeof modulo.init === 'function') {
+  modulo.init();
+}
 
   views.forEach((button) => {
     const isActive = button.dataset.view === viewName;

@@ -5,7 +5,9 @@ import {
   actualizarGrupoService,
   eliminarGrupoService,
   obtenerDetalleGrupoService,
-  listarMatriculasService
+  listarMatriculasService,
+  retirarEstudianteGrupoService,
+  transferirEstudianteGrupoService
 } from "../services/matriculaServiceP.js";
 
 import * as auditoriaModel from "../models/auditoriaModel.js";
@@ -192,6 +194,71 @@ export async function obtenerDetalleGrupo(req, res) {
     res.status(500).json({
       mensaje: error.message
     });
+  }
+}
+
+/* ==========================================
+   GESTIÓN DE MATRÍCULA POR ESTUDIANTE
+   ========================================== */
+
+export async function retirarEstudianteGrupo(req, res) {
+  try {
+    const { id } = req.params; // id_grupo
+    const { id_estudiante } = req.body;
+
+    if (!id_estudiante) {
+      return res.status(400).json({ mensaje: "Debe indicar el estudiante a retirar." });
+    }
+
+    const resultado = await retirarEstudianteGrupoService(Number(id), Number(id_estudiante));
+
+    try {
+      await auditoriaModel.crearAuditoria(
+        {
+          nombre_tabla: "grupo_estudiante",
+          accion_usuario: "UPDATE",
+          datos_anteriores: JSON.stringify({ id_grupo: Number(id), id_estudiante: Number(id_estudiante), estado: true }),
+          datos_nuevos: JSON.stringify({ id_grupo: Number(id), id_estudiante: Number(id_estudiante), estado: false })
+        },
+        req.usuarioActual?.id_usuario ?? null
+      );
+    } catch (errorAuditoria) {
+      console.error("Error registrando auditoría:", errorAuditoria);
+    }
+
+    res.json(resultado);
+  } catch (error) {
+    res.status(400).json({ mensaje: error.message });
+  }
+}
+
+export async function transferirEstudianteGrupo(req, res) {
+  try {
+    const resultado = await transferirEstudianteGrupoService(req.body);
+
+    try {
+      await auditoriaModel.crearAuditoria(
+        {
+          nombre_tabla: "grupo_estudiante",
+          accion_usuario: "UPDATE",
+          datos_anteriores: JSON.stringify({
+            id_estudiante: req.body.id_estudiante,
+            id_grupo_actual: req.body.id_grupo_actual
+          }),
+          datos_nuevos: JSON.stringify({
+            id_estudiante: req.body.id_estudiante,
+            id_grupo_nuevo: req.body.id_grupo_nuevo
+          })
+        },
+        req.usuarioActual?.id_usuario ?? null
+      );
+    } catch (errorAuditoria) {
+      console.error("Error registrando auditoría:", errorAuditoria);
+    }
+
+    res.status(201).json(resultado);
+  } catch (error) {
+    res.status(400).json({ mensaje: error.message });
   }
 }
 

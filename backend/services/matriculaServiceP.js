@@ -431,4 +431,111 @@ export async function listarMatriculasService(filtros = {}) {
   return filas;
 }
 
+/* ==========================================
+   GESTIÓN DE MATRÍCULA POR ESTUDIANTE
+   (retirar de un grupo o transferir a otro)
+   ========================================== */
+
+/**
+ * Retira a un estudiante de un grupo sin reasignarlo a otro.
+ * Cierra su vínculo activo en grupo_estudiante y su detalle_matricula
+ * asociado a ese grupo, pero conserva el historial (no se borra nada).
+ */
+export async function retirarEstudianteGrupoService(idGrupo, idEstudiante) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [geRows] = await connection.query(
+      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
+      [idGrupo, idEstudiante]
+    );
+    if (geRows.length === 0) {
+      throw new Error("El estudiante no está activo en este grupo.");
+    }
+
+    await connection.query(
+      "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
+      [geRows[0].id_grupo_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE detalle_matricula dm
+       INNER JOIN matricula m ON dm.id_matricula = m.id_matricula
+       SET dm.estado = FALSE
+       WHERE dm.id_grupo = ? AND m.id_estudiante = ? AND dm.estado = TRUE`,
+      [idGrupo, idEstudiante]
+    );
+
+    await connection.commit();
+    return { mensaje: "Estudiante retirado del grupo correctamente." };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Transfiere a un estudiante de su grupo actual a un grupo nuevo.
+ * 1. Cierra el vínculo activo con el grupo de origen (igual que retirar).
+ * 2. Registra una matrícula nueva en el grupo destino reutilizando
+ *    procesarMatricula(), que ya valida cupo, duplicados, estudiante y
+ *    usuario activos. Así queda historial de ambas matrículas.
+ *
+ * Nota: los pasos 1 y 2 no comparten conexión/transacción porque
+ * procesarMatricula abre la suya propia. Si el paso 2 falla, el estudiante
+ * queda sin grupo activo y se avisa explícitamente en el mensaje de error
+ * para que se reintente la matrícula al nuevo grupo manualmente.
+ */
+export async function transferirEstudianteGrupoService(datos) {
+  const { id_estudiante, id_grupo_actual, id_grupo_nuevo } = datos;
+
+  if (Number(id_grupo_actual) === Number(id_grupo_nuevo)) {
+    throw new Error("El grupo destino debe ser diferente al grupo actual.");
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [geActual] = await connection.query(
+      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
+      [id_grupo_actual, id_estudiante]
+    );
+    if (geActual.length === 0) {
+      throw new Error("El estudiante no está activo en el grupo de origen.");
+    }
+
+    await connection.query(
+      "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
+      [geActual[0].id_grupo_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE detalle_matricula dm
+       INNER JOIN matricula m ON dm.id_matricula = m.id_matricula
+       SET dm.estado = FALSE
+       WHERE dm.id_grupo = ? AND m.id_estudiante = ? AND dm.estado = TRUE`,
+      [id_grupo_actual, id_estudiante]
+    );
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  try {
+    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo });
+  } catch (error) {
+    throw new Error(
+      `El estudiante se retiró del grupo anterior, pero no se pudo matricular en el grupo nuevo: ${error.message}`
+    );
+  }
+}
+
 export default procesarMatricula;

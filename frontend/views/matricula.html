@@ -5,7 +5,7 @@
 
 <section id="matricula-view" class="view hidden">
   <div class="row g-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm text-center p-3 h-100">
         <div class="card-body d-flex flex-column align-items-center justify-content-center">
           <i class="bi bi-journal-plus text-primary fs-1 mb-2"></i>
@@ -15,7 +15,7 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm text-center p-3 h-100">
         <div class="card-body d-flex flex-column align-items-center justify-content-center">
           <i class="bi bi-people text-primary fs-1 mb-2"></i>
@@ -28,7 +28,17 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3 h-100">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+          <i class="bi bi-person-gear text-primary fs-1 mb-2"></i>
+          <h3 class="h5">Gestionar Matrícula</h3>
+          <p class="text-muted small mb-3">Transfiere o retira estudiantes de un grupo.</p>
+          <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalGestionMatricula">Gestionar Matrícula</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm text-center p-3 h-100">
         <div class="card-body d-flex flex-column align-items-center justify-content-center">
           <i class="bi bi-diagram-3 text-primary fs-1 mb-2"></i>
@@ -260,6 +270,80 @@
               <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
               <button type="submit" class="btn btn-sm btn-primary">Crear Sección</button>
             </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTIONAR MATRÍCULA (retirar o transferir un estudiante de grupo) -->
+  <div class="modal fade" id="modalGestionMatricula" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title h6"><i class="bi bi-person-gear"></i> Gestionar Matrícula</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="gestion-matricula-form">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Grupo actual del estudiante</label>
+                <select id="gm-grupo-actual" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar grupo</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Estudiante</label>
+                <select id="gm-estudiante" class="form-select" required disabled>
+                  <option value="" disabled selected>Primero selecciona un grupo</option>
+                </select>
+                <div class="form-text" id="gm-hint">Selecciona un grupo para ver a sus estudiantes.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Acción</label>
+                <select id="gm-accion" class="form-select" required>
+                  <option value="transferir" selected>Transferir a otro grupo</option>
+                  <option value="retirar">Retirar del grupo (sin reemplazo)</option>
+                </select>
+              </div>
+
+              <div id="gm-campos-transferir" class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">Grupo destino</label>
+                  <select id="gm-grupo-nuevo" class="form-select">
+                    <option value="" disabled selected>Seleccionar grupo destino</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Tipo de Matrícula</label>
+                  <select id="gm-tipo" class="form-select">
+                    <option value="traslado" selected>Traslado</option>
+                    <option value="regular">Regular</option>
+                    <option value="reingreso">Reingreso</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Semestre</label>
+                  <select id="gm-periodo" class="form-select">
+                    <option value="1" selected>I Semestre</option>
+                    <option value="2">II Semestre</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Fecha</label>
+                  <input id="gm-fecha" type="date" class="form-control">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Observaciones (opcional)</label>
+                  <input id="gm-observaciones" type="text" class="form-control" maxlength="20" placeholder="Máx. 20 caracteres">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="gm-submit" class="btn btn-sm btn-primary">Guardar cambios</button>
           </div>
         </form>
       </div>

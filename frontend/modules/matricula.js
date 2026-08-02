@@ -54,7 +54,7 @@ function wireMatriculaEvents() {
         return;
       }
 
-      // Limpia cualquier residuo de caracteres extra (como dos puntos o espacios) para dejar solo el ID numérico puro
+      // Limpia cualquier residuo de caracteres extra o dos puntos para dejar solo el ID numérico puro
       const idGrupo = String(rawValue).split(':')[0].trim();
 
       if (!idGrupo || isNaN(idGrupo)) {
@@ -62,9 +62,28 @@ function wireMatriculaEvents() {
         return;
       }
 
-      if (!confirm('¿Estás seguro de que deseas eliminar este grupo?')) {
-        return;
+      // Abre la ventana emergente (modal) personalizada en lugar del confirm() nativo
+      const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
+      if (confirmarModalEl) {
+        const btnConfirmarAccion = document.getElementById('btn-confirmar-borrado-grupo');
+        if (btnConfirmarAccion) btnConfirmarAccion.dataset.idGrupo = idGrupo;
+        
+        const modalConfirm = new bootstrap.Modal(confirmarModalEl);
+        modalConfirm.show();
       }
+    });
+  }
+
+  // Listener para el botón definitivo dentro de la ventana emergente de confirmación
+  const btnConfirmarBorradoGrupo = document.getElementById('btn-confirmar-borrado-grupo');
+  if (btnConfirmarBorradoGrupo && !btnConfirmarBorradoGrupo.dataset.wired) {
+    btnConfirmarBorradoGrupo.dataset.wired = '1';
+    btnConfirmarBorradoGrupo.addEventListener('click', async () => {
+      const idGrupo = btnConfirmarBorradoGrupo.dataset.idGrupo;
+      if (!idGrupo) return;
+
+      const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
+      if (confirmarModalEl) bootstrap.Modal.getInstance(confirmarModalEl)?.hide();
 
       await borrarGrupo(idGrupo);
     });
@@ -129,12 +148,28 @@ function wireMatriculaEvents() {
         showToast('Selecciona una sección para borrar.', 'error');
         return;
       }
-      if (!confirm('¿Estás seguro de que deseas eliminar esta sección?')) {
-        return;
+      
+      const confirmarModalEl = document.getElementById('modalConfirmarEliminacionSeccion');
+      if (confirmarModalEl) {
+        const btnConfSec = document.getElementById('btn-confirmar-borrado-seccion');
+        if (btnConfSec) btnConfSec.dataset.idSeccion = idSeccion;
+        new bootstrap.Modal(confirmarModalEl).show();
       }
+    });
+  }
+
+  const btnConfirmarBorradoSeccion = document.getElementById('btn-confirmar-borrado-seccion');
+  if (btnConfirmarBorradoSeccion && !btnConfirmarBorradoSeccion.dataset.wired) {
+    btnConfirmarBorradoSeccion.dataset.wired = '1';
+    btnConfirmarBorradoSeccion.addEventListener('click', async () => {
+      const idSeccion = btnConfirmarBorradoSeccion.dataset.idSeccion;
+      if (!idSeccion) return;
+      const modalEl = document.getElementById('modalConfirmarEliminacionSeccion');
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
       await borrarSeccion(idSeccion);
     });
   }
+
   setDefaultSeccionPeriodo();
 
   const hoyISO = new Date().toISOString().split('T')[0];
@@ -287,22 +322,19 @@ async function borrarGrupo(idGrupo) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      showToast(json.error || json.mensaje || 'No se pudo borrar el grupo.', 'error');
+      showToast(json.mensaje || json.error || 'No se pudo borrar el grupo.', 'error');
       return;
     }
 
     showToast('Grupo eliminado correctamente.', 'success');
     
-    // Remueve el grupo localmente de la memoria para que desaparezca al instante de la interfaz
     allGrupos = allGrupos.filter(g => String(g.id_grupo ?? g.id) !== String(idGrupo));
 
-    // Cierra el modal de gestión automáticamente
     const modalEl = document.getElementById('modalGestionGrupo');
     if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
 
     document.getElementById('gestion-grupo-form')?.reset();
     
-    // Refresca selectores y datos globales
     await populateGruposSelects();
     await populateGestionGrupoModal();
   } catch (error) {
@@ -391,7 +423,7 @@ async function borrarSeccion(idSeccion) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      showToast(json.error || json.mensaje || 'No se pudo borrar la sección.', 'error');
+      showToast(json.mensaje || json.error || 'No se pudo borrar la sección.', 'error');
       return;
     }
 

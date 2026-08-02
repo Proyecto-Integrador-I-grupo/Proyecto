@@ -265,3 +265,41 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: VENTANA EMERGENTE DE CONFIRMACIÓN DE BORRADO DE GRUPO -->
+  <div class="modal fade" id="modalConfirmarEliminacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title h6 text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <p class="mb-0 text-muted small">¿Estás seguro de que deseas eliminar este grupo? Esta acción lo removerá del sistema.</p>
+        </div>
+        <div class="modal-footer justify-content-center bg-light">
+          <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="btn-confirmar-borrado-grupo" class="btn btn-sm btn-danger px-3">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VENTANA EMERGENTE DE CONFIRMACIÓN DE BORRADO DE SECCIÓN -->
+  <div class="modal fade" id="modalConfirmarEliminacionSeccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title h6 text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <p class="mb-0 text-muted small">¿Estás seguro de que deseas eliminar esta sección?</p>
+        </div>
+        <div class="modal-footer justify-content-center bg-light">
+          <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="btn-confirmar-borrado-seccion" class="btn btn-sm btn-danger px-3">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>

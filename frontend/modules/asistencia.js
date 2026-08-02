@@ -127,7 +127,11 @@ async function cargarRosterGrupoAsistencia() {
   const hint = document.getElementById('asis-grupo-hint');
   if (!grupoSel || !personaSel || !profesorSel) return;
 
+  // Imprimir en consola para depurar qué valor tiene seleccionado el select
+  console.log("Valor crudo del select grupo:", grupoSel.value);
+
   const idGrupo = parseInt(grupoSel.value, 10);
+  
   if (!idGrupo || isNaN(idGrupo)) {
     personaSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
     profesorSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';

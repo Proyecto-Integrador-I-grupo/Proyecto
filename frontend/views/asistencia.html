@@ -56,11 +56,37 @@
     </div>
   </div>
 
-  <!-- Historial de Asistencia Amplio y Mejorado -->
+  <!-- Historial de Asistencia Amplio y Mejorado con Panel Gráfico Colapsable -->
   <div class="card border-0 shadow-sm">
     <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="card-title-serif h5 mb-0"><i class="bi bi-clock-history"></i> Historial de Asistencia</h3>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGraficosAsistencia" aria-expanded="false" aria-controls="collapseGraficosAsistencia">
+          <i class="bi bi-bar-chart-fill"></i> Ver Gráficos Estadísticos
+        </button>
+      </div>
+
+      <!-- Panel Colapsable de Gráficos -->
+      <div class="collapse mb-4" id="collapseGraficosAsistencia">
+        <div class="card card-body bg-light border-0">
+          <div class="row align-items-center">
+            <div class="col-12 col-md-6 mb-3 mb-md-0 text-center">
+              <h6 class="text-muted mb-3 font-serif">Distribución de Estados</h6>
+              <div style="max-height: 220px; position: relative;">
+                <canvas id="chartAsistenciaEstados"></canvas>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 text-center">
+              <h6 class="text-muted mb-3 font-serif">Resumen Rápido</h6>
+              <div class="p-3 bg-white rounded shadow-sm text-start">
+                <p class="mb-2 text-muted small">Visualiza de forma interactiva el comportamiento de la asistencia filtrada actual.</p>
+                <div class="d-flex justify-content-between border-bottom py-1"><span>Total filtrado:</span> <strong id="graf-total">0</strong></div>
+                <div class="d-flex justify-content-between border-bottom py-1 text-success"><span>Asistencia efectiva:</span> <strong id="graf-efectiva">0%</strong></div>
+                <div class="d-flex justify-content-between py-1 text-danger"><span>Ausentismo:</span> <strong id="graf-ausentismo">0%</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Barra de Filtros Avanzada -->

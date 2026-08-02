@@ -23,73 +23,101 @@ let asistencias = [];
   };
 
   function conectarEventos() {
-    const tipo = document.getElementById('consulta-tipo');
-    const busqueda = document.getElementById('consulta-busqueda');
-    const estado = document.getElementById('consulta-estado');
-    const grupo = document.getElementById('consulta-grupo');
-    const fecha = document.getElementById('consulta-fecha');
-    const limpiar = document.getElementById('consulta-limpiar');
-    const refrescar = document.getElementById('consulta-refrescar');
-    const tablaBody = document.getElementById('consulta-tabla-body');
-const modificarDetalle = document.getElementById('consulta-detalle-modificar');
+  const tipo = document.getElementById('consulta-tipo');
+  const busqueda = document.getElementById('consulta-busqueda');
+  const estado = document.getElementById('consulta-estado');
+  const grupo = document.getElementById('consulta-grupo');
+  const fecha = document.getElementById('consulta-fecha');
+  const limpiar = document.getElementById('consulta-limpiar');
+  const refrescar = document.getElementById('consulta-refrescar');
+  const tablaBody = document.getElementById('consulta-tabla-body');
+  const modificarDetalle = document.getElementById(
+    'consulta-detalle-modificar'
+  );
 
-    tipo?.addEventListener('change', actualizarConsulta);
-    busqueda?.addEventListener('input', actualizarConsulta);
-    estado?.addEventListener('change', actualizarConsulta);
-    grupo?.addEventListener( 'change',actualizarConsulta);
-    fecha?.addEventListener('change',actualizarConsulta);
-    refrescar?.addEventListener('click', cargarConsultas);
+  tipo?.addEventListener('change', actualizarConsulta);
+  busqueda?.addEventListener('input', actualizarConsulta);
+  estado?.addEventListener('change', actualizarConsulta);
+  grupo?.addEventListener('change', actualizarConsulta);
+  fecha?.addEventListener('change', actualizarConsulta);
+  refrescar?.addEventListener('click', cargarConsultas);
 
-    limpiar?.addEventListener('click', () => {
-      if (busqueda) busqueda.value = '';
-      if (estado) estado.value = '';
-      if (grupo) grupo.value = '';
-      if (fecha) fecha.value = '';
-      actualizarConsulta();
+  tablaBody?.addEventListener(
+    'click',
+    manejarAccionesTabla
+  );
 
-      tablaBody?.addEventListener('click', manejarAccionesTabla);
-modificarDetalle?.addEventListener('click', modificarDesdeDetalle);
-    });
-  }
+  modificarDetalle?.addEventListener(
+    'click',
+    modificarDesdeDetalle
+  );
 
-  async function cargarConsultas() {
-    mostrarCargando();
+  limpiar?.addEventListener('click', () => {
+    if (busqueda) busqueda.value = '';
+    if (estado) estado.value = '';
+    if (grupo) grupo.value = '';
+    if (fecha) fecha.value = '';
 
-    try {
-      const [resEstudiantes, resProfesores, resMatriculas, resAsistencias] = await Promise.all([
-  apiFetch('/api/estudiantes'),
-  apiFetch('/api/profesores'),
-    apiFetch('/api/procesos/matricula'),
-  apiFetch('/api/procesos/asistencia')
-]);
-if (!resMatriculas.ok) {
-  throw new Error('No se pudieron cargar las matrículas.');
+    actualizarConsulta();
+  });
 }
 
-if (!resAsistencias.ok) {
-  throw new Error('No se pudo cargar la asistencia.');
-}
+ async function cargarConsultas() {
+  mostrarCargando();
 
-      if (!resEstudiantes.ok) {
-        throw new Error('No se pudieron cargar los estudiantes.');
-      }
+  try {
+    const [
+      resEstudiantes,
+      resProfesores,
+      resMatriculas,
+      resAsistencias
+    ] = await Promise.all([
+      apiFetch('/api/estudiantes'),
+      apiFetch('/api/profesores'),
+      apiFetch('/api/procesos/matricula'),
+      apiFetch('/api/procesos/asistencia')
+    ]);
 
-      if (!resProfesores.ok) {
-        throw new Error('No se pudieron cargar los profesores.');
-      }
+    estudiantes = resEstudiantes.ok
+      ? await resEstudiantes.json()
+      : [];
 
-      estudiantes = await resEstudiantes.json();
-      profesores = await resProfesores.json();
-      matriculas = await resMatriculas.json();
-      asistencias = await resAsistencias.json();
+    profesores = resProfesores.ok
+      ? await resProfesores.json()
+      : [];
 
-      actualizarResumen();
-      cargarFiltroGrupos();
-      actualizarConsulta();
-    } catch (error) {
-      mostrarError(error.message || 'No se pudo cargar la información.');
+    matriculas = resMatriculas.ok
+      ? await resMatriculas.json()
+      : [];
+
+    asistencias = resAsistencias.ok
+      ? await resAsistencias.json()
+      : [];
+
+    if (!resMatriculas.ok) {
+      console.warn(
+        'La consulta de matrículas todavía no está disponible en el servidor.'
+      );
     }
+
+    if (!resAsistencias.ok) {
+      console.warn(
+        'No se pudieron cargar los registros de asistencia.'
+      );
+    }
+
+    actualizarResumen();
+    cargarFiltroGrupos();
+    actualizarConsulta();
+  } catch (error) {
+    console.error('Error cargando consultas:', error);
+
+    mostrarError(
+      error.message ||
+      'No se pudo cargar la información.'
+    );
   }
+}
 
   /* ==========================================
    RESUMEN GENERAL DE CONSULTAS
@@ -119,20 +147,30 @@ if (!resAsistencias.ok) {
 /* ==========================================
    CAMBIO DEL TIPO DE CONSULTA
    ========================================== */
-  function actualizarConsulta() {
-    const tipo = document.getElementById('consulta-tipo')?.value || 'estudiantes';
+  /* ==========================================
+   CAMBIO DEL TIPO DE CONSULTA
+   ========================================== */
 
-    if (tipo === 'estudiantes') {
-      mostrarEstudiantes();
-      return;
-    }
+function actualizarConsulta() {
+  const tipo =
+    document.getElementById('consulta-tipo')?.value ||
+    'estudiantes';
 
-    if (tipo === 'profesores') {
-      mostrarProfesores();
-      return;
-    }
+  actualizarFiltroEstado(tipo);
+  actualizarTextoBusqueda(tipo);
+  actualizarFiltrosVisibles(tipo);
 
-     if (tipo === 'matriculas') {
+  if (tipo === 'estudiantes') {
+    mostrarEstudiantes();
+    return;
+  }
+
+  if (tipo === 'profesores') {
+    mostrarProfesores();
+    return;
+  }
+
+  if (tipo === 'matriculas') {
     mostrarMatriculas();
     return;
   }
@@ -140,9 +178,9 @@ if (!resAsistencias.ok) {
   if (tipo === 'asistencia') {
     mostrarAsistencias();
   }
+}
 
-
-  /* ==========================================
+/* ==========================================
    FILTROS DINÁMICOS
    ========================================== */
 
@@ -222,10 +260,6 @@ function actualizarFiltrosVisibles(tipo) {
     !mostrarFiltrosDeProceso
   );
 }
-
-    mostrarPendiente(tipo);
-  }
-
   function mostrarEstudiantes() {
     const busqueda = obtenerBusqueda();
     const estado = obtenerEstado();
@@ -411,6 +445,7 @@ function actualizarFiltrosVisibles(tipo) {
 
     body.appendChild(fila);
   });
+}
 
 
   /* ==========================================
@@ -545,7 +580,6 @@ function actualizarFiltrosVisibles(tipo) {
 
     body.appendChild(fila);
   });
-}
 }
 
 /* ==========================================

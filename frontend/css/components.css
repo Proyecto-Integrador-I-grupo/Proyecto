@@ -1,0 +1,232 @@
+h1, h2, h3, .card-title-serif {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #FFFFFF;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tarjetas y Estadísticas */
+.stat-card {
+  border: 1px solid var(--bs-border-color) !important;
+  border-top: 3px solid var(--accent) !important;
+  background-color: #FFFFFF;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* Banner Hero */
+.hero-card {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #FFFFFF;
+  border-radius: var(--bs-border-radius-lg);
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* Tablas base */
+.table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  background-color: #F8FAFC;
+  border-bottom: 2px solid var(--bs-border-color);
+  padding: 12px;
+}
+
+.table tbody td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.table tbody td:first-child {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Formularios y Modales */
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--navy-light);
+  margin-bottom: 4px;
+}
+
+.form-control, .form-select {
+  border-color: #CBD5E1;
+  color: var(--navy);
+  font-size: 14px;
+  padding: 0.55rem 0.75rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.15);
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.modal-content {
+  border-radius: 1rem;
+}
+
+.modal .btn {
+  font-weight: 600;
+}
+
+/* Buscadores y Badges */
+.search-box {
+  width: 240px;
+}
+
+.search-box .input-group-text {
+  background-color: #FFFFFF;
+  border-right: none;
+  color: var(--ink-muted);
+}
+
+.search-box .form-control {
+  border-left: none;
+}
+
+.search-box .form-control:focus {
+  box-shadow: none;
+  border-color: #CBD5E1;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.role-badge-admin { background: var(--role-admin-soft); color: var(--role-admin); }
+.role-badge-asistente { background: var(--role-asistente-soft); color: var(--role-asistente); }
+.role-badge-profesor { background: var(--role-profesor-soft); color: var(--role-profesor); }
+
+.login-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--navy) 0%, #020617 100%);
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: #FFFFFF;
+  border-radius: 1rem;
+  padding: 36px 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.brand-mark-lg {
+  width: 54px;
+  height: 54px;
+  font-size: 20px;
+  border-radius: 12px;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 12px 20px;
+  border-radius: var(--bs-border-radius);
+  background: #FFFFFF;
+  color: var(--navy);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid var(--accent);
+  font-weight: 600;
+  z-index: 1060;
+}
+
+.toast.error { border-left-color: var(--danger); }
+.toast.success { border-left-color: var(--success); }
+
+.hidden { display: none !important; }

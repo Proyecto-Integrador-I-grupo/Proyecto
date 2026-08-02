@@ -1,0 +1,40 @@
+:root {
+  /* Paleta Principal de Alto Contraste */
+  --bs-primary: #1A2530;
+  --bs-primary-rgb: 26, 37, 48;
+  --bs-body-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --bs-body-bg: #F4F6F9;
+  --bs-body-color: #1E293B;
+  --bs-border-radius: 0.5rem;
+  --bs-border-radius-lg: 0.75rem;
+  --bs-border-color: #E2E8F0;
+  --bs-link-color: #2563EB;
+  --bs-link-hover-color: #1D4ED8;
+
+  /* Identidad Visual */
+  --navy: #0F172A;
+  --navy-2: #1E293B;
+  --navy-light: #334155;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --gold: #D97706;
+  --gold-soft: #FEF3C7;
+  --ink-muted: #64748B;
+  --success: #16A34A;
+  --danger: #DC2626;
+
+  /* Roles */
+  --role-admin: #991B1B;
+  --role-admin-soft: #FEE2E2;
+  --role-asistente: #166534;
+  --role-asistente-soft: #DCFCE7;
+  --role-profesor: #6D28D9;
+  --role-profesor-soft: #EDE9FE;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}

@@ -219,6 +219,216 @@ function wireMatriculaEvents() {
       filtrarGruposMatricula(matGrupoSearch.value);
     });
   }
+
+  // --- Gestionar Matrícula (retirar / transferir estudiante de grupo) ---
+  const btnAbrirGestionMatricula = document.querySelector('[data-bs-target="#modalGestionMatricula"]');
+  if (btnAbrirGestionMatricula && !btnAbrirGestionMatricula.dataset.wired) {
+    btnAbrirGestionMatricula.dataset.wired = '1';
+    btnAbrirGestionMatricula.addEventListener('click', () => {
+      poblarSelectGruposGestionMatricula();
+    });
+  }
+
+  const gmGrupoActual = document.getElementById('gm-grupo-actual');
+  if (gmGrupoActual && !gmGrupoActual.dataset.wired) {
+    gmGrupoActual.dataset.wired = '1';
+    gmGrupoActual.addEventListener('change', cargarEstudiantesGestionMatricula);
+  }
+
+  const gmAccion = document.getElementById('gm-accion');
+  if (gmAccion && !gmAccion.dataset.wired) {
+    gmAccion.dataset.wired = '1';
+    gmAccion.addEventListener('change', actualizarCamposGestionMatricula);
+  }
+
+  const gestionMatriculaForm = document.getElementById('gestion-matricula-form');
+  if (gestionMatriculaForm && !gestionMatriculaForm.dataset.wired) {
+    gestionMatriculaForm.dataset.wired = '1';
+    gestionMatriculaForm.addEventListener('submit', handleGestionMatriculaSubmit);
+  }
+}
+
+function poblarSelectGruposGestionMatricula() {
+  const selActual = document.getElementById('gm-grupo-actual');
+  const selNuevo = document.getElementById('gm-grupo-nuevo');
+  const estudianteSel = document.getElementById('gm-estudiante');
+  const hint = document.getElementById('gm-hint');
+  const fechaInput = document.getElementById('gm-fecha');
+
+  if (selActual) {
+    selActual.innerHTML = '<option value="" disabled selected>Seleccionar grupo</option>';
+    allGrupos.forEach((g) => {
+      const id = g.id_grupo ?? g.id;
+      selActual.add(new Option(`${g.nombre_grupo ?? 'Grupo'} · ${g.nivel ?? ''}`, id));
+    });
+  }
+
+  if (selNuevo) {
+    selNuevo.innerHTML = '<option value="" disabled selected>Seleccionar grupo destino</option>';
+    allGrupos.forEach((g) => {
+      const id = g.id_grupo ?? g.id;
+      const ocupados = g.ocupados ?? 0;
+      const capacidad = g.capacidad ?? 0;
+      const lleno = ocupados >= capacidad;
+      const opt = new Option(`${g.nombre_grupo ?? 'Grupo'} · Cupo ${ocupados}/${capacidad}${lleno ? ' (LLENO)' : ''}`, id);
+      opt.disabled = lleno;
+      selNuevo.add(opt);
+    });
+  }
+
+  if (estudianteSel) {
+    estudianteSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
+    estudianteSel.disabled = true;
+  }
+
+  if (hint) {
+    hint.textContent = 'Selecciona un grupo para ver a sus estudiantes.';
+    hint.classList.remove('text-danger');
+  }
+
+  if (fechaInput && !fechaInput.value) {
+    fechaInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  actualizarCamposGestionMatricula();
+}
+
+async function cargarEstudiantesGestionMatricula() {
+  const grupoSel = document.getElementById('gm-grupo-actual');
+  const estudianteSel = document.getElementById('gm-estudiante');
+  const hint = document.getElementById('gm-hint');
+  const selNuevo = document.getElementById('gm-grupo-nuevo');
+  if (!grupoSel || !estudianteSel) return;
+
+  const idGrupo = parseInt(grupoSel.value, 10);
+  if (!idGrupo || isNaN(idGrupo)) return;
+
+  estudianteSel.innerHTML = '<option value="" disabled selected>Cargando estudiantes...</option>';
+  estudianteSel.disabled = true;
+
+  try {
+    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/detalle`);
+    if (!res.ok) throw new Error('No se pudo cargar el detalle del grupo');
+    const detalle = await res.json();
+    const estudiantes = detalle.estudiantes || [];
+
+    estudianteSel.innerHTML = '<option value="" disabled selected>Seleccionar estudiante</option>';
+    estudiantes.forEach((e) => {
+      const texto = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
+      estudianteSel.add(new Option(texto, e.id_estudiante));
+    });
+    estudianteSel.disabled = estudiantes.length === 0;
+
+    if (hint) {
+      if (estudiantes.length === 0) {
+        hint.textContent = 'Este grupo no tiene estudiantes matriculados activos.';
+        hint.classList.add('text-danger');
+      } else {
+        hint.textContent = `Se cargaron ${estudiantes.length} estudiante(s).`;
+        hint.classList.remove('text-danger');
+      }
+    }
+
+    // El grupo destino no puede ser el mismo que el grupo actual
+    if (selNuevo) {
+      Array.from(selNuevo.options).forEach((opt) => {
+        if (opt.value === '') return;
+        opt.hidden = Number(opt.value) === idGrupo;
+      });
+    }
+  } catch (error) {
+    console.error('Error cargando estudiantes para gestión de matrícula', error);
+    estudianteSel.innerHTML = '<option value="" disabled selected>Error al cargar estudiantes</option>';
+  }
+}
+
+function actualizarCamposGestionMatricula() {
+  const accion = document.getElementById('gm-accion')?.value;
+  const camposTransferir = document.getElementById('gm-campos-transferir');
+  const grupoNuevoSel = document.getElementById('gm-grupo-nuevo');
+  if (!camposTransferir) return;
+
+  const esTransferir = accion === 'transferir';
+  camposTransferir.classList.toggle('hidden', !esTransferir);
+  if (grupoNuevoSel) grupoNuevoSel.required = esTransferir;
+}
+
+async function handleGestionMatriculaSubmit(e) {
+  e.preventDefault();
+
+  const idGrupoActual = parseInt(document.getElementById('gm-grupo-actual')?.value, 10);
+  const idEstudiante = parseInt(document.getElementById('gm-estudiante')?.value, 10);
+  const accion = document.getElementById('gm-accion')?.value;
+
+  if (!idGrupoActual || !idEstudiante) {
+    showToast('Selecciona el grupo actual y el estudiante.', 'error');
+    return;
+  }
+
+  const submitBtn = document.getElementById('gm-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
+
+  try {
+    let res;
+
+    if (accion === 'retirar') {
+      res = await apiFetch(`/api/procesos/grupos/${idGrupoActual}/retirar-estudiante`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_estudiante: idEstudiante })
+      });
+    } else {
+      const idGrupoNuevo = parseInt(document.getElementById('gm-grupo-nuevo')?.value, 10);
+      if (!idGrupoNuevo) {
+        showToast('Selecciona el grupo destino.', 'error');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Guardar cambios'; }
+        return;
+      }
+
+      const grupoDestino = allGrupos.find((g) => (g.id_grupo ?? g.id) === idGrupoNuevo);
+      const fecha = document.getElementById('gm-fecha')?.value || new Date().toISOString().split('T')[0];
+      const anio = grupoDestino?.periodo_lectivo ?? new Date(`${fecha}T00:00:00`).getFullYear();
+
+      const payload = {
+        id_estudiante: idEstudiante,
+        id_grupo_actual: idGrupoActual,
+        id_grupo_nuevo: idGrupoNuevo,
+        fecha,
+        periodo: parseInt(document.getElementById('gm-periodo')?.value, 10),
+        anio,
+        tipo: document.getElementById('gm-tipo')?.value || 'traslado',
+        estado: 'activa',
+        observaciones: document.getElementById('gm-observaciones')?.value.trim().slice(0, 20) || null,
+        id_usuario: currentUser?.id_usuario ?? 1
+      };
+
+      res = await apiFetch('/api/procesos/matricula/transferir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast(
+        accion === 'retirar' ? 'Estudiante retirado del grupo correctamente.' : 'Estudiante transferido correctamente.',
+        'success'
+      );
+      document.getElementById('gestion-matricula-form')?.reset();
+      const modalEl = document.getElementById('modalGestionMatricula');
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+      await populateGruposSelects();
+    } else {
+      showToast(json.mensaje || json.error || 'No se pudo completar la operación.', 'error');
+    }
+  } catch (error) {
+    console.error('Error en gestión de matrícula', error);
+    showToast('Error de conexión al gestionar la matrícula.', 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Guardar cambios'; }
+  }
 }
 
 async function loadMatriculaData() {

@@ -20,7 +20,9 @@ function wireAsistenciaEvents() {
   const asisGrupoSelEl = document.getElementById('asis-id-grupo');
   if (asisGrupoSelEl && !asisGrupoSelEl.dataset.wired) {
     asisGrupoSelEl.dataset.wired = '1';
-    asisGrupoSelEl.addEventListener('change', cargarRosterGrupoAsistencia);
+    asisGrupoSelEl.addEventListener('change', () => {
+      cargarRosterGrupoAsistencia();
+    });
   }
 
   // --- Filtros del historial en cascada ---
@@ -91,10 +93,27 @@ function wireAsistenciaEvents() {
   const hoyISO = new Date().toISOString().split('T')[0];
   const asisFechaInput = document.getElementById('asis-fecha');
   if (asisFechaInput) { asisFechaInput.max = hoyISO; if (!asisFechaInput.value) asisFechaInput.value = hoyISO; }
+
+  // Asegurar que al abrir el modal de asistencia se recarguen los grupos correctamente
+  const modalRegistrarAsistenciaEl = document.getElementById('modalRegistrarAsistencia');
+  if (modalRegistrarAsistenciaEl && !modalRegistrarAsistenciaEl.dataset.wired) {
+    modalRegistrarAsistenciaEl.dataset.wired = '1';
+    modalRegistrarAsistenciaEl.addEventListener('show.bs.modal', async () => {
+      if (typeof populateGruposSelects === 'function') {
+        await populateGruposSelects();
+      }
+      const grupoSel = document.getElementById('asis-id-grupo');
+      if (grupoSel && grupoSel.value) {
+        await cargarRosterGrupoAsistencia();
+      }
+    });
+  }
 }
 
 async function loadAsistenciaData() {
-  await populateGruposSelects();
+  if (typeof populateGruposSelects === 'function') {
+    await populateGruposSelects();
+  }
   await cargarRosterGrupoAsistencia();
   poblarFiltroGrupoHistorial();
   await poblarFiltroEstudiantesHistorial('');
@@ -109,50 +128,63 @@ async function cargarRosterGrupoAsistencia() {
   if (!grupoSel || !personaSel || !profesorSel) return;
 
   const idGrupo = parseInt(grupoSel.value, 10);
-  if (!idGrupo) {
+  if (!idGrupo || isNaN(idGrupo)) {
     personaSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
     profesorSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
     personaSel.disabled = true;
     profesorSel.disabled = true;
+    if (hint) {
+      hint.textContent = 'Selecciona el grupo para filtrar automáticamente el roster.';
+      hint.classList.remove('text-danger');
+    }
     return;
   }
 
-  personaSel.innerHTML = '<option value="" disabled selected>Cargando...</option>';
-  profesorSel.innerHTML = '<option value="" disabled selected>Cargando...</option>';
+  personaSel.innerHTML = '<option value="" disabled selected>Cargando estudiantes...</option>';
+  profesorSel.innerHTML = '<option value="" disabled selected>Cargando profesor...</option>';
+  personaSel.disabled = true;
+  profesorSel.disabled = true;
 
   try {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/detalle`);
-    if (!res.ok) throw new Error('No se pudo cargar el grupo');
+    if (!res.ok) throw new Error('No se pudo cargar el detalle del grupo');
     const detalle = await res.json();
 
+    // Poblar estudiantes
     personaSel.innerHTML = '<option value="" disabled selected>Seleccionar estudiante</option>';
-    (detalle.estudiantes || []).forEach((e) => {
+    const estudiantes = detalle.estudiantes || [];
+    estudiantes.forEach((e) => {
       const texto = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
       personaSel.add(new Option(texto, e.id_estudiante));
     });
-    personaSel.disabled = (detalle.estudiantes || []).length === 0;
+    personaSel.disabled = estudiantes.length === 0;
 
+    // Poblar profesores
     profesorSel.innerHTML = '<option value="" disabled selected>Seleccionar profesor</option>';
-    (detalle.profesores || []).forEach((p) => {
+    const profesores = detalle.profesores || [];
+    profesores.forEach((p) => {
       const texto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} (${p.materia || 'General'})`.trim();
       profesorSel.add(new Option(texto, p.id_profesor));
     });
-    profesorSel.disabled = (detalle.profesores || []).length === 0;
-    if ((detalle.profesores || []).length === 1) {
-      profesorSel.value = detalle.profesores[0].id_profesor;
+    profesorSel.disabled = profesores.length === 0;
+    
+    if (profesores.length === 1) {
+      profesorSel.value = profesores[0].id_profesor;
     }
 
     if (hint) {
-      if ((detalle.estudiantes || []).length === 0) {
+      if (estudiantes.length === 0) {
         hint.textContent = 'Este grupo no tiene estudiantes matriculados.';
         hint.classList.add('text-danger');
       } else {
-        hint.textContent = '';
+        hint.textContent = `Se cargaron ${estudiantes.length} estudiante(s) correctamente.`;
         hint.classList.remove('text-danger');
       }
     }
   } catch (error) {
     console.error('Error cargando roster del grupo', error);
+    personaSel.innerHTML = '<option value="" disabled selected>Error al cargar estudiantes</option>';
+    profesorSel.innerHTML = '<option value="" disabled selected>Error al cargar profesor</option>';
   }
 }
 
@@ -161,7 +193,7 @@ function poblarFiltroGrupoHistorial() {
   if (!sel) return;
   const valorActual = sel.value;
   sel.innerHTML = '<option value="">Todos los grupos</option>';
-  if (typeof allGrupos !== 'undefined') {
+  if (typeof allGrupos !== 'undefined' && Array.isArray(allGrupos)) {
     allGrupos.forEach((g) => {
       const id = g.id_grupo ?? g.id;
       sel.add(new Option(g.nombre_grupo ?? `Grupo ${id}`, id));

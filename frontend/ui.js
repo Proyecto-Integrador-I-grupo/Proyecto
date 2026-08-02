@@ -293,11 +293,42 @@ function initApp() {
     grupoForm.addEventListener('submit', handleGrupoSubmit);
   }
 
+  const gestionGrupoForm = document.getElementById('gestion-grupo-form');
+  if (gestionGrupoForm && !gestionGrupoForm.dataset.wired) {
+    gestionGrupoForm.dataset.wired = '1';
+    gestionGrupoForm.addEventListener('submit', handleGestionGrupoSubmit);
+  }
+
+  const gestionGrupoBtn = document.querySelector('[data-bs-target="#modalGestionGrupo"]');
+  if (gestionGrupoBtn && !gestionGrupoBtn.dataset.wired) {
+    gestionGrupoBtn.dataset.wired = '1';
+    gestionGrupoBtn.addEventListener('click', async () => {
+      await populateGestionGrupoModal();
+      await populateProfesoresSelects(true);
+    });
+  }
+
   const grupoProfSearch = document.getElementById('grupo-profesor-search');
   if (grupoProfSearch && !grupoProfSearch.dataset.wired) {
     grupoProfSearch.dataset.wired = '1';
     grupoProfSearch.addEventListener('input', () => {
       filtrarProfesoresGrupo(grupoProfSearch.value);
+    });
+  }
+
+  const gestionProfSearch = document.getElementById('gestion-profesor-search');
+  if (gestionProfSearch && !gestionProfSearch.dataset.wired) {
+    gestionProfSearch.dataset.wired = '1';
+    gestionProfSearch.addEventListener('input', () => {
+      filtrarProfesoresGestion(gestionProfSearch.value);
+    });
+  }
+
+  const gestionGrupoSelect = document.getElementById('gestion-grupo-select');
+  if (gestionGrupoSelect && !gestionGrupoSelect.dataset.wired) {
+    gestionGrupoSelect.dataset.wired = '1';
+    gestionGrupoSelect.addEventListener('change', async () => {
+      await cargarDetalleGestionGrupo(Number(gestionGrupoSelect.value));
     });
   }
 
@@ -1833,15 +1864,16 @@ async function borrarSeccion(idSeccion) {
   }
 }
 
-async function populateProfesoresSelects() {
+async function populateProfesoresSelects(isGestion = false) {
   try {
     const res = await apiFetch('/api/profesores');
     if (!res.ok) return;
     const profesores = await res.json();
     const grupoProfSel = document.getElementById('grupo-profesor');
     const asisProfSel = document.getElementById('asis-id-profesor');
+    const gestionProfSel = document.getElementById('gestion-grupo-profesor');
 
-    [grupoProfSel, asisProfSel].forEach((select) => {
+    [grupoProfSel, asisProfSel, gestionProfSel].forEach((select) => {
       if (!select) return;
       select.innerHTML = '<option value="" disabled selected>Seleccionar profesor</option>';
     });
@@ -1854,9 +1886,14 @@ async function populateProfesoresSelects() {
       opt.dataset.busqueda = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''} ${p.materia ?? ''}`.toLowerCase();
       if (grupoProfSel) grupoProfSel.add(opt.cloneNode(true));
       if (asisProfSel) asisProfSel.add(opt.cloneNode(true));
+      if (gestionProfSel) gestionProfSel.add(opt.cloneNode(true));
     });
 
     filtrarProfesoresGrupo(document.getElementById('grupo-profesor-search')?.value || '');
+    filtrarProfesoresGestion(document.getElementById('gestion-profesor-search')?.value || '');
+    if (isGestion) {
+      await cargarDetalleGestionGrupo(Number(document.getElementById('gestion-grupo-select')?.value || 0));
+    }
   } catch (error) {
     console.error('Error poblando profesores', error);
   }
@@ -1871,6 +1908,90 @@ function filtrarProfesoresGrupo(termino) {
     const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
     option.hidden = !!busqueda && !texto.includes(busqueda);
   });
+}
+
+function filtrarProfesoresGestion(termino) {
+  const select = document.getElementById('gestion-grupo-profesor');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
+    option.hidden = !!busqueda && !texto.includes(busqueda);
+  });
+}
+
+async function populateGestionGrupoModal() {
+  const select = document.getElementById('gestion-grupo-select');
+  if (!select) return;
+
+  select.innerHTML = '<option value="" disabled selected>Seleccionar grupo</option>';
+  allGrupos.forEach((grupo) => {
+    const nombre = `${grupo.nombre_grupo} · ${grupo.nombre_seccion || grupo.id_seccion} · Cupo ${grupo.ocupados ?? 0}/${grupo.capacidad ?? 0}`;
+    select.add(new Option(nombre, grupo.id_grupo));
+  });
+}
+
+async function cargarDetalleGestionGrupo(idGrupo) {
+  const grupo = allGrupos.find((g) => (g.id_grupo ?? g.id) === Number(idGrupo));
+  const capacidadInput = document.getElementById('gestion-grupo-capacidad');
+  const aulaSelect = document.getElementById('gestion-grupo-aula');
+  const profSelect = document.getElementById('gestion-grupo-profesor');
+
+  if (!grupo || !capacidadInput || !aulaSelect || !profSelect) return;
+
+  capacidadInput.value = grupo.capacidad ?? 30;
+  aulaSelect.value = grupo.aula ?? '';
+
+  try {
+    const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/detalle`);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return;
+
+    const profesorActivo = (json.profesores || []).find((p) => p?.id_profesor);
+    if (profesorActivo) {
+      profSelect.value = String(profesorActivo.id_profesor);
+    }
+  } catch (error) {
+    console.error('Error cargando detalle del grupo', error);
+  }
+}
+
+async function handleGestionGrupoSubmit(e) {
+  e.preventDefault();
+
+  const idGrupo = Number(document.getElementById('gestion-grupo-select')?.value || 0);
+  const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
+  const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
+  const idProfesor = Number(document.getElementById('gestion-grupo-profesor')?.value || 0);
+
+  if (!idGrupo || !capacidad || !idProfesor) {
+    showToast('Selecciona un grupo, capacidad y profesor.', 'error');
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacidad, aula, id_profesor: idProfesor })
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showToast(json.error || json.mensaje || 'No se pudo actualizar el grupo.', 'error');
+      return;
+    }
+
+    showToast('Grupo actualizado correctamente.', 'success');
+    document.getElementById('gestion-grupo-form')?.reset();
+    await populateGruposSelects();
+    await populateGestionGrupoModal();
+    await populateProfesoresSelects(true);
+  } catch (error) {
+    console.error('Error actualizando grupo', error);
+    showToast('Error al actualizar el grupo.', 'error');
+  }
 }
 
 async function handleMatriculaSubmit(e) {

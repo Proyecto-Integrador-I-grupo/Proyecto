@@ -2,6 +2,7 @@ import {
   procesarMatricula,
   obtenerGruposService,
   crearGrupoService,
+  actualizarGrupoService,
   obtenerDetalleGrupoService
 } from "../services/matriculaServiceP.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
@@ -50,6 +51,27 @@ export async function crearGrupo(req, res) {
     }
 
     res.status(201).json(resultado);
+  } catch (error) {
+    res.status(400).json({ mensaje: error.message });
+  }
+}
+
+export async function actualizarGrupo(req, res) {
+  try {
+    const { id } = req.params;
+    const resultado = await actualizarGrupoService(Number(id), req.body);
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "grupo",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify({ id_grupo: Number(id) }),
+        datos_nuevos: JSON.stringify({ ...req.body, id_grupo: Number(id) })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
+    res.json(resultado);
   } catch (error) {
     res.status(400).json({ mensaje: error.message });
   }

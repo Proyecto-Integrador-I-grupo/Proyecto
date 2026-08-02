@@ -187,6 +187,83 @@ export async function crearGrupoService(datos) {
   }
 }
 
+export async function actualizarGrupoService(idGrupo, datos) {
+  const { capacidad, aula, id_profesor } = datos;
+
+  const capacidadNum = Number(capacidad);
+  const idProfesorNum = Number(id_profesor);
+
+  if (!Number.isInteger(capacidadNum) || capacidadNum <= 0) {
+    throw new Error("La capacidad debe ser un número entero mayor a cero.");
+  }
+  if (!Number.isInteger(idProfesorNum) || idProfesorNum <= 0) {
+    throw new Error("Debe asignar un profesor encargado.");
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [grupoRows] = await connection.query(
+      "SELECT id_grupo, estado FROM grupo WHERE id_grupo = ? AND estado = TRUE",
+      [idGrupo]
+    );
+    if (grupoRows.length === 0) {
+      throw new Error("El grupo no existe o está inactivo.");
+    }
+
+    const [profesorRows] = await connection.query(
+      "SELECT estado FROM profesor WHERE id_profesor = ?",
+      [idProfesorNum]
+    );
+    if (profesorRows.length === 0) {
+      throw new Error("El profesor seleccionado no existe.");
+    }
+    if (!profesorRows[0].estado) {
+      throw new Error("No se puede asignar un profesor inactivo a un grupo.");
+    }
+
+    const [profActualRows] = await connection.query(
+      `SELECT id_profesor
+       FROM grupo_profesor
+       WHERE id_grupo = ? AND estado = TRUE AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+       ORDER BY fecha_inicio DESC
+       LIMIT 1`,
+      [idGrupo]
+    );
+
+    await connection.query(
+      `UPDATE grupo
+       SET capacidad = ?, aula = ?
+       WHERE id_grupo = ?`,
+      [capacidadNum, aula ? aula.trim() : null, idGrupo]
+    );
+
+    if (profActualRows.length > 0 && profActualRows[0].id_profesor !== idProfesorNum) {
+      await connection.query(
+        `UPDATE grupo_profesor
+         SET fecha_fin = CURDATE(), estado = FALSE
+         WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE`,
+        [idGrupo, profActualRows[0].id_profesor]
+      );
+
+      await connection.query(
+        `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
+         VALUES (?, ?, CURDATE(), TRUE)`,
+        [idGrupo, idProfesorNum]
+      );
+    }
+
+    await connection.commit();
+    return { mensaje: "Grupo actualizado correctamente.", id_grupo: idGrupo };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 /* ==========================================
    ROSTER DE GRUPO (para Asistencia)
    ========================================== */

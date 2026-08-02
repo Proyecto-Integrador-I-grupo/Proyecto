@@ -4,6 +4,7 @@ import {
   crearMatricula,
   obtenerGrupos,
   crearGrupo,
+  actualizarGrupo,
   obtenerDetalleGrupo
 } from "../controllers/matriculaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
@@ -38,12 +39,18 @@ const validarGrupo = [
   body("id_seccion").isInt({ min: 1 }).withMessage("Debe seleccionar una sección académica.")
 ];
 
+const validarGrupoUpdate = [
+  body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
+  body("id_profesor").isInt({ min: 1 }).withMessage("Debe asignar un profesor encargado.")
+];
+
 // Matrícula
 router.post("/matricula", requireAuth, validarMatricula, validarCampos, crearMatricula);
 
 // Grupos
 router.get("/grupos", obtenerGrupos);
 router.post("/grupos", requireAuth, validarGrupo, validarCampos, crearGrupo);
+router.put("/grupos/:id", requireAuth, validarGrupoUpdate, validarCampos, actualizarGrupo);
 router.get("/grupos/:id/detalle", obtenerDetalleGrupo);
 
 export default router;

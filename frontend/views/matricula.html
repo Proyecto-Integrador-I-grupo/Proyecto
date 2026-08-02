@@ -55,8 +55,9 @@
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Estudiante</label>
-                <input id="mat-persona-search" type="text" class="form-control mb-2" placeholder="Buscar estudiante por nombre o apellido...">
-                <select id="mat-persona" class="form-select" required></select>
+                <select id="mat-persona" class="form-select" required>
+                  <option value="" disabled selected>Seleccionar estudiante</option>
+                </select>
               </div>
               <div class="col-12">
                 <label class="form-label">Grupo Destino</label>
@@ -112,7 +113,7 @@
               <div class="col-12">
                 <label class="form-label">Nombre del Grupo</label>
                 <input id="grupo-nombre" class="form-control" placeholder="Ej. 3-C" maxlength="20" required>
-                <div class="form-text">Escribe el nombre del grupo manualmente. Los niveles base y sus letras aparecen luego en la sección académica.</div>
+                <div class="form-text">Escribe el nombre del grupo manualmente.</div>
               </div>
               <div class="col-12">
                 <label class="form-label d-flex justify-content-between align-items-center mb-0">
@@ -122,7 +123,7 @@
                 <select id="grupo-seccion" class="form-select" required>
                   <option value="" disabled selected>Seleccionar sección</option>
                 </select>
-                <div class="form-text" id="grupo-seccion-empty-hint">Las secciones base y las creadas por el administrador quedan disponibles para elegir.</div>
+                <div class="form-text" id="grupo-seccion-empty-hint">Las secciones base y las creadas quedan disponibles para elegir.</div>
               </div>
               <div class="col-6">
                 <label class="form-label">Capacidad Máxima</label>
@@ -208,9 +209,12 @@
               </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" id="btn-borrar-grupo" class="btn btn-sm btn-outline-danger">Borrar grupo</button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
+            </div>
           </div>
         </form>
       </div>

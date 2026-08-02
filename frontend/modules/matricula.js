@@ -45,10 +45,14 @@ function wireMatriculaEvents() {
   const btnBorrarGrupo = document.getElementById('btn-borrar-grupo');
   if (btnBorrarGrupo && !btnBorrarGrupo.dataset.wired) {
     btnBorrarGrupo.dataset.wired = '1';
-    btnBorrarGrupo.addEventListener('click', async () => {
+    btnBorrarGrupo.addEventListener('click', async (e) => {
+      e.preventDefault();
       const idGrupo = document.getElementById('gestion-grupo-select')?.value;
       if (!idGrupo) {
         showToast('Selecciona un grupo para borrar.', 'error');
+        return;
+      }
+      if (!confirm('¿Estás seguro de que deseas eliminar este grupo?')) {
         return;
       }
       await borrarGrupo(idGrupo);
@@ -105,10 +109,14 @@ function wireMatriculaEvents() {
   const btnBorrarSeccion = document.getElementById('btn-borrar-seccion');
   if (btnBorrarSeccion && !btnBorrarSeccion.dataset.wired) {
     btnBorrarSeccion.dataset.wired = '1';
-    btnBorrarSeccion.addEventListener('click', async () => {
+    btnBorrarSeccion.addEventListener('click', async (e) => {
+      e.preventDefault();
       const idSeccion = document.getElementById('seccion-delete-select')?.value;
       if (!idSeccion) {
         showToast('Selecciona una sección para borrar.', 'error');
+        return;
+      }
+      if (!confirm('¿Estás seguro de que deseas eliminar esta sección?')) {
         return;
       }
       await borrarSeccion(idSeccion);

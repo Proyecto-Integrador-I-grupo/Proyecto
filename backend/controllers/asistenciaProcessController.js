@@ -1,4 +1,4 @@
-import { db } from '../config/database.js';
+import db from '../config/database.js';
 import * as auditoriaModel from '../models/auditoriaModel.js';
 
 export async function actualizarAsistencia(req, res) {

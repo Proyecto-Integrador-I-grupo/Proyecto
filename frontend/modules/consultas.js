@@ -2,7 +2,8 @@
   const moduleName = 'consultas';
 
   let estudiantes = [];
-  let profesores = [];
+let profesores = [];
+let asistencias = [];
 
   window.EduControlModules = window.EduControlModules || {};
 
@@ -48,10 +49,11 @@ modificarDetalle?.addEventListener('click', modificarDesdeDetalle);
     mostrarCargando();
 
     try {
-      const [resEstudiantes, resProfesores] = await Promise.all([
-        apiFetch('/api/estudiantes'),
-        apiFetch('/api/profesores')
-      ]);
+      const [resEstudiantes, resProfesores, resAsistencias] = await Promise.all([
+  apiFetch('/api/estudiantes'),
+  apiFetch('/api/profesores'),
+  apiFetch('/api/procesos/asistencia')
+]);
 
       if (!resEstudiantes.ok) {
         throw new Error('No se pudieron cargar los estudiantes.');
@@ -183,76 +185,109 @@ modificarDetalle?.addEventListener('click', modificarDesdeDetalle);
   }
 
   function mostrarProfesores() {
-    const busqueda = obtenerBusqueda();
-    const estado = obtenerEstado();
+  const busqueda = obtenerBusqueda();
+  const estadoSeleccionado = obtenerEstado();
 
-    const resultados = profesores.filter((profesor) => {
-      const texto = `${formarNombre(profesor)} ${profesor.materia ?? ''}`.toLowerCase();
-      const activo = profesor.estado == 1 || profesor.estado === true;
+  const resultados = profesores.filter((profesor) => {
+    const texto = `${formarNombre(profesor)} ${profesor.materia ?? ''}`
+      .toLowerCase();
 
-      const coincideBusqueda = !busqueda || texto.includes(busqueda);
-      const coincideEstado =
-        !estado ||
-        (estado === 'activo' && activo) ||
-        (estado === 'inactivo' && !activo);
+    const activo =
+      profesor.estado == 1 ||
+      profesor.estado === true;
 
-      return coincideBusqueda && coincideEstado;
-    });
+    const coincideBusqueda =
+      !busqueda ||
+      texto.includes(busqueda);
 
-    actualizarTitulo('Profesores registrados', resultados.length);
+    const coincideEstado =
+      !estadoSeleccionado ||
+      (estadoSeleccionado === 'activo' && activo) ||
+      (estadoSeleccionado === 'inactivo' && !activo);
 
-    cambiarEncabezado(`
-      <tr>
-        <th>ID</th>
-        <th>Nombre completo</th>
-        <th>Materia</th>
-        <th>Ingreso</th>
-        <th>Estado</th>
-        <th class="text-end">Acciones</th>
-      </tr>
-    `);
+    return coincideBusqueda && coincideEstado;
+  });
 
-    if (!resultados.length) {
-      mostrarSinResultados(6);
-      return;
-    }
+  actualizarTitulo(
+    'Profesores registrados',
+    resultados.length
+  );
 
-    const body = document.getElementById('consulta-tabla-body');
-    body.innerHTML = '';
+  cambiarEncabezado(`
+    <tr>
+      <th>ID</th>
+      <th>Nombre completo</th>
+      <th>Materia</th>
+      <th>Ingreso</th>
+      <th>Estado</th>
+      <th class="text-end">Acciones</th>
+    </tr>
+  `);
 
-    resultados.forEach((profesor) => {
-      const id = profesor.id_profesor ?? profesor.id ?? '';
-      const nombre = formarNombre(profesor);
-      const materia = profesor.materia ?? 'Sin asignar';
-      const ingreso = limpiarFecha(profesor.fecha_ingreso);
-      const activo = profesor.estado == 1 || profesor.estado === true;
-
-      const fila = document.createElement('tr');
-
-      fila.innerHTML = `
-        <td>${id}</td>
-        <td>${nombre || '-'}</td>
-        <td>${materia}</td>
-        <td>${ingreso}</td>
-        <td>
-          <span class="badge ${activo ? 'bg-success' : 'bg-danger'}">
-            ${activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </td>
-        <td class="text-end">
-          <button
-  type="button"
-  class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
-  data-id="${id}">
-  <i class="bi bi-eye"></i>
-  Ver
-</button>
-        </td>
-      `;
-
-      body.appendChild(fila);
-    });
+  if (!resultados.length) {
+    mostrarSinResultados(6);
+    return;
   }
+
+  const body = document.getElementById(
+    'consulta-tabla-body'
+  );
+
+  if (!body) return;
+
+  body.innerHTML = '';
+
+  resultados.forEach((profesor) => {
+    const id =
+      profesor.id_profesor ??
+      profesor.id ??
+      '';
+
+    const nombre =
+      formarNombre(profesor);
+
+    const materia =
+      profesor.materia ??
+      'Sin asignar';
+
+    const ingreso =
+      limpiarFecha(profesor.fecha_ingreso);
+
+    const activo =
+      profesor.estado == 1 ||
+      profesor.estado === true;
+
+    const fila = document.createElement('tr');
+
+    fila.innerHTML = `
+      <td>${id}</td>
+
+      <td>${nombre || '-'}</td>
+
+      <td>${materia}</td>
+
+      <td>${ingreso}</td>
+
+      <td>
+        <span class="badge ${activo ? 'bg-success' : 'bg-danger'}">
+          ${activo ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+
+      <td class="text-end">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
+          data-id="${id}">
+          <i class="bi bi-eye"></i>
+          Ver
+        </button>
+      </td>
+    `;
+
+    body.appendChild(fila);
+  });
+}
 
   function mostrarPendiente(tipo) {
     const nombres = {

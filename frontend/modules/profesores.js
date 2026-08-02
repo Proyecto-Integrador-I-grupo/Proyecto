@@ -99,6 +99,16 @@ function wireProfesoresEvents() {
       await reintegrarProfesor(profesorReintegrarId);
     });
   }
+
+  // Limpieza segura de backdrops al cerrar modales para prevenir bloqueos de pantalla
+  const modalSustitutoEl = document.getElementById('modalAsignarSustituto');
+  if (modalSustitutoEl && !modalSustitutoEl.dataset.wiredBackdrop) {
+    modalSustitutoEl.dataset.wiredBackdrop = '1';
+    modalSustitutoEl.addEventListener('hidden.bs.modal', () => {
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    });
+  }
 }
 
 async function loadProfesores() {
@@ -196,7 +206,7 @@ function renderProfesoresTable(profesores) {
       <td>${celdaGrupos}</td>
       <td>${badgeEstado}</td>
       <td class="text-end">
-        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-2 flex-wrap">
+        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-1 flex-wrap">
           ${activo && esAdmin ? `
             <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-slash me-1"></i>Destituir
@@ -521,11 +531,6 @@ async function asignarSustituto(idGrupo, idNuevoProfesor, idProfesorAnterior) {
   }
 }
 
-/**
- * Puebla los selects de profesores usados por Matrícula (grupo-profesor,
- * gestion-grupo-profesor) y Asistencia (asis-id-profesor). Vive aquí porque
- * la fuente de datos (/api/profesores) es del dominio de este módulo.
- */
 async function populateProfesoresSelects(isGestion = false) {
   try {
     const res = await apiFetch('/api/profesores');

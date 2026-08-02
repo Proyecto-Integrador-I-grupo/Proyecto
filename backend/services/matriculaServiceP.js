@@ -21,7 +21,6 @@ export async function procesarMatricula(datos) {
   try {
     await connection.beginTransaction();
 
-    // 1. Validar existencia y estado del estudiante
     const [estudianteRows] = await connection.query(
       "SELECT estado FROM estudiante WHERE id_estudiante = ?",
       [id_estudiante]
@@ -33,7 +32,6 @@ export async function procesarMatricula(datos) {
       throw new Error("No se puede matricular a un estudiante inactivo.");
     }
 
-    // 2. Validar que el usuario que procesa exista y esté activo
     const [usuarioRows] = await connection.query(
       "SELECT estado FROM usuario WHERE id_usuario = ?",
       [id_usuario]
@@ -42,7 +40,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El usuario que procesa la matrícula no es válido.");
     }
 
-    // 3. Validar existencia y capacidad del grupo (bloquea la fila para actualizar cupos de forma segura)
     const [grupoRows] = await connection.query(
       "SELECT capacidad, estado, fn_estudiantes_grupo(id_grupo) AS ocupados FROM grupo WHERE id_grupo = ? FOR UPDATE",
       [id_grupo]
@@ -58,7 +55,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El grupo ya no tiene cupo disponible.");
     }
 
-    // 4. Evitar matricular dos veces al mismo estudiante en el mismo grupo
     const [yaEnGrupo] = await connection.query(
       "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
       [id_grupo, id_estudiante]
@@ -67,11 +63,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El estudiante ya está matriculado en este grupo.");
     }
 
-    // 5. Registrar matrícula
-    // OJO: sp_registrar_matricula declara p_observaciones como VARCHAR(20)
-    // (no 100, como sí permite la columna real). En modo estricto de MySQL,
-    // mandarle algo más largo revienta la transacción entera con
-    // "Data too long for column", así que se recorta de forma segura aquí.
     const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 20) : null;
     const observacionesDetalle = observaciones ? observaciones.trim().slice(0, 150) : null;
 
@@ -83,7 +74,6 @@ export async function procesarMatricula(datos) {
       "SELECT LAST_INSERT_ID() AS id_matricula"
     );
 
-    // 6. Registrar detalle de matrícula
     if (id_matricula) {
       await connection.query(
         "CALL sp_registrar_detalle_matricula(?, ?, ?, ?)",
@@ -91,7 +81,6 @@ export async function procesarMatricula(datos) {
       );
     }
 
-    // 7. Asignar al estudiante al grupo (esto llena formalmente el cupo en base de datos)
     await connection.query(
       "CALL sp_asignar_estudiante_grupo(?, ?, ?)",
       [fecha, id_grupo, id_estudiante]
@@ -264,12 +253,54 @@ export async function actualizarGrupoService(idGrupo, datos) {
   }
 }
 
+export async function eliminarGrupoService(idGrupo) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Verificar si el grupo existe y está activo
+    const [grupoRows] = await connection.query(
+      "SELECT id_grupo FROM grupo WHERE id_grupo = ? AND estado = TRUE",
+      [idGrupo]
+    );
+    if (grupoRows.length === 0) {
+      throw new Error("El grupo no existe o ya se encuentra inactivo.");
+    }
+
+    // 2. Opcional: Validar si tiene estudiantes activos matriculados
+    const [estudiantesRows] = await connection.query(
+      "SELECT COUNT(*) AS total FROM grupo_estudiante WHERE id_grupo = ? AND estado = TRUE",
+      [idGrupo]
+    );
+    if (estudiantesRows[0].total > 0) {
+      throw new Error("No se puede eliminar el grupo porque tiene estudiantes matriculados activos.");
+    }
+
+    // 3. Realizar el borrado lógico del grupo
+    await connection.query(
+      "UPDATE grupo SET estado = FALSE WHERE id_grupo = ?",
+      [idGrupo]
+    );
+
+    // 4. Desactivar relaciones asociadas (profesores en el grupo)
+    await connection.query(
+      "UPDATE grupo_profesor SET estado = FALSE, fecha_fin = COALESCE(fecha_fin, CURDATE()) WHERE id_grupo = ?",
+      [idGrupo]
+    );
+
+    await connection.commit();
+    return { mensaje: "Grupo eliminado correctamente.", id_grupo: idGrupo };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 /* ==========================================
    ROSTER DE GRUPO (para Asistencia)
    ========================================== */
-// Los estudiantes matriculados YA NO aparecen en /api/estudiantes (esa lista es
-// solo el pre-registro de pendientes). Asistencia necesita justo lo contrario:
-// quién SÍ está activo en el grupo, más quién es su profesor asignado.
 export async function obtenerDetalleGrupoService(id_grupo) {
   const [estudiantes] = await pool.query(
     `SELECT e.id_estudiante, p.nombre, p.apellido1, p.apellido2
@@ -390,7 +421,7 @@ export async function listarMatriculasService(filtros = {}) {
      LEFT JOIN seccion s
        ON g.id_seccion = s.id_seccion
 
-     WHERE ${condiciones.join(" AND ")}
+     WHERE ${condiciones.join(" ")}
 
      ORDER BY m.fecha DESC, m.id_matricula DESC
      LIMIT 500`,

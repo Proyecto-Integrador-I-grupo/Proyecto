@@ -94,7 +94,7 @@ function wireAsistenciaEvents() {
   const asisFechaInput = document.getElementById('asis-fecha');
   if (asisFechaInput) { asisFechaInput.max = hoyISO; if (!asisFechaInput.value) asisFechaInput.value = hoyISO; }
 
-  // Asegurar que al abrir el modal de asistencia se recarguen los grupos correctamente
+  // Asegurar que al abrir el modal de asistencia se recarguen los grupos correctamente y se cargue el roster si ya hay uno seleccionado
   const modalRegistrarAsistenciaEl = document.getElementById('modalRegistrarAsistencia');
   if (modalRegistrarAsistenciaEl && !modalRegistrarAsistenciaEl.dataset.wired) {
     modalRegistrarAsistenciaEl.dataset.wired = '1';
@@ -105,6 +105,9 @@ function wireAsistenciaEvents() {
       const grupoSel = document.getElementById('asis-id-grupo');
       if (grupoSel && grupoSel.value) {
         await cargarRosterGrupoAsistencia();
+      } else if (grupoSel && grupoSel.options.length > 1) {
+        grupoSel.value = grupoSel.options[1].value;
+        await cargarRosterGrupoAsistencia();
       }
     });
   }
@@ -114,6 +117,12 @@ async function loadAsistenciaData() {
   if (typeof populateGruposSelects === 'function') {
     await populateGruposSelects();
   }
+  
+  const grupoSel = document.getElementById('asis-id-grupo');
+  if (grupoSel && grupoSel.options.length > 1 && !grupoSel.value) {
+    grupoSel.value = grupoSel.options[1].value;
+  }
+
   await cargarRosterGrupoAsistencia();
   poblarFiltroGrupoHistorial();
   await poblarFiltroEstudiantesHistorial('');
@@ -126,9 +135,6 @@ async function cargarRosterGrupoAsistencia() {
   const profesorSel = document.getElementById('asis-id-profesor');
   const hint = document.getElementById('asis-grupo-hint');
   if (!grupoSel || !personaSel || !profesorSel) return;
-
-  // Imprimir en consola para depurar qué valor tiene seleccionado el select
-  console.log("Valor crudo del select grupo:", grupoSel.value);
 
   const idGrupo = parseInt(grupoSel.value, 10);
   

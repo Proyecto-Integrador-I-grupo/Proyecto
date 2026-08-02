@@ -19,8 +19,6 @@
 /* ==========================================
    MÓDULO DE MATRÍCULA
    Matrícula de estudiantes, grupos y secciones académicas.
-   allGrupos queda como variable global de este archivo porque Asistencia y
-   Reportes también la consultan (poblar filtros de grupo, cupos, etc.).
    ========================================== */
 
 let allGrupos = [];
@@ -116,9 +114,6 @@ function wireMatriculaEvents() {
   }
   setDefaultSeccionPeriodo();
 
-  // Ninguno de los dos triggers de BD permite fecha futura (matrícula por
-  // sentido común, asistencia por trigger explícito), así que se limita
-  // también en el input para no dejar que el usuario ni lo intente.
   const hoyISO = new Date().toISOString().split('T')[0];
   const matFechaInput = document.getElementById('mat-fecha');
   if (matFechaInput) matFechaInput.max = hoyISO;
@@ -166,6 +161,14 @@ function wireMatriculaEvents() {
       filtrarGruposMatricula(matGrupoSearch.value);
     });
   }
+
+  const matPersonaSearch = document.getElementById('mat-persona-search');
+  if (matPersonaSearch && !matPersonaSearch.dataset.wired) {
+    matPersonaSearch.dataset.wired = '1';
+    matPersonaSearch.addEventListener('input', () => {
+      filtrarEstudiantesMatricula(matPersonaSearch.value);
+    });
+  }
 }
 
 async function loadMatriculaData() {
@@ -193,12 +196,33 @@ async function populatePersonaSelects() {
       matSel.innerHTML = '<option value="" disabled selected>Seleccionar estudiante</option>';
       estudiantes.forEach((p) => {
         const id = p.id_estudiante ?? p.id;
-        const text = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
-        matSel.add(new Option(text, id));
+        const nombreCompleto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
+        const option = new Option(nombreCompleto, id);
+        option.dataset.nombre = nombreCompleto.toLowerCase();
+        matSel.add(option);
       });
     }
+    filtrarEstudiantesMatricula(document.getElementById('mat-persona-search')?.value || '');
   } catch (error) {
     console.error('Error poblando estudiantes', error);
+  }
+}
+
+function filtrarEstudiantesMatricula(termino) {
+  const select = document.getElementById('mat-persona');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    if (option.value === '') return;
+    const nombre = (option.dataset.nombre || option.textContent || '').toLowerCase();
+    const coincide = !busqueda || nombre.includes(busqueda);
+    option.hidden = !coincide;
+  });
+
+  const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
+  if (primerVisible) {
+    select.value = primerVisible.value;
   }
 }
 
@@ -247,6 +271,7 @@ function filtrarGruposMatricula(termino) {
   if (!select) return;
 
   Array.from(select.options).forEach((option) => {
+    if (option.value === '') return;
     const nombre = (option.dataset.nombre || option.textContent || '').toLowerCase();
     const coincide = !busqueda || nombre.includes(busqueda);
     option.hidden = !coincide;
@@ -255,6 +280,7 @@ function filtrarGruposMatricula(termino) {
   const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
   if (primerVisible) {
     select.value = primerVisible.value;
+    actualizarInfoCupoGrupo();
   }
 }
 
@@ -442,21 +468,14 @@ async function handleMatriculaSubmit(e) {
   const fechaInput = document.getElementById('mat-fecha').value;
   const fecha = fechaInput || new Date().toISOString().split('T')[0];
 
-  // El año lectivo se toma del grupo elegido (ligado a su sección), no de la
-  // fecha del día: una matrícula debe registrarse en el año lectivo del
-  // grupo/sección, que no siempre coincide con el año calendario actual.
   const anio = grupoSeleccionado?.periodo_lectivo ?? new Date(`${fecha}T00:00:00`).getFullYear();
 
   const payload = {
     fecha,
-    // sp_registrar_matricula espera periodo_lectivo como SMALLINT (trimestre), no el nombre del mes.
     periodo: parseInt(document.getElementById('mat-periodo').value, 10),
     anio,
     tipo: document.getElementById('mat-tipo').value,
-    // estado_matricula es VARCHAR(20): se fija un valor real de negocio, no un número.
     estado: 'activa',
-    // p_observaciones del SP es VARCHAR(20): el input ya tiene maxlength=20,
-    // pero se recorta también aquí por seguridad si el navegador lo ignora.
     observaciones: document.getElementById('mat-observaciones').value.trim().slice(0, 20) || null,
     id_estudiante: personaId,
     id_usuario: currentUser?.id_usuario ?? 1,
@@ -482,7 +501,7 @@ async function handleMatriculaSubmit(e) {
       document.getElementById('matricula-form').reset();
       
       await populateGruposSelects();
-      await populatePersonaSelects(); // el estudiante ya matriculado debe salir del select
+      await populatePersonaSelects();
       await refreshDashboardCounts();
     } else {
       showToast(json.error || json.mensaje || 'Error al procesar la matrícula', 'error');
@@ -528,8 +547,6 @@ async function handleGrupoSubmit(e) {
 
 async function handleSeccionSubmit(e) {
   e.preventDefault();
-  // seccionService.js espera { nombre, nivel, anio_lectivo, descripcion } — NO
-  // { nombre_seccion, periodo_lectivo } como en mi primera versión de este módulo.
   const payload = {
     nombre: document.getElementById('seccion-nombre').value.trim(),
     nivel: document.getElementById('seccion-nivel').value.trim(),

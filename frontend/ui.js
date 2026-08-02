@@ -909,34 +909,28 @@ function renderProfesoresTable(profesores) {
       <td>${celdaGrupos}</td>
       <td>${badgeEstado}</td>
       <td class="text-end">
-        <div class="dropdown">
-          <button class="btn btn-sm action-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones">
-            <i class="bi bi-three-dots"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-            ${activo && esAdmin ? `
-              <li><a class="dropdown-item destituir-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
-                <i class="bi bi-person-slash text-danger me-2"></i>Destituir
-              </a></li>
-            ` : ''}
-            ${!activo && esAdmin ? `
-              <li><a class="dropdown-item reintegrar-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
-                <i class="bi bi-person-check-fill text-success me-2"></i>Reintegrar
-              </a></li>
-            ` : ''}
-            ${!activo && esAdmin && grupoPendientes > 0 ? `
-              <li><a class="dropdown-item sustituto-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
-                <i class="bi bi-person-lines-fill text-warning me-2"></i>Asignar sustituto
-              </a></li>
-            ` : ''}
-            ${esAdmin ? `
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger eliminar-profesor-btn" href="#" data-id="${idProf}" data-nombre="${nombreComp}">
-                <i class="bi bi-trash me-2"></i>Eliminar
-              </a></li>
-            ` : ''}
-            ${!esAdmin ? `<li><span class="dropdown-item-text text-muted small">Sin acciones disponibles</span></li>` : ''}
-          </ul>
+        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-2 flex-wrap">
+          ${activo && esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-slash me-1"></i>Destituir
+            </button>
+          ` : ''}
+          ${!activo && esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-success reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-check-fill me-1"></i>Reintegrar
+            </button>
+          ` : ''}
+          ${!activo && esAdmin && grupoPendientes > 0 ? `
+            <button type="button" class="btn btn-sm btn-outline-primary sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-lines-fill me-1"></i>Sustituto
+            </button>
+          ` : ''}
+          ${esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-danger eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-trash me-1"></i>Eliminar
+            </button>
+          ` : ''}
+          ${!esAdmin ? `<span class="text-muted small">Sin acciones</span>` : ''}
         </div>
       </td>
     `;

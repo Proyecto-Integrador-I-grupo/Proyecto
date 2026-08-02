@@ -2,6 +2,7 @@ import express from "express";
 import { body } from "express-validator";
 import {
   crearMatricula,
+  obtenerMatriculas,
   obtenerGrupos,
   crearGrupo,
   actualizarGrupo,
@@ -45,6 +46,7 @@ const validarGrupoUpdate = [
 ];
 
 // Matrícula
+router.get("/matricula", requireAuth, obtenerMatriculas);
 router.post("/matricula", requireAuth, validarMatricula, validarCampos, crearMatricula);
 
 // Grupos
@@ -52,5 +54,6 @@ router.get("/grupos", obtenerGrupos);
 router.post("/grupos", requireAuth, validarGrupo, validarCampos, crearGrupo);
 router.put("/grupos/:id", requireAuth, validarGrupoUpdate, validarCampos, actualizarGrupo);
 router.get("/grupos/:id/detalle", obtenerDetalleGrupo);
-
+ 
 export default router;
+  

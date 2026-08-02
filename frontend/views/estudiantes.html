@@ -35,3 +35,92 @@
     </div>
   </div>
 </section>
+
+<!-- Modales del módulo Estudiantes -->
+  <!-- MODAL: ESTUDIANTE -->
+  <div class="modal fade" id="modalEstudiante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-vcard-fill text-primary-emphasis"></i>
+            <span id="persona-form-title">Pre-registro de Estudiante</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="persona-form">
+          <input type="hidden" id="persona-id">
+          <div class="modal-body p-4 bg-light">
+            <div class="alert alert-info py-2 small mb-4 d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill"></i>
+              <span>Estos son los datos personales básicos del estudiante. La matrícula a un grupo se procesa después, desde el módulo de Matrícula.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="nombre">Nombre</label>
+                <input id="nombre" class="form-control" placeholder="Ej. Sofía" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="apellido1">Primer Apellido</label>
+                <input id="apellido1" class="form-control" placeholder="Ej. Rodríguez" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="apellido2">Segundo Apellido</label>
+                <input id="apellido2" class="form-control" placeholder="Ej. Vargas">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="fecha_nacimiento">Fecha de Nacimiento</label>
+                <input id="fecha_nacimiento" type="date" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="genero">Género</label>
+                <select id="genero" class="form-select" required>
+                  <option value="" disabled selected>Seleccione género</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="O">Otro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="persona-fecha-ingreso">Fecha de Ingreso</label>
+                <input id="persona-fecha-ingreso" type="date" class="form-control">
+                <div class="form-text">Si la dejas vacía, se usa la fecha de hoy.</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-white px-4 py-3">
+            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="persona-submit" class="btn btn-primary px-4">
+              <i class="bi bi-check2-circle"></i> Guardar Estudiante
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ELIMINAR ESTUDIANTE -->
+  <div class="modal fade" id="modalEliminarEstudiante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-trash text-danger"></i> Eliminar Estudiante
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <p class="mb-0">
+            ¿Seguro que deseas eliminar a <strong id="eliminar-nombre-estudiante">-</strong>?
+            El estudiante quedará marcado como inactivo y dejará de aparecer en el listado.
+          </p>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-eliminar-estudiante-btn" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>

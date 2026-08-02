@@ -14,3 +14,28 @@
     window.dispatchEvent(new CustomEvent('app:module-ready', { detail: { module: moduleName } }));
   }
 })();
+
+/* ==========================================
+   MÓDULO DE DASHBOARD
+   Contadores generales de estudiantes y profesores.
+   ========================================== */
+
+async function refreshDashboardCounts() {
+  try {
+    const resEst = await apiFetch('/api/estudiantes');
+    if (resEst.ok) {
+      const estudiantes = await resEst.json();
+      const cnt = document.getElementById('cnt-personas');
+      if (cnt) cnt.textContent = estudiantes.length;
+    }
+
+    const resProf = await apiFetch('/api/profesores');
+    if (resProf.ok) {
+      const profesores = await resProf.json();
+      const cntP = document.getElementById('cnt-profesores');
+      if (cntP) cntP.textContent = profesores.length;
+    }
+  } catch {
+    console.error('Error al actualizar contadores');
+  }
+}

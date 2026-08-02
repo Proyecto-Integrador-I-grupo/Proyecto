@@ -47,14 +47,25 @@ function wireMatriculaEvents() {
     btnBorrarGrupo.dataset.wired = '1';
     btnBorrarGrupo.addEventListener('click', async (e) => {
       e.preventDefault();
-      const idGrupo = document.getElementById('gestion-grupo-select')?.value;
-      if (!idGrupo) {
+      
+      const rawValue = document.getElementById('gestion-grupo-select')?.value;
+      if (!rawValue) {
         showToast('Selecciona un grupo para borrar.', 'error');
         return;
       }
+
+      // Limpia cualquier residuo de caracteres extra (como dos puntos o espacios) para dejar solo el ID numérico puro
+      const idGrupo = String(rawValue).split(':')[0].trim();
+
+      if (!idGrupo || isNaN(idGrupo)) {
+        showToast('ID de grupo inválido.', 'error');
+        return;
+      }
+
       if (!confirm('¿Estás seguro de que deseas eliminar este grupo?')) {
         return;
       }
+
       await borrarGrupo(idGrupo);
     });
   }
@@ -88,7 +99,9 @@ function wireMatriculaEvents() {
   if (gestionGrupoSelect && !gestionGrupoSelect.dataset.wired) {
     gestionGrupoSelect.dataset.wired = '1';
     gestionGrupoSelect.addEventListener('change', async () => {
-      await cargarDetalleGestionGrupo(Number(gestionGrupoSelect.value));
+      const rawValue = gestionGrupoSelect.value;
+      const cleanId = String(rawValue).split(':')[0].trim();
+      await cargarDetalleGestionGrupo(Number(cleanId));
     });
   }
 
@@ -279,7 +292,17 @@ async function borrarGrupo(idGrupo) {
     }
 
     showToast('Grupo eliminado correctamente.', 'success');
+    
+    // Remueve el grupo localmente de la memoria para que desaparezca al instante de la interfaz
+    allGrupos = allGrupos.filter(g => String(g.id_grupo ?? g.id) !== String(idGrupo));
+
+    // Cierra el modal de gestión automáticamente
+    const modalEl = document.getElementById('modalGestionGrupo');
+    if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+
     document.getElementById('gestion-grupo-form')?.reset();
+    
+    // Refresca selectores y datos globales
     await populateGruposSelects();
     await populateGestionGrupoModal();
   } catch (error) {
@@ -421,7 +444,8 @@ async function cargarDetalleGestionGrupo(idGrupo) {
 async function handleGestionGrupoSubmit(e) {
   e.preventDefault();
 
-  const idGrupo = Number(document.getElementById('gestion-grupo-select')?.value || 0);
+  const rawGrupoVal = document.getElementById('gestion-grupo-select')?.value || 0;
+  const idGrupo = Number(String(rawGrupoVal).split(':')[0].trim());
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
   const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
   const idProfesor = Number(document.getElementById('gestion-grupo-profesor')?.value || 0);
@@ -466,7 +490,7 @@ async function handleMatriculaSubmit(e) {
   }
 
   const personaId = parseInt(personaSelect.value, 10);
-  const id_grupo = parseInt(grupoSelect.value, 10);
+  const id_grupo = parseInt(String(grupoSelect.value).split(':')[0].trim(), 10);
   const grupoSeleccionado = allGrupos.find((g) => (g.id_grupo ?? g.id) === id_grupo);
 
   const fechaInput = document.getElementById('mat-fecha').value;

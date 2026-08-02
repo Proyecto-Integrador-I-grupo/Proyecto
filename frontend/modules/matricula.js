@@ -42,6 +42,19 @@ function wireMatriculaEvents() {
     gestionGrupoForm.addEventListener('submit', handleGestionGrupoSubmit);
   }
 
+  const btnBorrarGrupo = document.getElementById('btn-borrar-grupo');
+  if (btnBorrarGrupo && !btnBorrarGrupo.dataset.wired) {
+    btnBorrarGrupo.dataset.wired = '1';
+    btnBorrarGrupo.addEventListener('click', async () => {
+      const idGrupo = document.getElementById('gestion-grupo-select')?.value;
+      if (!idGrupo) {
+        showToast('Selecciona un grupo para borrar.', 'error');
+        return;
+      }
+      await borrarGrupo(idGrupo);
+    });
+  }
+
   const gestionGrupoBtn = document.querySelector('[data-bs-target="#modalGestionGrupo"]');
   if (gestionGrupoBtn && !gestionGrupoBtn.dataset.wired) {
     gestionGrupoBtn.dataset.wired = '1';
@@ -80,17 +93,6 @@ function wireMatriculaEvents() {
     grupoSeccionSearch.dataset.wired = '1';
     grupoSeccionSearch.addEventListener('input', () => {
       filtrarSeccionesGrupo(grupoSeccionSearch.value);
-    });
-  }
-
-  const grupoSeccionSel = document.getElementById('grupo-seccion');
-  if (grupoSeccionSel && !grupoSeccionSel.dataset.wired) {
-    grupoSeccionSel.dataset.wired = '1';
-    grupoSeccionSel.addEventListener('change', () => {
-      const hint = document.getElementById('grupo-seccion-empty-hint');
-      if (hint) {
-        hint.textContent = 'La sección elegida quedará asociada al grupo que crearás.';
-      }
     });
   }
 
@@ -161,14 +163,6 @@ function wireMatriculaEvents() {
       filtrarGruposMatricula(matGrupoSearch.value);
     });
   }
-
-  const matPersonaSearch = document.getElementById('mat-persona-search');
-  if (matPersonaSearch && !matPersonaSearch.dataset.wired) {
-    matPersonaSearch.dataset.wired = '1';
-    matPersonaSearch.addEventListener('input', () => {
-      filtrarEstudiantesMatricula(matPersonaSearch.value);
-    });
-  }
 }
 
 async function loadMatriculaData() {
@@ -197,32 +191,11 @@ async function populatePersonaSelects() {
       estudiantes.forEach((p) => {
         const id = p.id_estudiante ?? p.id;
         const nombreCompleto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
-        const option = new Option(nombreCompleto, id);
-        option.dataset.nombre = nombreCompleto.toLowerCase();
-        matSel.add(option);
+        matSel.add(new Option(nombreCompleto, id));
       });
     }
-    filtrarEstudiantesMatricula(document.getElementById('mat-persona-search')?.value || '');
   } catch (error) {
     console.error('Error poblando estudiantes', error);
-  }
-}
-
-function filtrarEstudiantesMatricula(termino) {
-  const select = document.getElementById('mat-persona');
-  const busqueda = (termino || '').trim().toLowerCase();
-  if (!select) return;
-
-  Array.from(select.options).forEach((option) => {
-    if (option.value === '') return;
-    const nombre = (option.dataset.nombre || option.textContent || '').toLowerCase();
-    const coincide = !busqueda || nombre.includes(busqueda);
-    option.hidden = !coincide;
-  });
-
-  const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
-  if (primerVisible) {
-    select.value = primerVisible.value;
   }
 }
 
@@ -284,7 +257,30 @@ function filtrarGruposMatricula(termino) {
   }
 }
 
-function actualizarInfoCupoGrupo() {
+async function borrarGrupo(idGrupo) {
+  try {
+    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
+      method: 'DELETE'
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showToast(json.error || json.mensaje || 'No se pudo borrar el grupo.', 'error');
+      return;
+    }
+
+    showToast('Grupo eliminado correctamente.', 'success');
+    document.getElementById('gestion-grupo-form')?.reset();
+    await populateGruposSelects();
+    await populateGestionGrupoModal();
+  } catch (error) {
+    console.error('Error al borrar grupo', error);
+    showToast('Error al borrar el grupo.', 'error');
+  }
+}
+
+async function actualizarInfoCupoGrupo() {
   const sel = document.getElementById('mat-id-grupo');
   const info = document.getElementById('mat-grupo-info');
   if (!sel || !info) return;

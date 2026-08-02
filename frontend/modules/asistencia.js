@@ -1,5 +1,5 @@
 /* ==========================================
-   MÓDULO DE ASISTENCIA OPTIMIZADO
+   MÓDULO DE ASISTENCIA 
    ========================================== */
 
 let asistenciaChartInstance = null;
@@ -219,10 +219,9 @@ async function cargarHistorialAsistencia() {
     if (!res.ok) throw new Error('No se pudo cargar el historial');
     const registros = await res.json();
     renderHistorialAsistencia(registros);
-    actualizarStatsHistorial(registros);
+    actualizarGraficosAsistencia(registros);
   } catch (error) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
-    actualizarStatsHistorial([]);
     actualizarGraficosAsistencia([]);
   }
 }
@@ -276,7 +275,6 @@ function renderHistorialAsistencia(registros) {
       </td>
     `;
     
-    // Evita redirección al dashboard y abre el modal correctamente
     const btnMod = tr.querySelector('.btn-modificar-asistencia');
     btnMod.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -328,30 +326,13 @@ async function handleModificarAsistenciaSubmit(e) {
       await cargarHistorialAsistencia();
     } else {
       const err = await res.json().catch(() => ({}));
-      showToast(err.error || 'No se pudo actualizar el registro', 'error');
+      showToast(err.mensaje || err.error || 'No se pudo actualizar el registro', 'error');
     }
   } catch (e) {
     showToast('Error de conexión al actualizar asistencia', 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Actualizar Registro'; }
   }
-}
-
-function actualizarStatsHistorial(registros) {
-  const total = registros.length;
-  const presentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'presente').length;
-  const ausentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'ausente').length;
-  const otros = total - presentes - ausentes;
-
-  const setTexto = (id, valor) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = valor;
-  };
-
-  setTexto('hist-stat-total', total);
-  setTexto('hist-stat-presente', presentes);
-  setTexto('hist-stat-ausente', ausentes);
-  setTexto('hist-stat-otros', otros);
 }
 
 function actualizarGraficosAsistencia(registros) {

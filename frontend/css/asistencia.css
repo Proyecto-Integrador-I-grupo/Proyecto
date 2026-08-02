@@ -60,6 +60,34 @@
   font-size: 13px;
 }
 
+/* Contenedor estético para los filtros de historial */
+.card-filtros-asistencia {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.card-filtros-asistencia .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.card-filtros-asistencia .form-control, 
+.card-filtros-asistencia .form-select {
+  border-color: #cbd5e1;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.card-filtros-asistencia .form-control:focus, 
+.card-filtros-asistencia .form-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 /* Ajustes para contenedor de gráficos estadísticos de asistencia */
 #collapseGraficosAsistencia .card-body {
   background-color: #f8fafc !important;

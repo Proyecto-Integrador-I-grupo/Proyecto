@@ -1,6 +1,7 @@
 <link rel="stylesheet" href="../css/variables.css">
 <link rel="stylesheet" href="../css/components.css">
 <link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/matricula.css">
 
 <section id="matricula-view" class="view hidden">
   <div class="row g-4">
@@ -54,6 +55,7 @@
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Estudiante</label>
+                <input id="mat-persona-search" type="text" class="form-control mb-2" placeholder="Buscar estudiante por nombre o apellido...">
                 <select id="mat-persona" class="form-select" required></select>
               </div>
               <div class="col-12">
@@ -71,11 +73,10 @@
                 </select>
               </div>
               <div class="col-6">
-                <label class="form-label">Trimestre</label>
+                <label class="form-label">Semestre</label>
                 <select id="mat-periodo" class="form-select" required>
-                  <option value="1" selected>I Trimestre</option>
-                  <option value="2">II Trimestre</option>
-                  <option value="3">III Trimestre</option>
+                  <option value="1" selected>I Semestre</option>
+                  <option value="2">II Semestre</option>
                 </select>
               </div>
               <div class="col-12">

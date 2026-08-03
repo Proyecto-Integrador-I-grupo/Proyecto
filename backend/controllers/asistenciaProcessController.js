@@ -38,7 +38,10 @@ export async function crearAsistencia(req, res) {
 export async function obtenerAsistencias(req, res) {
   try {
     const usuario = req.usuarioActual;
-    const rol = (usuario?.rol || "").toLowerCase();
+    // FIX: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol",
+    // no "rol". Con "rol" la condición de abajo nunca se cumplía y todo profesor terminaba
+    // viendo el historial sin restricción alguna.
+    const rol = (usuario?.nom_rol || "").toLowerCase();
 
     if (rol === "profesor") {
       const idProfesor = usuario.id_profesor;
@@ -76,7 +79,7 @@ export async function obtenerAsistencias(req, res) {
       return res.status(200).json(filasProfesor);
     }
 
-    const filas = await listarAsistencias(req.query);
+    const filas = await listarAsistencias(req.query, usuario);
     return res.status(200).json(filas);
   } catch (error) {
     console.error("Error al obtener asistencias:", error);

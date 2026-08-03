@@ -74,7 +74,11 @@ export async function obtenerMatriculas(req, res) {
 export async function obtenerGrupos(req, res) {
   try {
     const usuario = req.usuarioActual;
-    const rol = (usuario?.rol || "").toLowerCase();
+    // FIX: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol",
+    // no "rol". Con "rol" la condición de abajo nunca se cumplía y CUALQUIER usuario
+    // (incluido un profesor) recibía TODOS los grupos, en vez de solo los suyos.
+    // Esto era la causa de que en "Registrar Asistencia" se cargaran todos los grupos.
+    const rol = (usuario?.nom_rol || "").toLowerCase();
 
     // Si es profesor, filtramos estrictamente por sus grupos asignados o suplencias activas
     if (rol === "profesor") {

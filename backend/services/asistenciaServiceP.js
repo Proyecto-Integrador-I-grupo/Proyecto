@@ -76,7 +76,8 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   const valores = [];
 
   // Seguridad por rol: Si es profesor, limitamos a sus grupos o suplencias activas
-  const rol = (usuarioActual?.rol || "").toLowerCase();
+  // FIX: el campo real del rol es "nom_rol" (ver usuarioModel.js), no "rol".
+  const rol = (usuarioActual?.nom_rol || "").toLowerCase();
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
     if (!idProfesor) {

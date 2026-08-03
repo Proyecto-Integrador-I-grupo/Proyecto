@@ -1,11 +1,9 @@
 (function () {
   const moduleName = 'perfil';
+  window.EduControlModules = window.EduControlModules || {};
 
-  let perfilActual = null;
   let fotoPerfilTemporal = null;
-
-  window.EduControlModules =
-    window.EduControlModules || {};
+  let perfilActual = null;
 
   window.EduControlModules[moduleName] = {
     name: moduleName,
@@ -31,6 +29,185 @@
     }
   };
 
+  function cargarDatosPerfil() {
+    const user =
+      typeof currentUser !== 'undefined'
+        ? currentUser
+        : null;
+
+    if (!user) {
+      return;
+    }
+
+    const inputNombre =
+      document.getElementById(
+        'perfil-nombre'
+      );
+
+    const inputApellido1 =
+      document.getElementById(
+        'perfil-apellido1'
+      );
+
+    const inputApellido2 =
+      document.getElementById(
+        'perfil-apellido2'
+      );
+
+    const inputCorreo =
+      document.getElementById(
+        'perfil-correo'
+      );
+
+    if (inputNombre) {
+      inputNombre.value =
+        user.nombre || '';
+    }
+
+    if (inputApellido1) {
+      inputApellido1.value =
+        user.apellido1 || '';
+    }
+
+    if (inputApellido2) {
+      inputApellido2.value =
+        user.apellido2 || '';
+    }
+
+    if (inputCorreo) {
+      inputCorreo.value =
+        user.correo || '';
+    }
+
+    if (user.foto) {
+      actualizarImagenPerfil(
+        user.foto
+      );
+    }
+  }
+
+  function actualizarVistaFoto(
+    fotoUrlOrBase64
+  ) {
+    actualizarImagenPerfil(
+      fotoUrlOrBase64
+    );
+  }
+
+  function configurarEventosPerfil() {
+    const inputFoto =
+      document.getElementById(
+        'perfil-foto-input'
+      );
+
+    if (inputFoto) {
+      inputFoto.onchange = (e) => {
+        const file =
+          e.target.files[0];
+
+        if (file) {
+          const reader =
+            new FileReader();
+
+          reader.onload = (
+            uploadEvent
+          ) => {
+            const base64Image =
+              uploadEvent.target.result;
+
+            actualizarImagenPerfil(
+              base64Image
+            );
+
+            window.tempNuevaFoto =
+              base64Image;
+
+            fotoPerfilTemporal =
+              base64Image;
+          };
+
+          reader.readAsDataURL(
+            file
+          );
+        }
+      };
+    }
+
+    const form =
+      document.getElementById(
+        'perfil-form'
+      );
+
+    if (
+      form &&
+      !form.dataset.listenerWired
+    ) {
+      form.dataset.listenerWired =
+        'true';
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        await guardarCambiosPerfil(
+          e
+        );
+      };
+    }
+
+    configurarVisorContrasenas(
+      'perfil-clave-actual',
+      'toggle-clave-actual'
+    );
+
+    configurarVisorContrasenas(
+      'perfil-clave-nueva',
+      'toggle-clave-nueva'
+    );
+
+    configurarVisorContrasenas(
+      'perfil-clave-confirmar',
+      'toggle-clave-confirmar'
+    );
+  }
+
+  function configurarVisorContrasenas(
+    inputId,
+    toggleId
+  ) {
+    const input =
+      document.getElementById(
+        inputId
+      );
+
+    const toggleBtn =
+      document.getElementById(
+        toggleId
+      );
+
+    if (input && toggleBtn) {
+      toggleBtn.onclick = () => {
+        const esPassword =
+          input.type === 'password';
+
+        input.type = esPassword
+          ? 'text'
+          : 'password';
+
+        const icono =
+          toggleBtn.querySelector(
+            'i'
+          );
+
+        if (icono) {
+          icono.className =
+            esPassword
+              ? 'bi bi-eye-slash'
+              : 'bi bi-eye';
+        }
+      };
+    }
+  }
+
   function conectarEventosPerfil() {
     const formulario =
       document.getElementById(
@@ -51,15 +228,31 @@
       'change',
       cambiarVistaPreviaFoto
     );
+
+    configurarVisorContrasenas(
+      'perfil-clave-actual',
+      'toggle-clave-actual'
+    );
+
+    configurarVisorContrasenas(
+      'perfil-clave-nueva',
+      'toggle-clave-nueva'
+    );
+
+    configurarVisorContrasenas(
+      'perfil-clave-confirmar',
+      'toggle-clave-confirmar'
+    );
   }
 
   async function cargarMiPerfil() {
     mostrarEstadoFormulario(true);
 
     try {
-      const respuesta = await apiFetch(
-        '/api/usuarios/perfil'
-      );
+      const respuesta =
+        await apiFetch(
+          '/api/usuarios/perfil'
+        );
 
       const datos =
         await obtenerRespuestaJson(
@@ -69,15 +262,23 @@
       if (!respuesta.ok) {
         throw new Error(
           datos.mensaje ||
-          'No se pudo cargar la información del perfil.'
+            'No se pudo cargar la información del perfil.'
         );
       }
 
       perfilActual = datos;
 
-      llenarFormularioPerfil(datos);
-      actualizarResumenPerfil(datos);
-      cargarFotoGuardada(datos.id_usuario);
+      llenarFormularioPerfil(
+        datos
+      );
+
+      actualizarResumenPerfil(
+        datos
+      );
+
+      cargarFotoGuardada(
+        datos.id_usuario
+      );
     } catch (error) {
       mostrarMensajePerfil(
         'error',
@@ -85,11 +286,15 @@
         error.message
       );
     } finally {
-      mostrarEstadoFormulario(false);
+      mostrarEstadoFormulario(
+        false
+      );
     }
   }
 
-  function llenarFormularioPerfil(perfil) {
+  function llenarFormularioPerfil(
+    perfil
+  ) {
     asignarValor(
       'perfil-nombre',
       perfil.nombre
@@ -111,7 +316,9 @@
     );
   }
 
-  function actualizarResumenPerfil(perfil) {
+  function actualizarResumenPerfil(
+    perfil
+  ) {
     const nombreCompleto =
       formarNombrePerfil(perfil) ||
       'Usuario';
@@ -146,23 +353,34 @@
     }
 
     if (rolElemento) {
-      rolElemento.textContent = rol;
+      rolElemento.textContent =
+        rol;
     }
 
     if (correoElemento) {
-      correoElemento.textContent = correo;
+      correoElemento.textContent =
+        correo;
     }
   }
 
   async function guardarCambiosPerfil(
     evento
   ) {
-    evento.preventDefault();
+    if (
+      evento &&
+      evento.preventDefault
+    ) {
+      evento.preventDefault();
+    }
 
     const datosPerfil =
       obtenerDatosFormularioPerfil();
 
-    if (!validarDatosPerfil(datosPerfil)) {
+    if (
+      !validarDatosPerfil(
+        datosPerfil
+      )
+    ) {
       return;
     }
 
@@ -170,21 +388,34 @@
       obtenerDatosSeguridad();
 
     const deseaCambiarClave =
-      Object.values(datosClave).some(
-        (valor) => Boolean(valor)
+      Object.values(
+        datosClave
+      ).some((valor) =>
+        Boolean(valor)
       );
 
-    mostrarEstadoFormulario(true);
+    mostrarEstadoFormulario(
+      true
+    );
 
     try {
+      if (fotoPerfilTemporal) {
+        datosPerfil.foto =
+          fotoPerfilTemporal;
+      } else if (
+        window.tempNuevaFoto
+      ) {
+        datosPerfil.foto =
+          window.tempNuevaFoto;
+      }
+
       const resultadoPerfil =
         await actualizarDatosPersonales(
           datosPerfil
         );
 
       perfilActual =
-        resultadoPerfil.perfil ||
-        {
+        resultadoPerfil.perfil || {
           ...perfilActual,
           ...datosPerfil
         };
@@ -221,26 +452,29 @@
         error.message
       );
     } finally {
-      mostrarEstadoFormulario(false);
+      mostrarEstadoFormulario(
+        false
+      );
     }
   }
 
   async function actualizarDatosPersonales(
     datosPerfil
   ) {
-    const respuesta = await apiFetch(
-      '/api/usuarios/perfil',
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-        body: JSON.stringify(
-          datosPerfil
-        )
-      }
-    );
+    const respuesta =
+      await apiFetch(
+        '/api/usuarios/perfil',
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+          body: JSON.stringify(
+            datosPerfil
+          )
+        }
+      );
 
     const datos =
       await obtenerRespuestaJson(
@@ -250,7 +484,7 @@
     if (!respuesta.ok) {
       throw new Error(
         datos.mensaje ||
-        'No se pudo actualizar el perfil.'
+          'No se pudo actualizar el perfil.'
       );
     }
 
@@ -262,19 +496,20 @@
   ) {
     validarDatosClave(datosClave);
 
-    const respuesta = await apiFetch(
-      '/api/usuarios/perfil/clave',
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-        body: JSON.stringify(
-          datosClave
-        )
-      }
-    );
+    const respuesta =
+      await apiFetch(
+        '/api/usuarios/perfil/clave',
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+          body: JSON.stringify(
+            datosClave
+          )
+        }
+      );
 
     const datos =
       await obtenerRespuestaJson(
@@ -284,7 +519,7 @@
     if (!respuesta.ok) {
       throw new Error(
         datos.mensaje ||
-        'No se pudo actualizar la clave.'
+          'No se pudo actualizar la clave.'
       );
     }
 
@@ -293,48 +528,43 @@
 
   function obtenerDatosFormularioPerfil() {
     return {
-      nombre:
-        obtenerValor(
-          'perfil-nombre'
-        ).trim(),
+      nombre: obtenerValor(
+        'perfil-nombre'
+      ).trim(),
 
-      apellido1:
-        obtenerValor(
-          'perfil-apellido1'
-        ).trim(),
+      apellido1: obtenerValor(
+        'perfil-apellido1'
+      ).trim(),
 
-      apellido2:
-        obtenerValor(
-          'perfil-apellido2'
-        ).trim(),
+      apellido2: obtenerValor(
+        'perfil-apellido2'
+      ).trim(),
 
-      correo:
-        obtenerValor(
-          'perfil-correo'
-        ).trim()
+      correo: obtenerValor(
+        'perfil-correo'
+      ).trim()
     };
   }
 
   function obtenerDatosSeguridad() {
     return {
-      claveActual:
-        obtenerValor(
-          'perfil-clave-actual'
-        ),
+      claveActual: obtenerValor(
+        'perfil-clave-actual'
+      ),
 
-      claveNueva:
-        obtenerValor(
-          'perfil-clave-nueva'
-        ),
+      claveNueva: obtenerValor(
+        'perfil-clave-nueva'
+      ),
 
-      claveConfirmar:
-        obtenerValor(
-          'perfil-clave-confirmar'
-        )
+      claveConfirmar: obtenerValor(
+        'perfil-clave-confirmar'
+      )
     };
   }
 
-  function validarDatosPerfil(datos) {
+  function validarDatosPerfil(
+    datos
+  ) {
     if (
       !datos.nombre ||
       !datos.apellido1 ||
@@ -369,7 +599,9 @@
     return true;
   }
 
-  function validarDatosClave(datos) {
+  function validarDatosClave(
+    datos
+  ) {
     if (
       !datos.claveActual ||
       !datos.claveNueva ||
@@ -482,6 +714,17 @@
   ) {
     if (!idUsuario) return;
 
+    if (perfilActual?.foto) {
+      fotoPerfilTemporal =
+        perfilActual.foto;
+
+      actualizarImagenPerfil(
+        perfilActual.foto
+      );
+
+      return;
+    }
+
     try {
       const fotoGuardada =
         localStorage.getItem(
@@ -520,12 +763,12 @@
       'U';
 
     const inicialApellido =
-      perfil?.apellido1?.charAt(0) ||
-      '';
+      perfil?.apellido1?.charAt(
+        0
+      ) || '';
 
     const iniciales =
-      `${inicialNombre}${inicialApellido}`
-        .toUpperCase();
+      `${inicialNombre}${inicialApellido}`.toUpperCase();
 
     const svg = `
       <svg
@@ -553,10 +796,9 @@
       </svg>
     `;
 
-    const avatar =
-      `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-        svg
-      )}`;
+    const avatar = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+      svg
+    )}`;
 
     actualizarImagenPerfil(
       avatar
@@ -574,6 +816,26 @@
     if (preview) {
       preview.src = imagen;
     }
+
+    const avatarContenedores =
+      document.querySelectorAll(
+        '#topbar-avatar, #sidebar-avatar, .user-avatar'
+      );
+
+    avatarContenedores.forEach(
+      (el) => {
+        if (el.tagName === 'IMG') {
+          el.src = imagen;
+        } else if (el) {
+          el.style.backgroundImage = `url(${imagen})`;
+          el.style.backgroundSize =
+            'cover';
+          el.style.backgroundPosition =
+            'center';
+          el.textContent = '';
+        }
+      }
+    );
   }
 
   function actualizarUsuarioGlobal(
@@ -581,7 +843,7 @@
   ) {
     if (
       typeof currentUser ===
-      'undefined' ||
+        'undefined' ||
       !currentUser
     ) {
       return;
@@ -599,9 +861,19 @@
     currentUser.correo =
       perfil.correo;
 
+    if (fotoPerfilTemporal) {
+      currentUser.foto =
+        fotoPerfilTemporal;
+    }
+
     try {
       localStorage.setItem(
         'currentUser',
+        JSON.stringify(currentUser)
+      );
+
+      sessionStorage.setItem(
+        'educontrol_usuario',
         JSON.stringify(currentUser)
       );
     } catch (error) {
@@ -614,6 +886,13 @@
     actualizarNombreEnInterfaz(
       perfil
     );
+
+    if (
+      typeof renderUserInfo ===
+      'function'
+    ) {
+      renderUserInfo();
+    }
   }
 
   function actualizarNombreEnInterfaz(
@@ -632,7 +911,9 @@
     selectores.forEach(
       (selector) => {
         document
-          .querySelectorAll(selector)
+          .querySelectorAll(
+            selector
+          )
           .forEach((elemento) => {
             elemento.textContent =
               nombreCompleto;
@@ -682,21 +963,22 @@
 
     if (!boton) return;
 
-    boton.innerHTML =
-      cargando
-        ? `
+    boton.innerHTML = cargando
+      ? `
           <span
             class="spinner-border spinner-border-sm me-2">
           </span>
           Guardando...
         `
-        : `
+      : `
           <i class="bi bi-check2-circle"></i>
           Guardar cambios
         `;
   }
 
-  function formarNombrePerfil(perfil) {
+  function formarNombrePerfil(
+    perfil
+  ) {
     return `${
       perfil?.nombre ?? ''
     } ${
@@ -711,12 +993,14 @@
   function obtenerValor(id) {
     return (
       document.getElementById(id)
-        ?.value ||
-      ''
+        ?.value || ''
     );
   }
 
-  function asignarValor(id, valor) {
+  function asignarValor(
+    id,
+    valor
+  ) {
     const elemento =
       document.getElementById(id);
 
@@ -729,9 +1013,7 @@
   function obtenerClaveFoto(
     idUsuario
   ) {
-    return (
-      `educontrol-perfil-foto-${idUsuario}`
-    );
+    return `educontrol-perfil-foto-${idUsuario}`;
   }
 
   async function obtenerRespuestaJson(

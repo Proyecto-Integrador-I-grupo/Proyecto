@@ -160,6 +160,17 @@ async function cargarRosterGrupoAsistencia() {
     if (!res.ok) throw new Error('No se pudo cargar el detalle del grupo');
     const detalle = await res.json();
 
+    // Guardia anti-race-condition: si mientras esta petición estaba en
+    // vuelo el usuario (o el modal al abrirse) cambió el grupo seleccionado,
+    // esta respuesta ya quedó vieja/obsoleta. Se descarta para no pisar
+    // con datos del grupo anterior lo que corresponde al grupo actual.
+    // Esto es lo que causaba que, por ejemplo, al seleccionar "1-B" se
+    // terminara mostrando el profesor y los estudiantes de "1-A".
+    const idGrupoActualEnPantalla = parseInt(grupoSel.value, 10);
+    if (idGrupoActualEnPantalla !== idGrupo) {
+      return;
+    }
+
     // Poblar estudiantes
     personaSel.innerHTML = '<option value="" disabled selected>Seleccionar estudiante</option>';
     const estudiantes = detalle.estudiantes || [];

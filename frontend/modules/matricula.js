@@ -608,6 +608,21 @@ function filtrarSeccionesGrupo(termino) {
     const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
     option.hidden = !!busqueda && !texto.includes(busqueda);
   });
+
+  // Si la opción actualmente seleccionada quedó oculta por el filtro (o no había
+  // ninguna seleccionada todavía), forzamos la selección a la primera visible.
+  // Sin esto, el <select> puede "verse" seleccionado visualmente en algunos
+  // navegadores mientras su .value real sigue vacío, y el backend rechaza
+  // la creación del grupo con "Debe seleccionar una sección académica."
+  const seleccionActual = select.options[select.selectedIndex];
+  const seleccionValida = seleccionActual && seleccionActual.value !== '' && !seleccionActual.hidden;
+
+  if (!seleccionValida) {
+    const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
+    if (primerVisible) {
+      select.value = primerVisible.value;
+    }
+  }
 }
 
 async function borrarSeccion(idSeccion) {
@@ -776,14 +791,33 @@ async function handleMatriculaSubmit(e) {
 async function handleGrupoSubmit(e) {
   e.preventDefault();
 
+  const nombre = document.getElementById('grupo-nombre').value.trim();
+  const capacidad = parseInt(document.getElementById('grupo-capacidad').value, 10);
+  const idSeccion = parseInt(document.getElementById('grupo-seccion').value, 10);
+  const aula = document.getElementById('grupo-aula').value.trim() || null;
+
+  // Validación previa en el frontend: si algo no es válido, avisamos exactamente
+  // qué falta en vez de mandar la petición y dejar que el 400 del servidor
+  // se pierda en un toast que desaparece solo.
+  if (!nombre) {
+    showToast('Escribe un nombre para el grupo.', 'error');
+    return;
+  }
+  if (!Number.isInteger(capacidad) || capacidad <= 0) {
+    showToast('La capacidad máxima debe ser un número mayor a cero.', 'error');
+    return;
+  }
+  if (!Number.isInteger(idSeccion) || idSeccion <= 0) {
+    showToast('Selecciona una sección académica válida de la lista (haz clic en una opción del desplegable).', 'error');
+    return;
+  }
+
   // El grupo se crea sin profesores: la asignación docente se hace después
   // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
-  const payload = {
-    nombre_grupo: document.getElementById('grupo-nombre').value.trim(),
-    capacidad: parseInt(document.getElementById('grupo-capacidad').value, 10),
-    aula: document.getElementById('grupo-aula').value.trim() || null,
-    id_seccion: parseInt(document.getElementById('grupo-seccion').value, 10)
-  };
+  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion };
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando...'; }
 
   try {
     const res = await apiFetch('/api/procesos/grupos', { 
@@ -791,7 +825,9 @@ async function handleGrupoSubmit(e) {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(payload) 
     });
-    
+
+    const json = await res.json().catch(() => ({}));
+
     if (res.ok) {
       showToast('Grupo creado correctamente');
       const modalEl = document.getElementById('modalGrupo');
@@ -799,11 +835,17 @@ async function handleGrupoSubmit(e) {
       document.getElementById('grupo-form').reset();
       await populateGruposSelects();
     } else {
-      const json = await res.json().catch(() => ({}));
-      showToast(json.error || json.mensaje || 'Error creando grupo', 'error');
+      const mensaje = json.error || json.mensaje || 'Error creando grupo';
+      if (typeof showResultModal === 'function') {
+        showResultModal('error', 'No se pudo crear el grupo', mensaje);
+      } else {
+        showToast(mensaje, 'error');
+      }
     }
   } catch {
-    showToast('Error creando grupo', 'error');
+    showToast('Error de conexión al crear el grupo', 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Crear Grupo'; }
   }
 }
 

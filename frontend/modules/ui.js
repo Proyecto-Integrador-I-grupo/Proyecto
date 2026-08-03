@@ -142,14 +142,34 @@ function renderUserInfo() {
   const esProfesor = rolNormalizado === 'profesor';
   const rolClase = esAdmin ? 'role-badge-admin' : (esProfesor ? 'role-badge-profesor' : 'role-badge-asistente');
 
-  [
-    ['sidebar-avatar', iniciales], ['topbar-avatar', iniciales],
-    ['sidebar-user-name', nombreCompleto], ['topbar-user-name', nombreCompleto]
-  ].forEach(([id, text]) => {
+ // Nombres de usuario
+  ['sidebar-user-name', 'topbar-user-name'].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el) el.textContent = nombreCompleto;
   });
 
+  // Avatares / Fotos de perfil
+  const claveFoto = `educontrol-perfil-foto-${currentUser.id_usuario}`;
+  const fotoGuardada = localStorage.getItem(claveFoto);
+  const fotoFinal = currentUser.foto || fotoGuardada;
+
+  ['sidebar-avatar', 'topbar-avatar'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (fotoFinal) {
+      if (el.tagName === 'IMG') {
+        el.src = fotoFinal;
+      } else {
+        el.style.backgroundImage = `url("${fotoFinal}")`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.textContent = ''; // Limpia las iniciales si existen
+      }
+    } else {
+      el.textContent = iniciales;
+    }
+  });
   [['sidebar-role-badge', rol], ['topbar-role-badge', rol]].forEach(([id, text]) => {
     const el = document.getElementById(id);
     if (!el) return;

@@ -725,49 +725,40 @@
     }
   }
 
-  function cargarFotoSegunUsuario(
-    perfil
-  ) {
+ function cargarFotoSegunUsuario(perfil) {
     if (!perfil?.id_usuario) {
       return;
     }
 
+    // 1. Prioridad: Foto que devolvió el backend en el perfil
     if (perfil.foto) {
-      fotoPerfilTemporal =
-        perfil.foto;
-
-      actualizarImagenPerfil(
-        perfil.foto
-      );
-
+      fotoPerfilTemporal = perfil.foto;
+      actualizarImagenPerfil(perfil.foto);
       return;
     }
 
+    // 2. Segunda opción: Foto guardada en localStorage
     try {
-      const fotoGuardada =
-        localStorage.getItem(
-          obtenerClaveFoto(
-            perfil.id_usuario
-          )
-        );
-
+      const fotoGuardada = localStorage.getItem(obtenerClaveFoto(perfil.id_usuario));
       if (fotoGuardada) {
-        fotoPerfilTemporal =
-          fotoGuardada;
-
-        actualizarImagenPerfil(
-          fotoGuardada
-        );
-
+        fotoPerfilTemporal = fotoGuardada;
+        actualizarImagenPerfil(fotoGuardada);
         return;
       }
     } catch (error) {
-      console.warn(
-        'No se pudo cargar la fotografía del perfil:',
-        error
-      );
+      console.warn('No se pudo cargar la fotografía del perfil:', error);
     }
 
+    // 3. Tercera opción: Foto en la sesión global (currentUser)
+    if (typeof currentUser !== 'undefined' && currentUser?.foto) {
+      fotoPerfilTemporal = currentUser.foto;
+      actualizarImagenPerfil(currentUser.foto);
+      return;
+    }
+
+    // 4. Último recurso: Iniciales
+    generarAvatarIniciales(perfil);
+  }
     generarAvatarIniciales(
       perfil
     );

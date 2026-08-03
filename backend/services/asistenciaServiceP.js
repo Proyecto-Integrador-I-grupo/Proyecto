@@ -33,13 +33,15 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("El estudiante no pertenece activamente a este grupo.");
     }
 
+    // CORRECCIÓN: Incluir id_profesor en la validación de duplicados.
+    // Esto permite que distintos profesores (materias) tomen asistencia al mismo estudiante el mismo día.
     const [duplicado] = await connection.query(
       `SELECT id_asistencia FROM asistencia
-       WHERE id_estudiante = ? AND id_grupo = ? AND fecha = ? AND estado = TRUE`,
-      [id_estudiante, id_grupo, fecha]
+       WHERE id_estudiante = ? AND id_grupo = ? AND id_profesor = ? AND fecha = ? AND estado = TRUE`,
+      [id_estudiante, id_grupo, id_profesor, fecha]
     );
     if (duplicado.length > 0) {
-      throw new Error("Ya existe un registro de asistencia para este estudiante, en este grupo, en esa fecha.");
+      throw new Error("Ya registraste la asistencia para este estudiante en esta fecha.");
     }
 
     await connection.query(
@@ -75,18 +77,19 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   const condiciones = ["a.estado = TRUE"];
   const valores = [];
 
-  // Seguridad por rol: Si es profesor, limitamos a sus grupos o suplencias activas
-  // FIX #1: el campo real del rol es "nom_rol" (ver usuarioModel.js), no "rol".
   const rol = (usuarioActual?.nom_rol || "").toLowerCase();
+  
+  // CORRECCIÓN: Si es profesor, restringir estrictamente por sus registros (a.id_profesor)
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
     if (!idProfesor) {
       return [];
     }
-    // FIX #3: "grupo" no tiene columna "id_profesor". La asignación profesor-grupo
-    // vive en "grupo_profesor" (join añadido más abajo, alias gp_filtro).
-    condiciones.push("(gp_filtro.id_profesor = ? OR s_filtro.id_profesor_suplente = ?)");
-    valores.push(idProfesor, idProfesor);
+    condiciones.push("a.id_profesor = ?");
+    valores.push(idProfesor);
+  } else if (id_profesor) {
+    condiciones.push("a.id_profesor = ?");
+    valores.push(id_profesor);
   }
 
   if (id_grupo) {
@@ -97,11 +100,6 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   if (id_estudiante) {
     condiciones.push("a.id_estudiante = ?");
     valores.push(id_estudiante);
-  }
-
-  if (id_profesor && rol !== "profesor") {
-    condiciones.push("a.id_profesor = ?");
-    valores.push(id_profesor);
   }
 
   if (estado_asistencia) {
@@ -129,9 +127,6 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     valores.push(like, like, like);
   }
 
-  // FIX #2 y #3: la tabla se llama "profesor_suplencia" (no "suplencia"), su columna
-  // de estado se llama "estado" (no "activo"), y se añade el JOIN a "grupo_profesor"
-  // porque "grupo" no tiene columna "id_profesor" propia.
   const [filas] = await pool.query(
     `SELECT DISTINCT
         a.id_asistencia,
@@ -153,8 +148,6 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
      INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
      INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
      INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-     LEFT JOIN grupo_profesor gp_filtro     ON gp_filtro.id_grupo = g.id_grupo AND gp_filtro.estado = TRUE
-     LEFT JOIN profesor_suplencia s_filtro  ON s_filtro.id_grupo = g.id_grupo AND s_filtro.estado = TRUE
      WHERE ${condiciones.join(" AND ")}
      ORDER BY a.fecha DESC, a.id_asistencia DESC
      LIMIT 500`,

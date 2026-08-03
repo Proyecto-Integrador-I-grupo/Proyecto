@@ -19,14 +19,33 @@
         return;
       }
 
-      const usuarioSesionId = typeof currentUser !== 'undefined' ? currentUser?.id_usuario : null;
-      if (section.dataset.wired === '1' && section.dataset.usuarioId === String(usuarioSesionId)) {
+      const usuarioSesionId =
+        typeof currentUser !== 'undefined'
+          ? currentUser?.id_usuario
+          : null;
+
+      if (
+        section.dataset.usuarioId !==
+        String(usuarioSesionId)
+      ) {
+        section.dataset.wired = '';
+      }
+
+      if (
+        section.dataset.wired === '1' &&
+        section.dataset.usuarioId ===
+          String(usuarioSesionId)
+      ) {
         return;
       }
 
       section.dataset.wired = '1';
-      section.dataset.usuarioId = usuarioSesionId ? String(usuarioSesionId) : '';
-      section.dataset.module = moduleName;
+      section.dataset.usuarioId =
+        usuarioSesionId
+          ? String(usuarioSesionId)
+          : '';
+      section.dataset.module =
+        moduleName;
 
       fotoPerfilTemporal = null;
       perfilActual = null;
@@ -93,7 +112,9 @@
         user.foto
       );
     } else {
-      generarAvatarIniciales(user);
+      generarAvatarIniciales(
+        user
+      );
     }
   }
 
@@ -154,30 +175,52 @@
         'perfil-foto-input'
       );
 
-    if (formulario && !formulario.dataset.listenerWired) {
-      formulario.dataset.listenerWired = 'true';
+    if (
+      formulario &&
+      !formulario.dataset.listenerWired
+    ) {
+      formulario.dataset.listenerWired =
+        'true';
       formulario.addEventListener(
         'submit',
         guardarCambiosPerfil
       );
     }
 
-    if (inputFoto && !inputFoto.dataset.listenerWired) {
-      inputFoto.dataset.listenerWired = 'true';
+    if (
+      inputFoto &&
+      !inputFoto.dataset.listenerWired
+    ) {
+      inputFoto.dataset.listenerWired =
+        'true';
       inputFoto.addEventListener(
         'change',
         cambiarVistaPreviaFoto
       );
     }
 
-    // Detectar cuando el usuario interactúa explícitamente con los campos de clave
-    ['perfil-clave-actual', 'perfil-clave-nueva', 'perfil-clave-confirmar'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && !el.dataset.listenerWired) {
-        el.dataset.listenerWired = 'true';
-        el.addEventListener('input', () => {
-          claveCamposModificados = true;
-        });
+    [
+      'perfil-clave-actual',
+      'perfil-clave-nueva',
+      'perfil-clave-confirmar'
+    ].forEach((id) => {
+      const el =
+        document.getElementById(
+          id
+        );
+      if (
+        el &&
+        !el.dataset.listenerWired
+      ) {
+        el.dataset.listenerWired =
+          'true';
+        el.addEventListener(
+          'input',
+          () => {
+            claveCamposModificados =
+              true;
+          }
+        );
       }
     });
 
@@ -228,8 +271,8 @@
         datos
       );
 
-      cargarFotoGuardada(
-        datos.id_usuario
+      cargarFotoSegunUsuario(
+        datos
       );
     } catch (error) {
       mostrarMensajePerfil(
@@ -272,8 +315,9 @@
     perfil
   ) {
     const nombreCompleto =
-      formarNombrePerfil(perfil) ||
-      'Usuario';
+      formarNombrePerfil(
+        perfil
+      ) || 'Usuario';
 
     const rol =
       perfil.rol ||
@@ -281,8 +325,7 @@
       'Usuario';
 
     const correo =
-      perfil.correo ||
-      '-';
+      perfil.correo || '-';
 
     const nombreElemento =
       document.getElementById(
@@ -339,17 +382,22 @@
     const datosClave =
       obtenerDatosSeguridad();
 
-    // Solo se intenta cambiar contraseña si el usuario escribió en los inputs Y hay datos completos
     const deseaCambiarClave =
       claveCamposModificados &&
-      Boolean(datosClave.claveActual || datosClave.claveNueva || datosClave.claveConfirmar);
+      Boolean(
+        datosClave.claveActual ||
+          datosClave.claveNueva ||
+          datosClave.claveConfirmar
+      );
 
     mostrarEstadoFormulario(
       true
     );
 
     try {
-      if (fotoPerfilTemporal) {
+      if (
+        fotoPerfilTemporal
+      ) {
         datosPerfil.foto =
           fotoPerfilTemporal;
       } else if (
@@ -384,9 +432,12 @@
 
       guardarFotoPerfil();
 
-      // AHORA SÍ se actualiza la foto globalmente en el topbar/sidebar al guardar
-      if (fotoPerfilTemporal) {
-        actualizarImagenPerfil(fotoPerfilTemporal);
+      if (
+        fotoPerfilTemporal
+      ) {
+        actualizarImagenPerfil(
+          fotoPerfilTemporal
+        );
       }
 
       actualizarUsuarioGlobal(
@@ -449,7 +500,9 @@
   async function actualizarClave(
     datosClave
   ) {
-    validarDatosClave(datosClave);
+    validarDatosClave(
+      datosClave
+    );
 
     const respuesta =
       await apiFetch(
@@ -511,9 +564,10 @@
         'perfil-clave-nueva'
       ),
 
-      claveConfirmar: obtenerValor(
-        'perfil-clave-confirmar'
-      )
+      claveConfirmar:
+        obtenerValor(
+          'perfil-clave-confirmar'
+        )
     };
   }
 
@@ -577,7 +631,8 @@
     }
 
     if (
-      datos.claveNueva.length < 8
+      datos.claveNueva.length <
+      8
     ) {
       throw new Error(
         'La nueva clave debe tener al menos 8 caracteres.'
@@ -631,10 +686,14 @@
       fotoPerfilTemporal =
         lector.result;
 
-      // SOLO actualizamos la previsualización del formulario local
-      const preview = document.getElementById('perfil-foto-preview');
+      const preview =
+        document.getElementById(
+          'perfil-foto-preview'
+        );
+
       if (preview) {
-        preview.src = fotoPerfilTemporal;
+        preview.src =
+          fotoPerfilTemporal;
       }
     };
 
@@ -666,17 +725,19 @@
     }
   }
 
-  function cargarFotoGuardada(
-    idUsuario
+  function cargarFotoSegunUsuario(
+    perfil
   ) {
-    if (!idUsuario) return;
+    if (!perfil?.id_usuario) {
+      return;
+    }
 
-    if (perfilActual?.foto) {
+    if (perfil.foto) {
       fotoPerfilTemporal =
-        perfilActual.foto;
+        perfil.foto;
 
       actualizarImagenPerfil(
-        perfilActual.foto
+        perfil.foto
       );
 
       return;
@@ -686,7 +747,7 @@
       const fotoGuardada =
         localStorage.getItem(
           obtenerClaveFoto(
-            idUsuario
+            perfil.id_usuario
           )
         );
 
@@ -708,7 +769,7 @@
     }
 
     generarAvatarIniciales(
-      perfilActual
+      perfil
     );
   }
 
@@ -719,8 +780,9 @@
     window.tempNuevaFoto = null;
 
     const inicialNombre =
-      perfil?.nombre?.charAt(0) ||
-      'U';
+      perfil?.nombre?.charAt(
+        0
+      ) || 'U';
 
     const inicialApellido =
       perfil?.apellido1?.charAt(
@@ -765,11 +827,16 @@
         '#topbar-avatar, #sidebar-avatar, .user-avatar'
       );
 
-    avatarContenedores.forEach((el) => {
-      if (el.tagName !== 'IMG') {
-        el.style.backgroundImage = '';
+    avatarContenedores.forEach(
+      (el) => {
+        if (
+          el.tagName !== 'IMG'
+        ) {
+          el.style.backgroundImage =
+            '';
+        }
       }
-    });
+    );
 
     actualizarImagenPerfil(
       avatar
@@ -795,7 +862,9 @@
 
     avatarContenedores.forEach(
       (el) => {
-        if (el.tagName === 'IMG') {
+        if (
+          el.tagName === 'IMG'
+        ) {
           el.src = imagen;
         } else if (el) {
           el.style.backgroundImage = `url(${imagen})`;
@@ -840,12 +909,16 @@
     try {
       localStorage.setItem(
         'currentUser',
-        JSON.stringify(currentUser)
+        JSON.stringify(
+          currentUser
+        )
       );
 
       sessionStorage.setItem(
         'educontrol_usuario',
-        JSON.stringify(currentUser)
+        JSON.stringify(
+          currentUser
+        )
       );
     } catch (error) {
       console.warn(
@@ -870,7 +943,9 @@
     perfil
   ) {
     const nombreCompleto =
-      formarNombrePerfil(perfil);
+      formarNombrePerfil(
+        perfil
+      );
 
     const selectores = [
       '#user-name',
@@ -894,7 +969,9 @@
   }
 
   function limpiarCamposClave() {
-    claveCamposModificados = false;
+    claveCamposModificados =
+      false;
+
     asignarValor(
       'perfil-clave-actual',
       ''
@@ -974,7 +1051,9 @@
     valor
   ) {
     const elemento =
-      document.getElementById(id);
+      document.getElementById(
+        id
+      );
 
     if (elemento) {
       elemento.value =
@@ -992,7 +1071,9 @@
     respuesta
   ) {
     try {
-      return await respuesta.json();
+      return (
+        await respuesta.json()
+      );
     } catch {
       return {};
     }

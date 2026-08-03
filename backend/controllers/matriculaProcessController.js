@@ -74,10 +74,7 @@ export async function obtenerMatriculas(req, res) {
 export async function obtenerGrupos(req, res) {
   try {
     const usuario = req.usuarioActual;
-    // FIX: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol",
-    // no "rol". Con "rol" la condición de abajo nunca se cumplía y CUALQUIER usuario
-    // (incluido un profesor) recibía TODOS los grupos, en vez de solo los suyos.
-    // Esto era la causa de que en "Registrar Asistencia" se cargaran todos los grupos.
+    // FIX #1: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol".
     const rol = (usuario?.nom_rol || "").toLowerCase();
 
     // Si es profesor, filtramos estrictamente por sus grupos asignados o suplencias activas
@@ -87,10 +84,12 @@ export async function obtenerGrupos(req, res) {
         return res.json([]);
       }
 
+      // FIX #2: la tabla se llama "profesor_suplencia" (no "suplencia") y su columna
+      // de estado se llama "estado" (no "activo").
       const sqlProfesorGrupos = `
         SELECT DISTINCT g.* 
         FROM grupo g
-        LEFT JOIN suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
+        LEFT JOIN profesor_suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.estado = TRUE
         WHERE g.id_profesor = ? OR s.id_profesor_suplente = ?
       `;
       const [rows] = await conexion.query(sqlProfesorGrupos, [idProfesor, idProfesor, idProfesor]);

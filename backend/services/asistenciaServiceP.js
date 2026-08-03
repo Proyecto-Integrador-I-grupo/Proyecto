@@ -83,7 +83,9 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     if (!idProfesor) {
       return [];
     }
-    condiciones.push("(g.id_profesor = ? OR s_filtro.id_profesor_suplente = ?)");
+    // FIX #3: "grupo" no tiene columna "id_profesor". La asignación profesor-grupo
+    // vive en "grupo_profesor" (join añadido más abajo, alias gp_filtro).
+    condiciones.push("(gp_filtro.id_profesor = ? OR s_filtro.id_profesor_suplente = ?)");
     valores.push(idProfesor, idProfesor);
   }
 
@@ -127,10 +129,11 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     valores.push(like, like, like);
   }
 
-  // FIX #2: la tabla se llama "profesor_suplencia" (no "suplencia") y su columna
-  // de estado se llama "estado" (no "activo").
+  // FIX #2 y #3: la tabla se llama "profesor_suplencia" (no "suplencia"), su columna
+  // de estado se llama "estado" (no "activo"), y se añade el JOIN a "grupo_profesor"
+  // porque "grupo" no tiene columna "id_profesor" propia.
   const [filas] = await pool.query(
-    `SELECT
+    `SELECT DISTINCT
         a.id_asistencia,
         a.fecha,
         a.estado_asistencia,
@@ -150,7 +153,8 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
      INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
      INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
      INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-     LEFT JOIN profesor_suplencia s_filtro ON s_filtro.id_grupo = g.id_grupo AND s_filtro.estado = TRUE
+     LEFT JOIN grupo_profesor gp_filtro     ON gp_filtro.id_grupo = g.id_grupo AND gp_filtro.estado = TRUE
+     LEFT JOIN profesor_suplencia s_filtro  ON s_filtro.id_grupo = g.id_grupo AND s_filtro.estado = TRUE
      WHERE ${condiciones.join(" AND ")}
      ORDER BY a.fecha DESC, a.id_asistencia DESC
      LIMIT 500`,

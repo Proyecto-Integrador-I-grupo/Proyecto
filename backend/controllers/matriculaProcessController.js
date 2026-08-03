@@ -84,15 +84,17 @@ export async function obtenerGrupos(req, res) {
         return res.json([]);
       }
 
-      // FIX #2: la tabla se llama "profesor_suplencia" (no "suplencia") y su columna
-      // de estado se llama "estado" (no "activo").
+      // FIX #3: "grupo" NO tiene columna "id_profesor" (confirmado por el error de MySQL
+      // "Unknown column 'g.id_profesor'"). La relación profesor-grupo vive en la tabla
+      // "grupo_profesor" (columnas id_grupo, id_profesor, estado).
       const sqlProfesorGrupos = `
         SELECT DISTINCT g.* 
         FROM grupo g
-        LEFT JOIN profesor_suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.estado = TRUE
-        WHERE g.id_profesor = ? OR s.id_profesor_suplente = ?
+        LEFT JOIN grupo_profesor gp     ON gp.id_grupo = g.id_grupo AND gp.estado = TRUE
+        LEFT JOIN profesor_suplencia s  ON s.id_grupo = g.id_grupo AND s.estado = TRUE
+        WHERE gp.id_profesor = ? OR s.id_profesor_suplente = ?
       `;
-      const [rows] = await conexion.query(sqlProfesorGrupos, [idProfesor, idProfesor, idProfesor]);
+      const [rows] = await conexion.query(sqlProfesorGrupos, [idProfesor, idProfesor]);
       return res.json(rows);
     }
 

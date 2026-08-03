@@ -669,9 +669,11 @@ async function cargarDetalleGestionGrupo(idGrupo) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) return;
 
-    const profesorActivo = (json.profesores || []).find((p) => p?.id_profesor);
-    if (profesorActivo) {
-      profSelect.value = String(profesorActivo.id_profesor);
+    if (Array.isArray(json.profesores) && json.profesores.length > 0) {
+      const selectedIds = json.profesores.map(p => String(p.id_profesor));
+      Array.from(profSelect.options).forEach(opt => {
+        opt.selected = selectedIds.includes(String(opt.value));
+      });
     }
   } catch (error) {
     console.error('Error cargando detalle del grupo', error);
@@ -685,10 +687,12 @@ async function handleGestionGrupoSubmit(e) {
   const idGrupo = Number(String(rawGrupoVal).split(':')[0].trim());
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
   const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
-  const idProfesor = Number(document.getElementById('gestion-grupo-profesor')?.value || 0);
+  
+  const profSelect = document.getElementById('gestion-grupo-profesor');
+  const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
 
-  if (!idGrupo || !capacidad || !idProfesor) {
-    showToast('Selecciona un grupo, capacidad y profesor.', 'error');
+  if (!idGrupo || !capacidad) {
+    showToast('Selecciona un grupo y capacidad.', 'error');
     return;
   }
 
@@ -696,7 +700,7 @@ async function handleGestionGrupoSubmit(e) {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacidad, aula, id_profesor: idProfesor })
+      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados })
     });
 
     const json = await res.json().catch(() => ({}));
@@ -780,11 +784,15 @@ async function handleMatriculaSubmit(e) {
 
 async function handleGrupoSubmit(e) {
   e.preventDefault();
+
+  const profSelect = document.getElementById('grupo-profesor');
+  const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
+
   const payload = {
     nombre_grupo: document.getElementById('grupo-nombre').value.trim(),
     capacidad: parseInt(document.getElementById('grupo-capacidad').value, 10),
     aula: document.getElementById('grupo-aula').value.trim() || null,
-    id_profesor: parseInt(document.getElementById('grupo-profesor').value, 10),
+    profesores: profesoresSeleccionados,
     id_seccion: parseInt(document.getElementById('grupo-seccion').value, 10)
   };
 

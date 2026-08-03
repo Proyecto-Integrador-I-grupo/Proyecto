@@ -14,15 +14,24 @@
           `${moduleName}-view`
         );
 
-      if (
-        !section ||
-        section.dataset.wired === '1'
-      ) {
+      if (!section) {
+        return;
+      }
+
+      // Si cambió el usuario en la sesión, forzamos recarga aunque esté wired
+      const usuarioSesionId = typeof currentUser !== 'undefined' ? currentUser?.id_usuario : null;
+      if (section.dataset.wired === '1' && section.dataset.usuarioId === String(usuarioSesionId)) {
         return;
       }
 
       section.dataset.wired = '1';
+      section.dataset.usuarioId = usuarioSesionId ? String(usuarioSesionId) : '';
       section.dataset.module = moduleName;
+
+      // RESETEAR VARIABLES Y TEMP PARA NO MEZCLAR USUARIOS AL CAMBIAR DE CUENTA
+      fotoPerfilTemporal = null;
+      perfilActual = null;
+      window.tempNuevaFoto = null;
 
       conectarEventosPerfil();
       cargarMiPerfil();
@@ -83,6 +92,8 @@
       actualizarImagenPerfil(
         user.foto
       );
+    } else {
+      generarAvatarIniciales(user);
     }
   }
 
@@ -91,82 +102,6 @@
   ) {
     actualizarImagenPerfil(
       fotoUrlOrBase64
-    );
-  }
-
-  function configurarEventosPerfil() {
-    const inputFoto =
-      document.getElementById(
-        'perfil-foto-input'
-      );
-
-    if (inputFoto) {
-      inputFoto.onchange = (e) => {
-        const file =
-          e.target.files[0];
-
-        if (file) {
-          const reader =
-            new FileReader();
-
-          reader.onload = (
-            uploadEvent
-          ) => {
-            const base64Image =
-              uploadEvent.target.result;
-
-            actualizarImagenPerfil(
-              base64Image
-            );
-
-            window.tempNuevaFoto =
-              base64Image;
-
-            fotoPerfilTemporal =
-              base64Image;
-          };
-
-          reader.readAsDataURL(
-            file
-          );
-        }
-      };
-    }
-
-    const form =
-      document.getElementById(
-        'perfil-form'
-      );
-
-    if (
-      form &&
-      !form.dataset.listenerWired
-    ) {
-      form.dataset.listenerWired =
-        'true';
-
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-
-        await guardarCambiosPerfil(
-          e
-        );
-      };
-    }
-
-    configurarVisorContrasenas(
-      'perfil-clave-actual',
-      'toggle-clave-actual'
-    );
-
-    configurarVisorContrasenas(
-      'perfil-clave-nueva',
-      'toggle-clave-nueva'
-    );
-
-    configurarVisorContrasenas(
-      'perfil-clave-confirmar',
-      'toggle-clave-confirmar'
     );
   }
 
@@ -219,15 +154,21 @@
         'perfil-foto-input'
       );
 
-    formulario?.addEventListener(
-      'submit',
-      guardarCambiosPerfil
-    );
+    if (formulario && !formulario.dataset.listenerWired) {
+      formulario.dataset.listenerWired = 'true';
+      formulario.addEventListener(
+        'submit',
+        guardarCambiosPerfil
+      );
+    }
 
-    inputFoto?.addEventListener(
-      'change',
-      cambiarVistaPreviaFoto
-    );
+    if (inputFoto && !inputFoto.dataset.listenerWired) {
+      inputFoto.dataset.listenerWired = 'true';
+      inputFoto.addEventListener(
+        'change',
+        cambiarVistaPreviaFoto
+      );
+    }
 
     configurarVisorContrasenas(
       'perfil-clave-actual',
@@ -758,6 +699,9 @@
   function generarAvatarIniciales(
     perfil
   ) {
+    fotoPerfilTemporal = null;
+    window.tempNuevaFoto = null;
+
     const inicialNombre =
       perfil?.nombre?.charAt(0) ||
       'U';
@@ -799,6 +743,17 @@
     const avatar = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
       svg
     )}`;
+
+    const avatarContenedores =
+      document.querySelectorAll(
+        '#topbar-avatar, #sidebar-avatar, .user-avatar'
+      );
+
+    avatarContenedores.forEach((el) => {
+      if (el.tagName !== 'IMG') {
+        el.style.backgroundImage = '';
+      }
+    });
 
     actualizarImagenPerfil(
       avatar

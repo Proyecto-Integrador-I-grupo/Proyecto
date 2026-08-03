@@ -74,7 +74,6 @@ export async function obtenerMatriculas(req, res) {
 export async function obtenerGrupos(req, res) {
   try {
     const usuario = req.usuarioActual;
-    // FIX #1: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol".
     const rol = (usuario?.nom_rol || "").toLowerCase();
 
     // Si es profesor, filtramos estrictamente por sus grupos asignados o suplencias activas
@@ -84,22 +83,30 @@ export async function obtenerGrupos(req, res) {
         return res.json([]);
       }
 
-      // FIX #3: "grupo" NO tiene columna "id_profesor" (confirmado por el error de MySQL
-      // "Unknown column 'g.id_profesor'"). La relación profesor-grupo vive en la tabla
-      // "grupo_profesor" (columnas id_grupo, id_profesor, estado).
       const sqlProfesorGrupos = `
-        SELECT DISTINCT g.* 
+        SELECT DISTINCT 
+          g.id_grupo,
+          g.nombre_grupo,
+          g.capacidad,
+          g.aula,
+          g.id_seccion,
+          s.nombre_seccion,
+          s.nivel,
+          s.periodo_lectivo,
+          fn_estudiantes_grupo(g.id_grupo) AS ocupados
         FROM grupo g
-        LEFT JOIN grupo_profesor gp     ON gp.id_grupo = g.id_grupo AND gp.estado = TRUE
-        LEFT JOIN profesor_suplencia s  ON s.id_grupo = g.id_grupo AND s.estado = TRUE
-        WHERE gp.id_profesor = ? OR s.id_profesor_suplente = ?
+        INNER JOIN seccion s ON g.id_seccion = s.id_seccion
+        LEFT JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo AND gp.estado = TRUE
+        LEFT JOIN profesor_suplencia s_sup ON s_sup.id_grupo = g.id_grupo AND s_sup.estado = TRUE
+        WHERE g.estado = TRUE AND (gp.id_profesor = ? OR s_sup.id_profesor_suplente = ?)
+        ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo
       `;
       const [rows] = await conexion.query(sqlProfesorGrupos, [idProfesor, idProfesor]);
       return res.json(rows);
     }
 
     // Para administradores o asistentes, se devuelven todos los grupos normalmente
-    const grupos = await obtenerGruposService();
+    const grupos = await obtenerGruposService(usuario);
     res.json(grupos);
   } catch (error) {
     res.status(500).json({

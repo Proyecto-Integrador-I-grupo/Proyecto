@@ -149,17 +149,23 @@ export async function obtenerGruposService(usuarioActual = null) {
 }
 
 export async function crearGrupoService(datos) {
-  const { nombre_grupo, capacidad, aula, id_profesor, id_seccion } = datos;
+  const { nombre_grupo, capacidad, aula, profesores, id_profesor, id_seccion } = datos;
 
   const nombreLimpio = (nombre_grupo || "").trim();
   const capacidadNum = Number(capacidad);
-  const idProfesorNum = Number(id_profesor);
   const idSeccionNum = Number(id_seccion);
+
+  // Normalizar array de profesores
+  let listaProfesores = [];
+  if (Array.isArray(profesores)) {
+    listaProfesores = profesores.map(p => Number(p)).filter(p => !isNaN(p) && p > 0);
+  } else if (id_profesor && !isNaN(Number(id_profesor))) {
+    listaProfesores = [Number(id_profesor)];
+  }
 
   if (!nombreLimpio) throw new Error("El nombre del grupo es obligatorio.");
   if (!Number.isInteger(capacidadNum) || capacidadNum <= 0) throw new Error("La capacidad debe ser un número entero mayor a cero.");
   if (!Number.isInteger(idSeccionNum) || idSeccionNum <= 0) throw new Error("Debe seleccionar una sección académica.");
-  if (!Number.isInteger(idProfesorNum) || idProfesorNum <= 0) throw new Error("Debe asignar un profesor encargado.");
 
   const connection = await pool.getConnection();
   try {
@@ -170,13 +176,6 @@ export async function crearGrupoService(datos) {
       [idSeccionNum]
     );
     if (seccionRows.length === 0) throw new Error("La sección seleccionada no existe o está inactiva.");
-
-    const [profesorRows] = await connection.query(
-      "SELECT estado FROM profesor WHERE id_profesor = ?",
-      [idProfesorNum]
-    );
-    if (profesorRows.length === 0) throw new Error("El profesor seleccionado no existe.");
-    if (!profesorRows[0].estado) throw new Error("No se puede asignar un profesor inactivo a un grupo.");
 
     const [dupRows] = await connection.query(
       "SELECT id_grupo FROM grupo WHERE nombre_grupo = ? AND id_seccion = ? AND estado = TRUE",
@@ -190,10 +189,15 @@ export async function crearGrupoService(datos) {
     );
     const id_grupo = result.insertId;
 
-    await connection.query(
-      "CALL sp_asignar_profesor_grupo(?, ?, ?, ?)",
-      [new Date().toISOString().split("T")[0], null, id_grupo, idProfesorNum]
-    );
+    if (listaProfesores.length > 0) {
+      const fechaHoy = new Date().toISOString().split("T")[0];
+      for (const idProf of listaProfesores) {
+        await connection.query(
+          "CALL sp_asignar_profesor_grupo(?, ?, ?, ?)",
+          [fechaHoy, null, id_grupo, idProf]
+        );
+      }
+    }
 
     await connection.commit();
     return { mensaje: "Grupo creado correctamente.", id_grupo };
@@ -206,16 +210,18 @@ export async function crearGrupoService(datos) {
 }
 
 export async function actualizarGrupoService(idGrupo, datos) {
-  const { capacidad, aula, id_profesor } = datos;
+  const { capacidad, aula, id_profesor, profesores } = datos;
 
   const capacidadNum = Number(capacidad);
-  const idProfesorNum = Number(id_profesor);
+  let listaProfesores = [];
+  if (Array.isArray(profesores)) {
+    listaProfesores = profesores.map(p => Number(p)).filter(p => !isNaN(p) && p > 0);
+  } else if (id_profesor && !isNaN(Number(id_profesor))) {
+    listaProfesores = [Number(id_profesor)];
+  }
 
   if (!Number.isInteger(capacidadNum) || capacidadNum <= 0) {
     throw new Error("La capacidad debe ser un número entero mayor a cero.");
-  }
-  if (!Number.isInteger(idProfesorNum) || idProfesorNum <= 0) {
-    throw new Error("Debe asignar un profesor encargado.");
   }
 
   const connection = await pool.getConnection();
@@ -230,26 +236,6 @@ export async function actualizarGrupoService(idGrupo, datos) {
       throw new Error("El grupo no existe o está inactivo.");
     }
 
-    const [profesorRows] = await connection.query(
-      "SELECT estado FROM profesor WHERE id_profesor = ?",
-      [idProfesorNum]
-    );
-    if (profesorRows.length === 0) {
-      throw new Error("El profesor seleccionado no existe.");
-    }
-    if (!profesorRows[0].estado) {
-      throw new Error("No se puede asignar un profesor inactivo a un grupo.");
-    }
-
-    const [profActualRows] = await connection.query(
-      `SELECT id_profesor
-       FROM grupo_profesor
-       WHERE id_grupo = ? AND estado = TRUE AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
-       ORDER BY fecha_inicio DESC
-       LIMIT 1`,
-      [idGrupo]
-    );
-
     await connection.query(
       `UPDATE grupo
        SET capacidad = ?, aula = ?
@@ -257,19 +243,21 @@ export async function actualizarGrupoService(idGrupo, datos) {
       [capacidadNum, aula ? aula.trim() : null, idGrupo]
     );
 
-    if (profActualRows.length > 0 && profActualRows[0].id_profesor !== idProfesorNum) {
+    if (listaProfesores.length > 0) {
       await connection.query(
         `UPDATE grupo_profesor
          SET fecha_fin = CURDATE(), estado = FALSE
-         WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE`,
-        [idGrupo, profActualRows[0].id_profesor]
+         WHERE id_grupo = ? AND estado = TRUE`,
+        [idGrupo]
       );
 
-      await connection.query(
-        `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
-         VALUES (?, ?, CURDATE(), TRUE)`,
-        [idGrupo, idProfesorNum]
-      );
+      for (const idProf of listaProfesores) {
+        await connection.query(
+          `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
+           VALUES (?, ?, CURDATE(), TRUE)`,
+          [idGrupo, idProf]
+        );
+      }
     }
 
     await connection.commit();

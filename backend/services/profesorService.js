@@ -14,6 +14,7 @@ export const obtenerProfesoresService = async () => {
       pr.fecha_ingreso,
       pr.estado,
       GROUP_CONCAT(DISTINCT g.nombre_grupo ORDER BY g.nombre_grupo SEPARATOR ', ') AS grupos_asignados,
+      GROUP_CONCAT(DISTINCT g.id_grupo ORDER BY g.nombre_grupo SEPARATOR ',') AS grupos_ids,
       (
         SELECT COUNT(*) FROM profesor_suplencia ps 
         WHERE ps.id_profesor_titular = pr.id_profesor AND ps.estado = TRUE
@@ -419,6 +420,93 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
       mensaje: provisional
         ? "Profesor asignado provisionalmente al grupo (se restaurará el titular al reintegrarlo)"
         : "Profesor reasignado con éxito al grupo"
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Sincroniza los grupos activos de un profesor con la lista recibida:
+ * agrega los que falten y desactiva (con fecha_fin) los que ya no vengan.
+ * Es aditivo/no-destructivo hacia otros profesores: solo toca las filas
+ * de grupo_profesor que pertenecen a este id_profesor.
+ *
+ * Nota de diseño: cada profesor ya tiene una única "materia" fija en su
+ * ficha. Si quieres que un mismo grupo tenga Español, Matemáticas y
+ * Ciencias cubiertas, asigna ese grupo a los 3 profesores correspondientes
+ * (cada uno desde este mismo endpoint); grupo_profesor admite muchos
+ * profesores por grupo.
+ */
+export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) => {
+  const listaGrupos = Array.isArray(idsGrupos)
+    ? [...new Set(idsGrupos.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+    : [];
+
+  const connection = await conexionPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [profRows] = await connection.query(
+      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      [id_profesor]
+    );
+    if (profRows.length === 0) {
+      throw new Error("El profesor no existe.");
+    }
+    if (profRows[0].estado == 0 || profRows[0].estado === false) {
+      throw new Error("No se pueden asignar grupos a un profesor inactivo/destituido.");
+    }
+
+    if (listaGrupos.length > 0) {
+      const placeholders = listaGrupos.map(() => '?').join(',');
+      const [gruposValidos] = await connection.query(
+        `SELECT id_grupo FROM grupo WHERE id_grupo IN (${placeholders}) AND estado = TRUE`,
+        listaGrupos
+      );
+      if (gruposValidos.length !== listaGrupos.length) {
+        throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
+      }
+    }
+
+    const [actuales] = await connection.query(
+      `SELECT id_grupo FROM grupo_profesor WHERE id_profesor = ? AND estado = TRUE`,
+      [id_profesor]
+    );
+    const actualesIds = actuales.map((r) => r.id_grupo);
+
+    const aQuitar = actualesIds.filter((id) => !listaGrupos.includes(id));
+    const aAgregar = listaGrupos.filter((id) => !actualesIds.includes(id));
+
+    if (aQuitar.length > 0) {
+      const placeholders = aQuitar.map(() => '?').join(',');
+      await connection.query(
+        `UPDATE grupo_profesor 
+         SET estado = FALSE, fecha_fin = CURDATE()
+         WHERE id_profesor = ? AND estado = TRUE AND id_grupo IN (${placeholders})`,
+        [id_profesor, ...aQuitar]
+      );
+    }
+
+    for (const idGrupo of aAgregar) {
+      await connection.query(
+        `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
+         VALUES (?, ?, CURDATE(), TRUE)`,
+        [idGrupo, id_profesor]
+      );
+    }
+
+    await connection.commit();
+    return {
+      id_profesor,
+      grupos_asignados: listaGrupos,
+      agregados: aAgregar,
+      removidos: aQuitar,
+      mensaje: "Grupos del profesor actualizados correctamente."
     };
   } catch (error) {
     await connection.rollback();

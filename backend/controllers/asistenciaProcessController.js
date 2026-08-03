@@ -3,12 +3,6 @@ import * as auditoriaModel from '../models/auditoriaModel.js';
 import { registrarAsistenciaProceso, listarAsistencias } from '../services/asistenciaServiceP.js';
 
 // 1. Crear nuevo registro de asistencia
-// Antes este controlador hacía un INSERT directo a la tabla `asistencia`
-// sin pasar por ninguna validación. Ahora delega en registrarAsistenciaProceso()
-// (asistenciaServiceP.js), que valida: profesor asignado activamente al grupo,
-// estudiante activo en el grupo, y que no exista ya un registro duplicado para
-// ese estudiante/grupo/fecha. Esto evita que se guarden combinaciones
-// profesor-grupo o estudiante-grupo que no corresponden.
 export async function crearAsistencia(req, res) {
   try {
     const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor } = req.body;
@@ -24,7 +18,6 @@ export async function crearAsistencia(req, res) {
 
     const datosNuevos = JSON.stringify({ fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor });
 
-    // Registrar en auditoría de forma segura
     try {
       await auditoriaModel.crearAuditoria({
         nombre_tabla: "asistencia",
@@ -43,14 +36,31 @@ export async function crearAsistencia(req, res) {
   }
 }
 
-// 2. Obtener listado de asistencias con filtros
-// Antes este controlador consultaba tablas `estudiantes`, `profesores` y
-// `grupos` (en plural) que no existen en el esquema real (el esquema usa
-// `estudiante`, `profesor`, `grupo` + `persona`, tal como en
-// asistenciaServiceP.js). Eso causaba el error 500 al cargar el historial.
-// Ahora delega en listarAsistencias(), que ya usa los nombres correctos.
+// 2. Obtener listado de asistencias con filtros (Filtrado por rol de profesor)
 export async function obtenerAsistencias(req, res) {
   try {
+    const usuario = req.usuarioActual;
+    const rol = (usuario?.rol || "").toLowerCase();
+
+    // Si es profesor, filtramos el historial exclusivamente para sus grupos asignados o suplencias activas
+    if (rol === "profesor") {
+      const idProfesor = usuario.id_profesor;
+      if (!idProfesor) {
+        return res.status(200).json([]);
+      }
+
+      const queryProfesorAsistencias = `
+        SELECT DISTINCT a.* 
+        FROM asistencia a
+        JOIN grupo g ON a.id_grupo = g.id_grupo
+        LEFT JOIN suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
+        WHERE g.id_profesor = ? OR s.id_profesor_suplente = ?
+      `;
+      const [filasProfesor] = await db.query(queryProfesorAsistencias, [idProfesor, idProfesor, idProfesor]);
+      return res.status(200).json(filasProfesor);
+    }
+
+    // Si es administrador o asistente, se muestra todo el listado normalmente
     const filas = await listarAsistencias(req.query);
     return res.status(200).json(filas);
   } catch (error) {
@@ -62,17 +72,15 @@ export async function obtenerAsistencias(req, res) {
 // 3. Actualizar asistencia
 export async function actualizarAsistencia(req, res) {
   try {
-    const { id } = req.params; // Corresponde al id_asistencia de la ruta
+    const { id } = req.params; 
     const { estado_asistencia, observaciones } = req.body;
 
-    // 1. Verificar existencia del registro usando 'id_asistencia'
     const [rowsAntes] = await db.query('SELECT * FROM asistencia WHERE id_asistencia = ?', [id]);
     if (rowsAntes.length === 0) {
       return res.status(404).json({ mensaje: 'Registro de asistencia no encontrado.' });
     }
     const datosAnteriores = JSON.stringify(rowsAntes[0]);
 
-    // 2. Ejecutar la actualización con la columna correcta 'estado_asistencia'
     const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ?';
     const [result] = await db.query(query, [estado_asistencia, observaciones || null, id]);
 
@@ -82,7 +90,6 @@ export async function actualizarAsistencia(req, res) {
 
     const datosNuevos = JSON.stringify({ id_asistencia: id, estado_asistencia, observaciones });
 
-    // 3. Registrar en auditoría de forma segura
     try {
       await auditoriaModel.crearAuditoria({
         nombre_tabla: "asistencia",

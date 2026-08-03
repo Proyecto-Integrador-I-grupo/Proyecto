@@ -11,6 +11,7 @@ import {
 } from "../services/matriculaServiceP.js";
 
 import * as auditoriaModel from "../models/auditoriaModel.js";
+import conexion from "../config/database.js";
 
 /* ==========================================
    MATRÍCULAS
@@ -72,8 +73,28 @@ export async function obtenerMatriculas(req, res) {
 
 export async function obtenerGrupos(req, res) {
   try {
-    const grupos = await obtenerGruposService();
+    const usuario = req.usuarioActual;
+    const rol = (usuario?.rol || "").toLowerCase();
 
+    // Si es profesor, filtramos por sus grupos asignados o suplencias activas
+    if (rol === "profesor") {
+      const idProfesor = usuario.id_profesor;
+      if (!idProfesor) {
+        return res.json([]);
+      }
+
+      const sqlProfesorGrupos = `
+        SELECT DISTINCT g.* 
+        FROM grupo g
+        LEFT JOIN suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
+        WHERE g.id_profesor = ? OR s.id_profesor_suplente = ?
+      `;
+      const [rows] = await conexion.query(sqlProfesorGrupos, [idProfesor, idProfesor, idProfesor]);
+      return res.json(rows);
+    }
+
+    // Para administradores o asistentes, se devuelven todos los grupos normalmente
+    const grupos = await obtenerGruposService();
     res.json(grupos);
   } catch (error) {
     res.status(500).json({

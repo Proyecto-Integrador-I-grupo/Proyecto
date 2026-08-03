@@ -76,7 +76,7 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   const valores = [];
 
   // Seguridad por rol: Si es profesor, limitamos a sus grupos o suplencias activas
-  // FIX: el campo real del rol es "nom_rol" (ver usuarioModel.js), no "rol".
+  // FIX #1: el campo real del rol es "nom_rol" (ver usuarioModel.js), no "rol".
   const rol = (usuarioActual?.nom_rol || "").toLowerCase();
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
@@ -127,6 +127,8 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     valores.push(like, like, like);
   }
 
+  // FIX #2: la tabla se llama "profesor_suplencia" (no "suplencia") y su columna
+  // de estado se llama "estado" (no "activo").
   const [filas] = await pool.query(
     `SELECT
         a.id_asistencia,
@@ -148,7 +150,7 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
      INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
      INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
      INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-     LEFT JOIN suplencia s_filtro ON s_filtro.id_grupo = g.id_grupo AND s_filtro.activo = 1
+     LEFT JOIN profesor_suplencia s_filtro ON s_filtro.id_grupo = g.id_grupo AND s_filtro.estado = TRUE
      WHERE ${condiciones.join(" AND ")}
      ORDER BY a.fecha DESC, a.id_asistencia DESC
      LIMIT 500`,

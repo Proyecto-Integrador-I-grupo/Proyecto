@@ -38,9 +38,7 @@ export async function crearAsistencia(req, res) {
 export async function obtenerAsistencias(req, res) {
   try {
     const usuario = req.usuarioActual;
-    // FIX: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol",
-    // no "rol". Con "rol" la condición de abajo nunca se cumplía y todo profesor terminaba
-    // viendo el historial sin restricción alguna.
+    // FIX #1: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol".
     const rol = (usuario?.nom_rol || "").toLowerCase();
 
     if (rol === "profesor") {
@@ -49,6 +47,10 @@ export async function obtenerAsistencias(req, res) {
         return res.status(200).json([]);
       }
 
+      // FIX #2: la tabla se llama "profesor_suplencia" (no "suplencia") y su columna
+      // de estado se llama "estado" (no "activo"). Con los nombres viejos, MySQL
+      // tiraba "Table 'suplencia' doesn't exist" y por eso el historial nunca cargaba
+      // para las cuentas de profesor.
       const queryProfesorAsistencias = `
         SELECT DISTINCT
             a.id_asistencia,
@@ -70,7 +72,7 @@ export async function obtenerAsistencias(req, res) {
         INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
         INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
         INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-        LEFT JOIN suplencia s     ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
+        LEFT JOIN profesor_suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.estado = TRUE
         WHERE (g.id_profesor = ? OR s.id_profesor_suplente = ?) AND a.estado = TRUE
         ORDER BY a.fecha DESC, a.id_asistencia DESC
         LIMIT 500

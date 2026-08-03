@@ -2,7 +2,6 @@ import db from '../config/database.js';
 import * as auditoriaModel from '../models/auditoriaModel.js';
 import { registrarAsistenciaProceso, listarAsistencias } from '../services/asistenciaServiceP.js';
 
-// 1. Crear nuevo registro de asistencia
 export async function crearAsistencia(req, res) {
   try {
     const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor } = req.body;
@@ -36,13 +35,11 @@ export async function crearAsistencia(req, res) {
   }
 }
 
-// 2. Obtener listado de asistencias con filtros (Filtrado por rol de profesor)
 export async function obtenerAsistencias(req, res) {
   try {
     const usuario = req.usuarioActual;
     const rol = (usuario?.rol || "").toLowerCase();
 
-    // Si es profesor, filtramos el historial exclusivamente para sus grupos asignados o suplencias activas
     if (rol === "profesor") {
       const idProfesor = usuario.id_profesor;
       if (!idProfesor) {
@@ -50,17 +47,35 @@ export async function obtenerAsistencias(req, res) {
       }
 
       const queryProfesorAsistencias = `
-        SELECT DISTINCT a.* 
+        SELECT DISTINCT
+            a.id_asistencia,
+            a.fecha,
+            a.estado_asistencia,
+            a.observaciones,
+            a.id_estudiante,
+            a.id_grupo,
+            a.id_profesor,
+            pe.nombre        AS estudiante_nombre,
+            pe.apellido1      AS estudiante_apellido1,
+            pe.apellido2      AS estudiante_apellido2,
+            g.nombre_grupo,
+            pr.nombre         AS profesor_nombre,
+            pr.apellido1      AS profesor_apellido1
         FROM asistencia a
-        JOIN grupo g ON a.id_grupo = g.id_grupo
-        LEFT JOIN suplencia s ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
-        WHERE g.id_profesor = ? OR s.id_profesor_suplente = ?
+        INNER JOIN estudiante e   ON a.id_estudiante = e.id_estudiante
+        INNER JOIN persona pe     ON e.id_persona = pe.id_persona
+        INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
+        INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
+        INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
+        LEFT JOIN suplencia s     ON s.id_grupo = g.id_grupo AND s.id_profesor_suplente = ? AND s.activo = 1
+        WHERE (g.id_profesor = ? OR s.id_profesor_suplente = ?) AND a.estado = TRUE
+        ORDER BY a.fecha DESC, a.id_asistencia DESC
+        LIMIT 500
       `;
       const [filasProfesor] = await db.query(queryProfesorAsistencias, [idProfesor, idProfesor, idProfesor]);
       return res.status(200).json(filasProfesor);
     }
 
-    // Si es administrador o asistente, se muestra todo el listado normalmente
     const filas = await listarAsistencias(req.query);
     return res.status(200).json(filas);
   } catch (error) {
@@ -69,7 +84,6 @@ export async function obtenerAsistencias(req, res) {
   }
 }
 
-// 3. Actualizar asistencia
 export async function actualizarAsistencia(req, res) {
   try {
     const { id } = req.params; 

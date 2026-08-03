@@ -725,7 +725,7 @@
     }
   }
 
- function cargarFotoSegunUsuario(perfil) {
+  function cargarFotoSegunUsuario(perfil) {
     if (!perfil?.id_usuario) {
       return;
     }
@@ -758,10 +758,6 @@
 
     // 4. Último recurso: Iniciales
     generarAvatarIniciales(perfil);
-  }
-    generarAvatarIniciales(
-      perfil
-    );
   }
 
   function generarAvatarIniciales(

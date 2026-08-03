@@ -1,63 +1,244 @@
 <link rel="stylesheet" href="../css/variables.css">
 <link rel="stylesheet" href="../css/components.css">
 <link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/perfil.css">
 
 <section id="perfil-view" class="view hidden">
-  <div class="row justify-content-center">
-    <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title-serif h5 mb-4"><i class="bi bi-person-gear"></i> Mi Perfil</h2>
-          <form id="perfil-form">
-            <div class="row g-3">
-              <div class="col-md-4 text-center mb-3">
-                <img id="perfil-foto-preview" src="https://via.placeholder.com/120" alt="Foto" class="rounded-circle mb-2" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid var(--accent);">
-                <div>
-                  <label for="perfil-foto-input" class="btn btn-sm btn-outline-primary">Cambiar Foto</label>
-                  <input type="file" id="perfil-foto-input" accept="image/*" class="d-none">
-                </div>
-              </div>
-              <div class="col-md-8">
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label">Nombre</label>
-                    <input id="perfil-nombre" class="form-control" required>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label">Primer Apellido</label>
-                    <input id="perfil-apellido1" class="form-control" required>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label">Segundo Apellido</label>
-                    <input id="perfil-apellido2" class="form-control">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Correo Electrónico</label>
-                    <input id="perfil-correo" type="email" class="form-control" required>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12"><hr class="my-3"></div>
-              <h3 class="h6 fw-bold mb-3">Seguridad</h3>
-              <div class="col-md-4">
-                <label class="form-label">Clave Actual</label>
-                <input id="perfil-clave-actual" type="password" class="form-control">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Nueva Clave</label>
-                <input id="perfil-clave-nueva" type="password" class="form-control">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Confirmar Clave</label>
-                <input id="perfil-clave-confirmar" type="password" class="form-control">
-              </div>
-              <div class="col-12 pt-3">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Guardar Cambios</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
+
+  <div class="perfil-hero mb-4">
+
+    <div>
+
+      <span class="perfil-eyebrow">
+        Configuración personal
+      </span>
+
+      <h2 class="card-title-serif h3 mb-2">
+        Mi Perfil
+      </h2>
+
+      <p class="text-muted mb-0">
+        Administra tu información personal y la seguridad de tu cuenta.
+      </p>
+
     </div>
+
+    <div class="perfil-icono">
+      <i class="bi bi-person-circle"></i>
+    </div>
+
   </div>
+
+  <div class="row g-4">
+
+    <!-- Panel izquierdo -->
+    <div class="col-lg-4">
+
+      <div class="card border-0 shadow-sm perfil-card">
+
+        <div class="card-body text-center">
+
+          <div class="perfil-avatar">
+
+            <img
+              id="perfil-foto-preview"
+              src="https://via.placeholder.com/150"
+              alt="Perfil">
+
+          </div>
+
+          <label
+            for="perfil-foto-input"
+            class="btn btn-outline-primary btn-sm mt-3">
+
+            <i class="bi bi-camera"></i>
+            Cambiar fotografía
+
+          </label>
+
+          <input
+            id="perfil-foto-input"
+            type="file"
+            accept="image/*"
+            class="d-none">
+
+          <hr>
+
+          <h4
+            id="perfil-nombre-completo"
+            class="mb-1">
+
+            Usuario
+
+          </h4>
+
+          <span
+            id="perfil-rol"
+            class="badge bg-primary">
+
+            Rol
+
+          </span>
+
+          <div class="perfil-info mt-4">
+
+            <div class="perfil-info-item">
+
+              <i class="bi bi-envelope"></i>
+
+              <span id="perfil-correo-info">
+                -
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Panel derecho -->
+    <div class="col-lg-8">
+
+      <div class="card border-0 shadow-sm">
+
+        <div class="card-body">
+
+          <form id="perfil-form">
+
+            <h5 class="mb-4">
+              Información personal
+            </h5>
+
+            <div class="row g-3">
+
+              <div class="col-md-6">
+
+                <label class="form-label">
+                  Nombre
+                </label>
+
+                <input
+                  id="perfil-nombre"
+                  class="form-control"
+                  required>
+
+              </div>
+
+              <div class="col-md-6">
+
+                <label class="form-label">
+                  Correo electrónico
+                </label>
+
+                <input
+                  id="perfil-correo"
+                  type="email"
+                  class="form-control"
+                  required>
+
+              </div>
+
+              <div class="col-md-6">
+
+                <label class="form-label">
+                  Primer apellido
+                </label>
+
+                <input
+                  id="perfil-apellido1"
+                  class="form-control"
+                  required>
+
+              </div>
+
+              <div class="col-md-6">
+
+                <label class="form-label">
+                  Segundo apellido
+                </label>
+
+                <input
+                  id="perfil-apellido2"
+                  class="form-control">
+
+              </div>
+
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-4">
+              Seguridad
+            </h5>
+
+            <div class="row g-3">
+
+              <div class="col-md-4">
+
+                <label class="form-label">
+                  Clave actual
+                </label>
+
+                <input
+                  id="perfil-clave-actual"
+                  type="password"
+                  class="form-control">
+
+              </div>
+
+              <div class="col-md-4">
+
+                <label class="form-label">
+                  Nueva clave
+                </label>
+
+                <input
+                  id="perfil-clave-nueva"
+                  type="password"
+                  class="form-control">
+
+              </div>
+
+              <div class="col-md-4">
+
+                <label class="form-label">
+                  Confirmar clave
+                </label>
+
+                <input
+                  id="perfil-clave-confirmar"
+                  type="password"
+                  class="form-control">
+
+              </div>
+
+            </div>
+
+            <div class="mt-4">
+
+              <button
+                type="submit"
+                class="btn btn-primary">
+
+                <i class="bi bi-check2-circle"></i>
+                Guardar cambios
+
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
 </section>

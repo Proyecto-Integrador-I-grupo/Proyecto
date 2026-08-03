@@ -434,53 +434,52 @@ let tipoDocumentoActual = null;
       const fila = document.createElement('tr');
 
       fila.innerHTML = `
-        <td>${id}</td>
+  <td>${id}</td>
 
-        <td>
-          ${formarNombre(estudiante) || '-'}
-        </td>
+  <td>
+    <div class="fw-semibold">
+      ${formarNombre(estudiante) || '-'}
+    </div>
 
-        <td>
-          ${limpiarFecha(
-            estudiante.fecha_nacimiento
-          )}
-        </td>
+    <small class="text-muted">
+      Matrícula #${estudiante.id_matricula ?? '-'}
+    </small>
+  </td>
 
-        <td>
-          ${limpiarFecha(
-            estudiante.fecha_ingreso
-          )}
-        </td>
+  <td>
+    ${limpiarFecha(
+      estudiante.fecha_nacimiento
+    )}
+  </td>
 
-        <td>
-          <span
-            class="badge ${
-              activo
-                ? 'bg-success'
-                : 'bg-secondary'
-            }">
-            ${activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </td>
+  <td>
+    ${limpiarFecha(
+      estudiante.fecha_ingreso
+    )}
+  </td>
 
-        <td class="text-end">
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary consulta-ver-estudiante"
-            data-id="${id}">
-           <i class="bi bi-file-earmark-text"></i>
-              Vista previa
-          </button>
+  <td>
+    <span
+      class="badge ${
+        activo
+          ? 'bg-success'
+          : 'bg-secondary'
+      }">
+      ${activo ? 'Activo' : 'Inactivo'}
+    </span>
+  </td>
 
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-primary consulta-editar-estudiante"
-            data-id="${id}">
-            <i class="bi bi-pencil"></i>
-            Modificar
-          </button>
-        </td>
-      `;
+  <td class="text-end">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary consulta-ver-matriculado"
+      data-estudiante="${estudiante.id_estudiante}"
+      data-matricula="${estudiante.id_matricula}">
+      <i class="bi bi-file-earmark-text"></i>
+      Vista previa
+    </button>
+  </td>
+`;
 
       body.appendChild(fila);
     });
@@ -572,19 +571,20 @@ let tipoDocumentoActual = null;
     );
 
     cambiarEncabezado(`
-      <tr>
-        <th>ID</th>
-        <th>Estudiante</th>
-        <th>Grupo</th>
-        <th>Sección</th>
-        <th>Nivel</th>
-        <th>Fecha de matrícula</th>
-        <th>Estado</th>
-      </tr>
-    `);
+  <tr>
+    <th>ID</th>
+    <th>Estudiante</th>
+    <th>Grupo</th>
+    <th>Sección</th>
+    <th>Nivel</th>
+    <th>Fecha de matrícula</th>
+    <th>Estado</th>
+    <th class="text-end">Acciones</th>
+  </tr>
+`);
 
     if (!resultados.length) {
-      mostrarSinResultados(7);
+      mostrarSinResultados(8);
       return;
     }
 
@@ -1320,6 +1320,10 @@ let tipoDocumentoActual = null;
       evento.target.closest(
         '.consulta-ver-estudiante'
       );
+    const verMatriculado =
+  evento.target.closest(
+    '.consulta-ver-matriculado'
+  );
 
     const editarEstudiante =
       evento.target.closest(
@@ -1353,6 +1357,14 @@ let tipoDocumentoActual = null;
         editarEstudiante.dataset.id
       );
       return;
+    }
+
+  if (verMatriculado) {
+     mostrarDetalleMatriculado(
+    verMatriculado.dataset.estudiante,
+    verMatriculado.dataset.matricula
+  );
+  return;
     }
 
     if (verProfesor) {
@@ -1503,6 +1515,149 @@ prepararEncabezadoDocumento(
       `;
     }
   }
+
+  function mostrarDetalleMatriculado(
+  idEstudiante,
+  idMatricula
+) {
+  const registro =
+    estudiantesMatriculados.find(
+      (item) => {
+        const coincideEstudiante =
+          String(item.id_estudiante) ===
+          String(idEstudiante);
+
+        const coincideMatricula =
+          !idMatricula ||
+          String(item.id_matricula) ===
+          String(idMatricula);
+
+        return (
+          coincideEstudiante &&
+          coincideMatricula
+        );
+      }
+    );
+
+  const contenido = document.getElementById(
+    'consulta-detalle-contenido'
+  );
+
+  const titulo = document.getElementById(
+    'consulta-detalle-titulo'
+  );
+
+  const modificar = document.getElementById(
+    'consulta-detalle-modificar'
+  );
+
+  if (!contenido || !titulo || !modificar) {
+    return;
+  }
+
+  titulo.textContent =
+    'Vista previa del estudiante matriculado';
+
+  modificar.classList.add('hidden');
+  modificar.dataset.id = '';
+
+  if (!registro) {
+    contenido.innerHTML = `
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró la información del estudiante matriculado.
+      </div>
+    `;
+
+    abrirModalDetalle();
+    return;
+  }
+
+  documentoActual = registro;
+  tipoDocumentoActual = 'matriculado';
+
+  prepararEncabezadoDocumento(
+    'Constancia de estudiante matriculado'
+  );
+
+  const activo =
+    registro.estado == 1 ||
+    registro.estado === true;
+
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Información del estudiante
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
+          'Identificación',
+          registro.id_estudiante ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Nombre completo',
+          formarNombre(registro) || '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Número de matrícula',
+          registro.id_matricula ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Fecha de matrícula',
+          limpiarFecha(
+            registro.fecha_matricula ||
+            registro.fecha_asignacion
+          )
+        )}
+
+      </div>
+    </div>
+
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Información académica
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
+          'Grupo',
+          registro.nombre_grupo ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Sección',
+          registro.nombre_seccion ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Nivel',
+          registro.nivel ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Período lectivo',
+          registro.periodo_lectivo ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Estado',
+          activo ? 'Activo' : 'Inactivo'
+        )}
+
+      </div>
+    </div>
+  `;
+
+  abrirModalDetalle();
+}
 
   function mostrarDetalleProfesor(id) {
     const profesor = profesores.find(
@@ -2473,6 +2628,35 @@ function obtenerFechaActual() {
   );
 }
 
+function prepararEncabezadoDocumento(titulo) {
+  const tituloDocumento = document.getElementById(
+    'consulta-documento-titulo'
+  );
+
+  const subtituloDocumento = document.getElementById(
+    'consulta-documento-subtitulo'
+  );
+
+  const fechaDocumento = document.getElementById(
+    'consulta-documento-fecha'
+  );
+
+  if (tituloDocumento) {
+    tituloDocumento.textContent =
+      titulo || 'Documento académico';
+  }
+
+  if (subtituloDocumento) {
+    subtituloDocumento.textContent =
+      'Sistema de Gestión Escolar';
+  }
+
+  if (fechaDocumento) {
+    fechaDocumento.textContent =
+      obtenerFechaActual();
+  }
+}
+
     function crearCampoDetalle(etiqueta, valor) {
     return `
       <div class="col-md-6">
@@ -2488,6 +2672,29 @@ function obtenerFechaActual() {
       </div>
     `;
   }
+
+  function crearCampoDetalleDocumento(
+  etiqueta,
+  valor,
+  completo = false
+) {
+  return `
+    <div
+      class="consulta-documento-campo ${
+        completo ? 'completo' : ''
+      }">
+
+      <span class="consulta-documento-etiqueta">
+        ${etiqueta}
+      </span>
+
+      <div class="consulta-documento-valor">
+        ${valor ?? '-'}
+      </div>
+
+    </div>
+  `;
+}
 
   function mostrarGenero(genero) {
     const generos = {

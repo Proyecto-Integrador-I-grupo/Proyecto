@@ -33,13 +33,11 @@ const validarMatricula = [
 const validarGrupo = [
   body("nombre_grupo").trim().notEmpty().withMessage("El nombre del grupo es obligatorio."),
   body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
-  body("id_profesor").isInt({ min: 1 }).withMessage("Debe asignar un profesor encargado."),
   body("id_seccion").isInt({ min: 1 }).withMessage("Debe seleccionar una sección académica.")
 ];
 
 const validarGrupoUpdate = [
-  body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
-  body("id_profesor").isInt({ min: 1 }).withMessage("Debe asignar un profesor encargado.")
+  body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero.")
 ];
 
 const validarRetiroEstudiante = [

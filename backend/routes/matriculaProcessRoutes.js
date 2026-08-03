@@ -73,11 +73,11 @@ router.post("/matricula", requireAuth, validarMatricula, validarCampos, crearMat
 router.post("/matricula/transferir", requireAuth, validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
 
 // Grupos
-router.get("/grupos", obtenerGrupos);
+router.get("/grupos", requireAuth, obtenerGrupos);
 router.post("/grupos", requireAuth, validarGrupo, validarCampos, crearGrupo);
 router.put("/grupos/:id", requireAuth, validarGrupoUpdate, validarCampos, actualizarGrupo);
 router.delete("/grupos/:id", requireAuth, eliminarGrupo);
-router.get("/grupos/:id/detalle", obtenerDetalleGrupo);
+router.get("/grupos/:id/detalle", requireAuth, obtenerDetalleGrupo);
 router.put("/grupos/:id/retirar-estudiante", requireAuth, validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
 
 export default router;

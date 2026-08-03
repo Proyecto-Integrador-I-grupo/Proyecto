@@ -38,7 +38,6 @@ export async function crearAsistencia(req, res) {
 export async function obtenerAsistencias(req, res) {
   try {
     const usuario = req.usuarioActual;
-    // FIX #1: el campo real del rol en el usuario autenticado (ver usuarioModel.js) es "nom_rol".
     const rol = (usuario?.nom_rol || "").toLowerCase();
 
     if (rol === "profesor") {
@@ -47,9 +46,8 @@ export async function obtenerAsistencias(req, res) {
         return res.status(200).json([]);
       }
 
-      // FIX #3: "grupo" NO tiene columna "id_profesor" (confirmado por el error de MySQL
-      // "Unknown column 'g.id_profesor'"). La relación profesor-grupo vive en la tabla
-      // "grupo_profesor" (columnas id_grupo, id_profesor, estado).
+      // CORRECCIÓN: Filtrar directamente por el id_profesor registrado en la asistencia (a.id_profesor)
+      // para que cada docente vea ÚNICAMENTE las asistencias tomadas en sus respectivas materias.
       const queryProfesorAsistencias = `
         SELECT DISTINCT
             a.id_asistencia,
@@ -71,13 +69,11 @@ export async function obtenerAsistencias(req, res) {
         INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
         INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
         INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-        LEFT JOIN grupo_profesor gp     ON gp.id_grupo = g.id_grupo AND gp.estado = TRUE
-        LEFT JOIN profesor_suplencia s  ON s.id_grupo = g.id_grupo AND s.estado = TRUE
-        WHERE (gp.id_profesor = ? OR s.id_profesor_suplente = ?) AND a.estado = TRUE
+        WHERE a.id_profesor = ? AND a.estado = TRUE
         ORDER BY a.fecha DESC, a.id_asistencia DESC
         LIMIT 500
       `;
-      const [filasProfesor] = await db.query(queryProfesorAsistencias, [idProfesor, idProfesor]);
+      const [filasProfesor] = await db.query(queryProfesorAsistencias, [idProfesor]);
       return res.status(200).json(filasProfesor);
     }
 

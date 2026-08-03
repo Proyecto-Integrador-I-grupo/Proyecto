@@ -54,7 +54,6 @@ function wireMatriculaEvents() {
         return;
       }
 
-      // Limpia cualquier residuo de caracteres extra o dos puntos para dejar solo el ID numérico puro
       const idGrupo = String(rawValue).split(':')[0].trim();
 
       if (!idGrupo || isNaN(idGrupo)) {
@@ -62,7 +61,6 @@ function wireMatriculaEvents() {
         return;
       }
 
-      // Abre la ventana emergente (modal) personalizada en lugar del confirm() nativo
       const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
       if (confirmarModalEl) {
         const btnConfirmarAccion = document.getElementById('btn-confirmar-borrado-grupo');
@@ -74,7 +72,6 @@ function wireMatriculaEvents() {
     });
   }
 
-  // Listener para el botón definitivo dentro de la ventana emergente de confirmación
   const btnConfirmarBorradoGrupo = document.getElementById('btn-confirmar-borrado-grupo');
   if (btnConfirmarBorradoGrupo && !btnConfirmarBorradoGrupo.dataset.wired) {
     btnConfirmarBorradoGrupo.dataset.wired = '1';
@@ -220,7 +217,6 @@ function wireMatriculaEvents() {
     });
   }
 
-  // --- Gestionar Matrícula (retirar / transferir estudiante de grupo) ---
   const btnAbrirGestionMatricula = document.querySelector('[data-bs-target="#modalGestionMatricula"]');
   if (btnAbrirGestionMatricula && !btnAbrirGestionMatricula.dataset.wired) {
     btnAbrirGestionMatricula.dataset.wired = '1';
@@ -329,7 +325,6 @@ async function cargarEstudiantesGestionMatricula() {
       }
     }
 
-    // El grupo destino no puede ser el mismo que el grupo actual
     if (selNuevo) {
       Array.from(selNuevo.options).forEach((opt) => {
         if (opt.value === '') return;

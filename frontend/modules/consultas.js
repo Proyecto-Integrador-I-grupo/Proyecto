@@ -1,10 +1,11 @@
 (function () {
   const moduleName = 'consultas';
 
-let estudiantes = [];
-let profesores = [];
-let matriculas = [];
-let asistencias = [];
+  let estudiantes = [];
+  let estudiantesMatriculados = [];
+  let profesores = [];
+  let matriculas = [];
+  let asistencias = [];
 
   window.EduControlModules = window.EduControlModules || {};
 
@@ -23,261 +24,371 @@ let asistencias = [];
   };
 
   function conectarEventos() {
-  const tipo = document.getElementById('consulta-tipo');
-  const busqueda = document.getElementById('consulta-busqueda');
-  const estado = document.getElementById('consulta-estado');
-  const grupo = document.getElementById('consulta-grupo');
-  const fecha = document.getElementById('consulta-fecha');
-  const limpiar = document.getElementById('consulta-limpiar');
-  const refrescar = document.getElementById('consulta-refrescar');
-  const tablaBody = document.getElementById('consulta-tabla-body');
-  const modificarDetalle = document.getElementById(
-    'consulta-detalle-modificar'
-  );
-
-  tipo?.addEventListener('change', actualizarConsulta);
-  busqueda?.addEventListener('input', actualizarConsulta);
-  estado?.addEventListener('change', actualizarConsulta);
-  grupo?.addEventListener('change', actualizarConsulta);
-  fecha?.addEventListener('change', actualizarConsulta);
-  refrescar?.addEventListener('click', cargarConsultas);
-
-  tablaBody?.addEventListener(
-    'click',
-    manejarAccionesTabla
-  );
-
-  modificarDetalle?.addEventListener(
-    'click',
-    modificarDesdeDetalle
-  );
-
-  limpiar?.addEventListener('click', () => {
-    if (busqueda) busqueda.value = '';
-    if (estado) estado.value = '';
-    if (grupo) grupo.value = '';
-    if (fecha) fecha.value = '';
-
-    actualizarConsulta();
-  });
-}
-
- async function cargarConsultas() {
-  mostrarCargando();
-
-  try {
-    const [
-      resEstudiantes,
-      resProfesores,
-      resMatriculas,
-      resAsistencias
-    ] = await Promise.all([
-      apiFetch('/api/estudiantes'),
-      apiFetch('/api/profesores'),
-      apiFetch('/api/procesos/matricula'),
-      apiFetch('/api/procesos/asistencia')
-    ]);
-
-    estudiantes = resEstudiantes.ok
-      ? await resEstudiantes.json()
-      : [];
-
-    profesores = resProfesores.ok
-      ? await resProfesores.json()
-      : [];
-
-    matriculas = resMatriculas.ok
-      ? await resMatriculas.json()
-      : [];
-
-    asistencias = resAsistencias.ok
-      ? await resAsistencias.json()
-      : [];
-
-    if (!resMatriculas.ok) {
-      console.warn(
-        'La consulta de matrículas todavía no está disponible en el servidor.'
-      );
-    }
-
-    if (!resAsistencias.ok) {
-      console.warn(
-        'No se pudieron cargar los registros de asistencia.'
-      );
-    }
-
-    actualizarResumen();
-    cargarFiltroGrupos();
-    actualizarConsulta();
-  } catch (error) {
-    console.error('Error cargando consultas:', error);
-
-    mostrarError(
-      error.message ||
-      'No se pudo cargar la información.'
+    const tipo = document.getElementById('consulta-tipo');
+    const busqueda = document.getElementById('consulta-busqueda');
+    const estado = document.getElementById('consulta-estado');
+    const grupo = document.getElementById('consulta-grupo');
+    const seccion = document.getElementById('consulta-seccion');
+    const nivel = document.getElementById('consulta-nivel');
+    const fecha = document.getElementById('consulta-fecha');
+    const limpiar = document.getElementById('consulta-limpiar');
+    const refrescar = document.getElementById('consulta-refrescar');
+    const tablaBody = document.getElementById('consulta-tabla-body');
+    const modificarDetalle = document.getElementById(
+      'consulta-detalle-modificar'
     );
+
+    tipo?.addEventListener('change', actualizarConsulta);
+    busqueda?.addEventListener('input', actualizarConsulta);
+    estado?.addEventListener('change', actualizarConsulta);
+    grupo?.addEventListener('change', actualizarConsulta);
+    seccion?.addEventListener('change', actualizarConsulta);
+    nivel?.addEventListener('change', actualizarConsulta);
+    fecha?.addEventListener('change', actualizarConsulta);
+    refrescar?.addEventListener('click', cargarConsultas);
+
+    tablaBody?.addEventListener('click', manejarAccionesTabla);
+
+    modificarDetalle?.addEventListener(
+      'click',
+      modificarDesdeDetalle
+    );
+
+    limpiar?.addEventListener('click', () => {
+      if (busqueda) busqueda.value = '';
+      if (estado) estado.value = '';
+      if (grupo) grupo.value = '';
+      if (seccion) seccion.value = '';
+      if (nivel) nivel.value = '';
+      if (fecha) fecha.value = '';
+
+      actualizarConsulta();
+    });
   }
-} 
+
+  async function cargarConsultas() {
+    mostrarCargando();
+
+    try {
+      const [
+        resEstudiantes,
+        resEstudiantesMatriculados,
+        resProfesores,
+        resMatriculas,
+        resAsistencias
+      ] = await Promise.all([
+        apiFetch('/api/estudiantes'),
+        apiFetch('/api/estudiantes/matriculados'),
+        apiFetch('/api/profesores'),
+        apiFetch('/api/procesos/matricula'),
+        apiFetch('/api/procesos/asistencia')
+      ]);
+
+      estudiantes = resEstudiantes.ok
+        ? await resEstudiantes.json()
+        : [];
+
+      estudiantesMatriculados =
+        resEstudiantesMatriculados.ok
+          ? await resEstudiantesMatriculados.json()
+          : [];
+
+      profesores = resProfesores.ok
+        ? await resProfesores.json()
+        : [];
+
+      matriculas = resMatriculas.ok
+        ? await resMatriculas.json()
+        : [];
+
+      asistencias = resAsistencias.ok
+        ? await resAsistencias.json()
+        : [];
+
+      if (!resEstudiantesMatriculados.ok) {
+        console.warn(
+          'No se pudieron cargar los estudiantes matriculados.'
+        );
+      }
+
+      if (!resMatriculas.ok) {
+        console.warn(
+          'No se pudieron cargar las matrículas.'
+        );
+      }
+
+      if (!resAsistencias.ok) {
+        console.warn(
+          'No se pudieron cargar los registros de asistencia.'
+        );
+      }
+
+      actualizarResumen();
+      cargarFiltroGrupos();
+      cargarFiltrosMatriculados();
+      actualizarConsulta();
+    } catch (error) {
+      console.error('Error cargando consultas:', error);
+
+      mostrarError(
+        error.message ||
+        'No se pudo cargar la información.'
+      );
+    }
+  }
 
   /* ==========================================
-   RESUMEN GENERAL DE CONSULTAS
-   ========================================== */
+     RESUMEN GENERAL DE CONSULTAS
+     ========================================== */
 
   function actualizarResumen() {
-    const totalEstudiantes = document.getElementById('consulta-total-estudiantes');
-    const totalProfesores = document.getElementById('consulta-total-profesores');
-    const totalMatriculas = document.getElementById('consulta-total-matriculas');
-    const totalAsistencias = document.getElementById('consulta-total-asistencias');
+    const totalEstudiantes = document.getElementById(
+      'consulta-total-estudiantes'
+    );
+
+    const totalMatriculados = document.getElementById(
+      'consulta-total-matriculados'
+    );
+
+    const totalProfesores = document.getElementById(
+      'consulta-total-profesores'
+    );
+
+    const totalMatriculas = document.getElementById(
+      'consulta-total-matriculas'
+    );
+
+    const totalAsistencias = document.getElementById(
+      'consulta-total-asistencias'
+    );
 
     if (totalEstudiantes) {
       totalEstudiantes.textContent = estudiantes.length;
     }
 
+    if (totalMatriculados) {
+      totalMatriculados.textContent =
+        estudiantesMatriculados.length;
+    }
+
     if (totalProfesores) {
       totalProfesores.textContent = profesores.length;
     }
+
     if (totalMatriculas) {
-    totalMatriculas.textContent = matriculas.length;
-  }
-  if (totalAsistencias) {
-    totalAsistencias.textContent = asistencias.length;
-  }
+      totalMatriculas.textContent = matriculas.length;
+    }
+
+    if (totalAsistencias) {
+      totalAsistencias.textContent = asistencias.length;
+    }
   }
 
-/* ==========================================
-   CAMBIO DEL TIPO DE CONSULTA
-   ========================================== */
   /* ==========================================
-   CAMBIO DEL TIPO DE CONSULTA
-   ========================================== */
+     CAMBIO DEL TIPO DE CONSULTA
+     ========================================== */
 
-function actualizarConsulta() {
-  const tipo =
-    document.getElementById('consulta-tipo')?.value ||
-    'estudiantes';
+  function actualizarConsulta() {
+    const tipo =
+      document.getElementById('consulta-tipo')?.value ||
+      'prematriculados';
 
-  actualizarFiltroEstado(tipo);
-  actualizarTextoBusqueda(tipo);
-  actualizarFiltrosVisibles(tipo);
+    actualizarFiltroEstado(tipo);
+    actualizarTextoBusqueda(tipo);
+    actualizarFiltrosVisibles(tipo);
 
-  if (tipo === 'estudiantes') {
-    mostrarEstudiantes();
-    return;
+    if (tipo === 'prematriculados') {
+      mostrarEstudiantesPrematriculados();
+      return;
+    }
+
+    if (tipo === 'matriculados') {
+      mostrarEstudiantesMatriculados();
+      return;
+    }
+
+    if (tipo === 'profesores') {
+      mostrarProfesores();
+      return;
+    }
+
+    if (tipo === 'matriculas') {
+      mostrarMatriculas();
+      return;
+    }
+
+    if (tipo === 'asistencia') {
+      mostrarAsistencias();
+    }
   }
 
-  if (tipo === 'profesores') {
-    mostrarProfesores();
-    return;
+  /* ==========================================
+     FILTROS DINÁMICOS
+     ========================================== */
+
+  function actualizarFiltroEstado(tipo) {
+    const select = document.getElementById('consulta-estado');
+
+    if (!select) return;
+
+    const valorActual = select.value;
+
+    if (tipo === 'asistencia') {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="presente">Presente</option>
+        <option value="ausente">Ausente</option>
+        <option value="tardia">Tardía</option>
+        <option value="justificada">Justificada</option>
+      `;
+          } else if (
+      tipo === 'matriculas' ||
+      tipo === 'matriculados'
+    ) {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="activa">Activa</option>
+        <option value="inactiva">Inactiva</option>
+        <option value="retirada">Retirada</option>
+        <option value="finalizada">Finalizada</option>
+      `;
+    } else {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+      `;
+    }
+
+    const opcionExiste = Array.from(select.options).some(
+      (opcion) => opcion.value === valorActual
+    );
+
+    select.value = opcionExiste ? valorActual : '';
   }
 
-  if (tipo === 'matriculas') {
-    mostrarMatriculas();
-    return;
+  function actualizarTextoBusqueda(tipo) {
+    const input = document.getElementById(
+      'consulta-busqueda'
+    );
+
+    if (!input) return;
+
+    const textos = {
+      prematriculados:
+        'Buscar estudiante pendiente...',
+
+      matriculados:
+        'Buscar por estudiante, grupo, sección o nivel...',
+
+      profesores:
+        'Buscar por nombre o materia...',
+
+      matriculas:
+        'Buscar por estudiante o grupo...',
+
+      asistencia:
+        'Buscar por estudiante, grupo o profesor...'
+    };
+
+    input.placeholder =
+      textos[tipo] || 'Buscar...';
   }
 
-  if (tipo === 'asistencia') {
-    mostrarAsistencias();
+  function actualizarFiltrosVisibles(tipo) {
+    const filtroGrupo = document.querySelector(
+      '.consulta-filtro-grupo'
+    );
+
+    const filtroFecha = document.querySelector(
+      '.consulta-filtro-fecha'
+    );
+
+    const filtroSeccion = document.querySelector(
+      '.consulta-filtro-seccion'
+    );
+
+    const filtroNivel = document.querySelector(
+      '.consulta-filtro-nivel'
+    );
+
+    const usaGrupo =
+      tipo === 'matriculados' ||
+      tipo === 'matriculas' ||
+      tipo === 'asistencia';
+
+    const usaFecha =
+      tipo === 'matriculas' ||
+      tipo === 'asistencia';
+
+    const usaInformacionAcademica =
+      tipo === 'matriculados';
+
+    filtroGrupo?.classList.toggle(
+      'hidden',
+      !usaGrupo
+    );
+
+    filtroFecha?.classList.toggle(
+      'hidden',
+      !usaFecha
+    );
+
+    filtroSeccion?.classList.toggle(
+      'hidden',
+      !usaInformacionAcademica
+    );
+
+    filtroNivel?.classList.toggle(
+      'hidden',
+      !usaInformacionAcademica
+    );
   }
-}
 
-/* ==========================================
-   FILTROS DINÁMICOS
-   ========================================== */
+  /* ==========================================
+     ESTUDIANTES EN PRE-MATRÍCULA
+     ========================================== */
 
-function actualizarFiltroEstado(tipo) {
-  const select = document.getElementById('consulta-estado');
-
-  if (!select) return;
-
-  const valorActual = select.value;
-
-  if (tipo === 'asistencia') {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="presente">Presente</option>
-      <option value="ausente">Ausente</option>
-      <option value="tardia">Tardía</option>
-      <option value="justificada">Justificada</option>
-    `;
-  } else if (tipo === 'matriculas') {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="activa">Activa</option>
-      <option value="inactiva">Inactiva</option>
-      <option value="retirada">Retirada</option>
-      <option value="finalizada">Finalizada</option>
-    `;
-  } else {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="activo">Activo</option>
-      <option value="inactivo">Inactivo</option>
-    `;
-  }
-
-  const opcionExiste = Array.from(select.options).some(
-    (opcion) => opcion.value === valorActual
-  );
-
-  select.value = opcionExiste ? valorActual : '';
-}
-
-function actualizarTextoBusqueda(tipo) {
-  const input = document.getElementById('consulta-busqueda');
-
-  if (!input) return;
-
-  const textos = {
-    estudiantes: 'Buscar por nombre...',
-    profesores: 'Buscar por nombre o materia...',
-    matriculas: 'Buscar por estudiante o grupo...',
-    asistencia: 'Buscar por estudiante, grupo o profesor...'
-  };
-
-  input.placeholder = textos[tipo] || 'Buscar...';
-}
-
-function actualizarFiltrosVisibles(tipo) {
-  const filtroGrupo = document.querySelector(
-    '.consulta-filtro-grupo'
-  );
-
-  const filtroFecha = document.querySelector(
-    '.consulta-filtro-fecha'
-  );
-
-  const mostrarFiltrosDeProceso =
-    tipo === 'matriculas' ||
-    tipo === 'asistencia';
-
-  filtroGrupo?.classList.toggle(
-    'hidden',
-    !mostrarFiltrosDeProceso
-  );
-
-  filtroFecha?.classList.toggle(
-    'hidden',
-    !mostrarFiltrosDeProceso
-  );
-}
-  function mostrarEstudiantes() {
+  function mostrarEstudiantesPrematriculados() {
     const busqueda = obtenerBusqueda();
-    const estado = obtenerEstado();
+    const estadoSeleccionado = obtenerEstado();
 
-    const resultados = estudiantes.filter((estudiante) => {
-      const nombreCompleto = formarNombre(estudiante).toLowerCase();
-      const activo = estudiante.estado == 1 || estudiante.estado === true || estudiante.estado === undefined;
+    const resultados = estudiantes.filter(
+      (estudiante) => {
+        const texto =
+          formarNombre(estudiante).toLowerCase();
 
-      const coincideNombre = !busqueda || nombreCompleto.includes(busqueda);
-      const coincideEstado =
-        !estado ||
-        (estado === 'activo' && activo) ||
-        (estado === 'inactivo' && !activo);
+        const activo =
+          estudiante.estado == 1 ||
+          estudiante.estado === true ||
+          estudiante.estado === undefined;
 
-      return coincideNombre && coincideEstado;
-    });
+        const coincideBusqueda =
+          !busqueda ||
+          texto.includes(busqueda);
 
-    actualizarTitulo('Estudiantes registrados', resultados.length);
+        const coincideEstado =
+          !estadoSeleccionado ||
+          (
+            estadoSeleccionado === 'activo' &&
+            activo
+          ) ||
+          (
+            estadoSeleccionado === 'inactivo' &&
+            !activo
+          );
+
+        return (
+          coincideBusqueda &&
+          coincideEstado
+        );
+      }
+    );
+
+    actualizarTitulo(
+      'Estudiantes pendientes de matrícula',
+      resultados.length
+    );
 
     cambiarEncabezado(`
       <tr>
@@ -295,394 +406,1365 @@ function actualizarFiltrosVisibles(tipo) {
       return;
     }
 
-    const body = document.getElementById('consulta-tabla-body');
+    const body = document.getElementById(
+      'consulta-tabla-body'
+    );
+
+    if (!body) return;
+
     body.innerHTML = '';
 
     resultados.forEach((estudiante) => {
-      const id = estudiante.id_estudiante ?? estudiante.id ?? '';
-      const nombre = formarNombre(estudiante);
-      const nacimiento = limpiarFecha(estudiante.fecha_nacimiento);
-      const ingreso = limpiarFecha(estudiante.fecha_ingreso);
-      const activo = estudiante.estado == 1 || estudiante.estado === true || estudiante.estado === undefined;
+      const id =
+        estudiante.id_estudiante ??
+        estudiante.id ??
+        '';
+
+      const activo =
+        estudiante.estado == 1 ||
+        estudiante.estado === true ||
+        estudiante.estado === undefined;
 
       const fila = document.createElement('tr');
 
       fila.innerHTML = `
         <td>${id}</td>
-        <td>${nombre || '-'}</td>
-        <td>${nacimiento}</td>
-        <td>${ingreso}</td>
+
         <td>
-          <span class="badge ${activo ? 'bg-success' : 'bg-secondary'}">
+          ${formarNombre(estudiante) || '-'}
+        </td>
+
+        <td>
+          ${limpiarFecha(
+            estudiante.fecha_nacimiento
+          )}
+        </td>
+
+        <td>
+          ${limpiarFecha(
+            estudiante.fecha_ingreso
+          )}
+        </td>
+
+        <td>
+          <span
+            class="badge ${
+              activo
+                ? 'bg-success'
+                : 'bg-secondary'
+            }">
             ${activo ? 'Activo' : 'Inactivo'}
           </span>
         </td>
-        <td class="text-end">
-  <div class="d-inline-flex gap-1">
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-secondary consulta-ver-estudiante"
-      data-id="${id}">
-      <i class="bi bi-eye"></i>
-      Ver
-    </button>
 
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-primary consulta-editar-estudiante"
-      data-id="${id}">
-      <i class="bi bi-pencil"></i>
-      Modificar
-    </button>
-  </div>
-</td>
+        <td class="text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary consulta-ver-estudiante"
+            data-id="${id}">
+            <i class="bi bi-eye"></i>
+            Ver
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary consulta-editar-estudiante"
+            data-id="${id}">
+            <i class="bi bi-pencil"></i>
+            Modificar
+          </button>
+        </td>
       `;
 
       body.appendChild(fila);
     });
   }
 
-  function mostrarProfesores() {
-  const busqueda = obtenerBusqueda();
-  const estadoSeleccionado = obtenerEstado();
+  /* ==========================================
+     ESTUDIANTES MATRICULADOS
+     ========================================== */
 
-  const resultados = profesores.filter((profesor) => {
-    const texto = `${formarNombre(profesor)} ${profesor.materia ?? ''}`
-      .toLowerCase();
+  function mostrarEstudiantesMatriculados() {
+    const busqueda = obtenerBusqueda();
+    const estadoSeleccionado = obtenerEstado();
 
-    const activo =
-      profesor.estado == 1 ||
-      profesor.estado === true;
+    const grupoSeleccionado =
+      document.getElementById(
+        'consulta-grupo'
+      )?.value || '';
 
-    const coincideBusqueda =
-      !busqueda ||
-      texto.includes(busqueda);
+    const seccionSeleccionada =
+      document.getElementById(
+        'consulta-seccion'
+      )?.value || '';
 
-    const coincideEstado =
-      !estadoSeleccionado ||
-      (estadoSeleccionado === 'activo' && activo) ||
-      (estadoSeleccionado === 'inactivo' && !activo);
+    const nivelSeleccionado =
+      document.getElementById(
+        'consulta-nivel'
+      )?.value || '';
 
-    return coincideBusqueda && coincideEstado;
-  });
+    const resultados =
+      estudiantesMatriculados.filter(
+        (estudiante) => {
+          const nombre =
+            formarNombre(estudiante)
+              .toLowerCase();
 
-  actualizarTitulo(
-    'Profesores registrados',
-    resultados.length
-  );
+          const grupo = String(
+            estudiante.nombre_grupo ?? ''
+          ).toLowerCase();
 
-  cambiarEncabezado(`
-    <tr>
-      <th>ID</th>
-      <th>Nombre completo</th>
-      <th>Materia</th>
-      <th>Ingreso</th>
-      <th>Estado</th>
-      <th class="text-end">Acciones</th>
-    </tr>
-  `);
+          const seccion = String(
+            estudiante.nombre_seccion ?? ''
+          );
 
-  if (!resultados.length) {
-    mostrarSinResultados(6);
-    return;
+          const nivel = String(
+            estudiante.nivel ?? ''
+          );
+                    const estado = String(
+            estudiante.estado_matricula ?? 'activa'
+          ).toLowerCase();
+
+          const textoCompleto =
+            `${nombre} ${grupo} ${seccion} ${nivel}`;
+
+          const coincideBusqueda =
+            !busqueda ||
+            textoCompleto.includes(busqueda);
+
+          const coincideGrupo =
+            !grupoSeleccionado ||
+            String(estudiante.id_grupo) ===
+              String(grupoSeleccionado);
+
+          const coincideSeccion =
+            !seccionSeleccionada ||
+            String(estudiante.id_seccion) ===
+              String(seccionSeleccionada);
+
+          const coincideNivel =
+            !nivelSeleccionado ||
+            nivel === nivelSeleccionado;
+
+          const coincideEstado =
+            !estadoSeleccionado ||
+            estado === estadoSeleccionado;
+
+          return (
+            coincideBusqueda &&
+            coincideGrupo &&
+            coincideSeccion &&
+            coincideNivel &&
+            coincideEstado
+          );
+        }
+      );
+
+    actualizarTitulo(
+      'Estudiantes matriculados',
+      resultados.length
+    );
+
+    cambiarEncabezado(`
+      <tr>
+        <th>ID</th>
+        <th>Estudiante</th>
+        <th>Grupo</th>
+        <th>Sección</th>
+        <th>Nivel</th>
+        <th>Fecha de matrícula</th>
+        <th>Estado</th>
+      </tr>
+    `);
+
+    if (!resultados.length) {
+      mostrarSinResultados(7);
+      return;
+    }
+
+    const body = document.getElementById(
+      'consulta-tabla-body'
+    );
+
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    resultados.forEach((estudiante) => {
+      const activo =
+        estudiante.estado == 1 ||
+        estudiante.estado === true;
+
+      const fila = document.createElement('tr');
+
+      fila.innerHTML = `
+        <td>
+          ${estudiante.id_estudiante ?? '-'}
+        </td>
+
+        <td>
+          <div class="fw-semibold">
+            ${formarNombre(estudiante) || '-'}
+          </div>
+
+          <small class="text-muted">
+            Matrícula #${estudiante.id_matricula ?? '-'}
+          </small>
+        </td>
+
+        <td>
+          ${estudiante.nombre_grupo ?? '-'}
+        </td>
+
+        <td>
+          ${estudiante.nombre_seccion ?? '-'}
+        </td>
+
+        <td>
+          ${estudiante.nivel ?? '-'}
+        </td>
+
+        <td>
+          ${limpiarFecha(
+            estudiante.fecha_matricula ||
+            estudiante.fecha_asignacion
+          )}
+        </td>
+
+        <td>
+          <span
+            class="badge ${
+              activo
+                ? 'bg-success'
+                : 'bg-secondary'
+            }">
+            ${activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </td>
+      `;
+
+      body.appendChild(fila);
+    });
   }
-
-  const body = document.getElementById(
-    'consulta-tabla-body'
-  );
-
-  if (!body) return;
-
-  body.innerHTML = '';
-
-  resultados.forEach((profesor) => {
-    const id =
-      profesor.id_profesor ??
-      profesor.id ??
-      '';
-
-    const nombre =
-      formarNombre(profesor);
-
-    const materia =
-      profesor.materia ??
-      'Sin asignar';
-
-    const ingreso =
-      limpiarFecha(profesor.fecha_ingreso);
-
-    const activo =
-      profesor.estado == 1 ||
-      profesor.estado === true;
-
-    const fila = document.createElement('tr');
-
-    fila.innerHTML = `
-      <td>${id}</td>
-
-      <td>${nombre || '-'}</td>
-
-      <td>${materia}</td>
-
-      <td>${ingreso}</td>
-
-      <td>
-        <span class="badge ${activo ? 'bg-success' : 'bg-danger'}">
-          ${activo ? 'Activo' : 'Inactivo'}
-        </span>
-      </td>
-
-      <td class="text-end">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
-          data-id="${id}">
-          <i class="bi bi-eye"></i>
-          Ver
-        </button>
-      </td>
-    `;
-
-    body.appendChild(fila);
-  });
-}
-
 
   /* ==========================================
-   CONSULTA DE MATRÍCULAS
-   ========================================== */
+     CONSULTA DE PROFESORES
+     ========================================== */
 
-   function mostrarMatriculas() {
-  const busqueda = obtenerBusqueda();
-  const estadoSeleccionado = obtenerEstado();
+  function mostrarProfesores() {
+    const busqueda = obtenerBusqueda();
+    const estadoSeleccionado = obtenerEstado();
 
-  const grupoSeleccionado =
-    document.getElementById('consulta-grupo')?.value || '';
+    const resultados = profesores.filter(
+      (profesor) => {
+        const texto =
+          `${formarNombre(profesor)} ${
+            profesor.materia ?? ''
+          }`.toLowerCase();
 
-  const fechaSeleccionada =
-    document.getElementById('consulta-fecha')?.value || '';
+        const activo =
+          profesor.estado == 1 ||
+          profesor.estado === true;
 
-  const resultados = matriculas.filter((registro) => {
-    const estudiante = `${registro.estudiante_nombre ?? ''} ${
-      registro.estudiante_apellido1 ?? ''
-    } ${registro.estudiante_apellido2 ?? ''}`
-      .trim()
-      .toLowerCase();
+        const coincideBusqueda =
+          !busqueda ||
+          texto.includes(busqueda);
 
-    const grupo = String(
-      registro.nombre_grupo ?? ''
-    ).toLowerCase();
+        const coincideEstado =
+          !estadoSeleccionado ||
+          (
+            estadoSeleccionado === 'activo' &&
+            activo
+          ) ||
+          (
+            estadoSeleccionado === 'inactivo' &&
+            !activo
+          );
 
-    const estado = String(
-      registro.estado_matricula ?? ''
-    ).toLowerCase();
-
-    const fecha = limpiarFecha(registro.fecha);
-
-    const coincideBusqueda =
-      !busqueda ||
-      `${estudiante} ${grupo}`.includes(busqueda);
-
-    const coincideEstado =
-      !estadoSeleccionado ||
-      estado === estadoSeleccionado;
-
-    const coincideGrupo =
-      !grupoSeleccionado ||
-      String(registro.id_grupo) ===
-        String(grupoSeleccionado);
-
-    const coincideFecha =
-      !fechaSeleccionada ||
-      fecha === fechaSeleccionada;
-
-    return (
-      coincideBusqueda &&
-      coincideEstado &&
-      coincideGrupo &&
-      coincideFecha
+        return (
+          coincideBusqueda &&
+          coincideEstado
+        );
+      }
     );
-  });
 
-  actualizarTitulo(
-    'Matrículas registradas',
-    resultados.length
-  );
+    actualizarTitulo(
+      'Profesores registrados',
+      resultados.length
+    );
 
-  cambiarEncabezado(`
-    <tr>
-      <th>ID</th>
-      <th>Fecha</th>
-      <th>Estudiante</th>
-      <th>Grupo</th>
-      <th>Período</th>
-      <th>Tipo</th>
-      <th>Estado</th>
-      <th class="text-end">Acciones</th>
-    </tr>
-  `);
+    cambiarEncabezado(`
+      <tr>
+        <th>ID</th>
+        <th>Nombre completo</th>
+        <th>Materia</th>
+        <th>Ingreso</th>
+        <th>Estado</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    `);
 
-  if (!resultados.length) {
-    mostrarSinResultados(8);
-    return;
+    if (!resultados.length) {
+      mostrarSinResultados(6);
+      return;
+    }
+
+    const body = document.getElementById(
+      'consulta-tabla-body'
+    );
+
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    resultados.forEach((profesor) => {
+      const id =
+        profesor.id_profesor ??
+        profesor.id ??
+        '';
+
+      const nombre =
+        formarNombre(profesor);
+
+      const materia =
+        profesor.materia ??
+        'Sin asignar';
+
+      const ingreso =
+        limpiarFecha(
+          profesor.fecha_ingreso
+        );
+
+      const activo =
+        profesor.estado == 1 ||
+        profesor.estado === true;
+
+      const fila =
+        document.createElement('tr');
+
+      fila.innerHTML = `
+        <td>${id}</td>
+
+        <td>${nombre || '-'}</td>
+
+        <td>${materia}</td>
+
+        <td>${ingreso}</td>
+
+        <td>
+          <span
+            class="badge ${
+              activo
+                ? 'bg-success'
+                : 'bg-danger'
+            }">
+            ${activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </td>
+
+        <td class="text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
+            data-id="${id}">
+            <i class="bi bi-eye"></i>
+            Ver
+          </button>
+        </td>
+      `;
+
+      body.appendChild(fila);
+    });
   }
 
-  const body = document.getElementById(
-    'consulta-tabla-body'
-  );
+  /* ==========================================
+     CONSULTA DE MATRÍCULAS
+     ========================================== */
 
-  if (!body) return;
+  function mostrarMatriculas() {
+    const busqueda = obtenerBusqueda();
+    const estadoSeleccionado = obtenerEstado();
 
-  body.innerHTML = '';
+    const grupoSeleccionado =
+      document.getElementById(
+        'consulta-grupo'
+      )?.value || '';
 
-  resultados.forEach((registro) => {
-    const estudiante = `${registro.estudiante_nombre ?? ''} ${
-      registro.estudiante_apellido1 ?? ''
-    } ${registro.estudiante_apellido2 ?? ''}`.trim();
+    const fechaSeleccionada =
+      document.getElementById(
+        'consulta-fecha'
+      )?.value || '';
 
-    const estado =
-      registro.estado_matricula || 'Sin estado';
+    const resultados = matriculas.filter(
+      (registro) => {
+        const estudiante = `${
+          registro.estudiante_nombre ?? ''
+        } ${
+          registro.estudiante_apellido1 ?? ''
+        } ${
+          registro.estudiante_apellido2 ?? ''
+        }`
+          .trim()
+          .toLowerCase();
 
-    const fila = document.createElement('tr');
+        const grupo = String(
+          registro.nombre_grupo ?? ''
+        ).toLowerCase();
 
-    fila.innerHTML = `
-      <td>${registro.id_matricula ?? '-'}</td>
+        const estado = String(
+          registro.estado_matricula ?? ''
+        ).toLowerCase();
+                const fecha = limpiarFecha(
+          registro.fecha
+        );
 
-      <td>${limpiarFecha(registro.fecha)}</td>
+        const coincideBusqueda =
+          !busqueda ||
+          `${estudiante} ${grupo}`.includes(
+            busqueda
+          );
 
-      <td>${estudiante || '-'}</td>
+        const coincideEstado =
+          !estadoSeleccionado ||
+          estado === estadoSeleccionado;
 
-      <td>${registro.nombre_grupo ?? '-'}</td>
+        const coincideGrupo =
+          !grupoSeleccionado ||
+          String(registro.id_grupo) ===
+            String(grupoSeleccionado);
 
-      <td>
-        ${registro.periodo_lectivo ?? '-'} /
-        ${registro.anio_lectivo ?? '-'}
-      </td>
+        const coincideFecha =
+          !fechaSeleccionada ||
+          fecha === fechaSeleccionada;
 
-      <td>${registro.tipo_matricula ?? '-'}</td>
+        return (
+          coincideBusqueda &&
+          coincideEstado &&
+          coincideGrupo &&
+          coincideFecha
+        );
+      }
+    );
 
-      <td>
-        <span class="badge bg-primary">
-          ${estado}
+    actualizarTitulo(
+      'Matrículas registradas',
+      resultados.length
+    );
+
+    cambiarEncabezado(`
+      <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Estudiante</th>
+        <th>Grupo</th>
+        <th>Período</th>
+        <th>Tipo</th>
+        <th>Estado</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    `);
+
+    if (!resultados.length) {
+      mostrarSinResultados(8);
+      return;
+    }
+
+    const body = document.getElementById(
+      'consulta-tabla-body'
+    );
+
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    resultados.forEach((registro) => {
+      const estudiante = `${
+        registro.estudiante_nombre ?? ''
+      } ${
+        registro.estudiante_apellido1 ?? ''
+      } ${
+        registro.estudiante_apellido2 ?? ''
+      }`.trim();
+
+      const estado =
+        registro.estado_matricula ||
+        'Sin estado';
+
+      const fila =
+        document.createElement('tr');
+
+      fila.innerHTML = `
+        <td>
+          ${registro.id_matricula ?? '-'}
+        </td>
+
+        <td>
+          ${limpiarFecha(registro.fecha)}
+        </td>
+
+        <td>
+          ${estudiante || '-'}
+        </td>
+
+        <td>
+          ${registro.nombre_grupo ?? '-'}
+        </td>
+
+        <td>
+          ${registro.periodo_lectivo ?? '-'} /
+          ${registro.anio_lectivo ?? '-'}
+        </td>
+
+        <td>
+          ${registro.tipo_matricula ?? '-'}
+        </td>
+
+        <td>
+          <span class="badge bg-primary">
+            ${estado}
+          </span>
+        </td>
+
+        <td class="text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary consulta-ver-matricula"
+            data-id="${registro.id_matricula}">
+            <i class="bi bi-eye"></i>
+            Ver
+          </button>
+        </td>
+      `;
+
+      body.appendChild(fila);
+    });
+  }
+
+  /* ==========================================
+     CONSULTA DE ASISTENCIA
+     ========================================== */
+
+  function mostrarAsistencias() {
+    const busqueda = obtenerBusqueda();
+    const estadoSeleccionado = obtenerEstado();
+
+    const grupoSeleccionado =
+      document.getElementById(
+        'consulta-grupo'
+      )?.value || '';
+
+    const fechaSeleccionada =
+      document.getElementById(
+        'consulta-fecha'
+      )?.value || '';
+
+    const resultados = asistencias.filter(
+      (registro) => {
+        const estudiante = `${
+          registro.estudiante_nombre ?? ''
+        } ${
+          registro.estudiante_apellido1 ?? ''
+        } ${
+          registro.estudiante_apellido2 ?? ''
+        }`
+          .trim()
+          .toLowerCase();
+
+        const profesor = `${
+          registro.profesor_nombre ?? ''
+        } ${
+          registro.profesor_apellido1 ?? ''
+        }`
+          .trim()
+          .toLowerCase();
+
+        const grupo = String(
+          registro.nombre_grupo ?? ''
+        ).toLowerCase();
+
+        const estado = String(
+          registro.estado_asistencia ?? ''
+        ).toLowerCase();
+
+        const fecha = limpiarFecha(
+          registro.fecha
+        );
+
+        const textoCompleto =
+          `${estudiante} ${profesor} ${grupo}`;
+
+        const coincideBusqueda =
+          !busqueda ||
+          textoCompleto.includes(busqueda);
+
+        const coincideEstado =
+          !estadoSeleccionado ||
+          estado === estadoSeleccionado;
+
+        const coincideGrupo =
+          !grupoSeleccionado ||
+          String(registro.id_grupo) ===
+            String(grupoSeleccionado);
+
+        const coincideFecha =
+          !fechaSeleccionada ||
+          fecha === fechaSeleccionada;
+
+        return (
+          coincideBusqueda &&
+          coincideEstado &&
+          coincideGrupo &&
+          coincideFecha
+        );
+      }
+    );
+
+    actualizarTitulo(
+      'Registros de asistencia',
+      resultados.length
+    );
+
+    cambiarEncabezado(`
+      <tr>
+        <th>Fecha</th>
+        <th>Estudiante</th>
+        <th>Grupo</th>
+        <th>Profesor</th>
+        <th>Estado</th>
+        <th>Observaciones</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    `);
+
+    if (!resultados.length) {
+      mostrarSinResultados(7);
+      return;
+    }
+
+    const body = document.getElementById(
+      'consulta-tabla-body'
+    );
+
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    resultados.forEach((registro) => {
+      const estudiante = `${
+        registro.estudiante_nombre ?? ''
+      } ${
+        registro.estudiante_apellido1 ?? ''
+      } ${
+        registro.estudiante_apellido2 ?? ''
+      }`.trim();
+
+      const profesor = `${
+        registro.profesor_nombre ?? ''
+      } ${
+        registro.profesor_apellido1 ?? ''
+      }`.trim();
+
+      const estado = String(
+        registro.estado_asistencia ?? ''
+      ).toLowerCase();
+
+      const fila =
+        document.createElement('tr');
+
+      fila.innerHTML = `
+        <td>
+          ${limpiarFecha(registro.fecha)}
+        </td>
+
+        <td>
+          ${estudiante || '-'}
+        </td>
+
+        <td>
+          ${registro.nombre_grupo ?? '-'}
+        </td>
+
+        <td>
+          ${profesor || '-'}
+        </td>
+
+        <td>
+          ${crearBadgeAsistencia(estado)}
+        </td>
+
+        <td>
+          ${registro.observaciones || '—'}
+        </td>
+
+        <td class="text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary consulta-ver-asistencia"
+            data-id="${registro.id_asistencia}">
+            <i class="bi bi-eye"></i>
+            Ver
+          </button>
+        </td>
+      `;
+
+      body.appendChild(fila);
+    });
+  }
+
+  function crearBadgeAsistencia(estado) {
+    const configuracion = {
+      presente: {
+        texto: 'Presente',
+        clase: 'bg-success'
+      },
+
+      ausente: {
+        texto: 'Ausente',
+        clase: 'bg-danger'
+      },
+
+      tardia: {
+        texto: 'Tardía',
+        clase: 'bg-warning text-dark'
+      },
+
+      justificada: {
+        texto: 'Justificada',
+        clase: 'bg-primary'
+      }
+    };
+
+    const opcion =
+      configuracion[estado] || {
+        texto: estado || 'Sin estado',
+        clase: 'bg-secondary'
+      };
+
+    return `
+      <span class="badge ${opcion.clase}">
+        ${opcion.texto}
+      </span>
+    `;
+  }
+
+  /* ==========================================
+     FILTROS DE GRUPO, SECCIÓN Y NIVEL
+     ========================================== */
+
+  function cargarFiltroGrupos() {
+    const select = document.getElementById(
+      'consulta-grupo'
+    );
+
+    if (!select) return;
+
+    const valorActual = select.value;
+    const grupos = new Map();
+
+    estudiantesMatriculados.forEach(
+      (registro) => {
+        if (
+          registro.id_grupo &&
+          registro.nombre_grupo
+        ) {
+          grupos.set(
+            String(registro.id_grupo),
+            registro.nombre_grupo
+          );
+        }
+      }
+    );
+
+    matriculas.forEach((registro) => {
+      if (
+        registro.id_grupo &&
+        registro.nombre_grupo
+      ) {
+        grupos.set(
+          String(registro.id_grupo),
+          registro.nombre_grupo
+        );
+      }
+    });
+
+    asistencias.forEach((registro) => {
+      if (
+        registro.id_grupo &&
+        registro.nombre_grupo
+      ) {
+        grupos.set(
+          String(registro.id_grupo),
+          registro.nombre_grupo
+        );
+      }
+    });
+
+    select.innerHTML =
+      '<option value="">Todos los grupos</option>';
+
+    grupos.forEach((nombre, id) => {
+      select.add(
+        new Option(nombre, id)
+      );
+    });
+
+    if (
+      grupos.has(String(valorActual))
+    ) {
+      select.value = valorActual;
+    }
+  }
+    function cargarFiltrosMatriculados() {
+    const selectSeccion = document.getElementById(
+      'consulta-seccion'
+    );
+
+    const selectNivel = document.getElementById(
+      'consulta-nivel'
+    );
+
+    const valorSeccionActual =
+      selectSeccion?.value || '';
+
+    const valorNivelActual =
+      selectNivel?.value || '';
+
+    const secciones = new Map();
+    const niveles = new Set();
+
+    estudiantesMatriculados.forEach(
+      (estudiante) => {
+        if (
+          estudiante.id_seccion &&
+          estudiante.nombre_seccion
+        ) {
+          secciones.set(
+            String(estudiante.id_seccion),
+            estudiante.nombre_seccion
+          );
+        }
+
+        if (estudiante.nivel) {
+          niveles.add(
+            String(estudiante.nivel)
+          );
+        }
+      }
+    );
+
+    if (selectSeccion) {
+      selectSeccion.innerHTML =
+        '<option value="">Todas las secciones</option>';
+
+      Array.from(secciones.entries())
+        .sort((a, b) =>
+          a[1].localeCompare(b[1])
+        )
+        .forEach(([id, nombre]) => {
+          selectSeccion.add(
+            new Option(nombre, id)
+          );
+        });
+
+      if (
+        secciones.has(
+          String(valorSeccionActual)
+        )
+      ) {
+        selectSeccion.value =
+          valorSeccionActual;
+      }
+    }
+
+    if (selectNivel) {
+      selectNivel.innerHTML =
+        '<option value="">Todos los niveles</option>';
+
+      Array.from(niveles)
+        .sort((a, b) =>
+          a.localeCompare(
+            b,
+            'es',
+            { numeric: true }
+          )
+        )
+        .forEach((nivel) => {
+          selectNivel.add(
+            new Option(nivel, nivel)
+          );
+        });
+
+      if (
+        niveles.has(
+          String(valorNivelActual)
+        )
+      ) {
+        selectNivel.value =
+          valorNivelActual;
+      }
+    }
+  }
+
+  /* ==========================================
+     ACCIONES DE LAS TABLAS
+     ========================================== */
+
+  async function manejarAccionesTabla(evento) {
+    const verEstudiante =
+      evento.target.closest(
+        '.consulta-ver-estudiante'
+      );
+
+    const editarEstudiante =
+      evento.target.closest(
+        '.consulta-editar-estudiante'
+      );
+
+    const verProfesor =
+      evento.target.closest(
+        '.consulta-ver-profesor'
+      );
+
+    const verMatricula =
+      evento.target.closest(
+        '.consulta-ver-matricula'
+      );
+
+    const verAsistencia =
+      evento.target.closest(
+        '.consulta-ver-asistencia'
+      );
+
+    if (verEstudiante) {
+      await mostrarDetalleEstudiante(
+        verEstudiante.dataset.id
+      );
+      return;
+    }
+
+    if (editarEstudiante) {
+      await abrirEdicionEstudiante(
+        editarEstudiante.dataset.id
+      );
+      return;
+    }
+
+    if (verProfesor) {
+      mostrarDetalleProfesor(
+        verProfesor.dataset.id
+      );
+      return;
+    }
+
+    if (verMatricula) {
+      mostrarDetalleMatricula(
+        verMatricula.dataset.id
+      );
+      return;
+    }
+
+    if (verAsistencia) {
+      mostrarDetalleAsistencia(
+        verAsistencia.dataset.id
+      );
+    }
+  }
+
+  async function mostrarDetalleEstudiante(id) {
+    const contenido =
+      document.getElementById(
+        'consulta-detalle-contenido'
+      );
+
+    const titulo =
+      document.getElementById(
+        'consulta-detalle-titulo'
+      );
+
+    const modificar =
+      document.getElementById(
+        'consulta-detalle-modificar'
+      );
+
+    if (
+      !contenido ||
+      !titulo ||
+      !modificar
+    ) {
+      return;
+    }
+
+    titulo.textContent =
+      'Información del estudiante';
+
+    contenido.innerHTML = `
+      <div class="text-center py-4 text-muted">
+        <span
+          class="spinner-border spinner-border-sm me-2">
         </span>
-      </td>
-
-      <td class="text-end">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-secondary consulta-ver-matricula"
-          data-id="${registro.id_matricula}">
-          <i class="bi bi-eye"></i>
-          Ver
-        </button>
-      </td>
+        Cargando información...
+      </div>
     `;
 
-    body.appendChild(fila);
-  });
-}
+    modificar.classList.add('hidden');
+    modificar.dataset.id = '';
 
-/* ==========================================
-   CONSULTA DE ASISTENCIA
-   ========================================== */
+    abrirModalDetalle();
 
-function mostrarAsistencias() {
-  const busqueda = obtenerBusqueda();
-  const estadoSeleccionado = obtenerEstado();
+    try {
+      const respuesta = await apiFetch(
+        `/api/estudiantes/${id}`
+      );
 
-  const grupoSeleccionado =
-    document.getElementById('consulta-grupo')?.value || '';
+      if (!respuesta.ok) {
+        throw new Error(
+          'No se pudo obtener la información del estudiante.'
+        );
+      }
 
-  const fechaSeleccionada =
-    document.getElementById('consulta-fecha')?.value || '';
+      const estudiante =
+        await respuesta.json();
 
-  const resultados = asistencias.filter((registro) => {
-    const estudiante = `${registro.estudiante_nombre ?? ''} ${
-      registro.estudiante_apellido1 ?? ''
-    } ${registro.estudiante_apellido2 ?? ''}`
-      .trim()
-      .toLowerCase();
+      const activo =
+        estudiante.estado == 1 ||
+        estudiante.estado === true ||
+        estudiante.estado === undefined;
 
-    const profesor = `${registro.profesor_nombre ?? ''} ${
-      registro.profesor_apellido1 ?? ''
-    }`
-      .trim()
-      .toLowerCase();
+      contenido.innerHTML = `
+        <div class="row g-3">
 
-    const grupo = String(
-      registro.nombre_grupo ?? ''
-    ).toLowerCase();
+          ${crearCampoDetalle(
+            'Identificación',
+            estudiante.id_estudiante ??
+            estudiante.id ??
+            '-'
+          )}
 
-    const estado = String(
-      registro.estado_asistencia ?? ''
-    ).toLowerCase();
+          ${crearCampoDetalle(
+            'Nombre completo',
+            formarNombre(estudiante) || '-'
+          )}
 
-    const fecha = limpiarFecha(registro.fecha);
+          ${crearCampoDetalle(
+            'Fecha de nacimiento',
+            limpiarFecha(
+              estudiante.fecha_nacimiento
+            )
+          )}
 
-    const textoCompleto =
-      `${estudiante} ${profesor} ${grupo}`;
+          ${crearCampoDetalle(
+            'Fecha de ingreso',
+            limpiarFecha(
+              estudiante.fecha_ingreso
+            )
+          )}
 
-    const coincideBusqueda =
-      !busqueda ||
-      textoCompleto.includes(busqueda);
+          ${crearCampoDetalle(
+            'Género',
+            mostrarGenero(
+              estudiante.genero
+            )
+          )}
 
-    const coincideEstado =
-      !estadoSeleccionado ||
-      estado === estadoSeleccionado;
+          ${crearCampoDetalle(
+            'Estado',
+            activo
+              ? '<span class="badge bg-success">Activo</span>'
+              : '<span class="badge bg-secondary">Inactivo</span>'
+          )}
 
-    const coincideGrupo =
-      !grupoSeleccionado ||
-      String(registro.id_grupo) ===
-        String(grupoSeleccionado);
+        </div>
+      `;
 
-    const coincideFecha =
-      !fechaSeleccionada ||
-      fecha === fechaSeleccionada;
-
-    return (
-      coincideBusqueda &&
-      coincideEstado &&
-      coincideGrupo &&
-      coincideFecha
-    );
-  });
-
-  actualizarTitulo(
-    'Registros de asistencia',
-    resultados.length
-  );
-
-  cambiarEncabezado(`
-    <tr>
-      <th>Fecha</th>
-      <th>Estudiante</th>
-      <th>Grupo</th>
-      <th>Profesor</th>
-      <th>Estado</th>
-      <th>Observaciones</th>
-      <th class="text-end">Acciones</th>
-    </tr>
-  `);
-
-  if (!resultados.length) {
-    mostrarSinResultados(7);
-    return;
+      modificar.dataset.id = id;
+      modificar.classList.remove('hidden');
+    } catch (error) {
+      contenido.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          <i
+            class="bi bi-exclamation-circle fs-2 d-block mb-2">
+          </i>
+          ${error.message}
+        </div>
+      `;
+    }
   }
 
-  const body = document.getElementById(
-    'consulta-tabla-body'
-  );
+  function mostrarDetalleProfesor(id) {
+    const profesor = profesores.find(
+      (item) => {
+        return String(
+          item.id_profesor ?? item.id
+        ) === String(id);
+      }
+    );
 
-  if (!body) return;
+    const contenido =
+      document.getElementById(
+        'consulta-detalle-contenido'
+      );
 
-  body.innerHTML = '';
+    const titulo =
+      document.getElementById(
+        'consulta-detalle-titulo'
+      );
 
-  resultados.forEach((registro) => {
-    const estudiante = `${registro.estudiante_nombre ?? ''} ${
+    const modificar =
+      document.getElementById(
+        'consulta-detalle-modificar'
+      );
+
+    if (
+      !contenido ||
+      !titulo ||
+      !modificar
+    ) {
+      return;
+    }
+
+    titulo.textContent =
+      'Información del profesor';
+
+    modificar.classList.add('hidden');
+    modificar.dataset.id = '';
+
+    if (!profesor) {
+      contenido.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          No se encontró la información del profesor.
+        </div>
+      `;
+
+      abrirModalDetalle();
+      return;
+    }
+
+    const activo =
+      profesor.estado == 1 ||
+      profesor.estado === true;
+
+    contenido.innerHTML = `
+      <div class="row g-3">
+
+        ${crearCampoDetalle(
+          'Identificación',
+          profesor.id_profesor ??
+          profesor.id ??
+          '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Nombre completo',
+          formarNombre(profesor) || '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Materia',
+          profesor.materia ??
+          'Sin asignar'
+        )}
+
+        ${crearCampoDetalle(
+          'Fecha de ingreso',
+          limpiarFecha(
+            profesor.fecha_ingreso
+          )
+        )}
+
+        ${crearCampoDetalle(
+          'Estado',
+          activo
+            ? '<span class="badge bg-success">Activo</span>'
+            : '<span class="badge bg-danger">Inactivo</span>'
+        )}
+
+      </div>
+
+      <div class="alert alert-light border mt-4 mb-0 small">
+        <i class="bi bi-info-circle me-1"></i>
+        La gestión del profesor se realiza desde
+        el módulo de Profesores.
+      </div>
+    `;
+
+    abrirModalDetalle();
+  }
+
+  function mostrarDetalleMatricula(id) {
+    const registro = matriculas.find(
+      (item) => {
+        return String(
+          item.id_matricula
+        ) === String(id);
+      }
+    );
+
+    const contenido =
+      document.getElementById(
+        'consulta-detalle-contenido'
+      );
+
+    const titulo =
+      document.getElementById(
+        'consulta-detalle-titulo'
+      );
+
+    const modificar =
+      document.getElementById(
+        'consulta-detalle-modificar'
+      );
+
+    if (
+      !contenido ||
+      !titulo ||
+      !modificar
+    ) {
+      return;
+    }
+
+    titulo.textContent =
+      'Detalle de matrícula';
+
+    modificar.classList.add('hidden');
+    modificar.dataset.id = '';
+
+    if (!registro) {
+      contenido.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          No se encontró la matrícula.
+        </div>
+      `;
+
+      abrirModalDetalle();
+      return;
+    }
+
+    const estudiante = `${
+      registro.estudiante_nombre ?? ''
+    } ${
       registro.estudiante_apellido1 ?? ''
-    } ${registro.estudiante_apellido2 ?? ''}`.trim();
+    } ${
+      registro.estudiante_apellido2 ?? ''
+    }`.trim();
 
-    const profesor = `${registro.profesor_nombre ?? ''} ${
+        contenido.innerHTML = `
+      <div class="row g-3">
+
+        ${crearCampoDetalle(
+          'Identificación',
+          registro.id_matricula ?? '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Fecha',
+          limpiarFecha(registro.fecha)
+        )}
+
+        ${crearCampoDetalle(
+          'Estudiante',
+          estudiante || '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Grupo',
+          registro.nombre_grupo ?? '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Período',
+          `${registro.periodo_lectivo ?? '-'} / ${
+            registro.anio_lectivo ?? '-'
+          }`
+        )}
+
+        ${crearCampoDetalle(
+          'Tipo',
+          registro.tipo_matricula ?? '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Estado',
+          registro.estado_matricula ?? '-'
+        )}
+
+        <div class="col-12">
+          <div class="bg-white border rounded p-3">
+            <span class="text-muted small d-block mb-1">
+              Observaciones
+            </span>
+
+            <div class="fw-semibold">
+              ${registro.observaciones || 'Sin observaciones'}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    abrirModalDetalle();
+  }
+
+  function mostrarDetalleAsistencia(id) {
+    const registro = asistencias.find(
+      (item) => {
+        return String(
+          item.id_asistencia
+        ) === String(id);
+      }
+    );
+
+    const contenido =
+      document.getElementById(
+        'consulta-detalle-contenido'
+      );
+
+    const titulo =
+      document.getElementById(
+        'consulta-detalle-titulo'
+      );
+
+    const modificar =
+      document.getElementById(
+        'consulta-detalle-modificar'
+      );
+
+    if (
+      !contenido ||
+      !titulo ||
+      !modificar
+    ) {
+      return;
+    }
+
+    titulo.textContent =
+      'Detalle de asistencia';
+
+    modificar.classList.add('hidden');
+    modificar.dataset.id = '';
+
+    if (!registro) {
+      contenido.innerHTML = `
+        <div class="text-center py-4 text-danger">
+          No se encontró el registro de asistencia.
+        </div>
+      `;
+
+      abrirModalDetalle();
+      return;
+    }
+
+    const estudiante = `${
+      registro.estudiante_nombre ?? ''
+    } ${
+      registro.estudiante_apellido1 ?? ''
+    } ${
+      registro.estudiante_apellido2 ?? ''
+    }`.trim();
+
+    const profesor = `${
+      registro.profesor_nombre ?? ''
+    } ${
       registro.profesor_apellido1 ?? ''
     }`.trim();
 
@@ -690,631 +1772,304 @@ function mostrarAsistencias() {
       registro.estado_asistencia ?? ''
     ).toLowerCase();
 
-    const fila = document.createElement('tr');
-
-    fila.innerHTML = `
-      <td>${limpiarFecha(registro.fecha)}</td>
-
-      <td>${estudiante || '-'}</td>
-
-      <td>${registro.nombre_grupo ?? '-'}</td>
-
-      <td>${profesor || '-'}</td>
-
-      <td>${crearBadgeAsistencia(estado)}</td>
-
-      <td>${registro.observaciones || '—'}</td>
-
-      <td class="text-end">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-secondary consulta-ver-asistencia"
-          data-id="${registro.id_asistencia}">
-          <i class="bi bi-eye"></i>
-          Ver
-        </button>
-      </td>
-    `;
-
-    body.appendChild(fila);
-  });
-}
-
-function crearBadgeAsistencia(estado) {
-  const configuracion = {
-    presente: {
-      texto: 'Presente',
-      clase: 'bg-success'
-    },
-
-    ausente: {
-      texto: 'Ausente',
-      clase: 'bg-danger'
-    },
-
-    tardia: {
-      texto: 'Tardía',
-      clase: 'bg-warning text-dark'
-    },
-
-    justificada: {
-      texto: 'Justificada',
-      clase: 'bg-primary'
-    }
-  };
-
-  const opcion = configuracion[estado] || {
-    texto: estado || 'Sin estado',
-    clase: 'bg-secondary'
-  };
-
-  return `
-    <span class="badge ${opcion.clase}">
-      ${opcion.texto}
-    </span>
-  `;
-}
-
-/* ==========================================
-   FILTRO DE GRUPOS
-   ========================================== */
-
-function cargarFiltroGrupos() {
-  const select = document.getElementById(
-    'consulta-grupo'
-  );
-
-  if (!select) return;
-
-  const valorActual = select.value;
-  const grupos = new Map();
-
-  matriculas.forEach((registro) => {
-    if (
-      registro.id_grupo &&
-      registro.nombre_grupo
-    ) {
-      grupos.set(
-        String(registro.id_grupo),
-        registro.nombre_grupo
-      );
-    }
-  });
-
-  asistencias.forEach((registro) => {
-    if (
-      registro.id_grupo &&
-      registro.nombre_grupo
-    ) {
-      grupos.set(
-        String(registro.id_grupo),
-        registro.nombre_grupo
-      );
-    }
-  });
-
-  select.innerHTML =
-    '<option value="">Todos los grupos</option>';
-
-  grupos.forEach((nombre, id) => {
-    select.add(new Option(nombre, id));
-  });
-
-  if (grupos.has(String(valorActual))) {
-    select.value = valorActual;
-  }
-}
-
-  function mostrarPendiente(tipo) {
-    const nombres = {
-      matriculas: 'Matrículas',
-      asistencia: 'Asistencia'
-    };
-
-    actualizarTitulo(nombres[tipo] || 'Consulta', 0);
-
-    cambiarEncabezado(`
-      <tr>
-        <th>Información</th>
-      </tr>
-    `);
-
-    const body = document.getElementById('consulta-tabla-body');
-
-    body.innerHTML = `
-      <tr>
-        <td class="text-center py-5 text-muted">
-          <i class="bi bi-tools fs-2 d-block mb-2"></i>
-          Esta consulta se conectará en el siguiente avance.
-        </td>
-      </tr>
-    `;
-  }
-
- async function manejarAccionesTabla(evento) {
-  const verEstudiante = evento.target.closest(
-    '.consulta-ver-estudiante'
-  );
-
-  const editarEstudiante = evento.target.closest(
-    '.consulta-editar-estudiante'
-  );
-
-  const verProfesor = evento.target.closest(
-    '.consulta-ver-profesor'
-  );
-
-  const verMatricula = evento.target.closest(
-    '.consulta-ver-matricula'
-  );
-
-  const verAsistencia = evento.target.closest(
-    '.consulta-ver-asistencia'
-  );
-
-  if (verEstudiante) {
-    await mostrarDetalleEstudiante(
-      verEstudiante.dataset.id
-    );
-    return;
-  }
-
-  if (editarEstudiante) {
-    await abrirEdicionEstudiante(
-      editarEstudiante.dataset.id
-    );
-    return;
-  }
-
-  if (verProfesor) {
-    mostrarDetalleProfesor(
-      verProfesor.dataset.id
-    );
-    return;
-  }
-
-  if (verMatricula) {
-    mostrarDetalleMatricula(
-      verMatricula.dataset.id
-    );
-    return;
-  }
-
-  if (verAsistencia) {
-    mostrarDetalleAsistencia(
-      verAsistencia.dataset.id
-    );
-  }
-}
-
-async function mostrarDetalleEstudiante(id) {
-  const contenido = document.getElementById('consulta-detalle-contenido');
-  const titulo = document.getElementById('consulta-detalle-titulo');
-  const modificar = document.getElementById('consulta-detalle-modificar');
-
-  if (!contenido || !titulo || !modificar) return;
-
-  titulo.textContent = 'Información del estudiante';
-  contenido.innerHTML = `
-    <div class="text-center py-4 text-muted">
-      <span class="spinner-border spinner-border-sm me-2"></span>
-      Cargando información...
-    </div>
-  `;
-
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
-
-  abrirModalDetalle();
-
-  try {
-    const respuesta = await apiFetch(`/api/estudiantes/${id}`);
-
-    if (!respuesta.ok) {
-      throw new Error('No se pudo obtener la información del estudiante.');
-    }
-
-    const estudiante = await respuesta.json();
-    const activo =
-      estudiante.estado == 1 ||
-      estudiante.estado === true ||
-      estudiante.estado === undefined;
-
     contenido.innerHTML = `
       <div class="row g-3">
-        ${crearCampoDetalle('Identificación', estudiante.id_estudiante ?? estudiante.id ?? '-')}
-        ${crearCampoDetalle('Nombre completo', formarNombre(estudiante) || '-')}
-        ${crearCampoDetalle('Fecha de nacimiento', limpiarFecha(estudiante.fecha_nacimiento))}
-        ${crearCampoDetalle('Fecha de ingreso', limpiarFecha(estudiante.fecha_ingreso))}
-        ${crearCampoDetalle('Género', mostrarGenero(estudiante.genero))}
+
+        ${crearCampoDetalle(
+          'Identificación',
+          registro.id_asistencia ?? '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Fecha',
+          limpiarFecha(registro.fecha)
+        )}
+
+        ${crearCampoDetalle(
+          'Estudiante',
+          estudiante || '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Grupo',
+          registro.nombre_grupo ?? '-'
+        )}
+
+        ${crearCampoDetalle(
+          'Profesor',
+          profesor || '-'
+        )}
+
         ${crearCampoDetalle(
           'Estado',
-          activo
-            ? '<span class="badge bg-success">Activo</span>'
-            : '<span class="badge bg-secondary">Inactivo</span>'
+          crearBadgeAsistencia(estado)
         )}
-      </div>
-    `;
 
-    modificar.dataset.id = id;
+        <div class="col-12">
+          <div class="bg-white border rounded p-3">
+            <span class="text-muted small d-block mb-1">
+              Observaciones
+            </span>
 
-modificar.classList.remove('hidden');
-  } catch (error) {
-    contenido.innerHTML = `
-      <div class="text-center py-4 text-danger">
-        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
-        ${error.message}
-      </div>
-    `;
-  }
-}
+            <div class="fw-semibold">
+              ${registro.observaciones || 'Sin observaciones'}
+            </div>
+          </div>
+        </div>
 
-function mostrarDetalleProfesor(id) {
-  const profesor = profesores.find((item) => {
-    return String(item.id_profesor ?? item.id) === String(id);
-  });
-
-  const contenido = document.getElementById('consulta-detalle-contenido');
-  const titulo = document.getElementById('consulta-detalle-titulo');
-  const modificar = document.getElementById('consulta-detalle-modificar');
-
-  if (!contenido || !titulo || !modificar) return;
-
-  titulo.textContent = 'Información del profesor';
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
-
-  if (!profesor) {
-    contenido.innerHTML = `
-      <div class="text-center py-4 text-danger">
-        No se encontró la información del profesor.
       </div>
     `;
 
     abrirModalDetalle();
-    return;
   }
 
-  const activo = profesor.estado == 1 || profesor.estado === true;
+  async function abrirEdicionEstudiante(id) {
+    try {
+      const respuesta = await apiFetch(
+        `/api/estudiantes/${id}`
+      );
 
-  contenido.innerHTML = `
-    <div class="row g-3">
-      ${crearCampoDetalle('Identificación', profesor.id_profesor ?? profesor.id ?? '-')}
-      ${crearCampoDetalle('Nombre completo', formarNombre(profesor) || '-')}
-      ${crearCampoDetalle('Materia', profesor.materia ?? 'Sin asignar')}
-      ${crearCampoDetalle('Fecha de ingreso', limpiarFecha(profesor.fecha_ingreso))}
-      ${crearCampoDetalle(
-        'Estado',
-        activo
-          ? '<span class="badge bg-success">Activo</span>'
-          : '<span class="badge bg-danger">Inactivo</span>'
-      )}
-    </div>
+      if (!respuesta.ok) {
+        throw new Error(
+          'No se pudo obtener la información del estudiante.'
+        );
+      }
 
-    <div class="alert alert-light border mt-4 mb-0 small">
-      <i class="bi bi-info-circle me-1"></i>
-      La gestión del profesor se realiza desde el módulo de Profesores.
-    </div>
-  `;
+      const estudiante =
+        await respuesta.json();
 
-  abrirModalDetalle();
-}
+      const campoId =
+        document.getElementById(
+          'persona-id'
+        );
 
-function mostrarDetalleMatricula(id) {
-  const registro = matriculas.find((item) => {
-    return String(item.id_matricula) === String(id);
-  });
+      if (campoId) {
+        campoId.value =
+          estudiante.id_estudiante ??
+          estudiante.id ??
+          '';
+      }
 
-  const contenido = document.getElementById(
-    'consulta-detalle-contenido'
-  );
+      const campoNombre =
+        document.getElementById(
+          'nombre'
+        );
 
-  const titulo = document.getElementById(
-    'consulta-detalle-titulo'
-  );
+      if (campoNombre) {
+        campoNombre.value =
+          estudiante.nombre ?? '';
+      }
 
-  const modificar = document.getElementById(
-    'consulta-detalle-modificar'
-  );
+      const campoApellido1 =
+        document.getElementById(
+          'apellido1'
+        );
 
-  if (!contenido || !titulo || !modificar) return;
+      if (campoApellido1) {
+        campoApellido1.value =
+          estudiante.apellido1 ?? '';
+      }
 
-  titulo.textContent = 'Detalle de matrícula';
+      const campoApellido2 =
+        document.getElementById(
+          'apellido2'
+        );
 
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
+      if (campoApellido2) {
+        campoApellido2.value =
+          estudiante.apellido2 ?? '';
+      }
 
-  if (!registro) {
-    contenido.innerHTML = `
-      <div class="text-center py-4 text-danger">
-        No se encontró la matrícula.
-      </div>
-    `;
+      const campoNacimiento =
+        document.getElementById(
+          'fecha_nacimiento'
+        );
 
-    abrirModalDetalle();
-    return;
+      if (campoNacimiento) {
+        campoNacimiento.value =
+          estudiante.fecha_nacimiento
+            ? String(
+                estudiante.fecha_nacimiento
+              ).split('T')[0]
+            : '';
+      }
+
+      const campoGenero =
+        document.getElementById(
+          'genero'
+        );
+
+      if (campoGenero) {
+        campoGenero.value =
+          estudiante.genero ?? '';
+      }
+
+      const ingreso =
+        document.getElementById(
+          'persona-fecha-ingreso'
+        );
+
+      if (ingreso) {
+        ingreso.value =
+          estudiante.fecha_ingreso
+            ? String(
+                estudiante.fecha_ingreso
+              ).split('T')[0]
+            : '';
+      }
+
+      const titulo =
+        document.getElementById(
+          'persona-form-title'
+        );
+
+      if (titulo) {
+        titulo.textContent =
+          'Editar Estudiante';
+      }
+
+      const botonGuardar =
+        document.getElementById(
+          'persona-submit'
+        );
+
+      if (botonGuardar) {
+        botonGuardar.innerHTML =
+          '<i class="bi bi-check2-circle"></i> Guardar Cambios';
+      }
+
+      const modalDetalle =
+        document.getElementById(
+          'modalDetalleConsulta'
+        );
+
+      if (modalDetalle) {
+        bootstrap.Modal
+          .getInstance(modalDetalle)
+          ?.hide();
+      }
+
+      const modalEstudiante =
+        document.getElementById(
+          'modalEstudiante'
+        );
+
+      if (modalEstudiante) {
+        const instancia =
+          bootstrap.Modal.getInstance(
+            modalEstudiante
+          ) ||
+          new bootstrap.Modal(
+            modalEstudiante
+          );
+
+        instancia.show();
+      }
+    } catch (error) {
+      mostrarMensajeConsulta(
+        error.message
+      );
+    }
   }
 
-  const estudiante = `${registro.estudiante_nombre ?? ''} ${
-    registro.estudiante_apellido1 ?? ''
-  } ${registro.estudiante_apellido2 ?? ''}`.trim();
+  function modificarDesdeDetalle() {
+    const boton =
+      document.getElementById(
+        'consulta-detalle-modificar'
+      );
 
-  contenido.innerHTML = `
-    <div class="row g-3">
-      ${crearCampoDetalle(
-        'Identificación',
-        registro.id_matricula ?? '-'
-      )}
+    const id = boton?.dataset.id;
 
-      ${crearCampoDetalle(
-        'Fecha',
-        limpiarFecha(registro.fecha)
-      )}
+    if (id) {
+      abrirEdicionEstudiante(id);
+    }
+  }
 
-      ${crearCampoDetalle(
-        'Estudiante',
-        estudiante || '-'
-      )}
+  function abrirModalDetalle() {
+    const modal =
+      document.getElementById(
+        'modalDetalleConsulta'
+      );
 
-      ${crearCampoDetalle(
-        'Grupo',
-        registro.nombre_grupo ?? '-'
-      )}
+    if (!modal) return;
 
-      ${crearCampoDetalle(
-        'Período',
-        `${registro.periodo_lectivo ?? '-'} / ${
-          registro.anio_lectivo ?? '-'
-        }`
-      )}
+    const instancia =
+      bootstrap.Modal.getInstance(modal) ||
+      new bootstrap.Modal(modal);
 
-      ${crearCampoDetalle(
-        'Tipo',
-        registro.tipo_matricula ?? '-'
-      )}
-
-      ${crearCampoDetalle(
-        'Estado',
-        registro.estado_matricula ?? '-'
-      )}
-
-      <div class="col-12">
-        <div class="bg-white border rounded p-3">
+    instancia.show();
+  }
+    function crearCampoDetalle(etiqueta, valor) {
+    return `
+      <div class="col-md-6">
+        <div class="bg-white border rounded p-3 h-100">
           <span class="text-muted small d-block mb-1">
-            Observaciones
+            ${etiqueta}
           </span>
 
           <div class="fw-semibold">
-            ${registro.observaciones || 'Sin observaciones'}
+            ${valor}
           </div>
         </div>
-      </div>
-    </div>
-  `;
-
-  abrirModalDetalle();
-}
-
-function mostrarDetalleAsistencia(id) {
-  const registro = asistencias.find((item) => {
-    return String(item.id_asistencia) === String(id);
-  });
-
-  const contenido = document.getElementById(
-    'consulta-detalle-contenido'
-  );
-
-  const titulo = document.getElementById(
-    'consulta-detalle-titulo'
-  );
-
-  const modificar = document.getElementById(
-    'consulta-detalle-modificar'
-  );
-
-  if (!contenido || !titulo || !modificar) return;
-
-  titulo.textContent = 'Detalle de asistencia';
-
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
-
-  if (!registro) {
-    contenido.innerHTML = `
-      <div class="text-center py-4 text-danger">
-        No se encontró el registro de asistencia.
       </div>
     `;
-
-    abrirModalDetalle();
-    return;
   }
 
-  const estudiante = `${registro.estudiante_nombre ?? ''} ${
-    registro.estudiante_apellido1 ?? ''
-  } ${registro.estudiante_apellido2 ?? ''}`.trim();
+  function mostrarGenero(genero) {
+    const generos = {
+      M: 'Masculino',
+      F: 'Femenino',
+      O: 'Otro'
+    };
 
-  const profesor = `${registro.profesor_nombre ?? ''} ${
-    registro.profesor_apellido1 ?? ''
-  }`.trim();
-
-  const estado = String(
-    registro.estado_asistencia ?? ''
-  ).toLowerCase();
-
-  contenido.innerHTML = `
-    <div class="row g-3">
-      ${crearCampoDetalle(
-        'Identificación',
-        registro.id_asistencia ?? '-'
-      )}
-
-      ${crearCampoDetalle(
-        'Fecha',
-        limpiarFecha(registro.fecha)
-      )}
-
-      ${crearCampoDetalle(
-        'Estudiante',
-        estudiante || '-'
-      )}
-
-      ${crearCampoDetalle(
-        'Grupo',
-        registro.nombre_grupo ?? '-'
-      )}
-
-      ${crearCampoDetalle(
-        'Profesor',
-        profesor || '-'
-      )}
-
-      ${crearCampoDetalle(
-        'Estado',
-        crearBadgeAsistencia(estado)
-      )}
-
-      <div class="col-12">
-        <div class="bg-white border rounded p-3">
-          <span class="text-muted small d-block mb-1">
-            Observaciones
-          </span>
-
-          <div class="fw-semibold">
-            ${registro.observaciones || 'Sin observaciones'}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  abrirModalDetalle();
-}
-
-async function abrirEdicionEstudiante(id) {
-  try {
-    const respuesta = await apiFetch(`/api/estudiantes/${id}`);
-
-    if (!respuesta.ok) {
-      throw new Error('No se pudo obtener la información del estudiante.');
-    }
-
-    const estudiante = await respuesta.json();
-
-    document.getElementById('persona-id').value =
-      estudiante.id_estudiante ?? estudiante.id ?? '';
-
-    document.getElementById('nombre').value =
-      estudiante.nombre ?? '';
-
-    document.getElementById('apellido1').value =
-      estudiante.apellido1 ?? '';
-
-    document.getElementById('apellido2').value =
-      estudiante.apellido2 ?? '';
-
-    document.getElementById('fecha_nacimiento').value =
-      estudiante.fecha_nacimiento
-        ? String(estudiante.fecha_nacimiento).split('T')[0]
-        : '';
-
-    document.getElementById('genero').value =
-      estudiante.genero ?? '';
-
-    const ingreso = document.getElementById('persona-fecha-ingreso');
-
-    if (ingreso) {
-      ingreso.value = estudiante.fecha_ingreso
-        ? String(estudiante.fecha_ingreso).split('T')[0]
-        : '';
-    }
-
-    const titulo = document.getElementById('persona-form-title');
-
-    if (titulo) {
-      titulo.textContent = 'Editar Estudiante';
-    }
-
-    const botonGuardar = document.getElementById('persona-submit');
-
-    if (botonGuardar) {
-      botonGuardar.innerHTML =
-        '<i class="bi bi-check2-circle"></i> Guardar Cambios';
-    }
-
-    bootstrap.Modal
-      .getInstance(document.getElementById('modalDetalleConsulta'))
-      ?.hide();
-
-    const modalEstudiante = document.getElementById('modalEstudiante');
-
-    if (modalEstudiante) {
-      new bootstrap.Modal(modalEstudiante).show();
-    }
-  } catch (error) {
-    mostrarMensajeConsulta(error.message);
-  }
-}
-
-function modificarDesdeDetalle() {
-  const boton = document.getElementById('consulta-detalle-modificar');
-  const id = boton?.dataset.id;
-
-  if (id) {
-    abrirEdicionEstudiante(id);
-  }
-}
-
-function abrirModalDetalle() {
-  const modal = document.getElementById('modalDetalleConsulta');
-
-  if (!modal) return;
-
-  const instancia =
-    bootstrap.Modal.getInstance(modal) ||
-    new bootstrap.Modal(modal);
-
-  instancia.show();
-}
-
-function crearCampoDetalle(etiqueta, valor) {
-  return `
-    <div class="col-md-6">
-      <div class="bg-white border rounded p-3 h-100">
-        <span class="text-muted small d-block mb-1">${etiqueta}</span>
-        <div class="fw-semibold">${valor}</div>
-      </div>
-    </div>
-  `;
-}
-
-function mostrarGenero(genero) {
-  const generos = {
-    M: 'Masculino',
-    F: 'Femenino',
-    O: 'Otro'
-  };
-
-  return generos[genero] || genero || '-';
-}
-
-function mostrarMensajeConsulta(mensaje) {
-  if (typeof showResultModal === 'function') {
-    showResultModal('error', 'No se pudo realizar la acción', mensaje);
-    return;
+    return (
+      generos[genero] ||
+      genero ||
+      '-'
+    );
   }
 
-  alert(mensaje);
-}
+  function mostrarMensajeConsulta(mensaje) {
+    if (
+      typeof showResultModal ===
+      'function'
+    ) {
+      showResultModal(
+        'error',
+        'No se pudo realizar la acción',
+        mensaje
+      );
+
+      return;
+    }
+
+    alert(mensaje);
+  }
+
+  /* ==========================================
+     ESTADOS DE LA TABLA
+     ========================================== */
 
   function mostrarCargando() {
-    const body = document.getElementById('consulta-tabla-body');
+    const body =
+      document.getElementById(
+        'consulta-tabla-body'
+      );
+
     if (!body) return;
 
     body.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center py-5 text-muted">
-          <span class="spinner-border spinner-border-sm me-2"></span>
+        <td
+          colspan="8"
+          class="text-center py-5 text-muted">
+
+          <span
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true">
+          </span>
+
           Cargando información...
         </td>
       </tr>
@@ -1322,13 +2077,23 @@ function mostrarMensajeConsulta(mensaje) {
   }
 
   function mostrarError(mensaje) {
-    const body = document.getElementById('consulta-tabla-body');
+    const body =
+      document.getElementById(
+        'consulta-tabla-body'
+      );
+
     if (!body) return;
 
     body.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center py-5 text-danger">
-          <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        <td
+          colspan="8"
+          class="text-center py-5 text-danger">
+
+          <i
+            class="bi bi-exclamation-circle fs-2 d-block mb-2">
+          </i>
+
           ${mensaje}
         </td>
       </tr>
@@ -1336,55 +2101,131 @@ function mostrarMensajeConsulta(mensaje) {
   }
 
   function mostrarSinResultados(columnas) {
-    const body = document.getElementById('consulta-tabla-body');
+    const body =
+      document.getElementById(
+        'consulta-tabla-body'
+      );
+
+    if (!body) return;
 
     body.innerHTML = `
       <tr>
-        <td colspan="${columnas}" class="text-center py-5 text-muted">
-          <i class="bi bi-search fs-2 d-block mb-2"></i>
+        <td
+          colspan="${columnas}"
+          class="text-center py-5 text-muted">
+
+          <i
+            class="bi bi-search fs-2 d-block mb-2">
+          </i>
+
           No se encontraron resultados.
         </td>
       </tr>
     `;
   }
 
-  function actualizarTitulo(titulo, cantidad) {
-    const tituloTabla = document.getElementById('consulta-titulo-tabla');
-    const cantidadTexto = document.getElementById('consulta-cantidad');
+  /* ==========================================
+     FUNCIONES AUXILIARES
+     ========================================== */
 
-    if (tituloTabla) tituloTabla.textContent = titulo;
+  function actualizarTitulo(
+    titulo,
+    cantidad
+  ) {
+    const tituloTabla =
+      document.getElementById(
+        'consulta-titulo-tabla'
+      );
+
+    const cantidadTexto =
+      document.getElementById(
+        'consulta-cantidad'
+      );
+
+    if (tituloTabla) {
+      tituloTabla.textContent = titulo;
+    }
 
     if (cantidadTexto) {
-      cantidadTexto.textContent = `${cantidad} resultado${cantidad === 1 ? '' : 's'} encontrado${cantidad === 1 ? '' : 's'}`;
+      const plural =
+        cantidad === 1
+          ? ''
+          : 's';
+
+      cantidadTexto.textContent =
+        `${cantidad} resultado${plural} ` +
+        `encontrado${plural}`;
     }
   }
 
   function cambiarEncabezado(contenido) {
-    const head = document.getElementById('consulta-tabla-head');
-    if (head) head.innerHTML = contenido;
+    const head =
+      document.getElementById(
+        'consulta-tabla-head'
+      );
+
+    if (head) {
+      head.innerHTML = contenido;
+    }
   }
 
   function obtenerBusqueda() {
-    return document.getElementById('consulta-busqueda')?.value.trim().toLowerCase() || '';
+    return (
+      document.getElementById(
+        'consulta-busqueda'
+      )?.value
+        .trim()
+        .toLowerCase() ||
+      ''
+    );
   }
 
   function obtenerEstado() {
-    return document.getElementById('consulta-estado')?.value || '';
+    return (
+      document.getElementById(
+        'consulta-estado'
+      )?.value ||
+      ''
+    );
   }
 
   function formarNombre(persona) {
-    return `${persona.nombre ?? ''} ${persona.apellido1 ?? ''} ${persona.apellido2 ?? ''}`.trim();
+    if (!persona) return '';
+
+    return `${
+      persona.nombre ?? ''
+    } ${
+      persona.apellido1 ?? ''
+    } ${
+      persona.apellido2 ?? ''
+    }`
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function limpiarFecha(fecha) {
-    return fecha ? String(fecha).split('T')[0] : '-';
+    if (!fecha) return '-';
+
+    return String(fecha).split('T')[0];
   }
 
-  if (document.readyState !== 'loading') {
+  /* ==========================================
+     NOTIFICAR QUE EL MÓDULO ESTÁ LISTO
+     ========================================== */
+
+  if (
+    document.readyState !==
+    'loading'
+  ) {
     window.dispatchEvent(
-      new CustomEvent('app:module-ready', {
-        detail: { module: moduleName }
-      })
+      new CustomEvent(
+        'app:module-ready',
+        {
+          detail: {
+            module: moduleName
+          }
+        }
+      )
     );
   }
 })();

@@ -4,6 +4,7 @@
 
   let fotoPerfilTemporal = null;
   let perfilActual = null;
+  let claveCamposModificados = false;
 
   window.EduControlModules[moduleName] = {
     name: moduleName,
@@ -18,7 +19,6 @@
         return;
       }
 
-      // Si cambió el usuario en la sesión, forzamos recarga aunque esté wired
       const usuarioSesionId = typeof currentUser !== 'undefined' ? currentUser?.id_usuario : null;
       if (section.dataset.wired === '1' && section.dataset.usuarioId === String(usuarioSesionId)) {
         return;
@@ -28,10 +28,10 @@
       section.dataset.usuarioId = usuarioSesionId ? String(usuarioSesionId) : '';
       section.dataset.module = moduleName;
 
-      // RESETEAR VARIABLES Y TEMP PARA NO MEZCLAR USUARIOS AL CAMBIAR DE CUENTA
       fotoPerfilTemporal = null;
       perfilActual = null;
       window.tempNuevaFoto = null;
+      claveCamposModificados = false;
 
       conectarEventosPerfil();
       cargarMiPerfil();
@@ -169,6 +169,17 @@
         cambiarVistaPreviaFoto
       );
     }
+
+    // Detectar cuando el usuario interactúa explícitamente con los campos de clave
+    ['perfil-clave-actual', 'perfil-clave-nueva', 'perfil-clave-confirmar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.dataset.listenerWired) {
+        el.dataset.listenerWired = 'true';
+        el.addEventListener('input', () => {
+          claveCamposModificados = true;
+        });
+      }
+    });
 
     configurarVisorContrasenas(
       'perfil-clave-actual',
@@ -328,12 +339,10 @@
     const datosClave =
       obtenerDatosSeguridad();
 
+    // Solo se intenta cambiar contraseña si el usuario escribió en los inputs Y hay datos completos
     const deseaCambiarClave =
-      Object.values(
-        datosClave
-      ).some((valor) =>
-        Boolean(valor)
-      );
+      claveCamposModificados &&
+      Boolean(datosClave.claveActual || datosClave.claveNueva || datosClave.claveConfirmar);
 
     mostrarEstadoFormulario(
       true
@@ -374,6 +383,11 @@
       }
 
       guardarFotoPerfil();
+
+      // AHORA SÍ se actualiza la foto globalmente en el topbar/sidebar al guardar
+      if (fotoPerfilTemporal) {
+        actualizarImagenPerfil(fotoPerfilTemporal);
+      }
 
       actualizarUsuarioGlobal(
         perfilActual
@@ -617,9 +631,11 @@
       fotoPerfilTemporal =
         lector.result;
 
-      actualizarImagenPerfil(
-        fotoPerfilTemporal
-      );
+      // SOLO actualizamos la previsualización del formulario local
+      const preview = document.getElementById('perfil-foto-preview');
+      if (preview) {
+        preview.src = fotoPerfilTemporal;
+      }
     };
 
     lector.readAsDataURL(
@@ -878,6 +894,7 @@
   }
 
   function limpiarCamposClave() {
+    claveCamposModificados = false;
     asignarValor(
       'perfil-clave-actual',
       ''

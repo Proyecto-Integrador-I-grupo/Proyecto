@@ -1,12 +1,15 @@
 (function () {
   const moduleName = 'consultas';
 
-  let estudiantes = [];
-  let estudiantesMatriculados = [];
-  let profesores = [];
-  let matriculas = [];
-  let asistencias = [];
+let estudiantes = [];
+let estudiantesMatriculados = [];
+let profesores = [];
+let matriculas = [];
+let asistencias = [];
 
+// Registro que se está mostrando en la vista previa
+let documentoActual = null;
+let tipoDocumentoActual = null;
   window.EduControlModules = window.EduControlModules || {};
 
   window.EduControlModules[moduleName] = {
@@ -34,9 +37,8 @@
     const limpiar = document.getElementById('consulta-limpiar');
     const refrescar = document.getElementById('consulta-refrescar');
     const tablaBody = document.getElementById('consulta-tabla-body');
-    const modificarDetalle = document.getElementById(
-      'consulta-detalle-modificar'
-    );
+    const modificarDetalle = document.getElementById('consulta-detalle-modificar');
+    const descargarPdf = document.getElementById('consulta-descargar-pdf');
 
     tipo?.addEventListener('change', actualizarConsulta);
     busqueda?.addEventListener('input', actualizarConsulta);
@@ -53,6 +55,10 @@
       'click',
       modificarDesdeDetalle
     );
+    descargarPdf?.addEventListener(
+  'click',
+  descargarDocumentoPDF
+);
 
     limpiar?.addEventListener('click', () => {
       if (busqueda) busqueda.value = '';
@@ -462,8 +468,8 @@
             type="button"
             class="btn btn-sm btn-outline-secondary consulta-ver-estudiante"
             data-id="${id}">
-            <i class="bi bi-eye"></i>
-            Ver
+           <i class="bi bi-file-earmark-text"></i>
+              Vista previa
           </button>
 
           <button
@@ -767,8 +773,8 @@
             type="button"
             class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
             data-id="${id}">
-            <i class="bi bi-eye"></i>
-            Ver
+           <i class="bi bi-file-earmark-text"></i>
+             Vista previa
           </button>
         </td>
       `;
@@ -930,8 +936,8 @@
             type="button"
             class="btn btn-sm btn-outline-secondary consulta-ver-matricula"
             data-id="${registro.id_matricula}">
-            <i class="bi bi-eye"></i>
-            Ver
+            <i class="bi bi-file-earmark-text"></i>
+              Vista previa
           </button>
         </td>
       `;
@@ -1101,8 +1107,8 @@
             type="button"
             class="btn btn-sm btn-outline-secondary consulta-ver-asistencia"
             data-id="${registro.id_asistencia}">
-            <i class="bi bi-eye"></i>
-            Ver
+            <i class="bi bi-file-earmark-text"></i>
+              Vista previa
           </button>
         </td>
       `;
@@ -1395,7 +1401,7 @@
     }
 
     titulo.textContent =
-      'Información del estudiante';
+      'Vista previa del estudiante';
 
     contenido.innerHTML = `
       <div class="text-center py-4 text-muted">
@@ -1424,6 +1430,13 @@
 
       const estudiante =
         await respuesta.json();
+       
+      documentoActual = estudiante;
+tipoDocumentoActual = 'estudiante';
+
+prepararEncabezadoDocumento(
+  'Ficha del estudiante'
+);
 
       const activo =
         estudiante.estado == 1 ||
@@ -1432,6 +1445,7 @@
 
       contenido.innerHTML = `
         <div class="row g-3">
+
 
           ${crearCampoDetalle(
             'Identificación',
@@ -1523,7 +1537,7 @@
     }
 
     titulo.textContent =
-      'Información del profesor';
+     'Vista previa del profesor';
 
     modificar.classList.add('hidden');
     modificar.dataset.id = '';
@@ -1538,6 +1552,13 @@
       abrirModalDetalle();
       return;
     }
+
+    documentoActual = profesor;
+tipoDocumentoActual = 'profesor';
+
+prepararEncabezadoDocumento(
+  'Ficha del profesor'
+);
 
     const activo =
       profesor.estado == 1 ||
@@ -1623,7 +1644,7 @@
     }
 
     titulo.textContent =
-      'Detalle de matrícula';
+      'Vista previa de la matrícula';
 
     modificar.classList.add('hidden');
     modificar.dataset.id = '';
@@ -1638,6 +1659,13 @@
       abrirModalDetalle();
       return;
     }
+
+    documentoActual = registro;
+tipoDocumentoActual = 'matricula';
+
+prepararEncabezadoDocumento(
+  'Comprobante de matrícula'
+);
 
     const estudiante = `${
       registro.estudiante_nombre ?? ''
@@ -1738,7 +1766,7 @@
     }
 
     titulo.textContent =
-      'Detalle de asistencia';
+     'Vista previa de la asistencia';
 
     modificar.classList.add('hidden');
     modificar.dataset.id = '';
@@ -1753,6 +1781,13 @@
       abrirModalDetalle();
       return;
     }
+
+    documentoActual = registro;
+tipoDocumentoActual = 'asistencia';
+
+prepararEncabezadoDocumento(
+  'Registro de asistencia'
+);
 
     const estudiante = `${
       registro.estudiante_nombre ?? ''
@@ -1999,6 +2034,445 @@
 
     instancia.show();
   }
+
+  function descargarDocumentoPDF() {
+  if (!documentoActual || !tipoDocumentoActual) {
+    mostrarMensajeConsulta(
+      'No hay un documento preparado para descargar.'
+    );
+    return;
+  }
+
+  if (
+    !window.jspdf ||
+    !window.jspdf.jsPDF
+  ) {
+    mostrarMensajeConsulta(
+      'La herramienta para generar PDF no está disponible.'
+    );
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const margenIzquierdo = 20;
+  const anchoPagina = 210;
+  const anchoContenido =
+    anchoPagina - margenIzquierdo * 2;
+
+  let posicionY = 20;
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(16);
+  pdf.text(
+    'EDUCONTROL',
+    margenIzquierdo,
+    posicionY
+  );
+
+  posicionY += 8;
+
+  pdf.setFontSize(12);
+  pdf.text(
+    obtenerTituloDocumento(),
+    margenIzquierdo,
+    posicionY
+  );
+
+  posicionY += 7;
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.text(
+    `Fecha de emisión: ${obtenerFechaActual()}`,
+    margenIzquierdo,
+    posicionY
+  );
+
+  posicionY += 5;
+
+  pdf.line(
+    margenIzquierdo,
+    posicionY,
+    anchoPagina - margenIzquierdo,
+    posicionY
+  );
+
+  posicionY += 10;
+
+  const campos =
+    obtenerCamposDocumentoPDF();
+
+  campos.forEach((campo) => {
+    const etiqueta = String(
+      campo.etiqueta ?? ''
+    );
+
+    const valor = String(
+      campo.valor ?? '-'
+    );
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.text(
+      `${etiqueta}:`,
+      margenIzquierdo,
+      posicionY
+    );
+
+    posicionY += 5;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+
+    const lineas = pdf.splitTextToSize(
+      limpiarTextoPDF(valor),
+      anchoContenido
+    );
+
+    pdf.text(
+      lineas,
+      margenIzquierdo,
+      posicionY
+    );
+
+    posicionY +=
+      lineas.length * 5 + 5;
+
+    if (posicionY > 270) {
+      pdf.addPage();
+      posicionY = 20;
+    }
+  });
+
+  pdf.setFontSize(8);
+  pdf.setTextColor(100);
+
+  pdf.text(
+    'Documento generado digitalmente por EduControl.',
+    margenIzquierdo,
+    287
+  );
+
+  const nombreArchivo =
+    obtenerNombreArchivoPDF();
+
+  pdf.save(nombreArchivo);
+}
+
+function obtenerTituloDocumento() {
+  const titulos = {
+    estudiante:
+      'Ficha del estudiante',
+
+    profesor:
+      'Ficha del profesor',
+
+    matricula:
+      'Comprobante de matrícula',
+
+    asistencia:
+      'Registro de asistencia'
+  };
+
+  return (
+    titulos[tipoDocumentoActual] ||
+    'Documento académico'
+  );
+}
+
+function obtenerCamposDocumentoPDF() {
+  const registro =
+    documentoActual || {};
+
+  if (tipoDocumentoActual === 'estudiante') {
+    const activo =
+      registro.estado == 1 ||
+      registro.estado === true ||
+      registro.estado === undefined;
+
+    return [
+      {
+        etiqueta: 'Identificación',
+        valor:
+          registro.id_estudiante ??
+          registro.id ??
+          '-'
+      },
+      {
+        etiqueta: 'Nombre completo',
+        valor:
+          formarNombre(registro) ||
+          '-'
+      },
+      {
+        etiqueta: 'Fecha de nacimiento',
+        valor:
+          limpiarFecha(
+            registro.fecha_nacimiento
+          )
+      },
+      {
+        etiqueta: 'Fecha de ingreso',
+        valor:
+          limpiarFecha(
+            registro.fecha_ingreso
+          )
+      },
+      {
+        etiqueta: 'Género',
+        valor:
+          mostrarGenero(
+            registro.genero
+          )
+      },
+      {
+        etiqueta: 'Estado',
+        valor:
+          activo
+            ? 'Activo'
+            : 'Inactivo'
+      }
+    ];
+  }
+
+  if (tipoDocumentoActual === 'profesor') {
+    const activo =
+      registro.estado == 1 ||
+      registro.estado === true;
+
+    return [
+      {
+        etiqueta: 'Identificación',
+        valor:
+          registro.id_profesor ??
+          registro.id ??
+          '-'
+      },
+      {
+        etiqueta: 'Nombre completo',
+        valor:
+          formarNombre(registro) ||
+          '-'
+      },
+      {
+        etiqueta: 'Materia',
+        valor:
+          registro.materia ??
+          'Sin asignar'
+      },
+      {
+        etiqueta: 'Fecha de ingreso',
+        valor:
+          limpiarFecha(
+            registro.fecha_ingreso
+          )
+      },
+      {
+        etiqueta: 'Estado',
+        valor:
+          activo
+            ? 'Activo'
+            : 'Inactivo'
+      }
+    ];
+  }
+
+  if (tipoDocumentoActual === 'matricula') {
+    const estudiante = `${
+      registro.estudiante_nombre ?? ''
+    } ${
+      registro.estudiante_apellido1 ?? ''
+    } ${
+      registro.estudiante_apellido2 ?? ''
+    }`
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return [
+      {
+        etiqueta: 'Identificación',
+        valor:
+          registro.id_matricula ??
+          '-'
+      },
+      {
+        etiqueta: 'Fecha',
+        valor:
+          limpiarFecha(
+            registro.fecha
+          )
+      },
+      {
+        etiqueta: 'Estudiante',
+        valor:
+          estudiante || '-'
+      },
+      {
+        etiqueta: 'Grupo',
+        valor:
+          registro.nombre_grupo ??
+          '-'
+      },
+      {
+        etiqueta: 'Período',
+        valor:
+          `${registro.periodo_lectivo ?? '-'} / ${
+            registro.anio_lectivo ?? '-'
+          }`
+      },
+      {
+        etiqueta: 'Tipo',
+        valor:
+          registro.tipo_matricula ??
+          '-'
+      },
+      {
+        etiqueta: 'Estado',
+        valor:
+          registro.estado_matricula ??
+          '-'
+      },
+      {
+        etiqueta: 'Observaciones',
+        valor:
+          registro.observaciones ||
+          'Sin observaciones'
+      }
+    ];
+  }
+
+  if (tipoDocumentoActual === 'asistencia') {
+    const estudiante = `${
+      registro.estudiante_nombre ?? ''
+    } ${
+      registro.estudiante_apellido1 ?? ''
+    } ${
+      registro.estudiante_apellido2 ?? ''
+    }`
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const profesor = `${
+      registro.profesor_nombre ?? ''
+    } ${
+      registro.profesor_apellido1 ?? ''
+    }`
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return [
+      {
+        etiqueta: 'Identificación',
+        valor:
+          registro.id_asistencia ??
+          '-'
+      },
+      {
+        etiqueta: 'Fecha',
+        valor:
+          limpiarFecha(
+            registro.fecha
+          )
+      },
+      {
+        etiqueta: 'Estudiante',
+        valor:
+          estudiante || '-'
+      },
+      {
+        etiqueta: 'Grupo',
+        valor:
+          registro.nombre_grupo ??
+          '-'
+      },
+      {
+        etiqueta: 'Profesor',
+        valor:
+          profesor || '-'
+      },
+      {
+        etiqueta: 'Estado',
+        valor:
+          registro.estado_asistencia ??
+          '-'
+      },
+      {
+        etiqueta: 'Observaciones',
+        valor:
+          registro.observaciones ||
+          'Sin observaciones'
+      }
+    ];
+  }
+
+  return [];
+}
+
+function obtenerNombreArchivoPDF() {
+  const registro =
+    documentoActual || {};
+
+  const nombres = {
+    estudiante:
+      `estudiante-${
+        registro.id_estudiante ??
+        registro.id ??
+        'documento'
+      }.pdf`,
+
+    profesor:
+      `profesor-${
+        registro.id_profesor ??
+        registro.id ??
+        'documento'
+      }.pdf`,
+
+    matricula:
+      `matricula-${
+        registro.id_matricula ??
+        'documento'
+      }.pdf`,
+
+    asistencia:
+      `asistencia-${
+        registro.id_asistencia ??
+        'documento'
+      }.pdf`
+  };
+
+  return (
+    nombres[tipoDocumentoActual] ||
+    'documento-academico.pdf'
+  );
+}
+
+function limpiarTextoPDF(valor) {
+  const contenedor =
+    document.createElement('div');
+
+  contenedor.innerHTML =
+    String(valor ?? '');
+
+  return (
+    contenedor.textContent ||
+    contenedor.innerText ||
+    '-'
+  );
+}
+
+function obtenerFechaActual() {
+  return new Date().toLocaleDateString(
+    'es-CR'
+  );
+}
+
     function crearCampoDetalle(etiqueta, valor) {
     return `
       <div class="col-md-6">

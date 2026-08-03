@@ -200,15 +200,29 @@ async function cargarRosterGrupoAsistencia() {
 
     // Poblar profesores
     profesorSel.innerHTML = '<option value="" disabled selected>Seleccionar profesor</option>';
-    const profesores = detalle.profesores || [];
-    profesores.forEach((p) => {
-      const texto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} (${p.materia || 'General'})`.trim();
-      profesorSel.add(new Option(texto, p.id_profesor));
-    });
-    profesorSel.disabled = profesores.length === 0;
-    
-    if (profesores.length === 1) {
-      profesorSel.value = profesores[0].id_profesor;
+    const rolActual = (currentUser?.rol || '').toLowerCase();
+
+    if (rolActual === 'profesor' && currentUser?.id_profesor) {
+      // Un profesor únicamente puede registrar asistencia bajo su propio nombre.
+      // No usamos la lista que devuelve el detalle del grupo (esa refleja el/los
+      // profesor(es) vinculados en grupo_profesor, que puede no coincidir con
+      // quien tiene la sesión abierta, p. ej. si hay suplencias).
+      profesorSel.innerHTML = '';
+      const nombreProfesorActual = `${currentUser.nombre ?? ''} ${currentUser.apellido1 ?? ''}`.trim();
+      profesorSel.add(new Option(nombreProfesorActual || 'Profesor actual', currentUser.id_profesor));
+      profesorSel.value = currentUser.id_profesor;
+      profesorSel.disabled = true;
+    } else {
+      const profesores = detalle.profesores || [];
+      profesores.forEach((p) => {
+        const texto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} (${p.materia || 'General'})`.trim();
+        profesorSel.add(new Option(texto, p.id_profesor));
+      });
+      profesorSel.disabled = profesores.length === 0;
+
+      if (profesores.length === 1) {
+        profesorSel.value = profesores[0].id_profesor;
+      }
     }
 
     if (hint) {

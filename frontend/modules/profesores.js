@@ -100,11 +100,38 @@ function wireProfesoresEvents() {
     });
   }
 
+  const asignarGruposSearch = document.getElementById('asignar-grupos-search');
+  if (asignarGruposSearch && !asignarGruposSearch.dataset.wired) {
+    asignarGruposSearch.dataset.wired = '1';
+    asignarGruposSearch.addEventListener('input', () => {
+      filtrarChecklistGrupos(asignarGruposSearch.value);
+    });
+  }
+
+  const confirmarAsignarGruposBtn = document.getElementById('confirmar-asignar-grupos-btn');
+  if (confirmarAsignarGruposBtn && !confirmarAsignarGruposBtn.dataset.wired) {
+    confirmarAsignarGruposBtn.dataset.wired = '1';
+    confirmarAsignarGruposBtn.addEventListener('click', async () => {
+      const idProf = confirmarAsignarGruposBtn.dataset.idProf;
+      if (!idProf) return;
+      await guardarAsignacionGrupos(idProf);
+    });
+  }
+
   // Limpieza segura de backdrops al cerrar modales para prevenir bloqueos de pantalla
   const modalSustitutoEl = document.getElementById('modalAsignarSustituto');
   if (modalSustitutoEl && !modalSustitutoEl.dataset.wiredBackdrop) {
     modalSustitutoEl.dataset.wiredBackdrop = '1';
     modalSustitutoEl.addEventListener('hidden.bs.modal', () => {
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    });
+  }
+
+  const modalAsignarGruposEl = document.getElementById('modalAsignarGrupos');
+  if (modalAsignarGruposEl && !modalAsignarGruposEl.dataset.wiredBackdrop) {
+    modalAsignarGruposEl.dataset.wiredBackdrop = '1';
+    modalAsignarGruposEl.addEventListener('hidden.bs.modal', () => {
       document.body.classList.remove('modal-open');
       document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
     });
@@ -208,6 +235,11 @@ function renderProfesoresTable(profesores) {
       <td class="text-end">
         <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-1 flex-wrap">
           ${activo && esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-primary asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
+              <i class="bi bi-diagram-3 me-1"></i>Grupos
+            </button>
+          ` : ''}
+          ${activo && esAdmin ? `
             <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-slash me-1"></i>Destituir
             </button>
@@ -305,8 +337,9 @@ function handleProfesorTableClick(e) {
   const btnEliminar = e.target.closest('.eliminar-profesor-btn');
   const btnReintegrar = e.target.closest('.reintegrar-btn');
   const btnSustituto = e.target.closest('.sustituto-btn');
+  const btnAsignarGrupos = e.target.closest('.asignar-grupos-btn');
 
-  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto) {
+  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto || btnAsignarGrupos) {
     e.preventDefault();
   }
 
@@ -341,6 +374,14 @@ function handleProfesorTableClick(e) {
 
   if (btnSustituto) {
     abrirModalAsignarSustituto(btnSustituto.dataset.id, btnSustituto.dataset.nombre || '');
+  }
+
+  if (btnAsignarGrupos) {
+    abrirModalAsignarGrupos(
+      btnAsignarGrupos.dataset.id,
+      btnAsignarGrupos.dataset.nombre || '',
+      btnAsignarGrupos.dataset.materia || ''
+    );
   }
 }
 
@@ -586,4 +627,112 @@ function filtrarProfesoresGestion(termino) {
     const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
     option.hidden = !!busqueda && !texto.includes(busqueda);
   });
+}
+
+/* ==========================================
+   ASIGNAR GRUPOS A UN PROFESOR (desde su ficha)
+   Un profesor puede quedar marcado en varios grupos.
+   Si quieres que un grupo tenga Español, Matemáticas y
+   Ciencias cubiertas, repite este flujo con cada profesor
+   y marca el mismo grupo en los tres: grupo_profesor admite
+   varios profesores por grupo, uno por cada materia.
+   ========================================== */
+
+let profesorGruposActualesIds = [];
+
+async function abrirModalAsignarGrupos(idProf, nombreProf, materiaProf) {
+  const nombreEl = document.getElementById('asignar-grupos-nombre-profesor');
+  if (nombreEl) nombreEl.textContent = nombreProf || '';
+  const materiaEl = document.getElementById('asignar-grupos-materia');
+  if (materiaEl) materiaEl.textContent = materiaProf || 'su materia';
+
+  const btnConfirmar = document.getElementById('confirmar-asignar-grupos-btn');
+  if (btnConfirmar) btnConfirmar.dataset.idProf = idProf;
+
+  const modalEl = document.getElementById('modalAsignarGrupos');
+  if (modalEl) new bootstrap.Modal(modalEl).show();
+
+  const lista = document.getElementById('asignar-grupos-lista');
+  if (lista) lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando grupos...</p>';
+
+  const searchInput = document.getElementById('asignar-grupos-search');
+  if (searchInput) searchInput.value = '';
+
+  const profesor = allProfesores.find((p) => String(p.id_profesor ?? p.id) === String(idProf));
+  profesorGruposActualesIds = (profesor?.grupos_ids || '')
+    .split(',')
+    .map((v) => parseInt(v, 10))
+    .filter((v) => !isNaN(v));
+
+  try {
+    const res = await apiFetch('/api/procesos/grupos');
+    if (!res.ok) throw new Error('No se pudieron cargar los grupos.');
+    const grupos = await res.json();
+    renderChecklistGrupos(grupos);
+  } catch (error) {
+    if (lista) lista.innerHTML = `<p class="text-danger text-center py-3 mb-0">${error.message || 'Error al cargar los grupos.'}</p>`;
+  }
+}
+
+function renderChecklistGrupos(grupos) {
+  const lista = document.getElementById('asignar-grupos-lista');
+  if (!lista) return;
+
+  if (!grupos.length) {
+    lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">No hay grupos creados todavía. Crea uno desde Matrícula.</p>';
+    return;
+  }
+
+  lista.innerHTML = grupos.map((g) => {
+    const id = g.id_grupo ?? g.id;
+    const checked = profesorGruposActualesIds.includes(Number(id)) ? 'checked' : '';
+    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}`;
+    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''}`.toLowerCase();
+    return `
+      <label class="form-check d-flex align-items-center gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item" data-busqueda="${busqueda}">
+        <input class="form-check-input mt-0 asignar-grupo-checkbox" type="checkbox" value="${id}" ${checked}>
+        <span class="small">${etiqueta}</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function filtrarChecklistGrupos(termino) {
+  const busqueda = (termino || '').trim().toLowerCase();
+  document.querySelectorAll('#asignar-grupos-lista .asignar-grupo-item').forEach((item) => {
+    const texto = item.dataset.busqueda || '';
+    item.classList.toggle('hidden', !!busqueda && !texto.includes(busqueda));
+  });
+}
+
+async function guardarAsignacionGrupos(idProf) {
+  const seleccionados = Array.from(
+    document.querySelectorAll('#asignar-grupos-lista .asignar-grupo-checkbox:checked')
+  ).map((el) => parseInt(el.value, 10));
+
+  const btnConfirmar = document.getElementById('confirmar-asignar-grupos-btn');
+  if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
+
+  try {
+    const res = await apiFetch(`/api/profesores/${idProf}/grupos`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grupos: seleccionados })
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast('Grupos del profesor actualizados correctamente.', 'success');
+      const modalEl = document.getElementById('modalAsignarGrupos');
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+      await loadProfesores();
+    } else {
+      showToast(json.error || 'No se pudo actualizar la asignación de grupos.', 'error');
+    }
+  } catch {
+    showToast('Error de conexión al asignar los grupos.', 'error');
+  } finally {
+    if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar asignación'; }
+  }
 }

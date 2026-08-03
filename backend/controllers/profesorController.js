@@ -127,6 +127,31 @@ export const reasignarGrupo = async (req, res) => {
   }
 };
 
+export const asignarGruposProfesor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { grupos } = req.body;
+
+    const resultado = await profesorService.asignarGruposProfesorService(id, grupos);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "grupo_profesor",
+        accion_usuario: "UPDATE",
+        datos_anteriores: "",
+        datos_nuevos: JSON.stringify({ id_profesor: id, grupos, ...resultado })
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+
+    res.json({ message: "Grupos asignados correctamente al profesor", resultado });
+  } catch (error) {
+    console.error("Error en asignarGruposProfesor:", error);
+    res.status(400).json({ error: error.message || "Error al asignar grupos al profesor." });
+  }
+};
+
 export const getSuplenciasPendientes = async (req, res) => {
   try {
     const suplencias = await profesorService.obtenerSuplenciasPendientesService();

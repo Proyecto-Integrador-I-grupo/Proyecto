@@ -262,6 +262,37 @@
     </div>
   </div>
 
+  <!-- Modal: Asignar Grupos a Profesor -->
+  <div class="modal fade" id="modalAsignarGrupos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-navy text-white px-4 py-3">
+          <h5 class="modal-title h6 text-white mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3-fill text-primary-emphasis"></i>
+            Asignar grupos a <span id="asignar-grupos-nombre-profesor">-</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="alert alert-info py-2 small mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>Marca los grupos en los que este profesor dará <strong id="asignar-grupos-materia">su materia</strong>. Puedes marcar varios grupos, y un mismo grupo puede tener varios profesores (uno por cada materia).</span>
+          </div>
+          <input id="asignar-grupos-search" type="text" class="form-control form-control-sm mb-3" placeholder="Buscar grupo por nombre o sección...">
+          <div id="asignar-grupos-lista" class="d-flex flex-column gap-2" style="max-height: 320px; overflow-y: auto;">
+            <p class="text-muted text-center py-3 mb-0">Cargando grupos...</p>
+          </div>
+        </div>
+        <div class="modal-footer bg-white px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="confirmar-asignar-grupos-btn" class="btn btn-primary">
+            <i class="bi bi-check2-circle"></i> Guardar asignación
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Asignar Sustituto a grupos pendientes -->
   <div class="modal fade" id="modalAsignarSustituto" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">

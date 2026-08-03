@@ -95,14 +95,6 @@ function wireMatriculaEvents() {
     });
   }
 
-  const grupoProfSearch = document.getElementById('grupo-profesor-search');
-  if (grupoProfSearch && !grupoProfSearch.dataset.wired) {
-    grupoProfSearch.dataset.wired = '1';
-    grupoProfSearch.addEventListener('input', () => {
-      filtrarProfesoresGrupo(grupoProfSearch.value);
-    });
-  }
-
   const gestionProfSearch = document.getElementById('gestion-profesor-search');
   if (gestionProfSearch && !gestionProfSearch.dataset.wired) {
     gestionProfSearch.dataset.wired = '1';
@@ -177,7 +169,6 @@ function wireMatriculaEvents() {
   if (btnAbrirModalGrupo && !btnAbrirModalGrupo.dataset.wired) {
     btnAbrirModalGrupo.dataset.wired = '1';
     btnAbrirModalGrupo.addEventListener('click', () => {
-      populateProfesoresSelects();
       populateSeccionesSelect();
     });
   }
@@ -785,14 +776,12 @@ async function handleMatriculaSubmit(e) {
 async function handleGrupoSubmit(e) {
   e.preventDefault();
 
-  const profSelect = document.getElementById('grupo-profesor');
-  const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
-
+  // El grupo se crea sin profesores: la asignación docente se hace después
+  // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
   const payload = {
     nombre_grupo: document.getElementById('grupo-nombre').value.trim(),
     capacidad: parseInt(document.getElementById('grupo-capacidad').value, 10),
     aula: document.getElementById('grupo-aula').value.trim() || null,
-    profesores: profesoresSeleccionados,
     id_seccion: parseInt(document.getElementById('grupo-seccion').value, 10)
   };
 

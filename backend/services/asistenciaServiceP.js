@@ -1,17 +1,7 @@
 import pool from "../config/database.js";
 
-// estado_asistencia en la tabla es VARCHAR(15): se valida contra una lista
-// cerrada para evitar valores sueltos que luego sean imposibles de reportar.
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
 
-/**
- * Proceso de registro de asistencia:
- * 1. Verifica que el profesor esté asignado activamente al grupo
- * 2. Verifica que el estudiante esté activo en ese grupo
- * 3. Evita duplicar asistencia del mismo estudiante, mismo grupo, mismo día
- * 4. Registra la asistencia (sp_registrar_asistencia); un trigger en BD
- *    (trg_asistencia_valida_fecha) además rechaza fechas futuras.
- */
 export async function registrarAsistenciaProceso(datos) {
   const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor } = datos;
 
@@ -25,7 +15,6 @@ export async function registrarAsistenciaProceso(datos) {
   try {
     await connection.beginTransaction();
 
-    // 1. Verificar que el profesor esté asignado al grupo activamente
     const [profesorGrupo] = await connection.query(
       `SELECT id_grupo_profesor FROM grupo_profesor
        WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE`,
@@ -35,7 +24,6 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("El profesor no está asignado activamente a este grupo.");
     }
 
-    // 2. Verificar que el estudiante pertenezca activamente al grupo
     const [estudianteGrupo] = await connection.query(
       `SELECT id_grupo_estudiante FROM grupo_estudiante
        WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE`,
@@ -45,7 +33,6 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("El estudiante no pertenece activamente a este grupo.");
     }
 
-    // 3. Evitar doble registro del mismo estudiante, mismo grupo, mismo día
     const [duplicado] = await connection.query(
       `SELECT id_asistencia FROM asistencia
        WHERE id_estudiante = ? AND id_grupo = ? AND fecha = ? AND estado = TRUE`,
@@ -55,7 +42,6 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("Ya existe un registro de asistencia para este estudiante, en este grupo, en esa fecha.");
     }
 
-    // 4. Registrar asistencia
     await connection.query(
       "CALL sp_registrar_asistencia(?, ?, ?, ?, ?, ?)",
       [fecha, estadoNormalizado, observaciones || null, id_estudiante, id_grupo, id_profesor]
@@ -66,9 +52,6 @@ export async function registrarAsistenciaProceso(datos) {
 
   } catch (error) {
     await connection.rollback();
-    // El trigger trg_asistencia_valida_fecha rechaza fechas futuras con un SIGNAL
-    // propio; mysql2 entrega ese texto en error.sqlMessage, más claro que el
-    // mensaje genérico de error.message.
     throw new Error(error.sqlMessage || error.message);
   } finally {
     connection.release();
@@ -76,11 +59,9 @@ export async function registrarAsistenciaProceso(datos) {
 }
 
 /**
- * Lista asistencias registradas con filtros opcionales, pensada para
- * alimentar la tabla de historial con filtros en el frontend.
- * Todos los filtros son opcionales y se combinan con AND.
+ * Lista asistencias con soporte para filtros y restricción de seguridad si el usuario es profesor.
  */
-export async function listarAsistencias(filtros = {}) {
+export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   const {
     id_grupo,
     id_estudiante,
@@ -94,6 +75,20 @@ export async function listarAsistencias(filtros = {}) {
   const condiciones = ["a.estado = TRUE"];
   const valores = [];
 
+  // Seguridad por rol: Si es profesor, limitamos a sus grupos o suplencias activas
+  // FIX #1: el campo real del rol es "nom_rol" (ver usuarioModel.js), no "rol".
+  const rol = (usuarioActual?.nom_rol || "").toLowerCase();
+  if (rol === "profesor") {
+    const idProfesor = usuarioActual.id_profesor;
+    if (!idProfesor) {
+      return [];
+    }
+    // FIX #3: "grupo" no tiene columna "id_profesor". La asignación profesor-grupo
+    // vive en "grupo_profesor" (join añadido más abajo, alias gp_filtro).
+    condiciones.push("(gp_filtro.id_profesor = ? OR s_filtro.id_profesor_suplente = ?)");
+    valores.push(idProfesor, idProfesor);
+  }
+
   if (id_grupo) {
     condiciones.push("a.id_grupo = ?");
     valores.push(id_grupo);
@@ -104,7 +99,7 @@ export async function listarAsistencias(filtros = {}) {
     valores.push(id_estudiante);
   }
 
-  if (id_profesor) {
+  if (id_profesor && rol !== "profesor") {
     condiciones.push("a.id_profesor = ?");
     valores.push(id_profesor);
   }
@@ -134,8 +129,11 @@ export async function listarAsistencias(filtros = {}) {
     valores.push(like, like, like);
   }
 
+  // FIX #2 y #3: la tabla se llama "profesor_suplencia" (no "suplencia"), su columna
+  // de estado se llama "estado" (no "activo"), y se añade el JOIN a "grupo_profesor"
+  // porque "grupo" no tiene columna "id_profesor" propia.
   const [filas] = await pool.query(
-    `SELECT
+    `SELECT DISTINCT
         a.id_asistencia,
         a.fecha,
         a.estado_asistencia,
@@ -155,6 +153,8 @@ export async function listarAsistencias(filtros = {}) {
      INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
      INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
      INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
+     LEFT JOIN grupo_profesor gp_filtro     ON gp_filtro.id_grupo = g.id_grupo AND gp_filtro.estado = TRUE
+     LEFT JOIN profesor_suplencia s_filtro  ON s_filtro.id_grupo = g.id_grupo AND s_filtro.estado = TRUE
      WHERE ${condiciones.join(" AND ")}
      ORDER BY a.fecha DESC, a.id_asistencia DESC
      LIMIT 500`,

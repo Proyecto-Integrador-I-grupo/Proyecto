@@ -7,6 +7,7 @@
       const section = document.getElementById(`${moduleName}-view`);
       if (!section) return;
       section.dataset.module = moduleName;
+      wireProfesoresEvents();
     }
   };
 
@@ -14,3 +15,575 @@
     window.dispatchEvent(new CustomEvent('app:module-ready', { detail: { module: moduleName } }));
   }
 })();
+
+/* ==========================================
+   MÓDULO DE PROFESORES
+   Alta, edición, destitución, reintegro y asignación de sustitutos.
+   ========================================== */
+
+let allProfesores = [];
+let profesorPendienteId = null;
+let profesorReintegrarId = null;
+let profesorFiltroEstado = 'todos';
+let profesorBusqueda = '';
+
+function wireProfesoresEvents() {
+  const profForm = document.getElementById('profesor-form');
+  if (profForm && !profForm.dataset.wired) {
+    profForm.dataset.wired = '1';
+    profForm.addEventListener('submit', handleProfesorSubmit);
+  }
+
+  const toggleProfPassword = document.getElementById('toggle-prof-password');
+  if (toggleProfPassword && !toggleProfPassword.dataset.wired) {
+    toggleProfPassword.dataset.wired = '1';
+    toggleProfPassword.addEventListener('click', () => {
+      const input = document.getElementById('prof-contrasena');
+      const icon = toggleProfPassword.querySelector('i');
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      icon?.classList.toggle('bi-eye', showing);
+      icon?.classList.toggle('bi-eye-slash', !showing);
+    });
+  }
+
+  const profTableBody = document.querySelector('#profesores-table tbody');
+  if (profTableBody && !profTableBody.dataset.wired) {
+    profTableBody.dataset.wired = '1';
+    profTableBody.addEventListener('click', handleProfesorTableClick);
+  }
+
+  const profFiltroEstado = document.getElementById('prof-filtro-estado');
+  if (profFiltroEstado && !profFiltroEstado.dataset.wired) {
+    profFiltroEstado.dataset.wired = '1';
+    profFiltroEstado.addEventListener('change', () => {
+      profesorFiltroEstado = profFiltroEstado.value;
+      renderProfesoresTable(filtrarProfesores(allProfesores));
+    });
+  }
+
+  const profSearch = document.getElementById('prof-search');
+  if (profSearch && !profSearch.dataset.wired) {
+    profSearch.dataset.wired = '1';
+    profSearch.addEventListener('input', () => {
+      profesorBusqueda = profSearch.value.trim().toLowerCase();
+      renderProfesoresTable(filtrarProfesores(allProfesores));
+    });
+  }
+
+  const confirmarDestituirBtn = document.getElementById('confirmar-destituir-btn');
+  if (confirmarDestituirBtn && !confirmarDestituirBtn.dataset.wired) {
+    confirmarDestituirBtn.dataset.wired = '1';
+    confirmarDestituirBtn.addEventListener('click', async () => {
+      const motivo = document.getElementById('destituir-motivo')?.value.trim() || '';
+      bootstrap.Modal.getInstance(document.getElementById('modalDestituir'))?.hide();
+      await destituirProfesor(profesorPendienteId, motivo);
+    });
+  }
+
+  const confirmarEliminarBtn = document.getElementById('confirmar-eliminar-btn');
+  if (confirmarEliminarBtn && !confirmarEliminarBtn.dataset.wired) {
+    confirmarEliminarBtn.dataset.wired = '1';
+    confirmarEliminarBtn.addEventListener('click', async () => {
+      bootstrap.Modal.getInstance(document.getElementById('modalEliminarProfesor'))?.hide();
+      await eliminarProfesor(profesorPendienteId);
+    });
+  }
+
+  const confirmarReintegrarBtn = document.getElementById('confirmar-reintegrar-btn');
+  if (confirmarReintegrarBtn && !confirmarReintegrarBtn.dataset.wired) {
+    confirmarReintegrarBtn.dataset.wired = '1';
+    confirmarReintegrarBtn.addEventListener('click', async () => {
+      bootstrap.Modal.getInstance(document.getElementById('modalReintegrar'))?.hide();
+      await reintegrarProfesor(profesorReintegrarId);
+    });
+  }
+
+  // Limpieza segura de backdrops al cerrar modales para prevenir bloqueos de pantalla
+  const modalSustitutoEl = document.getElementById('modalAsignarSustituto');
+  if (modalSustitutoEl && !modalSustitutoEl.dataset.wiredBackdrop) {
+    modalSustitutoEl.dataset.wiredBackdrop = '1';
+    modalSustitutoEl.addEventListener('hidden.bs.modal', () => {
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    });
+  }
+}
+
+async function loadProfesores() {
+  const profTableBody = document.querySelector('#profesores-table tbody');
+  if (!profTableBody) return;
+
+  try {
+    const res = await apiFetch('/api/profesores');
+    if (!res.ok) throw new Error('No se pudo cargar la lista de profesores');
+    allProfesores = await res.json();
+    actualizarStatsProfesores(allProfesores);
+    renderProfesoresTable(filtrarProfesores(allProfesores));
+  } catch (error) {
+    profTableBody.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-3">Error al cargar profesores.</td></tr>';
+    showToast(error.message || 'Error al obtener datos', 'error');
+  }
+}
+
+function filtrarProfesores(profesores) {
+  let resultado = profesores;
+
+  if (profesorFiltroEstado === 'activos') {
+    resultado = resultado.filter((p) => p.estado == 1 || p.estado === true);
+  } else if (profesorFiltroEstado === 'inactivos') {
+    resultado = resultado.filter((p) => !(p.estado == 1 || p.estado === true));
+  }
+
+  if (profesorBusqueda) {
+    resultado = resultado.filter((p) => {
+      const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.toLowerCase();
+      const materia = (p.materia ?? '').toLowerCase();
+      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda);
+    });
+  }
+
+  return resultado;
+}
+
+function actualizarStatsProfesores(profesores) {
+  const total = profesores.length;
+  const activos = profesores.filter((p) => p.estado == 1 || p.estado === true).length;
+  const inactivos = total - activos;
+  const pendientes = profesores.reduce((acc, p) => acc + Number(p.grupos_pendientes ?? 0), 0);
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  setText('prof-cnt-total', total);
+  setText('prof-cnt-activos', activos);
+  setText('prof-cnt-inactivos', inactivos);
+  setText('prof-cnt-pendientes', pendientes);
+}
+
+function renderProfesoresTable(profesores) {
+  const profTableBody = document.querySelector('#profesores-table tbody');
+  if (!profTableBody) return;
+  profTableBody.innerHTML = '';
+
+  const esAdmin = (currentUser?.rol || '').toLowerCase() === 'administrador';
+
+  if (!profesores.length) {
+    const mensaje = (profesorFiltroEstado !== 'todos' || profesorBusqueda)
+      ? 'No hay profesores que coincidan con la búsqueda o el filtro seleccionado.'
+      : 'No hay profesores registrados.';
+    profTableBody.innerHTML = `<tr><td colspan="7" class="text-muted text-center py-4">${mensaje}</td></tr>`;
+    return;
+  }
+
+  profesores.forEach((p) => {
+    const idProf = p.id_profesor ?? p.id;
+    const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
+    const materia = p.materia ?? 'N/A';
+    const ingreso = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : 'N/A';
+    const activo = p.estado == 1 || p.estado === true;
+    const grupoPendientes = Number(p.grupos_pendientes ?? 0);
+
+    const badgeEstado = activo 
+      ? '<span class="badge bg-success">Activo</span>' 
+      : '<span class="badge bg-danger">Incapacitado/Inactivo</span>';
+
+    const celdaGrupos = activo
+      ? (p.grupos_asignados ? `<span class="small">${p.grupos_asignados}</span>` : '<span class="text-muted small">Sin grupos</span>')
+      : (grupoPendientes > 0
+          ? `<span class="badge bg-warning text-dark">${grupoPendientes} grupo(s) por cubrir/restaurar</span>`
+          : '<span class="text-muted small">Sin grupos pendientes</span>');
+
+    const tr = document.createElement('tr');
+    if (!activo) tr.classList.add('profesor-row-inactivo');
+    tr.innerHTML = `
+      <td>${idProf}</td>
+      <td>${nombreComp}</td>
+      <td><span class="badge bg-light text-dark border px-2 py-1">${materia}</span></td>
+      <td>${ingreso}</td>
+      <td>${celdaGrupos}</td>
+      <td>${badgeEstado}</td>
+      <td class="text-end">
+        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-1 flex-wrap">
+          ${activo && esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-slash me-1"></i>Destituir
+            </button>
+          ` : ''}
+          ${!activo && esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-success reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-check-fill me-1"></i>Reintegrar
+            </button>
+          ` : ''}
+          ${!activo && esAdmin && grupoPendientes > 0 ? `
+            <button type="button" class="btn btn-sm btn-outline-primary sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-person-lines-fill me-1"></i>Sustituto
+            </button>
+          ` : ''}
+          ${esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-danger eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+              <i class="bi bi-trash me-1"></i>Eliminar
+            </button>
+          ` : ''}
+          ${!esAdmin ? `<span class="text-muted small">Sin acciones</span>` : ''}
+        </div>
+      </td>
+    `;
+    profTableBody.appendChild(tr);
+  });
+}
+
+async function handleProfesorSubmit(e) {
+  e.preventDefault();
+
+  const nombre = document.getElementById('prof-nombre')?.value.trim();
+  const apellido1 = document.getElementById('prof-apellido1')?.value.trim();
+  const materia = document.getElementById('prof-materia')?.value;
+  const correo = document.getElementById('prof-correo')?.value.trim();
+  const contrasena = document.getElementById('prof-contrasena')?.value || '';
+
+  if (!nombre || !apellido1 || !materia) {
+    showToast('Por favor completa el nombre, apellido y selecciona una materia.', 'error');
+    return;
+  }
+
+  if (!correo || !contrasena) {
+    showToast('Ingresa el correo y la contraseña de acceso del docente.', 'error');
+    return;
+  }
+
+  if (contrasena.length < 6) {
+    showToast('La contraseña de acceso debe tener al menos 6 caracteres.', 'error');
+    return;
+  }
+
+  const payload = {
+    nombre: nombre,
+    apellido1: apellido1,
+    apellido2: document.getElementById('prof-apellido2')?.value.trim() || '',
+    fecha_nacimiento: document.getElementById('prof-fecha-nac')?.value || null,
+    genero: document.getElementById('prof-genero')?.value || null,
+    materia: materia,
+    fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null,
+    correo: correo,
+    contrasena: contrasena
+  };
+
+  try {
+    const res = await apiFetch('/api/profesores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      const modalEl = document.getElementById('modalProfesor');
+      if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modalInstance.hide();
+      }
+
+      document.getElementById('profesor-form')?.reset();
+      await loadProfesores();
+      await populateProfesoresSelects();
+      await refreshDashboardCounts();
+      showResultModal('success', 'Profesor registrado', 'El profesor fue agregado correctamente al cuerpo docente.');
+    } else {
+      showResultModal('error', 'No se pudo registrar', json.error || json.mensaje || 'Ocurrió un error registrando al profesor.');
+    }
+  } catch {
+    showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+  }
+}
+
+function handleProfesorTableClick(e) {
+  const btnDestituir = e.target.closest('.destituir-btn');
+  const btnEliminar = e.target.closest('.eliminar-profesor-btn');
+  const btnReintegrar = e.target.closest('.reintegrar-btn');
+  const btnSustituto = e.target.closest('.sustituto-btn');
+
+  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto) {
+    e.preventDefault();
+  }
+
+  if (btnDestituir) {
+    profesorPendienteId = btnDestituir.dataset.id;
+    const nombreEl = document.getElementById('destituir-nombre-profesor');
+    if (nombreEl) nombreEl.textContent = btnDestituir.dataset.nombre || '';
+    const motivoEl = document.getElementById('destituir-motivo');
+    if (motivoEl) motivoEl.value = 'Incapacidad médica / Salida';
+
+    const modalEl = document.getElementById('modalDestituir');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+  }
+
+  if (btnEliminar) {
+    profesorPendienteId = btnEliminar.dataset.id;
+    const nombreEl = document.getElementById('eliminar-nombre-profesor');
+    if (nombreEl) nombreEl.textContent = btnEliminar.dataset.nombre || '';
+
+    const modalEl = document.getElementById('modalEliminarProfesor');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+  }
+
+  if (btnReintegrar) {
+    profesorReintegrarId = btnReintegrar.dataset.id;
+    const nombreEl = document.getElementById('reintegrar-nombre-profesor');
+    if (nombreEl) nombreEl.textContent = btnReintegrar.dataset.nombre || '';
+
+    const modalEl = document.getElementById('modalReintegrar');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+  }
+
+  if (btnSustituto) {
+    abrirModalAsignarSustituto(btnSustituto.dataset.id, btnSustituto.dataset.nombre || '');
+  }
+}
+
+async function destituirProfesor(idProf, motivo) {
+  if (!idProf) return;
+  try {
+    const res = await apiFetch(`/api/profesores/${idProf}/destituir`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo })
+    });
+
+    if (res.ok) {
+      showResultModal(
+        'success',
+        'Profesor incapacitado',
+        'El profesor fue marcado como inactivo y retirado de todos sus grupos asignados.'
+      );
+      await loadProfesores();
+      await populateProfesoresSelects();
+    } else {
+      const json = await res.json().catch(() => ({}));
+      showResultModal('error', 'No se pudo destituir', json.error || 'Ocurrió un error al procesar la destitución.');
+    }
+  } catch {
+    showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+  } finally {
+    profesorPendienteId = null;
+  }
+}
+
+async function eliminarProfesor(idProf) {
+  if (!idProf) return;
+  try {
+    const res = await apiFetch(`/api/profesores/${idProf}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showResultModal('success', 'Profesor eliminado', 'El registro del profesor fue eliminado permanentemente del sistema.');
+      await loadProfesores();
+      await populateProfesoresSelects();
+      await refreshDashboardCounts();
+    } else {
+      showResultModal('error', 'No se pudo eliminar', json.error || 'Ocurrió un error al eliminar el profesor.');
+    }
+  } catch {
+    showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+  } finally {
+    profesorPendienteId = null;
+  }
+}
+
+async function reintegrarProfesor(idProf) {
+  if (!idProf) return;
+  try {
+    const res = await apiFetch(`/api/profesores/${idProf}/reintegrar`, { method: 'PUT' });
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      const restaurados = json.resultado?.grupos_restaurados?.length ?? 0;
+      const omitidos = json.resultado?.grupos_omitidos?.length ?? 0;
+      let mensaje = 'El profesor fue marcado como activo nuevamente.';
+      if (restaurados > 0) mensaje += ` Se le restauraron ${restaurados} grupo(s).`;
+      if (omitidos > 0) mensaje += ` ${omitidos} grupo(s) ya no existían y no se pudieron restaurar.`;
+      showResultModal('success', 'Profesor reintegrado', mensaje);
+      await loadProfesores();
+      await populateProfesoresSelects();
+    } else {
+      showResultModal('error', 'No se pudo reintegrar', json.error || 'Ocurrió un error al reintegrar al profesor.');
+    }
+  } catch {
+    showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+  } finally {
+    profesorReintegrarId = null;
+  }
+}
+
+async function abrirModalAsignarSustituto(idProfTitular, nombreTitular) {
+  const nombreEl = document.getElementById('sustituto-nombre-profesor');
+  if (nombreEl) nombreEl.textContent = nombreTitular || '';
+
+  const modalEl = document.getElementById('modalAsignarSustituto');
+  if (modalEl) new bootstrap.Modal(modalEl).show();
+
+  const lista = document.getElementById('sustituto-lista');
+  if (lista) lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando grupos pendientes...</p>';
+
+  try {
+    const [resSuplencias, resProfesores] = await Promise.all([
+      apiFetch('/api/profesores/suplencias/pendientes'),
+      apiFetch('/api/profesores')
+    ]);
+
+    if (!resSuplencias.ok) throw new Error('No se pudieron cargar los grupos pendientes.');
+
+    const suplencias = (await resSuplencias.json()).filter(
+      (s) => String(s.id_profesor_titular) === String(idProfTitular)
+    );
+    const profesores = resProfesores.ok ? await resProfesores.json() : [];
+    const profesoresActivos = profesores.filter(
+      (p) => (p.estado == 1 || p.estado === true) && String(p.id_profesor ?? p.id) !== String(idProfTitular)
+    );
+
+    renderListaSuplencias(suplencias, profesoresActivos, idProfTitular);
+  } catch (error) {
+    if (lista) lista.innerHTML = `<p class="text-danger text-center py-3 mb-0">${error.message || 'Error al cargar los grupos pendientes.'}</p>`;
+  }
+}
+
+function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
+  const lista = document.getElementById('sustituto-lista');
+  if (!lista) return;
+
+  if (!suplencias.length) {
+    lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">Este profesor no tiene grupos pendientes de cubrir o restaurar.</p>';
+    return;
+  }
+
+  const opcionesProfesores = profesoresActivos
+    .map((p) => `<option value="${p.id_profesor ?? p.id}">${p.nombre} ${p.apellido1} (${p.materia || 'General'})</option>`)
+    .join('');
+
+  lista.innerHTML = suplencias.map((s) => `
+    <div class="border rounded-3 p-3 d-flex align-items-center justify-content-between gap-3 flex-wrap" data-suplencia-row="${s.id_suplencia}">
+      <div>
+        <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}</div>
+        <div class="small text-muted">
+          ${s.id_profesor_suplente
+            ? `Cubierto provisionalmente por: <strong>${s.suplente_nombre}</strong>`
+            : 'Sin sustituto asignado todavía'}
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <select class="form-select form-select-sm sustituto-select" style="min-width: 220px;" data-grupo="${s.id_grupo}">
+          <option value="" disabled ${s.id_profesor_suplente ? '' : 'selected'}>Seleccionar profesor</option>
+          ${opcionesProfesores}
+        </select>
+        <button type="button" class="btn btn-sm btn-primary asignar-sustituto-confirm-btn"
+          data-grupo="${s.id_grupo}" data-titular="${idProfTitular}">
+          <i class="bi bi-check2"></i> ${s.id_profesor_suplente ? 'Cambiar' : 'Asignar'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  lista.querySelectorAll('.asignar-sustituto-confirm-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const fila = btn.closest('[data-suplencia-row]');
+      const select = fila?.querySelector('.sustituto-select');
+      const idGrupo = btn.dataset.grupo;
+      const idTitular = btn.dataset.titular;
+      const idNuevoProfesor = select?.value;
+
+      if (!idNuevoProfesor) {
+        showToast('Selecciona un profesor sustituto primero.', 'error');
+        return;
+      }
+
+      await asignarSustituto(idGrupo, idNuevoProfesor, idTitular);
+    });
+  });
+}
+
+async function asignarSustituto(idGrupo, idNuevoProfesor, idProfesorAnterior) {
+  try {
+    const res = await apiFetch('/api/profesores/reasignar', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grupoId: parseInt(idGrupo, 10),
+        profesorId: parseInt(idNuevoProfesor, 10),
+        profesorAnteriorId: parseInt(idProfesorAnterior, 10)
+      })
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast('Grupo asignado provisionalmente. Se restaurará al titular al reintegrarlo.', 'success');
+      await loadProfesores();
+      const nombreTitular = document.getElementById('sustituto-nombre-profesor')?.textContent || '';
+      await abrirModalAsignarSustituto(idProfesorAnterior, nombreTitular);
+    } else {
+      showToast(json.error || 'No se pudo asignar el sustituto.', 'error');
+    }
+  } catch {
+    showToast('Error de conexión al asignar el sustituto.', 'error');
+  }
+}
+
+async function populateProfesoresSelects(isGestion = false) {
+  try {
+    const res = await apiFetch('/api/profesores');
+    if (!res.ok) return;
+    const profesores = await res.json();
+    const grupoProfSel = document.getElementById('grupo-profesor');
+    const asisProfSel = document.getElementById('asis-id-profesor');
+    const gestionProfSel = document.getElementById('gestion-grupo-profesor');
+
+    [grupoProfSel, asisProfSel, gestionProfSel].forEach((select) => {
+      if (!select) return;
+      select.innerHTML = '<option value="" disabled selected>Seleccionar profesor</option>';
+    });
+
+    const profesoresActivos = profesores.filter((p) => p.estado == 1 || p.estado === true);
+
+    profesoresActivos.forEach((p) => {
+      const id = p.id_profesor ?? p.id;
+      const opt = new Option(`${p.nombre} ${p.apellido1} (${p.materia || 'General'})`, id);
+      opt.dataset.busqueda = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''} ${p.materia ?? ''}`.toLowerCase();
+      if (grupoProfSel) grupoProfSel.add(opt.cloneNode(true));
+      if (asisProfSel) asisProfSel.add(opt.cloneNode(true));
+      if (gestionProfSel) gestionProfSel.add(opt.cloneNode(true));
+    });
+
+    filtrarProfesoresGrupo(document.getElementById('grupo-profesor-search')?.value || '');
+    filtrarProfesoresGestion(document.getElementById('gestion-profesor-search')?.value || '');
+    if (isGestion) {
+      await cargarDetalleGestionGrupo(Number(document.getElementById('gestion-grupo-select')?.value || 0));
+    }
+  } catch (error) {
+    console.error('Error poblando profesores', error);
+  }
+}
+
+function filtrarProfesoresGrupo(termino) {
+  const select = document.getElementById('grupo-profesor');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
+    option.hidden = !!busqueda && !texto.includes(busqueda);
+  });
+}
+
+function filtrarProfesoresGestion(termino) {
+  const select = document.getElementById('gestion-grupo-profesor');
+  const busqueda = (termino || '').trim().toLowerCase();
+  if (!select) return;
+
+  Array.from(select.options).forEach((option) => {
+    const texto = (option.dataset.busqueda || option.textContent || '').toLowerCase();
+    option.hidden = !!busqueda && !texto.includes(busqueda);
+  });
+}

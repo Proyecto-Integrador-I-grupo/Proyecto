@@ -1,50 +1,141 @@
+<link rel="stylesheet" href="../css/variables.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+<link rel="stylesheet" href="../css/asistencia.css">
+
 <section id="asistencia-view" class="view hidden">
-  <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-      <div class="card stat-card stat-card-sm shadow-sm h-100">
-        <div class="card-body">
-          <span class="stat-label">Registros</span>
-          <div id="hist-stat-total" class="stat-value stat-value-sm">0</div>
+  <!-- Cabecera limpia -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+      <h2 class="h3 mb-0 font-serif">Control y Registro de Asistencia</h2>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" id="hist-refrescar" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-clockwise"></i> Refrescar
+      </button>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegistrarAsistencia">
+        <i class="bi bi-plus-lg"></i> Registrar Asistencia
+      </button>
+    </div>
+  </div>
+
+  <!-- Historial de Asistencia -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="card-title-serif h5 mb-0"><i class="bi bi-clock-history"></i> Historial de Asistencia</h3>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGraficosAsistencia" aria-expanded="false" aria-controls="collapseGraficosAsistencia">
+          <i class="bi bi-bar-chart-fill"></i> Ver Gráficos Estadísticos
+        </button>
+      </div>
+
+      <!-- Panel Colapsable de Gráficos -->
+      <div class="collapse mb-4" id="collapseGraficosAsistencia">
+        <div class="card card-body bg-light border-0">
+          <div class="row align-items-center">
+            <div class="col-12 col-md-6 mb-3 mb-md-0 text-center">
+              <h6 class="text-muted mb-3 font-serif">Distribución de Estados</h6>
+              <div style="max-height: 220px; position: relative;">
+                <canvas id="chartAsistenciaEstados"></canvas>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 text-center">
+              <h6 class="text-muted mb-3 font-serif">Resumen Rápido</h6>
+              <div class="p-3 bg-white rounded shadow-sm text-start">
+                <p class="mb-2 text-muted small">Visualiza de forma interactiva el comportamiento de la asistencia filtrada actual.</p>
+                <div class="d-flex justify-content-between border-bottom py-1"><span>Total filtrado:</span> <strong id="graf-total">0</strong></div>
+                <div class="d-flex justify-content-between border-bottom py-1 text-success"><span>Asistencia efectiva:</span> <strong id="graf-efectiva">0%</strong></div>
+                <div class="d-flex justify-content-between py-1 text-danger"><span>Ausentismo:</span> <strong id="graf-ausentismo">0%</strong></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat-card stat-card-sm stat-card-success shadow-sm h-100">
-        <div class="card-body">
-          <span class="stat-label">Presentes</span>
-          <div id="hist-stat-presente" class="stat-value stat-value-sm">0</div>
+
+      <!-- Barra de Filtros -->
+      <div class="filter-bar mb-4">
+        <div class="row g-2">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Grupo</label>
+            <select id="hist-filtro-grupo" class="form-select form-select-sm">
+              <option value="">Todos los grupos</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Estudiante Específico</label>
+            <select id="hist-filtro-estudiante" class="form-select form-select-sm">
+              <option value="">Todos los estudiantes</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Estado</label>
+            <select id="hist-filtro-estado" class="form-select form-select-sm">
+              <option value="">Todos</option>
+              <option value="presente">Presente</option>
+              <option value="ausente">Ausente</option>
+              <option value="tardia">Tardía</option>
+              <option value="justificada">Justificada</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Desde</label>
+            <input id="hist-filtro-fecha-desde" type="date" class="form-control form-control-sm">
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Hasta</label>
+            <input id="hist-filtro-fecha-hasta" type="date" class="form-control form-control-sm">
+          </div>
+          <div class="col-12 col-md-8">
+            <div class="input-group input-group-sm mt-1">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input id="hist-filtro-busqueda" type="text" class="form-control" placeholder="Buscar por nombre, apellido u observaciones...">
+            </div>
+          </div>
+          <div class="col-12 col-md-4 d-flex align-items-end mt-1">
+            <button type="button" id="hist-limpiar-filtros" class="btn btn-outline-secondary btn-sm w-100">
+              <i class="bi bi-x-circle"></i> Limpiar filtros
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat-card stat-card-sm stat-card-danger shadow-sm h-100">
-        <div class="card-body">
-          <span class="stat-label">Ausentes</span>
-          <div id="hist-stat-ausente" class="stat-value stat-value-sm">0</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-lg-3">
-      <div class="card stat-card stat-card-sm stat-card-gold shadow-sm h-100">
-        <div class="card-body">
-          <span class="stat-label">Tardías / Justificadas</span>
-          <div id="hist-stat-otros" class="stat-value stat-value-sm">0</div>
-        </div>
+
+      <!-- Tabla de Historial -->
+      <div class="table-responsive">
+        <table id="asistencia-historial-table" class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Estudiante</th>
+              <th>Grupo</th>
+              <th>Profesor</th>
+              <th>Estado</th>
+              <th>Observaciones</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="asistencia-historial-body">
+            <tr><td colspan="7" class="text-center py-4 text-muted">Cargando historial...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <div class="row g-4">
-    <div class="col-lg-5">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="card-title-serif h5 mb-3"><i class="bi bi-calendar2-check"></i> Registrar Asistencia</h2>
+  <!-- Modal Emergente para Registrar Asistencia -->
+  <div class="modal fade" id="modalRegistrarAsistencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-navy text-white">
+          <h5 class="modal-title font-serif"><i class="bi bi-calendar2-check"></i> Registrar Asistencia</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
           <form id="asistencia-form">
             <div class="row g-3">
               <div class="col-12">
-                <label class="form-label">Grupo</label>
+                <label class="form-label">Grupo Destino</label>
                 <select id="asis-id-grupo" class="form-select" required></select>
-                <div class="form-text" id="asis-grupo-hint">Elige primero el grupo: así se cargan solo sus estudiantes y su profesor.</div>
+                <div class="form-text" id="asis-grupo-hint">Selecciona el grupo para filtrar automáticamente el roster.</div>
               </div>
               <div class="col-12">
                 <label class="form-label">Estudiante</label>
@@ -53,7 +144,7 @@
                 </select>
               </div>
               <div class="col-12">
-                <label class="form-label">Profesor</label>
+                <label class="form-label">Profesor Asignado</label>
                 <select id="asis-id-profesor" class="form-select" required disabled>
                   <option value="" disabled selected>Primero selecciona un grupo</option>
                 </select>
@@ -73,85 +164,56 @@
               </div>
               <div class="col-12">
                 <label class="form-label">Observaciones (opcional)</label>
-                <input id="asis-observaciones" type="text" class="form-control" maxlength="250" placeholder="Ej. Llegó 15 minutos tarde por transporte">
+                <input id="asis-observaciones" type="text" class="form-control" maxlength="250" placeholder="Ej. Retraso por transporte público">
               </div>
-              <div class="col-12 pt-2">
-                <button type="submit" id="asis-submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle"></i> Guardar Asistencia</button>
+              <div class="col-12 pt-3">
+                <button type="submit" id="asis-submit" class="btn btn-primary w-100 py-2">
+                  <i class="bi bi-check2-circle"></i> Guardar Registro de Asistencia
+                </button>
               </div>
             </div>
           </form>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="col-lg-7">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-            <h2 class="card-title-serif h5 mb-0"><i class="bi bi-clock-history"></i> Historial de Asistencia</h2>
-            <button type="button" id="hist-refrescar" class="btn btn-outline-secondary btn-sm">
-              <i class="bi bi-arrow-clockwise"></i> Refrescar
-            </button>
-          </div>
-
-          <div class="filter-bar mb-3">
-            <div class="row g-2">
-              <div class="col-6 col-md-4">
-                <label class="form-label">Grupo</label>
-                <select id="hist-filtro-grupo" class="form-select form-select-sm">
-                  <option value="">Todos los grupos</option>
-                </select>
+  <!-- Modal Emergente para Modificar Asistencia / Ausencia -->
+  <div class="modal fade" id="modalModificarAsistencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-navy text-white">
+          <h5 class="modal-title font-serif"><i class="bi bi-pencil-square"></i> Modificar Estado de Asistencia</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="modificar-asistencia-form">
+            <input type="hidden" id="mod-id-asistencia">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label text-muted">Estudiante</label>
+                <input type="text" id="mod-estudiante-nombre" class="form-control bg-light" disabled>
               </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label">Estado</label>
-                <select id="hist-filtro-estado" class="form-select form-select-sm">
-                  <option value="">Todos los estados</option>
+              <div class="col-12">
+                <label class="form-label">Nuevo Estado</label>
+                <select id="mod-estado" class="form-select" required>
                   <option value="presente">Presente</option>
                   <option value="ausente">Ausente</option>
                   <option value="tardia">Tardía</option>
                   <option value="justificada">Justificada</option>
                 </select>
               </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label">Buscar estudiante</label>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text"><i class="bi bi-search"></i></span>
-                  <input id="hist-filtro-busqueda" type="text" class="form-control" placeholder="Nombre o apellido...">
-                </div>
+              <div class="col-12">
+                <label class="form-label">Observaciones / Motivo de Corrección</label>
+                <textarea id="mod-observaciones" class="form-control" rows="3" maxlength="250" placeholder="Motivo del cambio de estado..."></textarea>
               </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label">Desde</label>
-                <input id="hist-filtro-fecha-desde" type="date" class="form-control form-control-sm">
-              </div>
-              <div class="col-6 col-md-4">
-                <label class="form-label">Hasta</label>
-                <input id="hist-filtro-fecha-hasta" type="date" class="form-control form-control-sm">
-              </div>
-              <div class="col-12 col-md-4 d-flex align-items-end">
-                <button type="button" id="hist-limpiar-filtros" class="btn btn-outline-secondary btn-sm w-100">
-                  <i class="bi bi-x-circle"></i> Limpiar filtros
+              <div class="col-12 pt-3">
+                <button type="submit" id="mod-submit" class="btn btn-primary w-100 py-2">
+                  <i class="bi bi-save"></i> Actualizar Registro
                 </button>
               </div>
             </div>
-          </div>
-
-          <div class="table-responsive flex-grow-1">
-            <table id="asistencia-historial-table" class="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Estudiante</th>
-                  <th>Grupo</th>
-                  <th>Profesor</th>
-                  <th>Estado</th>
-                  <th>Observaciones</th>
-                </tr>
-              </thead>
-              <tbody id="asistencia-historial-body">
-                <tr><td colspan="6" class="text-center py-4 text-muted">Cargando historial...</td></tr>
-              </tbody>
-            </table>
-          </div>
+          </form>
         </div>
       </div>
     </div>

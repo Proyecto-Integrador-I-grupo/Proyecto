@@ -21,7 +21,6 @@ export async function procesarMatricula(datos) {
   try {
     await connection.beginTransaction();
 
-    // 1. Validar existencia y estado del estudiante
     const [estudianteRows] = await connection.query(
       "SELECT estado FROM estudiante WHERE id_estudiante = ?",
       [id_estudiante]
@@ -33,7 +32,6 @@ export async function procesarMatricula(datos) {
       throw new Error("No se puede matricular a un estudiante inactivo.");
     }
 
-    // 2. Validar que el usuario que procesa exista y esté activo
     const [usuarioRows] = await connection.query(
       "SELECT estado FROM usuario WHERE id_usuario = ?",
       [id_usuario]
@@ -42,7 +40,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El usuario que procesa la matrícula no es válido.");
     }
 
-    // 3. Validar existencia y capacidad del grupo (bloquea la fila para actualizar cupos de forma segura)
     const [grupoRows] = await connection.query(
       "SELECT capacidad, estado, fn_estudiantes_grupo(id_grupo) AS ocupados FROM grupo WHERE id_grupo = ? FOR UPDATE",
       [id_grupo]
@@ -58,7 +55,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El grupo ya no tiene cupo disponible.");
     }
 
-    // 4. Evitar matricular dos veces al mismo estudiante en el mismo grupo
     const [yaEnGrupo] = await connection.query(
       "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
       [id_grupo, id_estudiante]
@@ -67,11 +63,6 @@ export async function procesarMatricula(datos) {
       throw new Error("El estudiante ya está matriculado en este grupo.");
     }
 
-    // 5. Registrar matrícula
-    // OJO: sp_registrar_matricula declara p_observaciones como VARCHAR(20)
-    // (no 100, como sí permite la columna real). En modo estricto de MySQL,
-    // mandarle algo más largo revienta la transacción entera con
-    // "Data too long for column", así que se recorta de forma segura aquí.
     const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 20) : null;
     const observacionesDetalle = observaciones ? observaciones.trim().slice(0, 150) : null;
 
@@ -83,7 +74,6 @@ export async function procesarMatricula(datos) {
       "SELECT LAST_INSERT_ID() AS id_matricula"
     );
 
-    // 6. Registrar detalle de matrícula
     if (id_matricula) {
       await connection.query(
         "CALL sp_registrar_detalle_matricula(?, ?, ?, ?)",
@@ -91,7 +81,6 @@ export async function procesarMatricula(datos) {
       );
     }
 
-    // 7. Asignar al estudiante al grupo (esto llena formalmente el cupo en base de datos)
     await connection.query(
       "CALL sp_asignar_estudiante_grupo(?, ?, ?)",
       [fecha, id_grupo, id_estudiante]
@@ -110,7 +99,36 @@ export async function procesarMatricula(datos) {
 /* ==========================================
    GRUPOS
    ========================================== */
-export async function obtenerGruposService() {
+export async function obtenerGruposService(usuarioActual = null) {
+  const rol = (usuarioActual?.rol || "").toLowerCase();
+
+  if (rol === "profesor") {
+    const idProfesor = usuarioActual.id_profesor;
+    if (!idProfesor) {
+      return [];
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+          g.id_grupo,
+          g.nombre_grupo,
+          g.capacidad,
+          g.aula,
+          g.id_seccion,
+          s.nombre_seccion,
+          s.nivel,
+          s.periodo_lectivo,
+          fn_estudiantes_grupo(g.id_grupo) AS ocupados
+       FROM grupo g
+       INNER JOIN seccion s ON g.id_seccion = s.id_seccion
+       LEFT JOIN suplencia su ON su.id_grupo = g.id_grupo AND su.id_profesor_suplente = ? AND su.activo = 1
+       WHERE g.estado = TRUE AND (g.id_profesor = ? OR su.id_profesor_suplente = ?)
+       ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`,
+      [idProfesor, idProfesor, idProfesor]
+    );
+    return rows;
+  }
+
   const [rows] = await pool.query(
     `SELECT
         g.id_grupo,
@@ -264,12 +282,54 @@ export async function actualizarGrupoService(idGrupo, datos) {
   }
 }
 
+export async function eliminarGrupoService(idGrupo) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Verificar si el grupo existe y está activo
+    const [grupoRows] = await connection.query(
+      "SELECT id_grupo FROM grupo WHERE id_grupo = ? AND estado = TRUE",
+      [idGrupo]
+    );
+    if (grupoRows.length === 0) {
+      throw new Error("El grupo no existe o ya se encuentra inactivo.");
+    }
+
+    // 2. Opcional: Validar si tiene estudiantes activos matriculados
+    const [estudiantesRows] = await connection.query(
+      "SELECT COUNT(*) AS total FROM grupo_estudiante WHERE id_grupo = ? AND estado = TRUE",
+      [idGrupo]
+    );
+    if (estudiantesRows[0].total > 0) {
+      throw new Error("No se puede eliminar el grupo porque tiene estudiantes matriculados activos.");
+    }
+
+    // 3. Realizar el borrado lógico del grupo
+    await connection.query(
+      "UPDATE grupo SET estado = FALSE WHERE id_grupo = ?",
+      [idGrupo]
+    );
+
+    // 4. Desactivar relaciones asociadas (profesores en el grupo)
+    await connection.query(
+      "UPDATE grupo_profesor SET estado = FALSE, fecha_fin = COALESCE(fecha_fin, CURDATE()) WHERE id_grupo = ?",
+      [idGrupo]
+    );
+
+    await connection.commit();
+    return { mensaje: "Grupo eliminado correctamente.", id_grupo: idGrupo };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 /* ==========================================
    ROSTER DE GRUPO (para Asistencia)
    ========================================== */
-// Los estudiantes matriculados YA NO aparecen en /api/estudiantes (esa lista es
-// solo el pre-registro de pendientes). Asistencia necesita justo lo contrario:
-// quién SÍ está activo en el grupo, más quién es su profesor asignado.
 export async function obtenerDetalleGrupoService(id_grupo) {
   const [estudiantes] = await pool.query(
     `SELECT e.id_estudiante, p.nombre, p.apellido1, p.apellido2
@@ -407,11 +467,118 @@ export async function listarMatriculasService(filtros = {}) {
        m.fecha_matricula DESC,
        m.id_matricula DESC
 
-     LIMIT 500`,
+     LIMIT 500`, 
     valores
   );
 
   return filas;
+} 
+
+/* ==========================================
+   GESTIÓN DE MATRÍCULA POR ESTUDIANTE
+   (retirar de un grupo o transferir a otro)
+   ========================================== */
+
+/**
+ * Retira a un estudiante de un grupo sin reasignarlo a otro.
+ * Cierra su vínculo activo en grupo_estudiante y su detalle_matricula
+ * asociado a ese grupo, pero conserva el historial (no se borra nada).
+ */
+export async function retirarEstudianteGrupoService(idGrupo, idEstudiante) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [geRows] = await connection.query(
+      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
+      [idGrupo, idEstudiante]
+    );
+    if (geRows.length === 0) {
+      throw new Error("El estudiante no está activo en este grupo.");
+    }
+
+    await connection.query(
+      "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
+      [geRows[0].id_grupo_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE detalle_matricula dm
+       INNER JOIN matricula m ON dm.id_matricula = m.id_matricula
+       SET dm.estado = FALSE
+       WHERE dm.id_grupo = ? AND m.id_estudiante = ? AND dm.estado = TRUE`,
+      [idGrupo, idEstudiante]
+    );
+
+    await connection.commit();
+    return { mensaje: "Estudiante retirado del grupo correctamente." };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Transfiere a un estudiante de su grupo actual a un grupo nuevo.
+ * 1. Cierra el vínculo activo con el grupo de origen (igual que retirar).
+ * 2. Registra una matrícula nueva en el grupo destino reutilizando
+ *    procesarMatricula(), que ya valida cupo, duplicados, estudiante y
+ *    usuario activos. Así queda historial de ambas matrículas.
+ *
+ * Nota: los pasos 1 y 2 no comparten conexión/transacción porque
+ * procesarMatricula abre la suya propia. Si el paso 2 falla, el estudiante
+ * queda sin grupo activo y se avisa explícitamente en el mensaje de error
+ * para que se reintente la matrícula al nuevo grupo manualmente.
+ */
+export async function transferirEstudianteGrupoService(datos) {
+  const { id_estudiante, id_grupo_actual, id_grupo_nuevo } = datos;
+
+  if (Number(id_grupo_actual) === Number(id_grupo_nuevo)) {
+    throw new Error("El grupo destino debe ser diferente al grupo actual.");
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [geActual] = await connection.query(
+      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
+      [id_grupo_actual, id_estudiante]
+    );
+    if (geActual.length === 0) {
+      throw new Error("El estudiante no está activo en el grupo de origen.");
+    }
+
+    await connection.query(
+      "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
+      [geActual[0].id_grupo_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE detalle_matricula dm
+       INNER JOIN matricula m ON dm.id_matricula = m.id_matricula
+       SET dm.estado = FALSE
+       WHERE dm.id_grupo = ? AND m.id_estudiante = ? AND dm.estado = TRUE`,
+      [id_grupo_actual, id_estudiante]
+    );
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  try {
+    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo });
+  } catch (error) {
+    throw new Error(
+      `El estudiante se retiró del grupo anterior, pero no se pudo matricular en el grupo nuevo: ${error.message}`
+    );
+  }
 }
 
 export default procesarMatricula;

@@ -1,0 +1,101 @@
+.stat-card-sm {
+  border-top-width: 3px !important;
+}
+
+.stat-value-sm {
+  font-size: 26px;
+}
+
+.stat-card-success { border-top-color: var(--success) !important; }
+.stat-card-danger  { border-top-color: var(--danger) !important; }
+.stat-card-gold    { border-top-color: var(--gold) !important; }
+
+.stat-card-success .stat-value-sm { color: var(--success); }
+.stat-card-danger  .stat-value-sm { color: var(--danger); }
+.stat-card-gold    .stat-value-sm { color: var(--gold); }
+
+.filter-bar {
+  background: #F8FAFC;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 14px 14px 4px;
+}
+
+.filter-bar .form-label {
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.attendance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.attendance-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.attendance-presente { background: #DCFCE7; color: var(--success); }
+.attendance-ausente { background: #FEE2E2; color: var(--danger); }
+.attendance-tardia { background: var(--gold-soft); color: var(--gold); }
+.attendance-justificada { background: var(--accent-soft); color: var(--accent); }
+
+.observaciones-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* Contenedor estético para los filtros de historial */
+.card-filtros-asistencia {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.card-filtros-asistencia .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.card-filtros-asistencia .form-control, 
+.card-filtros-asistencia .form-select {
+  border-color: #cbd5e1;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.card-filtros-asistencia .form-control:focus, 
+.card-filtros-asistencia .form-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Ajustes para contenedor de gráficos estadísticos de asistencia */
+#collapseGraficosAsistencia .card-body {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+#chartAsistenciaEstados {
+  max-height: 200px;
+  width: 100% !important;
+}

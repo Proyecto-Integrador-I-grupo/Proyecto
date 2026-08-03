@@ -99,7 +99,36 @@ export async function procesarMatricula(datos) {
 /* ==========================================
    GRUPOS
    ========================================== */
-export async function obtenerGruposService() {
+export async function obtenerGruposService(usuarioActual = null) {
+  const rol = (usuarioActual?.rol || "").toLowerCase();
+
+  if (rol === "profesor") {
+    const idProfesor = usuarioActual.id_profesor;
+    if (!idProfesor) {
+      return [];
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+          g.id_grupo,
+          g.nombre_grupo,
+          g.capacidad,
+          g.aula,
+          g.id_seccion,
+          s.nombre_seccion,
+          s.nivel,
+          s.periodo_lectivo,
+          fn_estudiantes_grupo(g.id_grupo) AS ocupados
+       FROM grupo g
+       INNER JOIN seccion s ON g.id_seccion = s.id_seccion
+       LEFT JOIN suplencia su ON su.id_grupo = g.id_grupo AND su.id_profesor_suplente = ? AND su.activo = 1
+       WHERE g.estado = TRUE AND (g.id_profesor = ? OR su.id_profesor_suplente = ?)
+       ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`,
+      [idProfesor, idProfesor, idProfesor]
+    );
+    return rows;
+  }
+
   const [rows] = await pool.query(
     `SELECT
         g.id_grupo,

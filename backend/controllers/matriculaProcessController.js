@@ -76,7 +76,7 @@ export async function obtenerGrupos(req, res) {
     const usuario = req.usuarioActual;
     const rol = (usuario?.rol || "").toLowerCase();
 
-    // Si es profesor, filtramos por sus grupos asignados o suplencias activas
+    // Si es profesor, filtramos estrictamente por sus grupos asignados o suplencias activas
     if (rol === "profesor") {
       const idProfesor = usuario.id_profesor;
       if (!idProfesor) {

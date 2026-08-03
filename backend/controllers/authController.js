@@ -44,6 +44,7 @@ export const login = async (req, res) => {
             mensaje: "Inicio de sesión correcto.",
             usuario: {
                 id_usuario: usuario.id_usuario,
+                id_profesor: usuario.id_profesor || null,
                 correo: usuario.correo,
                 rol: usuario.nom_rol,
                 nombre: usuario.nombre,

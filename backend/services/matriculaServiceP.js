@@ -358,13 +358,13 @@ export async function listarMatriculasService(filtros = {}) {
     id_grupo,
     estado,
     periodo,
-    anio,
+    anio, 
     fecha_inicio,
     fecha_fin,
     busqueda
   } = filtros;
 
-  const condiciones = ["m.estado = TRUE"];
+  const condiciones = [];
   const valores = [];
 
   if (id_grupo) {
@@ -373,8 +373,8 @@ export async function listarMatriculasService(filtros = {}) {
   }
 
   if (estado) {
-    condiciones.push("m.estado_matricula = ?");
-    valores.push(String(estado).trim());
+    condiciones.push("LOWER(m.estado_matricula) = ?");
+    valores.push(String(estado).trim().toLowerCase());
   }
 
   if (periodo) {
@@ -388,12 +388,12 @@ export async function listarMatriculasService(filtros = {}) {
   }
 
   if (fecha_inicio) {
-    condiciones.push("m.fecha >= ?");
+    condiciones.push("m.fecha_matricula >= ?");
     valores.push(fecha_inicio);
   }
 
   if (fecha_fin) {
-    condiciones.push("m.fecha <= ?");
+    condiciones.push("m.fecha_matricula <= ?");
     valores.push(fecha_fin);
   }
 
@@ -408,13 +408,24 @@ export async function listarMatriculasService(filtros = {}) {
     `);
 
     const texto = `%${String(busqueda).trim()}%`;
-    valores.push(texto, texto, texto, texto);
+
+    valores.push(
+      texto,
+      texto,
+      texto,
+      texto
+    );
   }
+
+  const where =
+    condiciones.length > 0
+      ? `WHERE ${condiciones.join(" AND ")}`
+      : "";
 
   const [filas] = await pool.query(
     `SELECT
         m.id_matricula,
-        m.fecha,
+        m.fecha_matricula AS fecha,
         m.periodo_lectivo,
         m.anio_lectivo,
         m.tipo_matricula,
@@ -450,15 +461,18 @@ export async function listarMatriculasService(filtros = {}) {
      LEFT JOIN seccion s
        ON g.id_seccion = s.id_seccion
 
-     WHERE ${condiciones.join(" ")}
+     ${where}
 
-     ORDER BY m.fecha DESC, m.id_matricula DESC
-     LIMIT 500`,
+     ORDER BY
+       m.fecha_matricula DESC,
+       m.id_matricula DESC
+
+     LIMIT 500`, 
     valores
-  ); 
+  );
 
   return filas;
-}
+} 
 
 /* ==========================================
    GESTIÓN DE MATRÍCULA POR ESTUDIANTE

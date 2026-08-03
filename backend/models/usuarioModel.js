@@ -113,3 +113,91 @@ export const obtenerUsuarioPorId = async (id) => {
     const [rows] = await conexion.query(sql, [id]);
     return rows[0];
 };
+
+export const actualizarDatosPerfil = async (
+    idUsuario,
+    datosPerfil
+) => {
+    const sql = `
+        UPDATE usuario u
+        JOIN persona p
+          ON p.id_persona = u.id_persona
+        SET
+            u.correo = ?,
+            p.nombre = ?,
+            p.apellido1 = ?,
+            p.apellido2 = ?
+        WHERE u.id_usuario = ?;
+    `;
+
+    const resultado = await queryConSesion(
+        sql,
+        [
+            datosPerfil.correo,
+            datosPerfil.nombre,
+            datosPerfil.apellido1,
+            datosPerfil.apellido2 ?? "",
+            idUsuario
+        ],
+        idUsuario
+    );
+
+    return resultado;
+};
+
+export const actualizarContrasenaPerfil = async (
+    idUsuario,
+    contrasenaNueva
+) => {
+    const sql = `
+        UPDATE usuario
+        SET contrasena = ?
+        WHERE id_usuario = ?;
+    `;
+
+    const resultado = await queryConSesion(
+        sql,
+        [
+            contrasenaNueva,
+            idUsuario
+        ],
+        idUsuario
+    );
+
+    return resultado;
+};
+
+export const obtenerUsuarioPerfilPorId = async (
+    idUsuario
+) => {
+    const sql = `
+        SELECT
+            u.id_usuario,
+            u.correo,
+            u.contrasena,
+            u.estado,
+            u.id_rol,
+            r.nom_rol,
+            p.id_persona,
+            p.nombre,
+            p.apellido1,
+            p.apellido2,
+            pr.id_profesor
+        FROM usuario u
+        INNER JOIN rol r
+          ON r.id_rol = u.id_rol
+        INNER JOIN persona p
+          ON p.id_persona = u.id_persona
+        LEFT JOIN profesor pr
+          ON pr.id_persona = p.id_persona
+        WHERE u.id_usuario = ?
+        LIMIT 1;
+    `;
+
+    const [rows] = await conexion.query(
+        sql,
+        [idUsuario]
+    );
+
+    return rows[0];
+};

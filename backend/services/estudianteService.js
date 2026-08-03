@@ -34,6 +34,92 @@ export const obtenerEstudiantesService = async () => {
 };
 
 /**
+ * Obtiene los estudiantes que ya tienen una matrícula activa
+ * y actualmente pertenecen a un grupo.
+ */
+export const obtenerEstudiantesMatriculadosService = async () => {
+  const query = `
+    SELECT
+      e.id_estudiante,
+      e.id_persona,
+
+      p.nombre,
+      p.apellido1,
+      p.apellido2,
+      p.fecha_nacimiento,
+      p.genero,
+
+      e.fecha_ingreso,
+      e.estado,
+
+      ge.fecha_asignacion,
+      ge.id_grupo,
+
+      g.nombre_grupo,
+      g.aula,
+
+      s.id_seccion,
+      s.nombre_seccion,
+      s.nivel,
+      s.periodo_lectivo,
+
+      m.id_matricula,
+      m.fecha_matricula,
+      m.tipo_matricula,
+      m.estado_matricula
+
+    FROM grupo_estudiante ge
+
+    INNER JOIN estudiante e
+      ON ge.id_estudiante = e.id_estudiante
+
+    INNER JOIN persona p
+      ON e.id_persona = p.id_persona
+
+    INNER JOIN grupo g
+      ON ge.id_grupo = g.id_grupo
+
+    INNER JOIN seccion s
+      ON g.id_seccion = s.id_seccion
+
+    LEFT JOIN (
+      SELECT
+        m1.id_estudiante,
+        dm1.id_grupo,
+        MAX(m1.id_matricula) AS id_matricula
+      FROM matricula m1
+      INNER JOIN detalle_matricula dm1
+        ON m1.id_matricula = dm1.id_matricula
+      WHERE dm1.estado = TRUE
+      GROUP BY
+        m1.id_estudiante,
+        dm1.id_grupo
+    ) ultima_matricula
+      ON ultima_matricula.id_estudiante = e.id_estudiante
+      AND ultima_matricula.id_grupo = ge.id_grupo
+
+    LEFT JOIN matricula m
+      ON m.id_matricula = ultima_matricula.id_matricula
+
+    WHERE ge.estado = TRUE
+      AND e.estado = TRUE
+      AND g.estado = TRUE
+
+    ORDER BY
+      s.nivel,
+      g.nombre_grupo,
+      p.apellido1,
+      p.apellido2,
+      p.nombre
+  `;
+
+  const [rows] = await conexionPromise.query(query);
+
+  return rows;
+};
+
+
+/**
  * Obtiene un estudiante puntual por su id_estudiante (no por id_persona).
  */
 export const obtenerEstudiantePorIdService = async (id_estudiante) => {

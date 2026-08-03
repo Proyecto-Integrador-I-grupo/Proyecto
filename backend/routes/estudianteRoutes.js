@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getEstudiantes,
+  getEstudiantesMatriculados,
   getEstudiantePorId,
   createEstudiante,
   updateEstudiante,
@@ -10,6 +11,7 @@ import {
 const router = Router();
 
 router.get("/", getEstudiantes);
+router.get("/matriculados", getEstudiantesMatriculados);
 router.get("/:id", getEstudiantePorId);
 router.post("/", createEstudiante);
 router.put("/:id", updateEstudiante);

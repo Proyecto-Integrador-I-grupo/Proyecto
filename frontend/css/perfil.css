@@ -1,0 +1,97 @@
+.perfil-hero{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:2rem;
+    border-radius:22px;
+    background:linear-gradient(135deg,#0f3d6e,#1f6fb2);
+    color:#fff;
+}
+
+.perfil-eyebrow{
+    display:inline-block;
+    font-size:.8rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    opacity:.8;
+    margin-bottom:.6rem;
+}
+
+.perfil-hero p{
+    color:rgba(255,255,255,.85)!important;
+}
+
+.perfil-icono{
+    width:85px;
+    height:85px;
+    border-radius:50%;
+    background:rgba(255,255,255,.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:2.6rem;
+}
+
+.perfil-card{
+    border-radius:20px;
+}
+
+.perfil-avatar{
+    width:150px;
+    height:150px;
+    margin:auto;
+}
+
+.perfil-avatar img{
+    width:100%;
+    height:100%;
+    border-radius:50%;
+    object-fit:cover;
+    border:5px solid #fff;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
+
+.perfil-info{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+.perfil-info-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    border-radius:12px;
+    background:#f8fafc;
+}
+
+.perfil-info-item i{
+    color:#0f3d6e;
+    font-size:1.1rem;
+}
+
+#perfil-form .form-control{
+    border-radius:12px;
+    min-height:48px;
+}
+
+#perfil-form .btn-primary{
+    border-radius:12px;
+    padding:.8rem 1.8rem;
+}
+
+#perfil-form h5{
+    font-weight:700;
+    color:#0f3d6e;
+}
+
+@media(max-width:991px){
+
+    .perfil-hero{
+        text-align:center;
+        flex-direction:column;
+        gap:1.5rem;
+    }
+
+}

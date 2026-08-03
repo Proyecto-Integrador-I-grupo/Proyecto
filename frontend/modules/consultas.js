@@ -469,16 +469,24 @@ let tipoDocumentoActual = null;
     </span>
   </td>
 
-  <td class="text-end">
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-primary consulta-ver-matriculado"
-      data-estudiante="${estudiante.id_estudiante}"
-      data-matricula="${estudiante.id_matricula}">
-      <i class="bi bi-file-earmark-text"></i>
-      Vista previa
-    </button>
-  </td>
+    
+<td class="text-end">
+  <button
+    type="button"
+    class="btn btn-sm btn-outline-primary consulta-ver-estudiante"
+    data-id="${id}">
+    <i class="bi bi-file-earmark-text"></i>
+    Vista previa
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-sm btn-outline-secondary consulta-editar-estudiante"
+    data-id="${id}">
+    <i class="bi bi-pencil"></i>
+    Modificar
+  </button>
+</td>
 `;
 
       body.appendChild(fila);
@@ -604,50 +612,61 @@ let tipoDocumentoActual = null;
       const fila = document.createElement('tr');
 
       fila.innerHTML = `
-        <td>
-          ${estudiante.id_estudiante ?? '-'}
-        </td>
+  <td>
+    ${estudiante.id_estudiante ?? '-'}
+  </td>
 
-        <td>
-          <div class="fw-semibold">
-            ${formarNombre(estudiante) || '-'}
-          </div>
+  <td>
+    <div class="fw-semibold">
+      ${formarNombre(estudiante) || '-'}
+    </div>
 
-          <small class="text-muted">
-            Matrícula #${estudiante.id_matricula ?? '-'}
-          </small>
-        </td>
+    <small class="text-muted">
+      Matrícula #${estudiante.id_matricula ?? '-'}
+    </small>
+  </td>
 
-        <td>
-          ${estudiante.nombre_grupo ?? '-'}
-        </td>
+  <td>
+    ${estudiante.nombre_grupo ?? '-'}
+  </td>
 
-        <td>
-          ${estudiante.nombre_seccion ?? '-'}
-        </td>
+  <td>
+    ${estudiante.nombre_seccion ?? '-'}
+  </td>
 
-        <td>
-          ${estudiante.nivel ?? '-'}
-        </td>
+  <td>
+    ${estudiante.nivel ?? '-'}
+  </td>
 
-        <td>
-          ${limpiarFecha(
-            estudiante.fecha_matricula ||
-            estudiante.fecha_asignacion
-          )}
-        </td>
+  <td>
+    ${limpiarFecha(
+      estudiante.fecha_matricula ||
+      estudiante.fecha_asignacion
+    )}
+  </td>
 
-        <td>
-          <span
-            class="badge ${
-              activo
-                ? 'bg-success'
-                : 'bg-secondary'
-            }">
-            ${activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </td>
-      `;
+  <td>
+    <span
+      class="badge ${
+        activo
+          ? 'bg-success'
+          : 'bg-secondary'
+      }">
+      ${activo ? 'Activo' : 'Inactivo'}
+    </span>
+  </td>
+
+  <td class="text-end">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary consulta-ver-matriculado"
+      data-estudiante="${estudiante.id_estudiante}"
+      data-matricula="${estudiante.id_matricula ?? ''}">
+      <i class="bi bi-file-earmark-text"></i>
+      Vista previa
+    </button>
+  </td>
+`;
 
       body.appendChild(fila);
     });
@@ -1518,7 +1537,7 @@ prepararEncabezadoDocumento(
 
   function mostrarDetalleMatriculado(
   idEstudiante,
-  idMatricula
+  idMatricula,
 ) {
   const registro =
     estudiantesMatriculados.find(
@@ -2326,6 +2345,9 @@ function obtenerTituloDocumento() {
     estudiante:
       'Ficha del estudiante',
 
+    matriculado:
+    'Constancia de estudiante matriculado',
+
     profesor:
       'Ficha del profesor',
 
@@ -2394,8 +2416,73 @@ function obtenerCamposDocumentoPDF() {
             ? 'Activo'
             : 'Inactivo'
       }
-    ];
+    ];if (tipoDocumentoActual === 'matriculado') {
+  const activo =
+    registro.estado == 1 ||
+    registro.estado === true;
+
+  return [
+    {
+      etiqueta: 'Identificación',
+      valor:
+        registro.id_estudiante ??
+        '-'
+    },
+    {
+      etiqueta: 'Nombre completo',
+      valor:
+        formarNombre(registro) ||
+        '-'
+    },
+    {
+      etiqueta: 'Número de matrícula',
+      valor:
+        registro.id_matricula ??
+        '-'
+    },
+    {
+      etiqueta: 'Fecha de matrícula',
+      valor:
+        limpiarFecha(
+          registro.fecha_matricula ||
+          registro.fecha_asignacion
+        )
+    },
+    {
+      etiqueta: 'Grupo',
+      valor:
+        registro.nombre_grupo ??
+        '-'
+    },
+    {
+      etiqueta: 'Sección',
+      valor:
+        registro.nombre_seccion ??
+        '-'
+    },
+    {
+      etiqueta: 'Nivel',
+      valor:
+        registro.nivel ??
+        '-'
+    },
+    {
+      etiqueta: 'Período lectivo',
+      valor:
+        registro.periodo_lectivo ??
+        '-'
+    },
+    {
+      etiqueta: 'Estado',
+      valor:
+        activo
+          ? 'Activo'
+          : 'Inactivo'
+    }
+  ];
+}
   }
+
 
   if (tipoDocumentoActual === 'profesor') {
     const activo =
@@ -2581,6 +2668,11 @@ function obtenerNombreArchivoPDF() {
         registro.id ??
         'documento'
       }.pdf`,
+    matriculado:
+  `estudiante-matriculado-${
+    registro.id_estudiante ??
+    'documento'
+  }.pdf`,
 
     profesor:
       `profesor-${

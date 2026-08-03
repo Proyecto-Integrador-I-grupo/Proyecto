@@ -11,6 +11,26 @@ export const getEstudiantes = async (req, res) => {
   }
 };
 
+export const getEstudiantesMatriculados = async (req, res) => {
+  try {
+    const estudiantes =
+      await estudianteService.obtenerEstudiantesMatriculadosService();
+
+    res.status(200).json(estudiantes);
+  } catch (error) {
+    console.error(
+      "Error en getEstudiantesMatriculados:",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        error.message ||
+        "Error al obtener los estudiantes matriculados."
+    });
+  }
+};
+
 export const getEstudiantePorId = async (req, res) => {
   try {
     const { id } = req.params;

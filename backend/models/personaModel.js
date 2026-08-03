@@ -2,7 +2,6 @@ import conexion, { queryConSesion } from "../config/database.js";
 
 // Obtener todas las personas
 export const obtenerPersonas = async () => {
-
     const sql = `
         SELECT
             id_persona,
@@ -11,21 +10,18 @@ export const obtenerPersonas = async () => {
             apellido2,
             fecha_nacimiento,
             genero,
+            foto,
             estado
         FROM persona
         WHERE estado = 1
         ORDER BY id_persona;
     `;
-
     const [rows] = await conexion.query(sql);
-
     return rows;
 };
 
-
 // Obtener una persona por ID
 export const obtenerPersonaPorId = async (id) => {
-
     const sql = `
         SELECT
             id_persona,
@@ -34,22 +30,18 @@ export const obtenerPersonaPorId = async (id) => {
             apellido2,
             fecha_nacimiento,
             genero,
+            foto,
             estado
         FROM persona
         WHERE id_persona = ?
         LIMIT 1;
     `;
-
     const [rows] = await conexion.query(sql, [id]);
-
     return rows[0];
-
 };
-
 
 // Registrar una persona
 export const crearPersona = async (persona, idUsuario) => {
-
     const sql = `
         INSERT INTO persona
         (
@@ -58,30 +50,25 @@ export const crearPersona = async (persona, idUsuario) => {
             apellido2,
             fecha_nacimiento,
             genero,
+            foto,
             estado
         )
-        VALUES (?, ?, ?, ?, ?, ?);
+        VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
-
     const resultado = await queryConSesion(sql, [
-
         persona.nombre,
         persona.apellido1,
         persona.apellido2,
         persona.fecha_nacimiento,
         persona.genero,
+        persona.foto || null,
         1
-
     ], idUsuario);
-
     return resultado;
-
 };
 
-
-// Actualizar una persona
+// Actualizar una persona (con soporte seguro para actualizar foto o mantener la anterior)
 export const actualizarPersona = async (id, persona, idUsuario) => {
-
     const sql = `
         UPDATE persona
         SET
@@ -89,37 +76,29 @@ export const actualizarPersona = async (id, persona, idUsuario) => {
             apellido1 = ?,
             apellido2 = ?,
             fecha_nacimiento = ?,
-            genero = ?
+            genero = ?,
+            foto = COALESCE(?, foto)
         WHERE id_persona = ?;
     `;
-
     const resultado = await queryConSesion(sql, [
-
         persona.nombre,
         persona.apellido1,
         persona.apellido2,
         persona.fecha_nacimiento,
         persona.genero,
+        persona.foto || null,
         id
-
     ], idUsuario);
-
     return resultado;
-
 };
-
 
 // Eliminar una persona (Borrado lógico)
 export const eliminarPersona = async (id, idUsuario) => {
-
     const sql = `
         UPDATE persona
         SET estado = 0
         WHERE id_persona = ?;
     `;
-
     const resultado = await queryConSesion(sql, [id], idUsuario);
-
     return resultado;
-
 };

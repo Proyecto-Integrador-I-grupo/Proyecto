@@ -15,6 +15,7 @@ export const obtenerUsuarioPorCorreo = async (correo) => {
             p.nombre,
             p.apellido1,
             p.apellido2,
+            p.foto,
             pr.id_profesor
         FROM usuario u
         JOIN rol r ON r.id_rol = u.id_rol
@@ -38,7 +39,8 @@ export const obtenerUsuarios = async () => {
             u.id_persona,
             p.nombre,
             p.apellido1,
-            p.apellido2
+            p.apellido2,
+            p.foto
         FROM usuario u
         JOIN rol r ON r.id_rol = u.id_rol
         JOIN persona p ON p.id_persona = u.id_persona
@@ -99,6 +101,7 @@ export const obtenerUsuarioPorId = async (id) => {
             p.nombre,
             p.apellido1,
             p.apellido2,
+            p.foto,
             pr.id_profesor
         FROM usuario u
         JOIN rol r ON r.id_rol = u.id_rol

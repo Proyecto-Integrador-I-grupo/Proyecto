@@ -3,10 +3,16 @@
 }
 
 /* Sidebar y Estructura Principal */
+#app-shell {
+  min-height: 100vh;
+}
+
 .sidebar {
   width: 260px;
   background: var(--navy);
   color: #F8FAFC;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar .nav-link {

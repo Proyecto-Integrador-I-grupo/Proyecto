@@ -491,10 +491,11 @@ function initAccessibilityWidget() {
   const menu = document.getElementById('accessibility-menu');
   const themeBtn = document.getElementById('btn-toggle-theme');
   const contrastBtn = document.getElementById('btn-toggle-contrast');
+  const resetBtn = document.getElementById('btn-reset-accessibility');
   const fontRange = document.getElementById('font-size-range');
   const fontValue = document.getElementById('font-size-value');
 
-  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontRange || !fontValue) return;
+  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !resetBtn || !fontRange || !fontValue) return;
 
   toggleBtn.addEventListener('click', () => {
     const isHidden = menu.classList.toggle('hidden');
@@ -504,11 +505,26 @@ function initAccessibilityWidget() {
   themeBtn.addEventListener('click', () => {
     accessibilitySettings.isDark = !accessibilitySettings.isDark;
     applyAccessibilitySettings();
+    menu.classList.add('hidden');
+    toggleBtn.setAttribute('aria-expanded', 'false');
   });
 
   contrastBtn.addEventListener('click', () => {
     accessibilitySettings.highContrast = !accessibilitySettings.highContrast;
     applyAccessibilitySettings();
+    menu.classList.add('hidden');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  resetBtn.addEventListener('click', () => {
+    accessibilitySettings = {
+      isDark: false,
+      highContrast: false,
+      fontSize: 100,
+    };
+    applyAccessibilitySettings();
+    menu.classList.add('hidden');
+    toggleBtn.setAttribute('aria-expanded', 'false');
   });
 
   fontRange.addEventListener('input', () => {

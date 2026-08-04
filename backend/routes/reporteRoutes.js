@@ -1,10 +1,19 @@
 import express from "express";
-import { obtenerReporteResumen, obtenerReporteDetalle } from "../controllers/reporteController.js";
+import { obtenerReporteCaso, obtenerReporteResumen, obtenerReporteDetalle } from "../controllers/reporteController.js";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import { reporteRules } from "../validators/reporteValidator.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
+
+router.get(
+    "/reportes/caso",
+    requireAuth,
+    requireRole("Administrador"),
+    reporteRules,
+    validarCampos,
+    obtenerReporteCaso
+);
 
 router.get(
     "/reportes/resumen",

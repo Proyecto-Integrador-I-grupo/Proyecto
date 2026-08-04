@@ -6,6 +6,12 @@ function normalizarEstado(estado) {
     return String(estado || "").toLowerCase().trim();
 }
 
+function normalizarModo(modo) {
+    const modoNormalizado = String(modo || "matricula").toLowerCase().trim();
+    const modosValidos = new Set(["matricula", "estudiantes", "grupos", "profesores"]);
+    return modosValidos.has(modoNormalizado) ? modoNormalizado : "matricula";
+}
+
 function construirCondicionesAsistencia(filtros = {}) {
     const { id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, busqueda } = filtros;
     const condiciones = ["a.estado = TRUE"];
@@ -60,7 +66,136 @@ function construirCondicionesAsistencia(filtros = {}) {
     return { condiciones, valores };
 }
 
+function construirDetallePorEstudiante(detalle = []) {
+    const mapa = new Map();
+
+    detalle.forEach((registro) => {
+        const idEstudiante = registro.id_estudiante ?? registro.estudiante_id ?? "sin-id";
+        const key = `estudiante-${idEstudiante}`;
+        if (!mapa.has(key)) {
+            mapa.set(key, {
+                id_estudiante: idEstudiante,
+                estudiante_nombre: registro.estudiante_nombre || "-",
+                estudiante_apellido1: registro.estudiante_apellido1 || "",
+                estudiante_apellido2: registro.estudiante_apellido2 || "",
+                asistencias_registradas: 0,
+                presentes: 0,
+                ausentes: 0,
+                tardias: 0,
+                justificadas: 0,
+                grupo: registro.nombre_grupo || "-"
+            });
+        }
+
+        const acumulado = mapa.get(key);
+        acumulado.asistencias_registradas += 1;
+        const estado = String(registro.estado_asistencia || "").toLowerCase();
+        if (estado === "presente") acumulado.presentes += 1;
+        if (estado === "ausente") acumulado.ausentes += 1;
+        if (estado === "tardia") acumulado.tardias += 1;
+        if (estado === "justificada") acumulado.justificadas += 1;
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => {
+        const nombreA = `${a.estudiante_nombre ?? ""} ${a.estudiante_apellido1 ?? ""} ${a.estudiante_apellido2 ?? ""}`.trim();
+        const nombreB = `${b.estudiante_nombre ?? ""} ${b.estudiante_apellido1 ?? ""} ${b.estudiante_apellido2 ?? ""}`.trim();
+        return nombreA.localeCompare(nombreB);
+    });
+}
+
+function construirDetallePorProfesor(detalle = []) {
+    const mapa = new Map();
+
+    detalle.forEach((registro) => {
+        const idProfesor = registro.id_profesor ?? registro.profesor_id ?? "sin-id";
+        const key = `profesor-${idProfesor}`;
+        if (!mapa.has(key)) {
+            mapa.set(key, {
+                id_profesor: idProfesor,
+                profesor_nombre: registro.profesor_nombre || "-",
+                profesor_apellido1: registro.profesor_apellido1 || "",
+                profesor_apellido2: registro.profesor_apellido2 || "",
+                asistencias_registradas: 0,
+                presentes: 0,
+                ausentes: 0,
+                tardias: 0,
+                justificadas: 0,
+                grupo: registro.nombre_grupo || "-"
+            });
+        }
+
+        const acumulado = mapa.get(key);
+        acumulado.asistencias_registradas += 1;
+        const estado = String(registro.estado_asistencia || "").toLowerCase();
+        if (estado === "presente") acumulado.presentes += 1;
+        if (estado === "ausente") acumulado.ausentes += 1;
+        if (estado === "tardia") acumulado.tardias += 1;
+        if (estado === "justificada") acumulado.justificadas += 1;
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => {
+        const nombreA = `${a.profesor_nombre ?? ""} ${a.profesor_apellido1 ?? ""} ${a.profesor_apellido2 ?? ""}`.trim();
+        const nombreB = `${b.profesor_nombre ?? ""} ${b.profesor_apellido1 ?? ""} ${b.profesor_apellido2 ?? ""}`.trim();
+        return nombreA.localeCompare(nombreB);
+    });
+}
+
+export async function generarReporteCaso(filtros = {}) {
+    const modo = normalizarModo(filtros.modo);
+    const resumen = await generarReporteResumen(filtros);
+    const detalle = await generarReporteDetalle(filtros);
+    const detalleArray = Array.isArray(detalle?.detalle) ? detalle.detalle : Array.isArray(detalle) ? detalle : [];
+
+    switch (modo) {
+        case "estudiantes":
+            return {
+                modo,
+                resumen: resumen?.resumen || {},
+                detalle_por_grupo: construirDetallePorEstudiante(detalleArray),
+                detalle: detalleArray,
+                filtros: {
+                    id_grupo: filtros.id_grupo || "",
+                    busqueda: filtros.busqueda || "",
+                    estado_asistencia: filtros.estado_asistencia || "",
+                    fecha_inicio: filtros.fecha_inicio || "",
+                    fecha_fin: filtros.fecha_fin || ""
+                }
+            };
+        case "profesores":
+            return {
+                modo,
+                resumen: resumen?.resumen || {},
+                detalle_por_grupo: construirDetallePorProfesor(detalleArray),
+                detalle: detalleArray,
+                filtros: {
+                    id_grupo: filtros.id_grupo || "",
+                    busqueda: filtros.busqueda || "",
+                    estado_asistencia: filtros.estado_asistencia || "",
+                    fecha_inicio: filtros.fecha_inicio || "",
+                    fecha_fin: filtros.fecha_fin || ""
+                }
+            };
+        case "grupos":
+        case "matricula":
+        default:
+            return {
+                modo,
+                resumen: resumen?.resumen || {},
+                detalle_por_grupo: resumen?.detalle_por_grupo || [],
+                detalle: detalleArray,
+                filtros: {
+                    id_grupo: filtros.id_grupo || "",
+                    busqueda: filtros.busqueda || "",
+                    estado_asistencia: filtros.estado_asistencia || "",
+                    fecha_inicio: filtros.fecha_inicio || "",
+                    fecha_fin: filtros.fecha_fin || ""
+                }
+            };
+    }
+}
+
 export async function generarReporteResumen(filtros = {}) {
+    const modo = normalizarModo(filtros.modo);
     const { condiciones, valores } = construirCondicionesAsistencia(filtros);
 
     const [totales] = await pool.query(
@@ -138,6 +273,7 @@ export async function generarReporteResumen(filtros = {}) {
     const tasaPresentismo = totalAsistencias > 0 ? Math.round((presentes / totalAsistencias) * 100) : 0;
 
     return {
+        modo,
         resumen: {
             total_estudiantes: Number(base.total_estudiantes || 0),
             total_profesores: Number(base.total_profesores || 0),
@@ -155,6 +291,7 @@ export async function generarReporteResumen(filtros = {}) {
 }
 
 export async function generarReporteDetalle(filtros = {}) {
+    const modo = normalizarModo(filtros.modo);
     const { condiciones, valores } = construirCondicionesAsistencia(filtros);
 
     const [rows] = await pool.query(
@@ -180,5 +317,8 @@ export async function generarReporteDetalle(filtros = {}) {
         valores
     );
 
-    return rows;
+    return {
+        modo,
+        detalle: rows
+    };
 }

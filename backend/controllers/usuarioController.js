@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import * as usuarioModel from "../models/usuarioModel.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
-import * as personaModel from "../models/personaModel.js";
+import { queryConSesion } from "../config/database.js";
 
 export const listarUsuarios = async (req, res) => {
     try {
@@ -33,62 +33,64 @@ export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
 
-        // 1. Verificar correo existente
+        // 1. Validar que el correo no esté registrado previamente
         const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
         if (existente) {
-            return res.status(409).json({ mensaje: "Ya existe un usuario con ese correo." });
+            return res.status(409).json({ mensaje: "Ya existe un usuario registrado con ese correo." });
         }
 
         const apellidoFinal = primer_apellido || apellido1 || "";
-        let idPersonaGenerada = req.body.id_persona;
+        let idPersonaFinal = req.body.id_persona;
 
-        // 2. Si no viene id_persona, registrar la Persona de forma segura
-        if (!idPersonaGenerada) {
-            try {
-                const resultadoPersona = await personaModel.registrarPersona({
-                    nombre: nombre || "Usuario",
-                    apellido1: apellidoFinal || "Sistema",
-                    apellido2: "",
-                    correo: correo,
-                    tipo_persona: id_rol == 1 ? "Administrador" : "Asistente"
-                }, req.usuarioActual?.id_usuario ?? null);
+        // 2. Insertar en la tabla 'persona' de forma ligera (solo los campos que tenemos)
+        if (!idPersonaFinal) {
+            const sqlPersona = `
+                INSERT INTO persona (nombre, apellido1, apellido2, estado)
+                VALUES (?, ?, ?, 1);
+            `;
 
-                idPersonaGenerada = resultadoPersona.insertId || resultadoPersona.id;
-            } catch (errPersona) {
-                console.error("Error registrando la persona en personaModel:", errPersona);
-                return res.status(500).json({ 
-                    mensaje: "Error al registrar la información personal del usuario.",
-                    detalle: errPersona.message 
-                });
-            }
+            const resultadoPersona = await queryConSesion(
+                sqlPersona,
+                [nombre || "Usuario", apellidoFinal, ""],
+                req.usuarioActual?.id_usuario ?? null
+            );
+
+            idPersonaFinal = resultadoPersona.insertId;
         }
 
-        // 3. Cifrar contraseña e insertar el Usuario
+        // 3. Cifrar la contraseña e insertar el registro en la tabla 'usuario'
         const hash = await bcrypt.hash(contrasena, 10);
         const resultadoUsuario = await usuarioModel.crearUsuario({
             correo,
             contrasena: hash,
-            id_persona: idPersonaGenerada,
+            id_persona: idPersonaFinal,
             id_rol: id_rol || 2,
             estado: 1
         }, req.usuarioActual?.id_usuario ?? null);
 
-        // 4. Auditoría
+        // 4. Registrar en Auditoría (protegido en try/catch)
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",
                 accion_usuario: "INSERT",
                 datos_anteriores: "",
-                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaGenerada, id_rol: id_rol || 2, estado: 1 })
+                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaFinal, id_rol: id_rol || 2, estado: 1 })
             }, req.usuarioActual?.id_usuario ?? null);
         } catch (e) {
             console.error("Error registrando auditoría:", e);
         }
 
-        res.status(201).json({ mensaje: "Usuario creado correctamente.", id: resultadoUsuario.insertId });
+        return res.status(201).json({
+            mensaje: "Usuario creado correctamente.",
+            id: resultadoUsuario.insertId
+        });
+
     } catch (error) {
         console.error("Error crítico en crearUsuario:", error);
-        res.status(500).json({ mensaje: "Error al crear el usuario.", detalle: error.message });
+        return res.status(500).json({
+            mensaje: "Error interno en el servidor al crear el usuario.",
+            detalle: error.message
+        });
     }
 };
 

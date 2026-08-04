@@ -36,5 +36,71 @@
 }
 
 @media (max-width: 880px) {
-  .sidebar { width: 100%; }
+  #app-shell {
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    border-radius: 0 0 1rem 1rem;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+  }
+
+  .sidebar.open {
+    max-height: 100vh;
+    opacity: 1;
+  }
+
+  .sidebar .nav-link {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .sidebar-user {
+    margin-top: 1rem;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .topbar > div:first-child,
+  .topbar > div:last-child {
+    width: 100%;
+  }
+
+  .topbar .d-flex.align-items-center {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  #content {
+    padding: 1.25rem;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar .nav-link {
+    font-size: 13px;
+  }
+
+  .topbar {
+    padding: 1rem;
+  }
+
+  .hero-card {
+    padding: 1rem;
+  }
+
+  .accessibility-widget {
+    right: 10px;
+    bottom: 10px;
+  }
 }

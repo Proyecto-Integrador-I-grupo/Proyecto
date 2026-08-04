@@ -237,9 +237,36 @@ function initApp() {
   });
 
   wireUsuariosForm();
+  wireSidebarToggle();
   initAccessibilityWidget();
   setActiveView('dashboard');
   refreshDashboardCounts();
+}
+
+function wireSidebarToggle() {
+  const toggle = document.getElementById('sidebar-toggle');
+  const icon = toggle?.querySelector('i');
+  const sidebar = document.querySelector('.sidebar');
+  if (!toggle || !sidebar || !icon) return;
+
+  const updateToggleState = () => {
+    const isOpen = sidebar.classList.contains('open');
+    icon.className = isOpen ? 'bi bi-x-lg' : 'bi bi-list';
+    toggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
+  };
+
+  toggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    updateToggleState();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (window.innerWidth > 880) return;
+    if (!sidebar.classList.contains('open')) return;
+    if (toggle.contains(event.target) || sidebar.contains(event.target)) return;
+    sidebar.classList.remove('open');
+    updateToggleState();
+  });
 }
 
 function setActiveView(viewName) {
@@ -285,6 +312,10 @@ function setActiveView(viewName) {
   if (viewName === 'asistencia') loadAsistenciaData();
   if (viewName === 'reportes') loadReportesData();
   if (viewName === 'usuarios') loadUsuariosData();
+
+  if (window.innerWidth <= 880) {
+    document.querySelector('.sidebar')?.classList.remove('open');
+  }
 }/* ==========================================
    3. MÓDULO DE USUARIOS Y PERMISOS
    ========================================== */

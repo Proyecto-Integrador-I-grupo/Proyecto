@@ -4,6 +4,49 @@
   gap: 1rem;
 }
 
+.report-menu-top {
+  overflow-x: auto;
+}
+
+.report-mode-switcher .btn {
+  min-width: 140px;
+  border-radius: 0.75rem;
+}
+
+.report-mode-switcher .btn.active {
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
+}
+
+.report-filter-field {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.report-filter-field.is-hidden {
+  display: none;
+}
+
+.preview-reporte-chip-area {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.preview-reporte-chip {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.preview-reporte-body .stat-card {
+  min-height: 92px;
+}
+
 .report-stat-card {
   min-height: 120px;
 }

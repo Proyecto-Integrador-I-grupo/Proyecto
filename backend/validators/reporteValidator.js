@@ -46,5 +46,9 @@ export const reporteRules = [
         .optional({ nullable: true })
         .isIn(["resumen", "detalle", "individual", "grupo"])
         .withMessage("El tipo de reporte debe ser resumen, detalle, individual o grupo."),
+    query("modo")
+        .optional({ nullable: true })
+        .isIn(["matricula", "estudiantes", "grupos", "profesores"])
+        .withMessage("El modo de reporte debe ser matricula, estudiantes, grupos o profesores."),
     query().custom(validarRangoFechas)
 ];

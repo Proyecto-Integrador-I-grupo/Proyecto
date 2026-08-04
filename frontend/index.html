@@ -190,7 +190,10 @@
     <div id="accessibility-menu" class="accessibility-menu hidden" role="menu" aria-label="Controles de accesibilidad">
       <button type="button" id="btn-toggle-theme" class="accessibility-action" role="menuitem">Modo oscuro</button>
       <button type="button" id="btn-toggle-contrast" class="accessibility-action" role="menuitem">Alto contraste</button>
-      <button type="button" id="btn-toggle-font" class="accessibility-action" role="menuitem">Letra grande</button>
+      <div class="accessibility-control" role="group" aria-label="Ajustar tamaño de letra">
+        <label for="font-size-range" class="accessibility-control-label">Tamaño: <span id="font-size-value">100%</span></label>
+        <input type="range" id="font-size-range" class="accessibility-range" min="90" max="160" step="5" value="100" aria-valuemin="90" aria-valuemax="160" aria-valuenow="100" />
+      </div>
     </div>
   </div>
 

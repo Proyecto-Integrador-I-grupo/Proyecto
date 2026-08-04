@@ -8,7 +8,7 @@ let currentUser = null;
 let views = [];
 let appViewsReady = false;
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
-let accessibilitySettings = { isDark: false, highContrast: false, largeText: false };
+let accessibilitySettings = { isDark: false, highContrast: false, fontSize: 100 };
 
 window.addEventListener('DOMContentLoaded', () => {
   wireLoginScreen();
@@ -458,9 +458,10 @@ function initAccessibilityWidget() {
   const menu = document.getElementById('accessibility-menu');
   const themeBtn = document.getElementById('btn-toggle-theme');
   const contrastBtn = document.getElementById('btn-toggle-contrast');
-  const fontBtn = document.getElementById('btn-toggle-font');
+  const fontRange = document.getElementById('font-size-range');
+  const fontValue = document.getElementById('font-size-value');
 
-  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontBtn) return;
+  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontRange || !fontValue) return;
 
   toggleBtn.addEventListener('click', () => {
     const isHidden = menu.classList.toggle('hidden');
@@ -477,8 +478,9 @@ function initAccessibilityWidget() {
     applyAccessibilitySettings();
   });
 
-  fontBtn.addEventListener('click', () => {
-    accessibilitySettings.largeText = !accessibilitySettings.largeText;
+  fontRange.addEventListener('input', () => {
+    accessibilitySettings.fontSize = parseInt(fontRange.value, 10);
+    fontValue.textContent = `${accessibilitySettings.fontSize}%`;
     applyAccessibilitySettings();
   });
 
@@ -496,15 +498,15 @@ function initAccessibilityWidget() {
     }
   });
 
-  updateAccessibilityButtons();
+  updateAccessibilityControls();
 }
 
 function applyAccessibilitySettings() {
   document.body.classList.toggle('theme-dark', accessibilitySettings.isDark);
   document.body.classList.toggle('high-contrast', accessibilitySettings.highContrast);
-  document.body.classList.toggle('large-text', accessibilitySettings.largeText);
+  document.body.style.fontSize = `${accessibilitySettings.fontSize}%`;
   localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(accessibilitySettings));
-  updateAccessibilityButtons();
+  updateAccessibilityControls();
 }
 
 function restoreAccessibilitySettings() {
@@ -522,17 +524,18 @@ function restoreAccessibilitySettings() {
   applyAccessibilitySettings();
 }
 
-function updateAccessibilityButtons() {
+function updateAccessibilityControls() {
   const themeBtn = document.getElementById('btn-toggle-theme');
   const contrastBtn = document.getElementById('btn-toggle-contrast');
-  const fontBtn = document.getElementById('btn-toggle-font');
-  if (!themeBtn || !contrastBtn || !fontBtn) return;
+  const fontRange = document.getElementById('font-size-range');
+  const fontValue = document.getElementById('font-size-value');
+  if (!themeBtn || !contrastBtn || !fontRange || !fontValue) return;
 
   themeBtn.textContent = accessibilitySettings.isDark ? 'Modo claro' : 'Modo oscuro';
   contrastBtn.textContent = accessibilitySettings.highContrast ? 'Contraste normal' : 'Alto contraste';
-  fontBtn.textContent = accessibilitySettings.largeText ? 'Letra normal' : 'Letra grande';
+  fontRange.value = accessibilitySettings.fontSize;
+  fontValue.textContent = `${accessibilitySettings.fontSize}%`;
 
   themeBtn.classList.toggle('accessibility-action-active', accessibilitySettings.isDark);
   contrastBtn.classList.toggle('accessibility-action-active', accessibilitySettings.highContrast);
-  fontBtn.classList.toggle('accessibility-action-active', accessibilitySettings.largeText);
 }

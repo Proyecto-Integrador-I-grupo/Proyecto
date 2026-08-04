@@ -4,7 +4,9 @@
   --bs-primary-rgb: 26, 37, 48;
   --bs-body-font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --bs-body-bg: #F4F6F9;
-  --bs-body-color: #1E293B;
+  --bs-body-color: #1D4ED8;
+  --text-primary: #1D4ED8;
+  --text-secondary: #64748B;
   --bs-border-radius: 0.5rem;
   --bs-border-radius-lg: 0.75rem;
   --bs-border-color: #E2E8F0;
@@ -36,7 +38,18 @@
 body {
   -webkit-font-smoothing: antialiased;
   background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
+  color: var(--text-primary);
+}
+
+body.theme-dark,
+body.high-contrast {
+  --text-primary: #FFFFFF;
+  --text-secondary: #CBD5E1;
+}
+
+body.theme-dark a,
+body.high-contrast a {
+  color: #93C5FD;
 }
 
 body.theme-dark {

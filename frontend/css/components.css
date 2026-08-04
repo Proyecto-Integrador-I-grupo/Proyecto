@@ -1,7 +1,7 @@
 h1, h2, h3, .card-title-serif {
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 700;
-  color: var(--navy);
+  color: var(--text-primary);
 }
 
 .brand-mark {
@@ -228,6 +228,27 @@ h1, h2, h3, .card-title-serif {
   background: var(--accent);
   border-color: var(--accent);
   color: #FFFFFF;
+}
+
+.accessibility-control {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.accessibility-control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.accessibility-range {
+  width: 100%;
+  background: transparent;
+  accent-color: var(--accent);
 }
 
 body.theme-dark .accessibility-menu {

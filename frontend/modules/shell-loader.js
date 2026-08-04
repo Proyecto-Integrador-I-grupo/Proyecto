@@ -6,8 +6,10 @@ const viewFiles = {
   asistencia: 'views/asistencia.html',
   reportes: 'views/reportes.html',
   consultas: 'views/consultas.html',
-  perfil: 'views/perfil.html'
+  perfil: 'views/perfil.html',
+  usuarios: 'views/usuarios.html'
 };
+
 async function loadViewModule(viewName) {
   const file = viewFiles[viewName];
   if (!file) return;

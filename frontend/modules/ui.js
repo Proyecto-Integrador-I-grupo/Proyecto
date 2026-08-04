@@ -128,9 +128,8 @@ function showApp() {
   }
 }
 
-// Módulos a los que el rol "Profesor" NO tiene acceso todavía.
-// (Dashboard, Asistencia, Reportes y Mi Perfil sí quedan disponibles.)
-const VISTAS_RESTRINGIDAS_PROFESOR = ['matricula', 'estudiantes', 'profesores'];
+// Módulos a los que el rol "Profesor" NO tiene acceso
+const VISTAS_RESTRINGIDAS_PROFESOR = ['matricula', 'estudiantes', 'profesores', 'usuarios'];
 
 function renderUserInfo() {
   if (!currentUser) return;
@@ -142,7 +141,7 @@ function renderUserInfo() {
   const esProfesor = rolNormalizado === 'profesor';
   const rolClase = esAdmin ? 'role-badge-admin' : (esProfesor ? 'role-badge-profesor' : 'role-badge-asistente');
 
- // Nombres de usuario
+  // Nombres de usuario
   ['sidebar-user-name', 'topbar-user-name'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.textContent = nombreCompleto;
@@ -164,12 +163,13 @@ function renderUserInfo() {
         el.style.backgroundImage = `url("${fotoFinal}")`;
         el.style.backgroundSize = 'cover';
         el.style.backgroundPosition = 'center';
-        el.textContent = ''; // Limpia las iniciales si existen
+        el.textContent = '';
       }
     } else {
       el.textContent = iniciales;
     }
   });
+
   [['sidebar-role-badge', rol], ['topbar-role-badge', rol]].forEach(([id, text]) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -190,11 +190,20 @@ function renderUserInfo() {
 }
 
 function aplicarRestriccionesModulos(rolNormalizado) {
+  const esAdmin = rolNormalizado === 'administrador';
   const esProfesor = rolNormalizado === 'profesor';
 
   document.querySelectorAll('.sidebar button[data-view]').forEach((btn) => {
     const vista = btn.dataset.view;
-    const restringida = esProfesor && VISTAS_RESTRINGIDAS_PROFESOR.includes(vista);
+    let restringida = false;
+
+    // SOLO el Administrador puede ver el botón de Gestión de Permisos/Usuarios
+    if (vista === 'usuarios') {
+      restringida = !esAdmin;
+    } else if (esProfesor && VISTAS_RESTRINGIDAS_PROFESOR.includes(vista)) {
+      restringida = true;
+    }
+
     const item = btn.closest('.nav-item') || btn;
     item.classList.toggle('hidden', restringida);
   });
@@ -216,9 +225,6 @@ async function apiFetch(path, options = {}) {
 
 /* ==========================================
    2. INICIALIZACIÓN Y NAVEGACIÓN
-   Cada módulo (Estudiantes, Profesores, Matrícula, Asistencia, Reportes)
-   conecta sus propios formularios, botones y filtros dentro de su init(),
-   invocado por setActiveView() la primera vez que se visita esa vista.
    ========================================== */
 
 function initApp() {
@@ -227,13 +233,20 @@ function initApp() {
     button.addEventListener('click', () => setActiveView(button.dataset.view));
   });
 
+  wireUsuariosForm();
   setActiveView('dashboard');
   refreshDashboardCounts();
 }
 
 function setActiveView(viewName) {
   const rolNormalizado = (currentUser?.rol || '').toLowerCase();
-  if (rolNormalizado === 'profesor' && VISTAS_RESTRINGIDAS_PROFESOR.includes(viewName)) {
+  const esAdmin = rolNormalizado === 'administrador';
+
+  // Si intentan entrar a Usuarios sin ser Admin, los devolvemos al Dashboard
+  if (viewName === 'usuarios' && !esAdmin) {
+    showToast('Acceso restringido. Solo administradores.', 'error');
+    viewName = 'dashboard';
+  } else if (rolNormalizado === 'profesor' && VISTAS_RESTRINGIDAS_PROFESOR.includes(viewName)) {
     viewName = 'dashboard';
   }
 
@@ -241,9 +254,9 @@ function setActiveView(viewName) {
   if (!targetSection) return;
   const modulo = window.EduControlModules?.[viewName];
 
-if (modulo && typeof modulo.init === 'function') {
-  modulo.init();
-}
+  if (modulo && typeof modulo.init === 'function') {
+    modulo.init();
+  }
  
   views.forEach((button) => {
     const isActive = button.dataset.view === viewName;
@@ -267,11 +280,80 @@ if (modulo && typeof modulo.init === 'function') {
   if (viewName === 'matricula') loadMatriculaData();
   if (viewName === 'asistencia') loadAsistenciaData();
   if (viewName === 'reportes') loadReportesData();
+  if (viewName === 'usuarios') loadUsuariosData();
 }
 
 /* ==========================================
-   3. UI Y NOTIFICACIONES COMPARTIDAS
-   Usadas por varios módulos (Estudiantes, Profesores, etc.).
+   3. MÓDULO DE USUARIOS Y PERMISOS
+   ========================================== */
+
+function wireUsuariosForm() {
+  const form = document.getElementById('usuario-form');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      nombre: document.getElementById('usuario-nombre')?.value.trim(),
+      apellido1: document.getElementById('usuario-apellido1')?.value.trim(),
+      correo: document.getElementById('usuario-correo')?.value.trim(),
+      rol: document.getElementById('usuario-rol')?.value,
+      contrasena: document.getElementById('usuario-clave')?.value
+    };
+
+    try {
+      const res = await apiFetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.mensaje || 'Error al guardar usuario.');
+      }
+
+      showToast('Usuario y rol registrados exitosamente.', 'success');
+      form.reset();
+      loadUsuariosData();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function loadUsuariosData() {
+  try {
+    const res = await apiFetch('/api/usuarios');
+    if (!res.ok) return;
+    const usuarios = await res.json();
+    renderTablaUsuarios(usuarios);
+  } catch (error) {
+    console.error('Error al cargar lista de usuarios:', error);
+  }
+}
+
+function renderTablaUsuarios(usuarios) {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = usuarios.map(u => `
+    <tr>
+      <td><strong>${u.nombre} ${u.apellido1 || ''}</strong></td>
+      <td>${u.correo}</td>
+      <td>
+        <span class="role-badge ${u.rol === 'Administrador' ? 'role-badge-admin' : 'role-badge-asistente'}">
+          ${u.rol}
+        </span>
+      </td>
+      <td class="text-end">
+        <span class="badge bg-secondary">Solo Lectura/Edición Admin</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ==========================================
+   4. UI Y NOTIFICACIONES COMPARTIDAS
    ========================================== */
 
 function showResultModal(type, titulo, mensaje) {

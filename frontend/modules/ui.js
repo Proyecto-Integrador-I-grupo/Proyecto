@@ -282,9 +282,8 @@ function setActiveView(viewName) {
   if (viewName === 'reportes') loadReportesData();
   if (viewName === 'usuarios') loadUsuariosData();
 }
-
 /* ==========================================
-   3. MÓDULO DE USUARIOS Y PERMISOS
+   3. MÓDULO DE USUARIOS Y PERMISOS (Filtrado Admin/Asistente)
    ========================================== */
 
 function wireUsuariosForm() {
@@ -299,23 +298,28 @@ function wireUsuariosForm() {
     const nombre = document.getElementById('usuario-nombre')?.value.trim();
     const apellido1 = document.getElementById('usuario-apellido1')?.value.trim();
     const correo = document.getElementById('usuario-correo')?.value.trim();
-    const rol = document.getElementById('usuario-rol')?.value;
+    const rolTexto = document.getElementById('usuario-rol')?.value; // Administrador o Asistente
     const contrasena = document.getElementById('usuario-clave')?.value;
 
     if (!nombre || !apellido1 || !correo || !contrasena) {
-      showToast('Por favor completa todos los campos requeridos.', 'error');
+      showToast('Por favor completa todos los campos.', 'error');
       return;
     }
 
-    // Adaptamos el payload con todos los campos estándar que el validator de la API puede requerir
+    // Mapeo flexible de rol para enviarlo según lo espere el backend (ID o Nombre)
+    const idRol = rolTexto === 'Administrador' ? 1 : 2;
+
     const payload = {
       nombre,
+      primer_apellido: apellido1,
       apellido1,
       correo,
-      rol,
-      contrasena,
+      email: correo,
+      nom_usuario: correo.split('@')[0],
+      rol: rolTexto,
+      id_rol: idRol,
       clave: contrasena,
-      nom_usuario: correo.split('@')[0]
+      contrasena: contrasena
     };
 
     if (submitBtn) {
@@ -333,12 +337,12 @@ function wireUsuariosForm() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        // Muestra detalles explícitos del error si la validación falla (Error 400)
-        const msjError = data.mensaje || data.errors?.[0]?.msg || 'Error 400: Datos inválidos en el formulario.';
-        throw new Error(msjError);
+        // Muestra el mensaje exacto de validación que devuelve express-validator o el controlador
+        const msj = data.mensaje || (data.errors && data.errors[0]?.msg) || 'Error (400): Datos del usuario inválidos.';
+        throw new Error(msj);
       }
 
-      showToast('Usuario creado y permisos asignados correctamente.', 'success');
+      showToast('Usuario registrado con éxito.', 'success');
       form.reset();
       loadUsuariosData();
     } catch (err) {
@@ -359,7 +363,7 @@ async function loadUsuariosData() {
     const usuarios = await res.json();
     renderTablaUsuarios(usuarios);
   } catch (error) {
-    console.error('Error al cargar lista de usuarios:', error);
+    console.error('Error al cargar usuarios:', error);
   }
 }
 
@@ -372,15 +376,44 @@ function renderTablaUsuarios(usuarios) {
     return;
   }
 
-  tbody.innerHTML = usuarios.map(u => {
+  // 1. FILTRADO: Excluimos a los profesores. Solo dejamos Administradores y Asistentes
+  const usuariosPermisos = usuarios.filter(u => {
+    const rolNombre = (u.nom_rol || u.rol || u.nombre_rol || '').toString().toLowerCase();
+    const idRol = u.id_rol;
+
+    // Si es id_rol 1 o 2, o si el nombre del rol contiene admin/asistente (y NO profesor)
+    const esAdminOAsistente = idRol === 1 || idRol === 2 || 
+                              rolNombre.includes('admin') || 
+                              rolNombre.includes('asistente');
+    const esProfesor = rolNombre.includes('profe') || idRol === 3;
+
+    return esAdminOAsistente && !esProfesor;
+  });
+
+  if (usuariosPermisos.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No hay usuarios Administradores o Asistentes.</td></tr>`;
+    return;
+  }
+
+  // 2. RENDERIZADO DE TABLA
+  tbody.innerHTML = usuariosPermisos.map(u => {
     const esElMismo = currentUser?.id_usuario === u.id_usuario;
+    
+    // Obtener nombre del rol resolviendo cualquier variaciones de la BD
+    let rolDisplay = u.nom_rol || u.rol || u.nombre_rol;
+    if (!rolDisplay || rolDisplay === 'UNDEFINED') {
+      rolDisplay = u.id_rol === 1 ? 'Administrador' : (u.id_rol === 2 ? 'Asistente' : 'Administrador');
+    }
+
+    const esAdmin = rolDisplay.toLowerCase().includes('admin') || u.id_rol === 1;
+
     return `
       <tr>
-        <td><strong>${u.nombre || u.nom_usuario || 'Sin nombre'} ${u.apellido1 || ''}</strong></td>
+        <td><strong>${u.nombre || u.nom_usuario || 'Usuario'} ${u.apellido1 || u.primer_apellido || ''}</strong></td>
         <td>${u.correo || u.email || '—'}</td>
         <td>
-          <span class="role-badge ${u.rol === 'Administrador' ? 'role-badge-admin' : 'role-badge-asistente'}">
-            ${u.rol}
+          <span class="badge ${esAdmin ? 'bg-primary' : 'bg-info'} text-white px-2 py-1">
+            ${esAdmin ? 'Administrador' : 'Asistente'}
           </span>
         </td>
         <td class="text-end">
@@ -396,11 +429,11 @@ function renderTablaUsuarios(usuarios) {
   }).join('');
 }
 
-// Función global para eliminar el usuario
+// Función global para eliminar usuario
 window.eliminarUsuario = async function(idUsuario) {
   if (!idUsuario) return;
   
-  if (!confirm('¿Estás seguro de que deseas eliminar este usuario y revocar sus permisos?')) {
+  if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
     return;
   }
 

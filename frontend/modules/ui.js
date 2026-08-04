@@ -281,14 +281,13 @@ function setActiveView(viewName) {
   if (viewName === 'asistencia') loadAsistenciaData();
   if (viewName === 'reportes') loadReportesData();
   if (viewName === 'usuarios') loadUsuariosData();
-}
-/* ==========================================
-   3. MÓDULO DE USUARIOS Y PERMISOS (Filtrado Admin/Asistente)
+}/* ==========================================
+   3. MÓDULO DE USUARIOS Y PERMISOS
    ========================================== */
 
 function wireUsuariosForm() {
   const form = document.getElementById('usuario-form');
-  if (!form || form.dataset.wired) return;
+  if (!form || form.dataset.wired === "true") return;
   form.dataset.wired = "true";
 
   form.addEventListener('submit', async (e) => {
@@ -298,7 +297,7 @@ function wireUsuariosForm() {
     const nombre = document.getElementById('usuario-nombre')?.value.trim();
     const apellido1 = document.getElementById('usuario-apellido1')?.value.trim();
     const correo = document.getElementById('usuario-correo')?.value.trim();
-    const rolTexto = document.getElementById('usuario-rol')?.value; // Administrador o Asistente
+    const rolTexto = document.getElementById('usuario-rol')?.value;
     const contrasena = document.getElementById('usuario-clave')?.value;
 
     if (!nombre || !apellido1 || !correo || !contrasena) {
@@ -306,20 +305,12 @@ function wireUsuariosForm() {
       return;
     }
 
-    // Mapeo flexible de rol para enviarlo según lo espere el backend (ID o Nombre)
-    const idRol = rolTexto === 'Administrador' ? 1 : 2;
-
     const payload = {
       nombre,
       primer_apellido: apellido1,
-      apellido1,
       correo,
-      email: correo,
-      nom_usuario: correo.split('@')[0],
-      rol: rolTexto,
-      id_rol: idRol,
-      clave: contrasena,
-      contrasena: contrasena
+      contrasena,
+      id_rol: rolTexto === 'Administrador' ? 1 : 2
     };
 
     if (submitBtn) {
@@ -337,14 +328,15 @@ function wireUsuariosForm() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        // Muestra el mensaje exacto de validación que devuelve express-validator o el controlador
-        const msj = data.mensaje || (data.errors && data.errors[0]?.msg) || 'Error (400): Datos del usuario inválidos.';
-        throw new Error(msj);
+        throw new Error(data.mensaje || 'Error al guardar el usuario.');
       }
 
-      showToast('Usuario registrado con éxito.', 'success');
+      showToast('Usuario guardado con éxito.', 'success');
       form.reset();
-      loadUsuariosData();
+      
+      // Carga y renderizado automático
+      await loadUsuariosData();
+
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -376,43 +368,19 @@ function renderTablaUsuarios(usuarios) {
     return;
   }
 
-  // 1. FILTRADO: Excluimos a los profesores. Solo dejamos Administradores y Asistentes
-  const usuariosPermisos = usuarios.filter(u => {
-    const rolNombre = (u.nom_rol || u.rol || u.nombre_rol || '').toString().toLowerCase();
-    const idRol = u.id_rol;
+  // Filtrar docentes (id_rol === 3)
+  const usuariosPermisos = usuarios.filter(u => u.id_rol === 1 || u.id_rol === 2);
 
-    // Si es id_rol 1 o 2, o si el nombre del rol contiene admin/asistente (y NO profesor)
-    const esAdminOAsistente = idRol === 1 || idRol === 2 || 
-                              rolNombre.includes('admin') || 
-                              rolNombre.includes('asistente');
-    const esProfesor = rolNombre.includes('profe') || idRol === 3;
-
-    return esAdminOAsistente && !esProfesor;
-  });
-
-  if (usuariosPermisos.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No hay usuarios Administradores o Asistentes.</td></tr>`;
-    return;
-  }
-
-  // 2. RENDERIZADO DE TABLA
   tbody.innerHTML = usuariosPermisos.map(u => {
     const esElMismo = currentUser?.id_usuario === u.id_usuario;
-    
-    // Obtener nombre del rol resolviendo cualquier variaciones de la BD
-    let rolDisplay = u.nom_rol || u.rol || u.nombre_rol;
-    if (!rolDisplay || rolDisplay === 'UNDEFINED') {
-      rolDisplay = u.id_rol === 1 ? 'Administrador' : (u.id_rol === 2 ? 'Asistente' : 'Administrador');
-    }
-
-    const esAdmin = rolDisplay.toLowerCase().includes('admin') || u.id_rol === 1;
+    const esAdmin = u.id_rol === 1;
 
     return `
       <tr>
-        <td><strong>${u.nombre || u.nom_usuario || 'Usuario'} ${u.apellido1 || u.primer_apellido || ''}</strong></td>
-        <td>${u.correo || u.email || '—'}</td>
+        <td><strong>${u.nombre || 'Usuario'} ${u.apellido1 || ''}</strong></td>
+        <td>${u.correo || '—'}</td>
         <td>
-          <span class="badge ${esAdmin ? 'bg-primary' : 'bg-info'} text-white px-2 py-1">
+          <span class="badge ${esAdmin ? 'bg-dark' : 'bg-info'} text-white px-2 py-1">
             ${esAdmin ? 'Administrador' : 'Asistente'}
           </span>
         </td>
@@ -429,26 +397,18 @@ function renderTablaUsuarios(usuarios) {
   }).join('');
 }
 
-// Función global para eliminar usuario
 window.eliminarUsuario = async function(idUsuario) {
   if (!idUsuario) return;
-  
-  if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
-    return;
-  }
+  if (!confirm('¿Deseas eliminar este usuario?')) return;
 
   try {
-    const res = await apiFetch(`/api/usuarios/${idUsuario}`, {
-      method: 'DELETE'
-    });
-
+    const res = await apiFetch(`/api/usuarios/${idUsuario}`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.mensaje || 'Error al eliminar el usuario.');
+      throw new Error(data.mensaje || 'Error al eliminar usuario.');
     }
-
-    showToast('Usuario eliminado correctamente.', 'success');
-    loadUsuariosData();
+    showToast('Usuario eliminado con éxito.', 'success');
+    await loadUsuariosData();
   } catch (err) {
     showToast(err.message, 'error');
   }

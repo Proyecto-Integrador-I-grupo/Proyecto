@@ -1,6 +1,11 @@
 import express from "express";
 import { body } from "express-validator";
-import { crearAsistencia, obtenerAsistencias, actualizarAsistencia } from "../controllers/asistenciaProcessController.js";
+import {
+  crearAsistencia,
+  obtenerAsistencias,
+  actualizarAsistencia,
+  obtenerMateriasDisponibles
+} from "../controllers/asistenciaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 
@@ -25,8 +30,11 @@ const validarActualizacionAsistencia = [
     .withMessage("Las observaciones no pueden superar 250 caracteres.")
 ];
 
-// Listado con filtros (grupo, estudiante, profesor, estado, rango de fechas, búsqueda por nombre)
+// Listado con filtros (grupo, estudiante, profesor, materia, estado, rango de fechas, búsqueda por nombre)
 router.get("/asistencia", requireAuth, obtenerAsistencias);
+
+// NUEVO: Lista de materias distintas activas, para poblar el filtro "Materia/Curso"
+router.get("/materias", requireAuth, obtenerMateriasDisponibles);
 
 // Registro nuevo de asistencia
 router.post("/asistencia", requireAuth, validarAsistencia, validarCampos, crearAsistencia);

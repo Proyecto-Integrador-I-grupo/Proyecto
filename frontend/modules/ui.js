@@ -289,16 +289,39 @@ function setActiveView(viewName) {
 
 function wireUsuariosForm() {
   const form = document.getElementById('usuario-form');
-  form?.addEventListener('submit', async (e) => {
+  if (!form || form.dataset.wired) return;
+  form.dataset.wired = "true";
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const submitBtn = document.getElementById('btn-guardar-usuario');
+    const nombre = document.getElementById('usuario-nombre')?.value.trim();
+    const apellido1 = document.getElementById('usuario-apellido1')?.value.trim();
+    const correo = document.getElementById('usuario-correo')?.value.trim();
+    const rol = document.getElementById('usuario-rol')?.value;
+    const contrasena = document.getElementById('usuario-clave')?.value;
+
+    if (!nombre || !apellido1 || !correo || !contrasena) {
+      showToast('Por favor completa todos los campos requeridos.', 'error');
+      return;
+    }
+
+    // Adaptamos el payload con todos los campos estándar que el validator de la API puede requerir
     const payload = {
-      nombre: document.getElementById('usuario-nombre')?.value.trim(),
-      apellido1: document.getElementById('usuario-apellido1')?.value.trim(),
-      correo: document.getElementById('usuario-correo')?.value.trim(),
-      rol: document.getElementById('usuario-rol')?.value,
-      contrasena: document.getElementById('usuario-clave')?.value
+      nombre,
+      apellido1,
+      correo,
+      rol,
+      contrasena,
+      clave: contrasena,
+      nom_usuario: correo.split('@')[0]
     };
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+    }
 
     try {
       const res = await apiFetch('/api/usuarios', {
@@ -307,16 +330,24 @@ function wireUsuariosForm() {
         body: JSON.stringify(payload)
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.mensaje || 'Error al guardar usuario.');
+        // Muestra detalles explícitos del error si la validación falla (Error 400)
+        const msjError = data.mensaje || data.errors?.[0]?.msg || 'Error 400: Datos inválidos en el formulario.';
+        throw new Error(msjError);
       }
 
-      showToast('Usuario y rol registrados exitosamente.', 'success');
+      showToast('Usuario creado y permisos asignados correctamente.', 'success');
       form.reset();
       loadUsuariosData();
     } catch (err) {
       showToast(err.message, 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-download me-1"></i> Guardar Usuario';
+      }
     }
   });
 }
@@ -336,22 +367,59 @@ function renderTablaUsuarios(usuarios) {
   const tbody = document.getElementById('tabla-usuarios-body');
   if (!tbody) return;
 
-  tbody.innerHTML = usuarios.map(u => `
-    <tr>
-      <td><strong>${u.nombre} ${u.apellido1 || ''}</strong></td>
-      <td>${u.correo}</td>
-      <td>
-        <span class="role-badge ${u.rol === 'Administrador' ? 'role-badge-admin' : 'role-badge-asistente'}">
-          ${u.rol}
-        </span>
-      </td>
-      <td class="text-end">
-        <span class="badge bg-secondary">Solo Lectura/Edición Admin</span>
-      </td>
-    </tr>
-  `).join('');
+  if (!Array.isArray(usuarios) || usuarios.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No hay usuarios registrados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = usuarios.map(u => {
+    const esElMismo = currentUser?.id_usuario === u.id_usuario;
+    return `
+      <tr>
+        <td><strong>${u.nombre || u.nom_usuario || 'Sin nombre'} ${u.apellido1 || ''}</strong></td>
+        <td>${u.correo || u.email || '—'}</td>
+        <td>
+          <span class="role-badge ${u.rol === 'Administrador' ? 'role-badge-admin' : 'role-badge-asistente'}">
+            ${u.rol}
+          </span>
+        </td>
+        <td class="text-end">
+          ${esElMismo 
+            ? `<span class="badge bg-light text-dark border">Sesión Actual</span>`
+            : `<button class="btn btn-sm btn-outline-danger" onclick="eliminarUsuario(${u.id_usuario})">
+                 <i class="bi bi-trash"></i> Eliminar
+               </button>`
+          }
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
+// Función global para eliminar el usuario
+window.eliminarUsuario = async function(idUsuario) {
+  if (!idUsuario) return;
+  
+  if (!confirm('¿Estás seguro de que deseas eliminar este usuario y revocar sus permisos?')) {
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/usuarios/${idUsuario}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.mensaje || 'Error al eliminar el usuario.');
+    }
+
+    showToast('Usuario eliminado correctamente.', 'success');
+    loadUsuariosData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
 /* ==========================================
    4. UI Y NOTIFICACIONES COMPARTIDAS
    ========================================== */

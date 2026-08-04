@@ -1,7 +1,7 @@
 <section id="usuarios-view" class="view hidden">
   <div class="container-fluid py-3">
     <div class="row g-3">
-      <!-- Formulario para agregar nuevos Administradores / Asistentes -->
+      <!-- Formulario de Registro -->
       <div class="col-lg-4">
         <div class="card shadow-sm border-0">
           <div class="card-header bg-white py-3">
@@ -12,43 +12,42 @@
           <div class="card-body">
             <form id="usuario-form">
               <div class="mb-3">
-                <label class="form-label">Nombre</label>
+                <label class="form-label" for="usuario-nombre">Nombre</label>
                 <input type="text" id="usuario-nombre" class="form-control" required />
               </div>
               <div class="mb-3">
-                <label class="form-label">Primer Apellido</label>
+                <label class="form-label" for="usuario-apellido1">Primer Apellido</label>
                 <input type="text" id="usuario-apellido1" class="form-control" required />
               </div>
               <div class="mb-3">
-                <label class="form-label">Correo Electrónico</label>
-                <input type="email" id="usuario-correo" class="form-control" required />
+                <label class="form-label" for="usuario-correo">Correo Electrónico</label>
+                <input type="email" id="usuario-correo" class="form-control" placeholder="usuario@educontrol.com" required />
               </div>
               <div class="mb-3">
-                <label class="form-label">Rol / Permisos</label>
+                <label class="form-label" for="usuario-rol">Rol / Permisos</label>
                 <select id="usuario-rol" class="form-select" required>
-                  <option value="Asistente">Asistente</option>
                   <option value="Administrador">Administrador</option>
-                  <option value="Profesor">Profesor</option>
+                  <option value="Asistente">Asistente</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label class="form-label">Contraseña Temporal</label>
-                <input type="password" id="usuario-clave" class="form-control" required />
+                <label class="form-label" for="usuario-clave">Contraseña Temporal</label>
+                <input type="password" id="usuario-clave" class="form-control" minlength="6" required />
               </div>
-              <button type="submit" class="btn btn-primary w-100">
-                <i class="bi bi-save me-1"></i> Guardar Usuario
+              <button type="submit" id="btn-guardar-usuario" class="btn btn-primary w-100 py-2">
+                <i class="bi bi-download me-1"></i> Guardar Usuario
               </button>
             </form>
           </div>
         </div>
       </div>
 
-      <!-- Tabla de Gestión de Usuarios y Permisos -->
+      <!-- Tabla de Gestión de Permisos -->
       <div class="col-lg-8">
         <div class="card shadow-sm border-0">
           <div class="card-header bg-white py-3">
             <h5 class="card-title mb-0">
-              <i class="bi bi-shield-check text-primary me-2"></i>Gestión de Permisos
+              <i class="bi bi-shield-check text-primary me-2"></i>Gestión de Permisos y Usuarios
             </h5>
           </div>
           <div class="card-body p-0">
@@ -58,8 +57,8 @@
                   <tr>
                     <th>Usuario</th>
                     <th>Correo</th>
-                    <th>Rol Actual</th>
-                    <th class="text-end">Acción</th>
+                    <th>Rol</th>
+                    <th class="text-end">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="tabla-usuarios-body">

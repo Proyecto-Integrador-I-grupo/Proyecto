@@ -1,0 +1,75 @@
+<section id="usuarios-view" class="view hidden">
+  <div class="container-fluid py-3">
+    <div class="row g-3">
+      <!-- Formulario para agregar nuevos Administradores / Asistentes -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-person-plus-fill text-primary me-2"></i>Registrar Usuario
+            </h5>
+          </div>
+          <div class="card-body">
+            <form id="usuario-form">
+              <div class="mb-3">
+                <label class="form-label">Nombre</label>
+                <input type="text" id="usuario-nombre" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Primer Apellido</label>
+                <input type="text" id="usuario-apellido1" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Correo Electrónico</label>
+                <input type="email" id="usuario-correo" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Rol / Permisos</label>
+                <select id="usuario-rol" class="form-select" required>
+                  <option value="Asistente">Asistente</option>
+                  <option value="Administrador">Administrador</option>
+                  <option value="Profesor">Profesor</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Contraseña Temporal</label>
+                <input type="password" id="usuario-clave" class="form-control" required />
+              </div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-save me-1"></i> Guardar Usuario
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Gestión de Usuarios y Permisos -->
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-shield-check text-primary me-2"></i>Gestión de Permisos
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Rol Actual</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-usuarios-body">
+                  <!-- Se llena dinámicamente desde ui.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

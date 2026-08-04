@@ -28,7 +28,7 @@ import {
 
 const router = express.Router();
 
-// Mi Perfil
+// Mi Perfil (Accesible por cualquier usuario autenticado)
 router.get(
     "/perfil",
     requireAuth,
@@ -47,7 +47,7 @@ router.put(
     cambiarMiClave
 );
 
-// Administración de usuarios
+// Administración de usuarios y Permisos (EXCLUSIVO ADMINISTRADOR)
 router.get(
     "/",
     requireAuth,

@@ -42,16 +42,20 @@ export const crearUsuario = async (req, res) => {
         const apellidoFinal = primer_apellido || apellido1 || "";
         let idPersonaFinal = req.body.id_persona;
 
-        // 2. Insertar en la tabla 'persona' de forma ligera (solo los campos que tenemos)
+        // 2. Insertar en la tabla 'persona' incluyendo fecha_nacimiento y género por defecto
         if (!idPersonaFinal) {
             const sqlPersona = `
-                INSERT INTO persona (nombre, apellido1, apellido2, estado)
-                VALUES (?, ?, ?, 1);
+                INSERT INTO persona (nombre, apellido1, apellido2, fecha_nacimiento, genero, estado)
+                VALUES (?, ?, ?, ?, ?, 1);
             `;
+
+            // Usamos '2000-01-01' como fecha por defecto y 'O' (Otro) como género
+            const fechaDefecto = '2000-01-01';
+            const generoDefecto = 'O';
 
             const resultadoPersona = await queryConSesion(
                 sqlPersona,
-                [nombre || "Usuario", apellidoFinal, ""],
+                [nombre || "Usuario", apellidoFinal, "", fechaDefecto, generoDefecto],
                 req.usuarioActual?.id_usuario ?? null
             );
 
@@ -68,7 +72,7 @@ export const crearUsuario = async (req, res) => {
             estado: 1
         }, req.usuarioActual?.id_usuario ?? null);
 
-        // 4. Registrar en Auditoría (protegido en try/catch)
+        // 4. Registrar en Auditoría
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",

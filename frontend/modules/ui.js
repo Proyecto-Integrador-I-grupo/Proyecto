@@ -7,9 +7,12 @@ const SESSION_KEY = "educontrol_usuario";
 let currentUser = null;
 let views = [];
 let appViewsReady = false;
+const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
+let accessibilitySettings = { isDark: false, highContrast: false, largeText: false };
 
 window.addEventListener('DOMContentLoaded', () => {
   wireLoginScreen();
+  restoreAccessibilitySettings();
   restoreSession();
 });
 
@@ -234,6 +237,7 @@ function initApp() {
   });
 
   wireUsuariosForm();
+  initAccessibilityWidget();
   setActiveView('dashboard');
   refreshDashboardCounts();
 }
@@ -447,4 +451,88 @@ function showToast(message, type = 'success', ms = 3500) {
   showToast.timeoutId = setTimeout(() => {
     if (toastElement) toastElement.className = 'toast hidden';
   }, ms);
+}
+
+function initAccessibilityWidget() {
+  const toggleBtn = document.getElementById('accessibility-toggle');
+  const menu = document.getElementById('accessibility-menu');
+  const themeBtn = document.getElementById('btn-toggle-theme');
+  const contrastBtn = document.getElementById('btn-toggle-contrast');
+  const fontBtn = document.getElementById('btn-toggle-font');
+
+  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontBtn) return;
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = menu.classList.toggle('hidden');
+    toggleBtn.setAttribute('aria-expanded', (!isHidden).toString());
+  });
+
+  themeBtn.addEventListener('click', () => {
+    accessibilitySettings.isDark = !accessibilitySettings.isDark;
+    applyAccessibilitySettings();
+  });
+
+  contrastBtn.addEventListener('click', () => {
+    accessibilitySettings.highContrast = !accessibilitySettings.highContrast;
+    applyAccessibilitySettings();
+  });
+
+  fontBtn.addEventListener('click', () => {
+    accessibilitySettings.largeText = !accessibilitySettings.largeText;
+    applyAccessibilitySettings();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!menu.classList.contains('hidden') && !toggleBtn.contains(event.target) && !menu.contains(event.target)) {
+      menu.classList.add('hidden');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      menu.classList.add('hidden');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  updateAccessibilityButtons();
+}
+
+function applyAccessibilitySettings() {
+  document.body.classList.toggle('theme-dark', accessibilitySettings.isDark);
+  document.body.classList.toggle('high-contrast', accessibilitySettings.highContrast);
+  document.body.classList.toggle('large-text', accessibilitySettings.largeText);
+  localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(accessibilitySettings));
+  updateAccessibilityButtons();
+}
+
+function restoreAccessibilitySettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ACCESSIBILITY_KEY));
+    if (saved) {
+      accessibilitySettings = {
+        ...accessibilitySettings,
+        ...saved,
+      };
+    }
+  } catch (err) {
+    console.warn('No se pudo restaurar accesibilidad:', err);
+  }
+  applyAccessibilitySettings();
+}
+
+function updateAccessibilityButtons() {
+  const themeBtn = document.getElementById('btn-toggle-theme');
+  const contrastBtn = document.getElementById('btn-toggle-contrast');
+  const fontBtn = document.getElementById('btn-toggle-font');
+  if (!themeBtn || !contrastBtn || !fontBtn) return;
+
+  themeBtn.textContent = accessibilitySettings.isDark ? 'Modo claro' : 'Modo oscuro';
+  contrastBtn.textContent = accessibilitySettings.highContrast ? 'Contraste normal' : 'Alto contraste';
+  fontBtn.textContent = accessibilitySettings.largeText ? 'Letra normal' : 'Letra grande';
+
+  themeBtn.classList.toggle('accessibility-action-active', accessibilitySettings.isDark);
+  contrastBtn.classList.toggle('accessibility-action-active', accessibilitySettings.highContrast);
+  fontBtn.classList.toggle('accessibility-action-active', accessibilitySettings.largeText);
 }

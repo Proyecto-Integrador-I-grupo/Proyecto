@@ -38,3 +38,35 @@ body {
   background-color: var(--bs-body-bg);
   color: var(--bs-body-color);
 }
+
+body.theme-dark {
+  --bs-body-bg: #0F172A;
+  --bs-body-color: #F8FAFC;
+  --navy: #111827;
+  --navy-2: #1F2937;
+  --navy-light: #CBD5E1;
+  --accent: #60A5FA;
+  --accent-hover: #93C5FD;
+  --accent-soft: #1E3A8A;
+  --bs-border-color: #334155;
+  --bs-link-color: #93C5FD;
+  --bs-link-hover-color: #BFDBFE;
+}
+
+body.high-contrast {
+  --bs-body-bg: #000000;
+  --bs-body-color: #FFFFFF;
+  --navy: #000000;
+  --navy-2: #111111;
+  --navy-light: #FFFFFF;
+  --accent: #FFD700;
+  --accent-hover: #FFFF00;
+  --accent-soft: #FFFFFF;
+  --bs-border-color: #FFFFFF;
+  --bs-link-color: #FFFF00;
+  --bs-link-hover-color: #FFD700;
+}
+
+body.large-text {
+  font-size: 1.1rem;
+}

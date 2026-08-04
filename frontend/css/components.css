@@ -136,6 +136,22 @@ h1, h2, h3, .card-title-serif {
   padding: 0.55rem 0.75rem;
 }
 
+.input-group .btn {
+  min-width: 48px;
+  padding: 0.55rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-group .btn i {
+  font-size: 1rem;
+}
+
+.input-group .form-control {
+  min-width: 0;
+}
+
 .form-control:focus, .form-select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.15);
@@ -313,11 +329,14 @@ body.large-text .accessibility-menu button {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
-.brand-mark-lg {
-  width: 54px;
-  height: 54px;
-  font-size: 20px;
-  border-radius: 12px;
+.login-error {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  background-color: rgba(220, 38, 38, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  font-size: 0.95rem;
 }
 
 .toast {
@@ -336,5 +355,30 @@ body.large-text .accessibility-menu button {
 
 .toast.error { border-left-color: var(--danger); }
 .toast.success { border-left-color: var(--success); }
+
+@media (max-width: 640px) {
+  .login-card {
+    padding: 28px 20px;
+    border-radius: 1rem;
+  }
+
+  .login-screen {
+    padding: 16px;
+  }
+
+  .login-error {
+    font-size: 0.9rem;
+  }
+
+  .input-group .btn {
+    min-width: 48px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .input-group .form-control {
+    min-width: 0;
+  }
+}
 
 .hidden { display: none !important; }

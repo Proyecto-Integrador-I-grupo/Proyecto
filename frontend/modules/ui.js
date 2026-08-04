@@ -41,6 +41,8 @@ function wireLoginScreen() {
     input.type = showing ? 'password' : 'text';
     icon?.classList.toggle('bi-eye', showing);
     icon?.classList.toggle('bi-eye-slash', !showing);
+    togglePassword.setAttribute('aria-pressed', String(!showing));
+    togglePassword.setAttribute('aria-label', showing ? 'Mostrar contraseña' : 'Ocultar contraseña');
   });
 
   document.getElementById('logout-btn')?.addEventListener('click', logout);

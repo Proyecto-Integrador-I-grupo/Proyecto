@@ -381,4 +381,96 @@ body.large-text .accessibility-menu button {
   }
 }
 
+body.high-contrast .bg-white,
+body.high-contrast .bg-light,
+body.high-contrast .bg-navy,
+body.high-contrast .bg-primary,
+body.high-contrast .bg-success,
+body.high-contrast .bg-danger,
+body.high-contrast .bg-warning,
+body.high-contrast .bg-secondary,
+body.high-contrast .bg-info,
+body.high-contrast .card,
+body.high-contrast .card-body,
+body.high-contrast .modal-content,
+body.high-contrast .modal-header,
+body.high-contrast .modal-footer,
+body.high-contrast .input-group-text,
+body.high-contrast .form-control,
+body.high-contrast .form-select,
+body.high-contrast .table,
+body.high-contrast .table th,
+body.high-contrast .table td,
+body.high-contrast .toast,
+body.high-contrast .accessibility-menu,
+body.high-contrast .accessibility-widget,
+body.high-contrast .search-box,
+body.high-contrast .search-box .form-control,
+body.high-contrast .search-box .input-group-text,
+body.high-contrast .badge,
+body.high-contrast .dropdown-menu,
+body.high-contrast .list-group-item {
+  background-color: #111827 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+body.high-contrast .text-muted,
+body.high-contrast .text-secondary,
+body.high-contrast .text-dark,
+body.high-contrast .text-primary,
+body.high-contrast .text-success,
+body.high-contrast .text-danger,
+body.high-contrast .text-warning,
+body.high-contrast .text-info,
+body.high-contrast .consulta-documento-meta,
+body.high-contrast .consulta-documento-subtitulo,
+body.high-contrast .consulta-documento-etiqueta,
+body.high-contrast .consulta-documento-footer,
+body.high-contrast .consulta-preview-area,
+body.high-contrast .consulta-stat,
+body.high-contrast .consulta-stat-icon {
+  color: #CBD5E1 !important;
+}
+
+body.high-contrast .btn,
+body.high-contrast .btn-primary,
+body.high-contrast .btn-outline-secondary,
+body.high-contrast .btn-outline-warning,
+body.high-contrast .btn-outline-success,
+body.high-contrast .btn-outline-danger {
+  background-color: #111827 !important;
+  color: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+}
+
+body.high-contrast .btn,
+body.high-contrast .btn-primary,
+body.high-contrast .btn-outline-secondary,
+body.high-contrast .btn-outline-warning,
+body.high-contrast .btn-outline-success,
+body.high-contrast .btn-outline-danger,
+body.high-contrast .card,
+body.high-contrast .card-body,
+body.high-contrast .modal-content,
+body.high-contrast .form-control,
+body.high-contrast .form-select,
+body.high-contrast .input-group-text,
+body.high-contrast .table,
+body.high-contrast .table th,
+body.high-contrast .table td,
+body.high-contrast .badge,
+body.high-contrast .dropdown-menu,
+body.high-contrast .list-group-item {
+  border-color: #FFFFFF !important;
+}
+
+body.high-contrast .text-white-50,
+body.high-contrast .text-white,
+body.high-contrast .role-badge,
+body.high-contrast .hero-card,
+body.high-contrast .accessibility-toggle {
+  color: #FFFFFF !important;
+}
+
 .hidden { display: none !important; }

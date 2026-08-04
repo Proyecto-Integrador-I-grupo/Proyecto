@@ -33,27 +33,37 @@ export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
 
+        // 1. Verificar correo existente
         const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
         if (existente) {
             return res.status(409).json({ mensaje: "Ya existe un usuario con ese correo." });
         }
 
         const apellidoFinal = primer_apellido || apellido1 || "";
+        let idPersonaGenerada = req.body.id_persona;
 
-        // 1. Insertar primero en la tabla 'persona' para generar el id_persona
-        const resultadoPersona = await personaModel.registrarPersona({
-            nombre: nombre,
-            apellido1: apellidoFinal,
-            apellido2: "",
-            cedula: null,
-            telefono: null,
-            correo: correo,
-            tipo_persona: id_rol == 1 ? "Administrador" : "Asistente"
-        }, req.usuarioActual?.id_usuario ?? null);
+        // 2. Si no viene id_persona, registrar la Persona de forma segura
+        if (!idPersonaGenerada) {
+            try {
+                const resultadoPersona = await personaModel.registrarPersona({
+                    nombre: nombre || "Usuario",
+                    apellido1: apellidoFinal || "Sistema",
+                    apellido2: "",
+                    correo: correo,
+                    tipo_persona: id_rol == 1 ? "Administrador" : "Asistente"
+                }, req.usuarioActual?.id_usuario ?? null);
 
-        const idPersonaGenerada = resultadoPersona.insertId;
+                idPersonaGenerada = resultadoPersona.insertId || resultadoPersona.id;
+            } catch (errPersona) {
+                console.error("Error registrando la persona en personaModel:", errPersona);
+                return res.status(500).json({ 
+                    mensaje: "Error al registrar la información personal del usuario.",
+                    detalle: errPersona.message 
+                });
+            }
+        }
 
-        // 2. Cifrar contraseña e insertar en la tabla 'usuario'
+        // 3. Cifrar contraseña e insertar el Usuario
         const hash = await bcrypt.hash(contrasena, 10);
         const resultadoUsuario = await usuarioModel.crearUsuario({
             correo,
@@ -63,13 +73,13 @@ export const crearUsuario = async (req, res) => {
             estado: 1
         }, req.usuarioActual?.id_usuario ?? null);
 
-        // Auditoría
+        // 4. Auditoría
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",
                 accion_usuario: "INSERT",
                 datos_anteriores: "",
-                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaGenerada, id_rol, estado: 1 })
+                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaGenerada, id_rol: id_rol || 2, estado: 1 })
             }, req.usuarioActual?.id_usuario ?? null);
         } catch (e) {
             console.error("Error registrando auditoría:", e);
@@ -77,8 +87,8 @@ export const crearUsuario = async (req, res) => {
 
         res.status(201).json({ mensaje: "Usuario creado correctamente.", id: resultadoUsuario.insertId });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ mensaje: "Error al crear el usuario." });
+        console.error("Error crítico en crearUsuario:", error);
+        res.status(500).json({ mensaje: "Error al crear el usuario.", detalle: error.message });
     }
 };
 
@@ -109,7 +119,6 @@ export const actualizarUsuario = async (req, res) => {
 
         const resultado = await usuarioModel.actualizarUsuario(id, datosActualizados, req.usuarioActual?.id_usuario ?? null);
 
-        // Auditoría
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",
@@ -137,9 +146,8 @@ export const eliminarUsuario = async (req, res) => {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        const resultado = await usuarioModel.eliminarUsuario(id, req.usuarioActual?.id_usuario ?? null);
+        await usuarioModel.eliminarUsuario(id, req.usuarioActual?.id_usuario ?? null);
 
-        // Auditoría de eliminación (borrado lógico)
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",
@@ -163,18 +171,13 @@ export const obtenerMiPerfil = async (req, res) => {
         const idUsuario = req.usuarioActual?.id_usuario;
 
         if (!idUsuario) {
-            return res.status(401).json({
-                mensaje: "Debes iniciar sesión para consultar tu perfil."
-            });
+            return res.status(401).json({ mensaje: "Debes iniciar sesión para consultar tu perfil." });
         }
 
-        const usuario =
-            await usuarioModel.obtenerUsuarioPorId(idUsuario);
+        const usuario = await usuarioModel.obtenerUsuarioPorId(idUsuario);
 
         if (!usuario) {
-            return res.status(404).json({
-                mensaje: "No se encontró la información del perfil."
-            });
+            return res.status(404).json({ mensaje: "No se encontró la información del perfil." });
         }
 
         res.status(200).json({
@@ -189,10 +192,7 @@ export const obtenerMiPerfil = async (req, res) => {
         });
     } catch (error) {
         console.error("Error al obtener el perfil:", error);
-
-        res.status(500).json({
-            mensaje: "Error al obtener la información del perfil."
-        });
+        res.status(500).json({ mensaje: "Error al obtener la información del perfil." });
     }
 };
 
@@ -201,52 +201,25 @@ export const actualizarMiPerfil = async (req, res) => {
         const idUsuario = req.usuarioActual?.id_usuario;
 
         if (!idUsuario) {
-            return res.status(401).json({
-                mensaje: "Debes iniciar sesión para actualizar tu perfil."
-            });
+            return res.status(401).json({ mensaje: "Debes iniciar sesión para actualizar tu perfil." });
         }
 
-        const {
-            nombre,
-            apellido1,
-            apellido2,
-            correo
-        } = req.body;
+        const { nombre, apellido1, apellido2, correo } = req.body;
 
-        if (
-            !nombre?.trim() ||
-            !apellido1?.trim() ||
-            !correo?.trim()
-        ) {
-            return res.status(400).json({
-                mensaje:
-                    "El nombre, el primer apellido y el correo son obligatorios."
-            });
+        if (!nombre?.trim() || !apellido1?.trim() || !correo?.trim()) {
+            return res.status(400).json({ mensaje: "El nombre, el primer apellido y el correo son obligatorios." });
         }
 
-        const usuarioActual =
-            await usuarioModel.obtenerUsuarioPorId(idUsuario);
+        const usuarioActual = await usuarioModel.obtenerUsuarioPorId(idUsuario);
 
         if (!usuarioActual) {
-            return res.status(404).json({
-                mensaje: "Usuario no encontrado."
-            });
+            return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
         if (correo.trim() !== usuarioActual.correo) {
-            const existente =
-                await usuarioModel.obtenerUsuarioPorCorreo(
-                    correo.trim()
-                );
-
-            if (
-                existente &&
-                Number(existente.id_usuario) !== Number(idUsuario)
-            ) {
-                return res.status(409).json({
-                    mensaje:
-                        "Ya existe otro usuario con ese correo."
-                });
+            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo.trim());
+            if (existente && Number(existente.id_usuario) !== Number(idUsuario)) {
+                return res.status(409).json({ mensaje: "Ya existe otro usuario con ese correo." });
             }
         }
 
@@ -257,35 +230,25 @@ export const actualizarMiPerfil = async (req, res) => {
             correo: correo.trim()
         };
 
-        await usuarioModel.actualizarDatosPerfil(
-            idUsuario,
-            datosNuevos
-        );
+        await usuarioModel.actualizarDatosPerfil(idUsuario, datosNuevos);
 
         try {
-            await auditoriaModel.crearAuditoria(
-                {
-                    nombre_tabla: "usuario/persona",
-                    accion_usuario: "UPDATE",
-                    datos_anteriores: JSON.stringify({
-                        nombre: usuarioActual.nombre,
-                        apellido1: usuarioActual.apellido1,
-                        apellido2: usuarioActual.apellido2,
-                        correo: usuarioActual.correo
-                    }),
-                    datos_nuevos: JSON.stringify(datosNuevos)
-                },
-                idUsuario
-            );
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "usuario/persona",
+                accion_usuario: "UPDATE",
+                datos_anteriores: JSON.stringify({
+                    nombre: usuarioActual.nombre,
+                    apellido1: usuarioActual.apellido1,
+                    apellido2: usuarioActual.apellido2,
+                    correo: usuarioActual.correo
+                }),
+                datos_nuevos: JSON.stringify(datosNuevos)
+            }, idUsuario);
         } catch (errorAuditoria) {
-            console.error(
-                "Error registrando auditoría del perfil:",
-                errorAuditoria
-            );
+            console.error("Error registrando auditoría del perfil:", errorAuditoria);
         }
 
-        const perfilActualizado =
-            await usuarioModel.obtenerUsuarioPorId(idUsuario);
+        const perfilActualizado = await usuarioModel.obtenerUsuarioPorId(idUsuario);
 
         res.status(200).json({
             mensaje: "Perfil actualizado correctamente.",
@@ -301,10 +264,7 @@ export const actualizarMiPerfil = async (req, res) => {
         });
     } catch (error) {
         console.error("Error al actualizar el perfil:", error);
-
-        res.status(500).json({
-            mensaje: "Error al actualizar el perfil."
-        });
+        res.status(500).json({ mensaje: "Error al actualizar el perfil." });
     }
 };
 
@@ -313,115 +273,59 @@ export const cambiarMiClave = async (req, res) => {
         const idUsuario = req.usuarioActual?.id_usuario;
 
         if (!idUsuario) {
-            return res.status(401).json({
-                mensaje: "Debes iniciar sesión para cambiar tu clave."
-            });
+            return res.status(401).json({ mensaje: "Debes iniciar sesión para cambiar tu clave." });
         }
 
-        const {
-            claveActual,
-            claveNueva,
-            claveConfirmar
-        } = req.body;
+        const { claveActual, claveNueva, claveConfirmar } = req.body;
 
-        if (
-            !claveActual ||
-            !claveNueva ||
-            !claveConfirmar
-        ) {
-            return res.status(400).json({
-                mensaje:
-                    "Debes completar todos los campos de seguridad."
-            });
+        if (!claveActual || !claveNueva || !claveConfirmar) {
+            return res.status(400).json({ mensaje: "Debes completar todos los campos de seguridad." });
         }
 
         if (claveNueva !== claveConfirmar) {
-            return res.status(400).json({
-                mensaje:
-                    "La nueva clave y la confirmación no coinciden."
-            });
+            return res.status(400).json({ mensaje: "La nueva clave y la confirmación no coinciden." });
         }
 
         if (claveNueva.length < 8) {
-            return res.status(400).json({
-                mensaje:
-                    "La nueva clave debe tener al menos 8 caracteres."
-            });
+            return res.status(400).json({ mensaje: "La nueva clave debe tener al menos 8 caracteres." });
         }
 
-        const usuario =
-            await usuarioModel.obtenerUsuarioPerfilPorId(
-                idUsuario
-            );
+        const usuario = await usuarioModel.obtenerUsuarioPerfilPorId(idUsuario);
 
         if (!usuario) {
-            return res.status(404).json({
-                mensaje: "Usuario no encontrado."
-            });
+            return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        const claveValida = await bcrypt.compare(
-            claveActual,
-            usuario.contrasena
-        );
+        const claveValida = await bcrypt.compare(claveActual, usuario.contrasena);
 
         if (!claveValida) {
-            return res.status(400).json({
-                mensaje: "La clave actual no es correcta."
-            });
+            return res.status(400).json({ mensaje: "La clave actual no es correcta." });
         }
 
-        const mismaClave = await bcrypt.compare(
-            claveNueva,
-            usuario.contrasena
-        );
+        const mismaClave = await bcrypt.compare(claveNueva, usuario.contrasena);
 
         if (mismaClave) {
-            return res.status(400).json({
-                mensaje:
-                    "La nueva clave debe ser diferente de la actual."
-            });
+            return res.status(400).json({ mensaje: "La nueva clave debe ser diferente de la actual." });
         }
 
-        const nuevaClaveHash = await bcrypt.hash(
-            claveNueva,
-            10
-        );
+        const nuevaClaveHash = await bcrypt.hash(claveNueva, 10);
 
-        await usuarioModel.actualizarContrasenaPerfil(
-            idUsuario,
-            nuevaClaveHash
-        );
+        await usuarioModel.actualizarContrasenaPerfil(idUsuario, nuevaClaveHash);
 
         try {
-            await auditoriaModel.crearAuditoria(
-                {
-                    nombre_tabla: "usuario",
-                    accion_usuario: "UPDATE",
-                    datos_anteriores: JSON.stringify({
-                        contrasena: "PROTEGIDA"
-                    }),
-                    datos_nuevos: JSON.stringify({
-                        contrasena: "ACTUALIZADA"
-                    })
-                },
-                idUsuario
-            );
+            await auditoriaModel.crearAuditoria({
+                nombre_tabla: "usuario",
+                accion_usuario: "UPDATE",
+                datos_anteriores: JSON.stringify({ contrasena: "PROTEGIDA" }),
+                datos_nuevos: JSON.stringify({ contrasena: "ACTUALIZADA" })
+            }, idUsuario);
         } catch (errorAuditoria) {
-            console.error(
-                "Error registrando auditoría de contraseña:",
-                errorAuditoria
-            );
+            console.error("Error registrando auditoría de contraseña:", errorAuditoria);
         }
 
-        res.status(200).json({
-            mensaje: "Clave actualizada correctamente."
-        });
+        res.status(200).json({ mensaje: "Clave actualizada correctamente." });
     } catch (error) {
         console.error("Error al cambiar la clave:", error);
-
-        res.status(500).json({
-            mensaje: "Error al cambiar la clave."
-        });
+        res.status(500).json({ mensaje: "Error al cambiar la clave." });
     }
 };

@@ -183,6 +183,17 @@
     </div>
   </div>
 
+  <div id="accessibility-widget" class="accessibility-widget">
+    <button id="accessibility-toggle" class="accessibility-toggle" aria-expanded="false" aria-controls="accessibility-menu" aria-label="Abrir opciones de accesibilidad">
+      <i class="bi bi-universal-access"></i>
+    </button>
+    <div id="accessibility-menu" class="accessibility-menu hidden" role="menu" aria-label="Controles de accesibilidad">
+      <button type="button" id="btn-toggle-theme" class="accessibility-action" role="menuitem">Modo oscuro</button>
+      <button type="button" id="btn-toggle-contrast" class="accessibility-action" role="menuitem">Alto contraste</button>
+      <button type="button" id="btn-toggle-font" class="accessibility-action" role="menuitem">Letra grande</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="../modules/dashboard.js"></script>

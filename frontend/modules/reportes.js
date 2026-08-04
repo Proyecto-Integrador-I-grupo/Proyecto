@@ -151,10 +151,44 @@ function actualizarEtiquetasModo(modo) {
   if (title) title.innerHTML = `<i class="bi bi-bar-chart"></i> ${labels[modo] || labels.matricula}`;
 }
 
+function limpiarTextoReporte(texto = '', maxLength = 120) {
+  return String(texto || '').trim().slice(0, maxLength);
+}
+
+function validarFiltrosReporte() {
+  const filtros = obtenerFiltrosActivos();
+  const busqueda = limpiarTextoReporte(filtros.busqueda, 120);
+  const fechaDesde = filtros.fechaDesde || '';
+  const fechaHasta = filtros.fechaHasta || '';
+
+  if (busqueda && !/^[a-zA-ZÀ-ÿ0-9\s._-]+$/.test(busqueda)) {
+    showToast('La búsqueda solo puede contener letras, números, espacios, puntos, guiones y guiones bajos.', 'error');
+    return null;
+  }
+
+  if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+    showToast('La fecha de inicio no puede ser mayor que la fecha fin.', 'error');
+    return null;
+  }
+
+  if (filtros.idGrupo && Number.isNaN(Number(filtros.idGrupo))) {
+    showToast('El grupo seleccionado no es válido.', 'error');
+    return null;
+  }
+
+  return {
+    ...filtros,
+    busqueda,
+    fechaDesde,
+    fechaHasta,
+    estado: filtros.estado || ''
+  };
+}
+
 function obtenerFiltrosActivos() {
   return {
     idGrupo: document.getElementById('report-filtro-grupo')?.value || '',
-    busqueda: document.getElementById('report-filtro-busqueda')?.value.trim() || '',
+    busqueda: limpiarTextoReporte(document.getElementById('report-filtro-busqueda')?.value || '', 120),
     tipoReporte: document.getElementById('report-filtro-tipo')?.value || 'resumen',
     estado: document.getElementById('report-filtro-estado')?.value || '',
     fechaDesde: document.getElementById('report-filtro-fecha-desde')?.value || '',
@@ -510,10 +544,12 @@ function poblarFiltroGrupoReportes() {
 }
 
 async function cargarReporteResumen() {
-  const filtros = obtenerFiltrosActivos();
+  const filtrosValidos = validarFiltrosReporte();
+  if (!filtrosValidos) return;
+
   const params = new URLSearchParams();
   const modo = obtenerModoReporteActivo();
-  const { idGrupo, busqueda, tipoReporte, estado, fechaDesde, fechaHasta } = filtros;
+  const { idGrupo, busqueda, tipoReporte, estado, fechaDesde, fechaHasta } = filtrosValidos;
 
   params.set('modo', modo);
   if (idGrupo) params.set('id_grupo', idGrupo);
@@ -549,14 +585,23 @@ function renderReporteResumen(data) {
   const grupos = data?.detalle_por_grupo || [];
   const modo = obtenerModoReporteActivo();
 
-  document.getElementById('report-total-estudiantes').textContent = resumen.total_estudiantes ?? 0;
-  document.getElementById('report-total-profesores').textContent = resumen.total_profesores ?? 0;
-  document.getElementById('report-total-grupos').textContent = resumen.total_grupos ?? 0;
-  document.getElementById('report-tasa-presentismo').textContent = `${resumen.tasa_presentismo ?? 0}%`;
-  document.getElementById('report-presentes').textContent = resumen.presentes ?? 0;
-  document.getElementById('report-ausentes').textContent = resumen.ausentes ?? 0;
-  document.getElementById('report-tardias').textContent = resumen.tardias ?? 0;
-  document.getElementById('report-justificadas').textContent = resumen.justificadas ?? 0;
+  const totalEstudiantesEl = document.getElementById('report-total-estudiantes');
+  const totalProfesoresEl = document.getElementById('report-total-profesores');
+  const totalGruposEl = document.getElementById('report-total-grupos');
+  const tasaPresentismoEl = document.getElementById('report-tasa-presentismo');
+  const presentesEl = document.getElementById('report-presentes');
+  const ausentesEl = document.getElementById('report-ausentes');
+  const tardiasEl = document.getElementById('report-tardias');
+  const justificadasEl = document.getElementById('report-justificadas');
+
+  if (totalEstudiantesEl) totalEstudiantesEl.textContent = resumen.total_estudiantes ?? 0;
+  if (totalProfesoresEl) totalProfesoresEl.textContent = resumen.total_profesores ?? 0;
+  if (totalGruposEl) totalGruposEl.textContent = resumen.total_grupos ?? 0;
+  if (tasaPresentismoEl) tasaPresentismoEl.textContent = `${resumen.tasa_presentismo ?? 0}%`;
+  if (presentesEl) presentesEl.textContent = resumen.presentes ?? 0;
+  if (ausentesEl) ausentesEl.textContent = resumen.ausentes ?? 0;
+  if (tardiasEl) tardiasEl.textContent = resumen.tardias ?? 0;
+  if (justificadasEl) justificadasEl.textContent = resumen.justificadas ?? 0;
 
   const header = document.querySelector('#reportes-view thead tr');
   if (header) {

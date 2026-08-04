@@ -8,7 +8,7 @@ let currentUser = null;
 let views = [];
 let appViewsReady = false;
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
-let accessibilitySettings = { isDark: false, highContrast: false, largeText: false };
+let accessibilitySettings = { isDark: false, highContrast: false, fontSize: 100 };
 
 window.addEventListener('DOMContentLoaded', () => {
   wireLoginScreen();
@@ -41,6 +41,8 @@ function wireLoginScreen() {
     input.type = showing ? 'password' : 'text';
     icon?.classList.toggle('bi-eye', showing);
     icon?.classList.toggle('bi-eye-slash', !showing);
+    togglePassword.setAttribute('aria-pressed', String(!showing));
+    togglePassword.setAttribute('aria-label', showing ? 'Mostrar contraseña' : 'Ocultar contraseña');
   });
 
   document.getElementById('logout-btn')?.addEventListener('click', logout);
@@ -237,9 +239,36 @@ function initApp() {
   });
 
   wireUsuariosForm();
+  wireSidebarToggle();
   initAccessibilityWidget();
   setActiveView('dashboard');
   refreshDashboardCounts();
+}
+
+function wireSidebarToggle() {
+  const toggle = document.getElementById('sidebar-toggle');
+  const icon = toggle?.querySelector('i');
+  const sidebar = document.querySelector('.sidebar');
+  if (!toggle || !sidebar || !icon) return;
+
+  const updateToggleState = () => {
+    const isOpen = sidebar.classList.contains('open');
+    icon.className = isOpen ? 'bi bi-x-lg' : 'bi bi-list';
+    toggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
+  };
+
+  toggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    updateToggleState();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (window.innerWidth > 880) return;
+    if (!sidebar.classList.contains('open')) return;
+    if (toggle.contains(event.target) || sidebar.contains(event.target)) return;
+    sidebar.classList.remove('open');
+    updateToggleState();
+  });
 }
 
 function setActiveView(viewName) {
@@ -285,6 +314,10 @@ function setActiveView(viewName) {
   if (viewName === 'asistencia') loadAsistenciaData();
   if (viewName === 'reportes') loadReportesData();
   if (viewName === 'usuarios') loadUsuariosData();
+
+  if (window.innerWidth <= 880) {
+    document.querySelector('.sidebar')?.classList.remove('open');
+  }
 }/* ==========================================
    3. MÓDULO DE USUARIOS Y PERMISOS
    ========================================== */
@@ -458,9 +491,10 @@ function initAccessibilityWidget() {
   const menu = document.getElementById('accessibility-menu');
   const themeBtn = document.getElementById('btn-toggle-theme');
   const contrastBtn = document.getElementById('btn-toggle-contrast');
-  const fontBtn = document.getElementById('btn-toggle-font');
+  const fontRange = document.getElementById('font-size-range');
+  const fontValue = document.getElementById('font-size-value');
 
-  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontBtn) return;
+  if (!toggleBtn || !menu || !themeBtn || !contrastBtn || !fontRange || !fontValue) return;
 
   toggleBtn.addEventListener('click', () => {
     const isHidden = menu.classList.toggle('hidden');
@@ -477,8 +511,9 @@ function initAccessibilityWidget() {
     applyAccessibilitySettings();
   });
 
-  fontBtn.addEventListener('click', () => {
-    accessibilitySettings.largeText = !accessibilitySettings.largeText;
+  fontRange.addEventListener('input', () => {
+    accessibilitySettings.fontSize = parseInt(fontRange.value, 10);
+    fontValue.textContent = `${accessibilitySettings.fontSize}%`;
     applyAccessibilitySettings();
   });
 
@@ -496,15 +531,15 @@ function initAccessibilityWidget() {
     }
   });
 
-  updateAccessibilityButtons();
+  updateAccessibilityControls();
 }
 
 function applyAccessibilitySettings() {
   document.body.classList.toggle('theme-dark', accessibilitySettings.isDark);
   document.body.classList.toggle('high-contrast', accessibilitySettings.highContrast);
-  document.body.classList.toggle('large-text', accessibilitySettings.largeText);
+  document.body.style.fontSize = `${accessibilitySettings.fontSize}%`;
   localStorage.setItem(ACCESSIBILITY_KEY, JSON.stringify(accessibilitySettings));
-  updateAccessibilityButtons();
+  updateAccessibilityControls();
 }
 
 function restoreAccessibilitySettings() {
@@ -522,17 +557,18 @@ function restoreAccessibilitySettings() {
   applyAccessibilitySettings();
 }
 
-function updateAccessibilityButtons() {
+function updateAccessibilityControls() {
   const themeBtn = document.getElementById('btn-toggle-theme');
   const contrastBtn = document.getElementById('btn-toggle-contrast');
-  const fontBtn = document.getElementById('btn-toggle-font');
-  if (!themeBtn || !contrastBtn || !fontBtn) return;
+  const fontRange = document.getElementById('font-size-range');
+  const fontValue = document.getElementById('font-size-value');
+  if (!themeBtn || !contrastBtn || !fontRange || !fontValue) return;
 
   themeBtn.textContent = accessibilitySettings.isDark ? 'Modo claro' : 'Modo oscuro';
   contrastBtn.textContent = accessibilitySettings.highContrast ? 'Contraste normal' : 'Alto contraste';
-  fontBtn.textContent = accessibilitySettings.largeText ? 'Letra normal' : 'Letra grande';
+  fontRange.value = accessibilitySettings.fontSize;
+  fontValue.textContent = `${accessibilitySettings.fontSize}%`;
 
   themeBtn.classList.toggle('accessibility-action-active', accessibilitySettings.isDark);
   contrastBtn.classList.toggle('accessibility-action-active', accessibilitySettings.highContrast);
-  fontBtn.classList.toggle('accessibility-action-active', accessibilitySettings.largeText);
 }

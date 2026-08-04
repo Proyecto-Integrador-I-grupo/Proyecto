@@ -6,5 +6,5 @@ const router = Router();
 router.get("/", getSecciones);
 router.post("/", createSeccion);
 router.delete("/:id", deleteSeccion);
-
+//cambios git
 export default router;

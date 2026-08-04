@@ -39,7 +39,7 @@
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-lock"></i></span>
             <input id="login-contrasena" type="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
-            <button type="button" id="toggle-password" class="btn btn-outline-secondary" tabindex="-1">
+            <button type="button" id="toggle-password" class="btn btn-outline-secondary" aria-label="Mostrar contraseña" aria-controls="login-contrasena" aria-pressed="false">
               <i class="bi bi-eye"></i>
             </button>
           </div>
@@ -131,9 +131,14 @@
     <div class="flex-grow-1 d-flex flex-column overflow-hidden">
 
       <header class="topbar d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
-        <div>
-          <p class="eyebrow mb-0">Gestión Académica</p>
-          <h1 id="view-title" class="h4 mb-0">Dashboard</h1>
+        <div class="d-flex align-items-center gap-2">
+          <button id="sidebar-toggle" class="btn btn-sm btn-outline-secondary d-lg-none" type="button" aria-label="Abrir menú">
+            <i class="bi bi-list"></i>
+          </button>
+          <div>
+            <p class="eyebrow mb-0">Gestión Académica</p>
+            <h1 id="view-title" class="h4 mb-0">Dashboard</h1>
+          </div>
         </div>
         <div class="d-flex align-items-center gap-3">
           <div id="assistant-permission-notice" class="asistente-notice hidden">
@@ -190,7 +195,10 @@
     <div id="accessibility-menu" class="accessibility-menu hidden" role="menu" aria-label="Controles de accesibilidad">
       <button type="button" id="btn-toggle-theme" class="accessibility-action" role="menuitem">Modo oscuro</button>
       <button type="button" id="btn-toggle-contrast" class="accessibility-action" role="menuitem">Alto contraste</button>
-      <button type="button" id="btn-toggle-font" class="accessibility-action" role="menuitem">Letra grande</button>
+      <div class="accessibility-control" role="group" aria-label="Ajustar tamaño de letra">
+        <label for="font-size-range" class="accessibility-control-label">Tamaño: <span id="font-size-value">100%</span></label>
+        <input type="range" id="font-size-range" class="accessibility-range" min="90" max="160" step="5" value="100" aria-valuemin="90" aria-valuemax="160" aria-valuenow="100" />
+      </div>
     </div>
   </div>
 

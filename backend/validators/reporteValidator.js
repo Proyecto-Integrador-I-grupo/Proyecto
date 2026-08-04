@@ -15,24 +15,6 @@ const validarRangoFechas = (fechaInicio, { req }) => {
     return true;
 };
 
-const validarBusquedaReporte = (valor, { req }) => {
-    const busqueda = String(req.query?.busqueda || "").trim();
-
-    if (!busqueda) {
-        return true;
-    }
-
-    if (busqueda.length > 120) {
-        throw new Error("La búsqueda no puede superar 120 caracteres.");
-    }
-
-    if (!/^[a-zA-ZÀ-ÿ0-9\s._-]+$/.test(busqueda)) {
-        throw new Error("La búsqueda solo puede contener letras, números, espacios, puntos, guiones y guiones bajos.");
-    }
-
-    return true;
-};
-
 export const reporteRules = [
     query("fecha_inicio")
         .optional({ nullable: true })
@@ -60,7 +42,6 @@ export const reporteRules = [
         .trim()
         .isLength({ min: 1, max: 120 })
         .withMessage("La búsqueda debe contener entre 1 y 120 caracteres."),
-    query().custom(validarBusquedaReporte),
     query("tipo_reporte")
         .optional({ nullable: true })
         .isIn(["resumen", "detalle", "individual", "grupo"])

@@ -62,6 +62,7 @@ export async function registrarAsistenciaProceso(datos) {
 
 /**
  * Lista asistencias con soporte para filtros y restricción de seguridad si el usuario es profesor.
+ * NUEVO: soporta filtro por "materia" (curso) y devuelve materia_curso en cada registro.
  */
 export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   const {
@@ -71,14 +72,15 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     estado_asistencia,
     fecha_inicio,
     fecha_fin,
-    busqueda
+    busqueda,
+    materia
   } = filtros;
 
   const condiciones = ["a.estado = TRUE"];
   const valores = [];
 
   const rol = (usuarioActual?.nom_rol || "").toLowerCase();
-  
+
   // CORRECCIÓN: Si es profesor, restringir estrictamente por sus registros (a.id_profesor)
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
@@ -121,6 +123,12 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
     valores.push(fecha_fin);
   }
 
+  // NUEVO: filtro por materia/curso (columna materia vive en la tabla `profesor`, alias `prof`)
+  if (materia && materia.trim()) {
+    condiciones.push("prof.materia = ?");
+    valores.push(materia.trim());
+  }
+
   if (busqueda && busqueda.trim()) {
     condiciones.push("(pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ?)");
     const like = `%${busqueda.trim()}%`;
@@ -141,7 +149,8 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
         pe.apellido2      AS estudiante_apellido2,
         g.nombre_grupo,
         pr.nombre         AS profesor_nombre,
-        pr.apellido1      AS profesor_apellido1
+        pr.apellido1      AS profesor_apellido1,
+        prof.materia      AS materia_curso
      FROM asistencia a
      INNER JOIN estudiante e   ON a.id_estudiante = e.id_estudiante
      INNER JOIN persona pe     ON e.id_persona = pe.id_persona

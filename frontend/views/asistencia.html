@@ -68,6 +68,12 @@
             </select>
           </div>
           <div class="col-6 col-md-2">
+            <label class="form-label">Materia/Curso</label>
+            <select id="hist-filtro-materia" class="form-select form-select-sm">
+              <option value="">Todas las materias</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
             <label class="form-label">Estado</label>
             <select id="hist-filtro-estado" class="form-select form-select-sm">
               <option value="">Todos</option>
@@ -108,13 +114,14 @@
               <th>Estudiante</th>
               <th>Grupo</th>
               <th>Profesor</th>
+              <th>Materia/Curso</th>
               <th>Estado</th>
               <th>Observaciones</th>
               <th class="text-end">Acciones</th>
             </tr>
           </thead>
           <tbody id="asistencia-historial-body">
-            <tr><td colspan="7" class="text-center py-4 text-muted">Cargando historial...</td></tr>
+            <tr><td colspan="8" class="text-center py-4 text-muted">Cargando historial...</td></tr>
           </tbody>
         </table>
       </div>

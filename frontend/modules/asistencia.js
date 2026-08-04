@@ -59,6 +59,13 @@ function wireAsistenciaEvents() {
     histEstudianteSel.addEventListener('change', cargarHistorialAsistencia);
   }
 
+  // NUEVO: filtro de Materia/Curso
+  const histMateriaSel = document.getElementById('hist-filtro-materia');
+  if (histMateriaSel && !histMateriaSel.dataset.wired) {
+    histMateriaSel.dataset.wired = '1';
+    histMateriaSel.addEventListener('change', cargarHistorialAsistencia);
+  }
+
   const histEstadoSel = document.getElementById('hist-filtro-estado');
   if (histEstadoSel && !histEstadoSel.dataset.wired) {
     histEstadoSel.dataset.wired = '1';
@@ -94,6 +101,7 @@ function wireAsistenciaEvents() {
       if (histGrupoSel) histGrupoSel.value = '';
       await poblarFiltroEstudiantesHistorial('');
       if (histEstudianteSel) histEstudianteSel.value = '';
+      if (histMateriaSel) histMateriaSel.value = '';
       if (histEstadoSel) histEstadoSel.value = '';
       if (histDesde) histDesde.value = '';
       if (histHasta) histHasta.value = '';
@@ -144,6 +152,7 @@ async function loadAsistenciaData() {
   await cargarRosterGrupoAsistencia();
   poblarFiltroGrupoHistorial();
   await poblarFiltroEstudiantesHistorial('');
+  await poblarFiltroMateriaHistorial();
   await cargarHistorialAsistencia();
 }
 
@@ -278,12 +287,33 @@ async function poblarFiltroEstudiantesHistorial(idGrupo) {
   }
 }
 
+/**
+ * NUEVO: Puebla el filtro "Materia/Curso" del historial con las materias
+ * distintas registradas actualmente en la tabla profesor.
+ */
+async function poblarFiltroMateriaHistorial() {
+  const sel = document.getElementById('hist-filtro-materia');
+  if (!sel) return;
+  const valorActual = sel.value;
+  sel.innerHTML = '<option value="">Todas las materias</option>';
+  try {
+    const res = await apiFetch('/api/procesos/materias');
+    if (!res.ok) return;
+    const materias = await res.json();
+    materias.forEach((m) => sel.add(new Option(m, m)));
+    sel.value = valorActual || '';
+  } catch (e) {
+    console.error('Error cargando materias para filtro', e);
+  }
+}
+
 async function cargarHistorialAsistencia() {
   const tbody = document.getElementById('asistencia-historial-body');
   if (!tbody) return;
 
   const idGrupo = document.getElementById('hist-filtro-grupo')?.value || '';
   const idEstudiante = document.getElementById('hist-filtro-estudiante')?.value || '';
+  const materia = document.getElementById('hist-filtro-materia')?.value || '';
   const estado = document.getElementById('hist-filtro-estado')?.value || '';
   const fechaDesde = document.getElementById('hist-filtro-fecha-desde')?.value || '';
   const fechaHasta = document.getElementById('hist-filtro-fecha-hasta')?.value || '';
@@ -292,12 +322,13 @@ async function cargarHistorialAsistencia() {
   const params = new URLSearchParams();
   if (idGrupo) params.set('id_grupo', idGrupo);
   if (idEstudiante) params.set('id_estudiante', idEstudiante);
+  if (materia) params.set('materia', materia);
   if (estado) params.set('estado_asistencia', estado);
   if (fechaDesde) params.set('fecha_inicio', fechaDesde);
   if (fechaHasta) params.set('fecha_fin', fechaHasta);
   if (busqueda) params.set('busqueda', busqueda);
 
-  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Cargando historial...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Cargando historial...</td></tr>';
 
   try {
     const res = await apiFetch(`/api/procesos/asistencia?${params.toString()}`);
@@ -306,7 +337,7 @@ async function cargarHistorialAsistencia() {
     renderHistorialAsistencia(registros);
     actualizarGraficosAsistencia(registros);
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
     actualizarGraficosAsistencia([]);
   }
 }
@@ -319,7 +350,7 @@ function renderHistorialAsistencia(registros) {
   if (!registros.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center py-5">
+        <td colspan="8" class="text-center py-5">
           <i class="bi bi-calendar-x display-6 text-muted d-block mb-2"></i>
           <span class="text-muted">No hay registros de asistencia con estos filtros.</span>
         </td>
@@ -340,6 +371,7 @@ function renderHistorialAsistencia(registros) {
     const idAsis = r.id_asistencia ?? r.id;
     const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
     const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
+    const materiaCurso = r.materia_curso ?? '-';
     const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
     const estado = (r.estado_asistencia || '').toLowerCase();
     const etiqueta = etiquetasEstado[estado] || r.estado_asistencia || '-';
@@ -351,6 +383,7 @@ function renderHistorialAsistencia(registros) {
       <td class="fw-semibold">${estudiante || '-'}</td>
       <td>${r.nombre_grupo ?? '-'}</td>
       <td>${profesor || '-'}</td>
+      <td>${materiaCurso}</td>
       <td><span class="attendance-badge attendance-${estado}">${etiqueta}</span></td>
       <td class="observaciones-cell" title="${observaciones}">${observaciones}</td>
       <td class="text-end">

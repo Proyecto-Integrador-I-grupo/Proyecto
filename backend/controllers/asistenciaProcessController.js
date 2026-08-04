@@ -48,6 +48,7 @@ export async function obtenerAsistencias(req, res) {
 
       // CORRECCIÓN: Filtrar directamente por el id_profesor registrado en la asistencia (a.id_profesor)
       // para que cada docente vea ÚNICAMENTE las asistencias tomadas en sus respectivas materias.
+      // NUEVO: se incluye prof.materia AS materia_curso para mostrar el curso/materia en la tabla.
       const queryProfesorAsistencias = `
         SELECT DISTINCT
             a.id_asistencia,
@@ -62,7 +63,8 @@ export async function obtenerAsistencias(req, res) {
             pe.apellido2      AS estudiante_apellido2,
             g.nombre_grupo,
             pr.nombre         AS profesor_nombre,
-            pr.apellido1      AS profesor_apellido1
+            pr.apellido1      AS profesor_apellido1,
+            prof.materia      AS materia_curso
         FROM asistencia a
         INNER JOIN estudiante e   ON a.id_estudiante = e.id_estudiante
         INNER JOIN persona pe     ON e.id_persona = pe.id_persona
@@ -120,5 +122,21 @@ export async function actualizarAsistencia(req, res) {
   } catch (error) {
     console.error("Error al actualizar asistencia:", error);
     return res.status(400).json({ mensaje: error.message });
+  }
+}
+
+/**
+ * NUEVO: Devuelve la lista de materias distintas registradas en la tabla profesor,
+ * usada para poblar el filtro "Materia/Curso" del historial de asistencia.
+ */
+export async function obtenerMateriasDisponibles(req, res) {
+  try {
+    const [filas] = await db.query(
+      `SELECT DISTINCT materia FROM profesor WHERE estado = TRUE AND materia IS NOT NULL AND materia <> '' ORDER BY materia`
+    );
+    return res.status(200).json(filas.map((f) => f.materia));
+  } catch (error) {
+    console.error("Error al obtener materias:", error);
+    return res.status(500).json({ mensaje: error.message });
   }
 }

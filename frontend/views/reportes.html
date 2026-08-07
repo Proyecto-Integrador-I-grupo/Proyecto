@@ -13,6 +13,8 @@
             <button type="button" class="btn btn-sm" data-report-mode="estudiantes"><i class="bi bi-people-fill"></i> Estudiantes</button>
             <button type="button" class="btn btn-sm" data-report-mode="grupos"><i class="bi bi-diagram-3"></i> Grupos</button>
             <button type="button" class="btn btn-sm" data-report-mode="profesores"><i class="bi bi-person-badge"></i> Profesores</button>
+            <button type="button" class="btn btn-sm" data-report-mode="pre_matricula"><i class="bi bi-person-plus-fill"></i> Pre-matrículas</button>
+            <button type="button" class="btn btn-sm" data-report-mode="auditoria"><i class="bi bi-shield-check"></i> Auditoría</button>
           </div>
         </div>
 
@@ -25,7 +27,7 @@
               </select>
             </div>
             <div class="col-12 col-md-3 report-filter-field" data-filter="busqueda">
-              <label class="form-label">Estudiante / Cédula</label>
+              <label id="report-busqueda-label" class="form-label">Estudiante / Cédula</label>
               <input id="report-filtro-busqueda" type="text" class="form-control form-control-sm" placeholder="Nombre, apellido o cédula">
             </div>
             <div class="col-12 col-md-2 report-filter-field" data-filter="tipo">
@@ -65,57 +67,6 @@
             <button type="button" id="report-limpiar" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockclockwise"></i> Limpiar</button>
             <button type="button" id="report-vista-previa" class="btn btn-outline-info btn-sm"><i class="bi bi-eye"></i> Vista previa</button>
             <button type="button" id="report-imprimir-pdf" class="btn btn-success btn-sm"><i class="bi bi-printer"></i> Imprimir PDF</button>
-          </div>
-        </div>
-
-        <div class="row g-2 mb-3">
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Estudiantes</span>
-              <div class="stat-value" id="report-total-estudiantes">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Profesores</span>
-              <div class="stat-value" id="report-total-profesores">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Grupos</span>
-              <div class="stat-value" id="report-total-grupos">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Presentismo</span>
-              <div class="stat-value" id="report-tasa-presentismo">0%</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Presentes</span>
-              <div class="stat-value" id="report-presentes">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Ausentes</span>
-              <div class="stat-value" id="report-ausentes">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Tardías</span>
-              <div class="stat-value" id="report-tardias">0</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3 col-xl-2">
-            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
-              <span class="stat-label">Justificadas</span>
-              <div class="stat-value" id="report-justificadas">0</div>
-            </div>
           </div>
         </div>
 
@@ -165,9 +116,12 @@
   <div class="modal-dialog modal-dialog-scrollable modal-xl">
     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
       <div class="modal-header bg-navy text-white px-4 py-3">
-        <div>
+        <div class="d-flex align-items-center gap-3">
+          <img id="preview-reporte-logo" src="../images/logo.jpg" alt="Logo EduControl" class="preview-reporte-logo" loading="lazy">
+          <div>
           <span class="small text-white-50 d-block mb-1">Vista previa del reporte</span>
           <h5 id="preview-reporte-titulo" class="modal-title h6 text-white mb-0">Reporte académico</h5>
+          </div>
         </div>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>

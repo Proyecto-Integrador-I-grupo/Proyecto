@@ -260,7 +260,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
     );
 
     const [pendientes] = await connection.query(
-      `SELECT ps.id_suplencia, ps.id_grupo, ps.id_profesor_suplente, g.estado AS grupo_activo
+      `SELECT ps.id_suplencia, ps.id_grupo, ps.id_profesor_suplente, ps.fecha_inicio, g.estado AS grupo_activo
        FROM profesor_suplencia ps
        INNER JOIN grupo g ON g.id_grupo = ps.id_grupo
        WHERE ps.id_profesor_titular = ? AND ps.estado = TRUE`,
@@ -269,6 +269,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
 
     const gruposRestaurados = [];
     const gruposOmitidos = [];
+    let asistenciasReasignadas = 0;
 
     for (const p of pendientes) {
       // El grupo ya no existe / fue desactivado: no hay a dónde restaurarlo.
@@ -289,6 +290,22 @@ export const reintegrarProfesorService = async (id_profesor) => {
            WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())`,
           [p.id_grupo, p.id_profesor_suplente]
         );
+
+        // NUEVO: reasignar al titular las asistencias que tomó el suplente
+        // durante la ventana real de esta suplencia (fecha_inicio -> hoy).
+        // El trigger trg_asistencia_after_update ya registra esto en `auditoria`
+        // fila por fila (OLD.id_profesor = suplente, NEW.id_profesor = titular),
+        // así que no hace falta auditar esto manualmente aquí.
+        const [reasignadas] = await connection.query(
+          `UPDATE asistencia
+           SET id_profesor = ?
+           WHERE id_grupo = ? 
+             AND id_profesor = ? 
+             AND fecha BETWEEN ? AND CURDATE()
+             AND estado = TRUE`,
+          [id_profesor, p.id_grupo, p.id_profesor_suplente, p.fecha_inicio]
+        );
+        asistenciasReasignadas += reasignadas.affectedRows;
       }
 
       // Se restaura al titular en su grupo original.
@@ -311,6 +328,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
       id_profesor,
       grupos_restaurados: gruposRestaurados,
       grupos_omitidos: gruposOmitidos,
+      asistencias_reasignadas: asistenciasReasignadas,
       mensaje: "Profesor reintegrado exitosamente"
     };
   } catch (error) {

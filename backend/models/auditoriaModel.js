@@ -66,12 +66,18 @@ export const crearAuditoria = async (auditoria, idUsuario) => {
         VALUES (?, ?, ?, ?, NOW(), NOW(), ?);
     `;
 
+    // Las columnas datos_anteriores/datos_nuevos son de tipo JSON en MySQL.
+    // Un string vacío ("") NO es JSON válido y hace fallar el INSERT, así que
+    // cualquier valor vacío/nulo debe guardarse como NULL real, nunca como "".
+    const datosAnteriores = auditoria.datos_anteriores ? auditoria.datos_anteriores : null;
+    const datosNuevos = auditoria.datos_nuevos ? auditoria.datos_nuevos : null;
+
     const resultado = await queryConSesion(sql, [
 
         auditoria.nombre_tabla,
         auditoria.accion_usuario,
-        auditoria.datos_anteriores ?? "",
-        auditoria.datos_nuevos ?? "",
+        datosAnteriores,
+        datosNuevos,
         idUsuario
 
     ], idUsuario);

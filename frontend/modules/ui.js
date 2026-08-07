@@ -146,41 +146,36 @@ function renderUserInfo() {
   const esProfesor = rolNormalizado === 'profesor';
   const rolClase = esAdmin ? 'role-badge-admin' : (esProfesor ? 'role-badge-profesor' : 'role-badge-asistente');
 
-  // Nombres de usuario
-  ['sidebar-user-name', 'topbar-user-name'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = nombreCompleto;
-  });
+  // Nombre de usuario
+  const nombreEl = document.getElementById('sidebar-user-name');
+  if (nombreEl) nombreEl.textContent = nombreCompleto;
 
   // Avatares / Fotos de perfil
   const claveFoto = `educontrol-perfil-foto-${currentUser.id_usuario}`;
   const fotoGuardada = localStorage.getItem(claveFoto);
   const fotoFinal = currentUser.foto || fotoGuardada;
 
-  ['sidebar-avatar', 'topbar-avatar'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (avatarEl) {
     if (fotoFinal) {
-      if (el.tagName === 'IMG') {
-        el.src = fotoFinal;
+      if (avatarEl.tagName === 'IMG') {
+        avatarEl.src = fotoFinal;
       } else {
-        el.style.backgroundImage = `url("${fotoFinal}")`;
-        el.style.backgroundSize = 'cover';
-        el.style.backgroundPosition = 'center';
-        el.textContent = '';
+        avatarEl.style.backgroundImage = `url("${fotoFinal}")`;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+        avatarEl.textContent = '';
       }
     } else {
-      el.textContent = iniciales;
+      avatarEl.textContent = iniciales;
     }
-  });
+  }
 
-  [['sidebar-role-badge', rol], ['topbar-role-badge', rol]].forEach(([id, text]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text;
-    el.className = `role-badge ${rolClase}`;
-  });
+  const rolBadgeEl = document.getElementById('sidebar-role-badge');
+  if (rolBadgeEl) {
+    rolBadgeEl.textContent = rol;
+    rolBadgeEl.className = `role-badge ${rolClase}`;
+  }
 
   document.body.classList.toggle('is-admin', esAdmin);
   document.body.classList.toggle('is-asistente', !esAdmin && !esProfesor);

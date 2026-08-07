@@ -35,6 +35,12 @@
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.report-filter-field[data-filter="fecha-desde"] input,
+.report-filter-field[data-filter="fecha-hasta"] input {
+  min-width: 138px;
+  font-variant-numeric: tabular-nums;
+}
+
 .report-filter-field.is-hidden {
   display: none;
 }

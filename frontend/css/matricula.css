@@ -25,3 +25,21 @@
 #modalGrupo input[type="text"]:focus {
   background-color: #FFFFFF;
 }
+
+@media (max-width: 640px) {
+  #modalMatricula input[type="text"],
+  #modalGrupo input[type="text"] {
+    font-size: 16px;
+  }
+}
+
+@media (hover: none) {
+  #matricula-view .card:hover {
+    transform: none;
+    box-shadow: none !important;
+  }
+
+  #matricula-view .card:hover .bi {
+    transform: none;
+  }
+}

@@ -13,6 +13,18 @@
   border-radius: 0.75rem;
 }
 
+@media (max-width: 640px) {
+  .report-mode-switcher .btn {
+    min-width: 110px;
+    font-size: 13px;
+  }
+
+  .report-stat-card,
+  .preview-reporte-body .stat-card {
+    min-height: auto;
+  }
+}
+
 .report-mode-switcher .btn.active {
   background: linear-gradient(135deg, var(--accent), #1d4ed8);
   color: #fff;

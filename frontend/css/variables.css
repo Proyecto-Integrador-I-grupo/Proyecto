@@ -35,10 +35,16 @@
   --role-profesor-soft: #EDE9FE;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   background-color: var(--bs-body-bg);
   color: var(--text-primary);
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body.theme-dark,
@@ -134,7 +140,6 @@ body.theme-dark .btn-outline-danger {
   background-color: #111827 !important;
   color: #FFFFFF !important;
   border-color: #334155 !important;
-}
 }
 
 body.large-text {

@@ -61,3 +61,14 @@
 .action-btn + .action-btn {
   margin-left: 6px;
 }
+
+@media (max-width: 640px) {
+  #profesores-table th,
+  #profesores-table td {
+    white-space: nowrap;
+  }
+
+  .profesor-actions-inline .btn {
+    padding: 0.35rem 0.55rem;
+  }
+}

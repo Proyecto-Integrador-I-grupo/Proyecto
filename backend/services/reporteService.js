@@ -1,7 +1,7 @@
 import pool from "../config/database.js";
 
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
-const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores"]);
+const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]);
 const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
 function normalizarEstado(estado) {
@@ -213,11 +213,16 @@ function construirDetallePorProfesor(detalle = []) {
         const idProfesor = registro.id_profesor ?? registro.profesor_id ?? "sin-id";
         const key = `profesor-${idProfesor}`;
         if (!mapa.has(key)) {
+            const profesorEstado = registro.profesor_estado ?? registro.estado ?? registro.estado_profesor ?? 1;
+            const materia = registro.materia_curso || registro.materia || registro.materia_profesor || "-";
             mapa.set(key, {
                 id_profesor: idProfesor,
                 profesor_nombre: registro.profesor_nombre || "-",
                 profesor_apellido1: registro.profesor_apellido1 || "",
                 profesor_apellido2: registro.profesor_apellido2 || "",
+                materia: materia,
+                estado: Number(profesorEstado) === 0 || String(profesorEstado).toLowerCase() === "inactivo" ? "Inactivo" : "Activo",
+                grupos_asignados: [],
                 asistencias_registradas: 0,
                 presentes: 0,
                 ausentes: 0,
@@ -229,6 +234,11 @@ function construirDetallePorProfesor(detalle = []) {
 
         const acumulado = mapa.get(key);
         acumulado.asistencias_registradas += 1;
+        const grupoNombre = registro.nombre_grupo || "-";
+        if (grupoNombre && grupoNombre !== "-" && !acumulado.grupos_asignados.includes(grupoNombre)) {
+            acumulado.grupos_asignados.push(grupoNombre);
+        }
+
         const estado = String(registro.estado_asistencia || "").toLowerCase();
         if (estado === "presente") acumulado.presentes += 1;
         if (estado === "ausente") acumulado.ausentes += 1;
@@ -240,7 +250,10 @@ function construirDetallePorProfesor(detalle = []) {
         const nombreA = `${a.profesor_nombre ?? ""} ${a.profesor_apellido1 ?? ""} ${a.profesor_apellido2 ?? ""}`.trim();
         const nombreB = `${b.profesor_nombre ?? ""} ${b.profesor_apellido1 ?? ""} ${b.profesor_apellido2 ?? ""}`.trim();
         return nombreA.localeCompare(nombreB);
-    });
+    }).map((profesor) => ({
+        ...profesor,
+        grupos: profesor.grupos_asignados.join(", ") || profesor.grupo || "-"
+    }));
 }
 
 export async function generarReporteCaso(filtros = {}) {
@@ -282,6 +295,36 @@ export async function generarReporteCaso(filtros = {}) {
                     fecha_fin: filtrosNormalizados.fecha_fin || ""
                 }
             };
+        case "pre_matricula":
+            return {
+                modo,
+                resumen: resumen?.resumen || {},
+                detalle_por_grupo: resumen?.detalle_por_grupo || [],
+                detalle: detalleArray,
+                filtros: {
+                    id_grupo: filtrosNormalizados.id_grupo || "",
+                    id_estudiante: filtrosNormalizados.id_estudiante || "",
+                    busqueda: filtrosNormalizados.busqueda || "",
+                    estado_asistencia: filtrosNormalizados.estado_asistencia || "",
+                    fecha_inicio: filtrosNormalizados.fecha_inicio || "",
+                    fecha_fin: filtrosNormalizados.fecha_fin || ""
+                }
+            };
+        case "auditoria":
+            return {
+                modo,
+                resumen: resumen?.resumen || {},
+                detalle_por_grupo: resumen?.detalle_por_grupo || [],
+                detalle: detalleArray,
+                filtros: {
+                    id_grupo: filtrosNormalizados.id_grupo || "",
+                    id_estudiante: filtrosNormalizados.id_estudiante || "",
+                    busqueda: filtrosNormalizados.busqueda || "",
+                    estado_asistencia: filtrosNormalizados.estado_asistencia || "",
+                    fecha_inicio: filtrosNormalizados.fecha_inicio || "",
+                    fecha_fin: filtrosNormalizados.fecha_fin || ""
+                }
+            };
         case "grupos":
         case "matricula":
         default:
@@ -305,6 +348,92 @@ export async function generarReporteCaso(filtros = {}) {
 export async function generarReporteResumen(filtros = {}) {
     const filtrosNormalizados = validarFiltrosReporte(filtros);
     const modo = filtrosNormalizados.modo;
+
+    if (modo === "pre_matricula") {
+        const condiciones = [];
+        const valores = [];
+
+        if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
+            condiciones.push(`(
+                pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ? OR CAST(pe.id_persona AS CHAR) LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            )`);
+            const texto = `%${String(filtrosNormalizados.busqueda).trim()}%`;
+            valores.push(texto, texto, texto, texto, texto);
+        }
+
+        const where = condiciones.length ? `AND ${condiciones.join(" AND ")}` : "";
+
+        const [rows] = await pool.query(
+            `SELECT
+                e.id_estudiante,
+                pe.nombre,
+                pe.apellido1,
+                pe.apellido2,
+                e.estado
+             FROM estudiante e
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             WHERE e.estado = TRUE
+               AND NOT EXISTS (
+                   SELECT 1 FROM grupo_estudiante ge
+                   WHERE ge.id_estudiante = e.id_estudiante
+                     AND ge.estado = TRUE
+               )
+               ${where}
+             ORDER BY e.id_estudiante DESC
+             LIMIT 500`,
+            valores
+        );
+
+        return {
+            modo,
+            resumen: {
+                total_estudiantes: Number(rows.length || 0),
+                total_pre_matriculas: Number(rows.length || 0),
+                total_asistencias: 0,
+                presentes: 0,
+                ausentes: 0,
+                tardias: 0,
+                justificadas: 0,
+                tasa_presentismo: 0
+            },
+            detalle_por_grupo: [
+                {
+                    tipo: "pre_matricula",
+                    total_pre_matriculas: Number(rows.length || 0),
+                    total_estudiantes_activos: Number(rows.length || 0)
+                }
+            ]
+        };
+    }
+
+    if (modo === "auditoria") {
+        const [rows] = await pool.query(
+            `SELECT
+                COUNT(*) AS total_auditorias
+             FROM auditoria`
+        );
+
+        return {
+            modo,
+            resumen: {
+                total_auditorias: Number(rows[0]?.total_auditorias || 0),
+                total_registros: Number(rows[0]?.total_auditorias || 0),
+                total_asistencias: 0,
+                presentes: 0,
+                ausentes: 0,
+                tardias: 0,
+                justificadas: 0,
+                tasa_presentismo: 0
+            },
+            detalle_por_grupo: [
+                {
+                    tipo: "auditoria",
+                    total_auditorias: Number(rows[0]?.total_auditorias || 0)
+                }
+            ]
+        };
+    }
+
     const { condiciones, valores } = construirCondicionesAsistencia(filtrosNormalizados);
 
     const [totales] = await pool.query(
@@ -432,6 +561,92 @@ export async function generarReporteResumen(filtros = {}) {
 export async function generarReporteDetalle(filtros = {}) {
     const filtrosNormalizados = validarFiltrosReporte(filtros);
     const modo = filtrosNormalizados.modo;
+
+    if (modo === "pre_matricula") {
+        const condiciones = [];
+        const valores = [];
+
+        if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
+            condiciones.push(`(
+                pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ? OR CAST(pe.id_persona AS CHAR) LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            )`);
+            const texto = `%${String(filtrosNormalizados.busqueda).trim()}%`;
+            valores.push(texto, texto, texto, texto, texto);
+        }
+
+        const where = condiciones.length ? `AND ${condiciones.join(" AND ")}` : "";
+
+        const [rows] = await pool.query(
+            `SELECT
+                e.id_estudiante,
+                pe.nombre AS estudiante_nombre,
+                pe.apellido1 AS estudiante_apellido1,
+                pe.apellido2 AS estudiante_apellido2,
+                e.estado,
+                NULL AS nombre_grupo,
+                NULL AS profesor_nombre,
+                NULL AS estado_asistencia,
+                'Pendiente' AS estado_matricula,
+                'Pre-matrícula' AS tipo_reporte
+             FROM estudiante e
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             WHERE e.estado = TRUE
+               AND NOT EXISTS (
+                   SELECT 1 FROM grupo_estudiante ge
+                   WHERE ge.id_estudiante = e.id_estudiante
+                     AND ge.estado = TRUE
+               )
+               ${where}
+             ORDER BY e.id_estudiante DESC
+             LIMIT 500`,
+            valores
+        );
+
+        return {
+            modo,
+            detalle: rows
+        };
+    }
+
+    if (modo === "auditoria") {
+        const condiciones = [];
+        const valores = [];
+
+        if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
+            condiciones.push(`(
+                a.nombre_tabla LIKE ? OR a.accion_usuario LIKE ? OR a.datos_nuevos LIKE ? OR CAST(a.id_usuario AS CHAR) LIKE ?
+            )`);
+            const texto = `%${String(filtrosNormalizados.busqueda).trim()}%`;
+            valores.push(texto, texto, texto, texto);
+        }
+
+        const where = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+
+        const [rows] = await pool.query(
+            `SELECT
+                a.id_auditoria,
+                a.nombre_tabla,
+                a.accion_usuario,
+                a.datos_anteriores,
+                a.datos_nuevos,
+                a.fecha_creacion,
+                a.fecha_modificacion,
+                a.id_usuario,
+                u.nombre_usuario AS usuario_nombre
+             FROM auditoria a
+             LEFT JOIN usuario u ON u.id_usuario = a.id_usuario
+             ${where}
+             ORDER BY a.fecha_creacion DESC
+             LIMIT 500`,
+            valores
+        );
+
+        return {
+            modo,
+            detalle: rows
+        };
+    }
+
     const { condiciones, valores } = construirCondicionesAsistencia(filtrosNormalizados);
 
     const [rows] = await pool.query(
@@ -448,7 +663,9 @@ export async function generarReporteDetalle(filtros = {}) {
             g.nombre_grupo,
             pr.nombre AS profesor_nombre,
             pr.apellido1 AS profesor_apellido1,
-            pr.apellido2 AS profesor_apellido2
+            pr.apellido2 AS profesor_apellido2,
+            prof.materia AS materia_curso,
+            prof.estado AS profesor_estado
          FROM asistencia a
          INNER JOIN estudiante e ON e.id_estudiante = a.id_estudiante
          INNER JOIN persona pe ON pe.id_persona = e.id_persona

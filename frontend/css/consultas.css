@@ -91,9 +91,22 @@
   font-size: 1.1rem;
 }
 
+.consultas-hero {
+  flex-wrap: wrap;
+}
+
+.consulta-header {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 @media (max-width: 576px) {
   .consultas-hero-icon {
     display: none;
+  }
+
+  .consultas-hero {
+    padding: 1rem;
   }
 }
 

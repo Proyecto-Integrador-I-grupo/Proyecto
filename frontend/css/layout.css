@@ -9,6 +9,7 @@
 
 .sidebar {
   width: 260px;
+  flex-shrink: 0;
   background: var(--navy);
   color: #F8FAFC;
   max-height: 100vh;
@@ -41,7 +42,17 @@
   font-weight: 600;
 }
 
-@media (max-width: 880px) {
+.search-box {
+  max-width: 100%;
+}
+
+#sidebar-toggle {
+  display: none;
+}
+
+/* Punto de quiebre unificado con el breakpoint "lg" de Bootstrap (992px),
+   que es el mismo que usa la clase d-lg-none del botón de menú. */
+@media (max-width: 991.98px) {
   #app-shell {
     flex-direction: column;
     min-height: 100vh;
@@ -64,11 +75,13 @@
 
   .sidebar.open {
     max-height: 100vh;
+    overflow-y: auto;
     opacity: 1;
   }
 
   .sidebar .nav-link {
     white-space: nowrap;
+    padding: 0.75rem 0.9rem;
   }
 
   .sidebar-user {
@@ -78,7 +91,7 @@
   .topbar {
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .topbar > div:first-child,
@@ -101,36 +114,6 @@
   }
 }
 
-  .sidebar .nav-link {
-    padding: 0.75rem 0.9rem;
-  }
-
-  .sidebar-user {
-    margin-top: 1rem;
-  }
-
-  .topbar {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .topbar > div:first-child,
-  .topbar > div:last-child {
-    width: 100%;
-  }
-
-  .topbar .d-flex.align-items-center {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  #content {
-    padding: 1.25rem;
-    min-width: 0;
-  }
-}
-
 @media (max-width: 640px) {
   .sidebar .nav-link {
     font-size: 13px;
@@ -142,6 +125,10 @@
 
   .hero-card {
     padding: 1rem;
+  }
+
+  .search-box {
+    width: 100%;
   }
 
   .accessibility-widget {

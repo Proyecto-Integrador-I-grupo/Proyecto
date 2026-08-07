@@ -99,3 +99,13 @@
   max-height: 200px;
   width: 100% !important;
 }
+
+@media (max-width: 640px) {
+  .stat-value-sm {
+    font-size: 22px;
+  }
+
+  .observaciones-cell {
+    max-width: 140px;
+  }
+}

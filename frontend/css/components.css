@@ -207,6 +207,7 @@ h1, h2, h3, .card-title-serif {
 
 .accessibility-menu {
   min-width: 220px;
+  max-width: calc(100vw - 40px);
   background: rgba(15, 23, 42, 0.96);
   border-radius: 1rem;
   padding: 0.75rem;
@@ -473,4 +474,34 @@ body.high-contrast .accessibility-toggle {
   color: #FFFFFF !important;
 }
 
+/* Cualquier tabla de Bootstrap debe poder desplazarse horizontal
+   dentro de su propio contenedor en vez de romper el layout general */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .stat-value {
+    font-size: 26px;
+  }
+
+  .hero-card .d-flex.flex-column.flex-lg-row {
+    gap: 1rem !important;
+  }
+
+  .hero-pill {
+    align-self: flex-start;
+  }
+
+  .modal-dialog {
+    margin: 0.75rem;
+  }
+}
+
 .hidden { display: none !important; }
+
+@media (max-width: 640px) {
+  .form-control, .form-select {
+    font-size: 16px;
+  }
+}

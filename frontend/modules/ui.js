@@ -258,7 +258,7 @@ function wireSidebarToggle() {
   });
 
   document.addEventListener('click', (event) => {
-    if (window.innerWidth > 880) return;
+    if (window.innerWidth >= 992) return;
     if (!sidebar.classList.contains('open')) return;
     if (toggle.contains(event.target) || sidebar.contains(event.target)) return;
     sidebar.classList.remove('open');
@@ -310,7 +310,7 @@ function setActiveView(viewName) {
   if (viewName === 'reportes') loadReportesData();
   if (viewName === 'usuarios') loadUsuariosData();
 
-  if (window.innerWidth <= 880) {
+  if (window.innerWidth < 992) {
     document.querySelector('.sidebar')?.classList.remove('open');
   }
 }/* ==========================================

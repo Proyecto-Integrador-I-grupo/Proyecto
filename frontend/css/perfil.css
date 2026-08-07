@@ -95,3 +95,27 @@
     }
 
 }
+
+@media (max-width: 576px) {
+
+    .perfil-hero {
+        padding: 1.25rem;
+        border-radius: 16px;
+    }
+
+    .perfil-icono {
+        width: 64px;
+        height: 64px;
+        font-size: 2rem;
+    }
+
+    .perfil-avatar {
+        width: 110px;
+        height: 110px;
+    }
+
+    .perfil-info-item {
+        flex-wrap: wrap;
+    }
+
+}

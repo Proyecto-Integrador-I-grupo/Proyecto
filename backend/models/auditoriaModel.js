@@ -13,7 +13,7 @@ export const obtenerAuditorias = async () => {
             fecha_creacion,
             fecha_modificacion,
             id_usuario
-        FROM tb_auditoria
+        FROM auditoria
         ORDER BY fecha_creacion DESC;
     `;
 
@@ -37,7 +37,7 @@ export const obtenerAuditoriaPorId = async (id) => {
             fecha_creacion,
             fecha_modificacion,
             id_usuario
-        FROM tb_auditoria
+        FROM auditoria
         WHERE id_auditoria = ?
         LIMIT 1;
     `;
@@ -53,7 +53,7 @@ export const obtenerAuditoriaPorId = async (id) => {
 export const crearAuditoria = async (auditoria, idUsuario) => {
 
     const sql = `
-        INSERT INTO tb_auditoria
+        INSERT INTO auditoria
         (
             nombre_tabla,
             accion_usuario,

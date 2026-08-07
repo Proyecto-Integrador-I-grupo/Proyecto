@@ -223,12 +223,14 @@ function construirDetallePorProfesor(detalle = []) {
                 materia: materia,
                 estado: Number(profesorEstado) === 0 || String(profesorEstado).toLowerCase() === "inactivo" ? "Inactivo" : "Activo",
                 grupos_asignados: [],
+                secciones_asignadas: [],
                 asistencias_registradas: 0,
                 presentes: 0,
                 ausentes: 0,
                 tardias: 0,
                 justificadas: 0,
-                grupo: registro.nombre_grupo || "-"
+                grupo: registro.nombre_grupo || "-",
+                seccion: registro.nombre_seccion || "-"
             });
         }
 
@@ -237,6 +239,11 @@ function construirDetallePorProfesor(detalle = []) {
         const grupoNombre = registro.nombre_grupo || "-";
         if (grupoNombre && grupoNombre !== "-" && !acumulado.grupos_asignados.includes(grupoNombre)) {
             acumulado.grupos_asignados.push(grupoNombre);
+        }
+
+        const seccionNombre = registro.nombre_seccion || "-";
+        if (seccionNombre && seccionNombre !== "-" && !acumulado.secciones_asignadas.includes(seccionNombre)) {
+            acumulado.secciones_asignadas.push(seccionNombre);
         }
 
         const estado = String(registro.estado_asistencia || "").toLowerCase();
@@ -252,7 +259,8 @@ function construirDetallePorProfesor(detalle = []) {
         return nombreA.localeCompare(nombreB);
     }).map((profesor) => ({
         ...profesor,
-        grupos: profesor.grupos_asignados.join(", ") || profesor.grupo || "-"
+        grupos: profesor.grupos_asignados.join(", ") || profesor.grupo || "-",
+        secciones: profesor.secciones_asignadas.join(", ") || profesor.seccion || "-"
     }));
 }
 
@@ -661,6 +669,7 @@ export async function generarReporteDetalle(filtros = {}) {
             pe.apellido1 AS estudiante_apellido1,
             pe.apellido2 AS estudiante_apellido2,
             g.nombre_grupo,
+            s.nombre_seccion,
             pr.nombre AS profesor_nombre,
             pr.apellido1 AS profesor_apellido1,
             pr.apellido2 AS profesor_apellido2,
@@ -670,6 +679,7 @@ export async function generarReporteDetalle(filtros = {}) {
          INNER JOIN estudiante e ON e.id_estudiante = a.id_estudiante
          INNER JOIN persona pe ON pe.id_persona = e.id_persona
          INNER JOIN grupo g ON g.id_grupo = a.id_grupo
+         INNER JOIN seccion s ON s.id_seccion = g.id_seccion
          INNER JOIN profesor prof ON prof.id_profesor = a.id_profesor
          INNER JOIN persona pr ON pr.id_persona = prof.id_persona
          WHERE ${condiciones.join(" AND ")}

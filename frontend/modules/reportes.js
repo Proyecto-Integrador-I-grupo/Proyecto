@@ -66,6 +66,13 @@ function getModoReporteConfig(modo) {
 
 const REPORTE_LOGO_SRC = '../images/logo.jpg';
 let reporteLogoDataUrlPromise = null;
+let reporteConsultaAplicada = false;
+
+function obtenerMensajeSinDatos() {
+  return reporteConsultaAplicada
+    ? 'No hay registros con los filtros aplicados.'
+    : 'Aún no hay consulta. Presiona Aplicar filtros.';
+}
 
 function obtenerLogoReporteDataUrl() {
   if (!reporteLogoDataUrlPromise) {
@@ -117,12 +124,16 @@ function wireReportesEvents() {
       if (fechaDesde) fechaDesde.value = '';
       if (fechaHasta) fechaHasta.value = '';
       cambiarModoReporte('matricula');
-      cargarReporteResumen();
+      resetearVistaReportesVacia('matricula');
     });
   }
 
   document.querySelectorAll('[data-report-mode]').forEach((button) => {
-    button.addEventListener('click', () => cambiarModoReporte(button.dataset.reportMode));
+    button.addEventListener('click', () => {
+      const modoSeleccionado = button.dataset.reportMode;
+      cambiarModoReporte(modoSeleccionado);
+      resetearVistaReportesVacia(modoSeleccionado);
+    });
   });
 
   const reportPreview = document.getElementById('report-vista-previa');
@@ -167,7 +178,17 @@ function wireReportesEvents() {
 async function loadReportesData() {
   await populateGruposSelects();
   poblarFiltroGrupoReportes();
-  await cargarReporteResumen();
+  resetearVistaReportesVacia(obtenerModoReporteActivo());
+}
+
+function resetearVistaReportesVacia(modo = 'matricula') {
+  const modoNormalizado = modo || 'matricula';
+  reporteConsultaAplicada = false;
+  cambiarModoReporte(modoNormalizado);
+  renderReporteResumen({ resumen: {}, detalle_por_grupo: [] });
+  renderReporteDetalle([]);
+
+  window._reportePdfData = null;
 }
 
 function cambiarModoReporte(modo) {
@@ -202,6 +223,11 @@ function cambiarModoReporte(modo) {
   }
 
   actualizarEtiquetasModo(modoNormalizado);
+
+  const detalleWrapper = document.getElementById('report-detalle-wrapper');
+  if (detalleWrapper) {
+    detalleWrapper.style.display = modoNormalizado === 'profesores' ? 'none' : '';
+  }
 }
 
 function obtenerModoReporteActivo() {
@@ -224,6 +250,25 @@ function obtenerFiltrosActivos() {
     fechaDesde: document.getElementById('report-filtro-fecha-desde')?.value || '',
     fechaHasta: document.getElementById('report-filtro-fecha-hasta')?.value || ''
   };
+}
+
+function obtenerRangoFechaAplicado(filtros) {
+  const desde = filtros?.fechaDesde || '';
+  const hasta = filtros?.fechaHasta || '';
+
+  if (desde && hasta) {
+    return `${desde} a ${hasta}`;
+  }
+
+  if (desde) {
+    return `Desde ${desde}`;
+  }
+
+  if (hasta) {
+    return `Hasta ${hasta}`;
+  }
+
+  return 'Sin rango';
 }
 
 function abrirVistaPreviaReporte() {
@@ -286,7 +331,7 @@ function abrirVistaPreviaReporte() {
     if (modo === 'estudiantes') {
       previewHeader.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th>';
     } else if (modo === 'profesores') {
-      previewHeader.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupo</th><th>Estado</th><th>Estudiante</th><th>Fecha</th><th>Observaciones</th>';
+      previewHeader.innerHTML = '<th>Fecha aplicada</th><th>Profesor</th><th>Materia</th><th>Grupo</th><th>Sección</th><th>Estado</th>';
     } else if (modo === 'pre_matricula') {
       previewHeader.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Pre-matrícula</th>';
     } else if (modo === 'auditoria') {
@@ -405,8 +450,11 @@ function abrirVistaPreviaReporte() {
     `;
   }
 
-  if (!detalle.length) {
-    const previewColspan = modo === 'profesores' ? 7 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
+  const detalleProfesor = Array.isArray(detalle_por_grupo) ? detalle_por_grupo : [];
+  const registrosPreview = modo === 'profesores' ? detalleProfesor : detalle;
+
+  if (!registrosPreview.length) {
+    const previewColspan = modo === 'profesores' ? 6 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
     body.innerHTML = `<tr><td colspan="${previewColspan}" class="text-center py-4 text-muted">No hay registros detallados para esta vista previa.</td></tr>`;
   } else {
     body.innerHTML = '';
@@ -417,23 +465,26 @@ function abrirVistaPreviaReporte() {
       justificada: 'Justificada'
     };
 
-    detalle.slice(0, 12).forEach((r) => {
+    registrosPreview.slice(0, 12).forEach((r) => {
       const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
       const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''} ${r.profesor_apellido2 ?? ''}`.trim();
       const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
       const estado = (r.estado_asistencia || '').toLowerCase();
       const tr = document.createElement('tr');
       if (modo === 'profesores') {
-        const profesorEstado = r.profesor_estado === false || r.profesor_estado === 0 ? 'Inactivo' : 'Activo';
-        const materia = r.materia_curso || r.materia || '-';
+        const profesorNombre = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''} ${r.profesor_apellido2 ?? ''}`.trim();
+        const materia = r.materia || r.materia_curso || '-';
+        const grupos = r.grupos || r.grupos_asignados || r.grupo || '-';
+        const secciones = r.secciones || r.nombre_seccion || r.seccion || '-';
+        const profesorEstado = (r.estado === 'Inactivo' || r.profesor_estado === false || r.profesor_estado === 0) ? 'Inactivo' : 'Activo';
+        const fechaAplicada = obtenerRangoFechaAplicado(filtros);
         tr.innerHTML = `
-          <td>${profesor || '-'}</td>
+          <td>${fechaAplicada}</td>
+          <td>${profesorNombre || '-'}</td>
           <td>${materia}</td>
-          <td>${r.nombre_grupo ?? '-'}</td>
+          <td>${grupos}</td>
+          <td>${secciones}</td>
           <td><span class="attendance-status">${profesorEstado}</span></td>
-          <td>${estudiante || '-'}</td>
-          <td>${fecha}</td>
-          <td class="observaciones-cell" title="${r.observaciones ?? ''}">${r.observaciones || '—'}</td>
         `;
       } else if (modo === 'pre_matricula') {
         const estudianteCompleto = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
@@ -581,11 +632,8 @@ async function imprimirReportePdf() {
       : modo === 'profesores'
         ? [
             `Profesores: ${resumen.total_profesores ?? 0}`,
-            `Asistencias: ${resumen.total_asistencias ?? 0}`,
-            `Presentes: ${resumen.presentes ?? 0}`,
-            `Ausentes: ${resumen.ausentes ?? 0}`,
-            `Tardías: ${resumen.tardias ?? 0}`,
-            `Tasa de presentismo: ${resumen.tasa_presentismo ?? 0}%`
+            `Rango de fecha aplicado: ${obtenerRangoFechaAplicado(obtenerFiltrosActivos())}`,
+            `Grupos vinculados: ${detalle_por_grupo.length}`
           ]
         : [
             `Estudiantes: ${resumen.total_estudiantes ?? 0}`,
@@ -608,14 +656,19 @@ async function imprimirReportePdf() {
     agregarBloque('Detalle por grupo', lineasGrupo);
   }
 
-  if (detalle?.length) {
+  if (modo === 'profesores' && detalle_por_grupo?.length) {
+    const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
+    const lineasDetalle = detalle_por_grupo.slice(0, 32).map((registro) => {
+      const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''} ${registro.profesor_apellido2 ?? ''}`.trim() || '-';
+      return `${fechaAplicada} | ${profesor} | ${registro.materia ?? '-'} | ${registro.grupos ?? '-'} | ${registro.secciones ?? '-'} | ${registro.estado ?? 'Activo'}`;
+    });
+    agregarBloque('Detalle de profesores', lineasDetalle);
+  } else if (detalle?.length) {
     const lineasDetalle = detalle.slice(0, 32).map((registro) => {
       const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
       const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''}`.trim() || '-';
       const fecha = registro.fecha ? String(registro.fecha).split('T')[0] : '-';
-      return modo === 'profesores'
-        ? `${fecha} | ${profesor} | ${estudiante} | ${registro.nombre_grupo ?? '-'} | ${registro.estado_asistencia ?? '-'}`
-        : `${fecha} | ${estudiante} | ${registro.nombre_grupo ?? '-'} | ${profesor} | ${registro.estado_asistencia ?? '-'}`;
+      return `${fecha} | ${estudiante} | ${registro.nombre_grupo ?? '-'} | ${profesor} | ${registro.estado_asistencia ?? '-'}`;
     });
     agregarBloque('Detalle de asistencias', lineasDetalle);
   }
@@ -636,6 +689,7 @@ function poblarFiltroGrupoReportes() {
 }
 
 async function cargarReporteResumen() {
+  reporteConsultaAplicada = true;
   const filtros = obtenerFiltrosActivos();
   const params = new URLSearchParams();
   const modo = obtenerModoReporteActivo();
@@ -675,7 +729,9 @@ function renderReporteResumen(data) {
   const grupos = data?.detalle_por_grupo || [];
   const modo = obtenerModoReporteActivo();
 
-  const header = document.querySelector('#reportes-view thead tr');
+  const resumenBody = document.getElementById('report-grupos-body');
+  const resumenTable = resumenBody?.closest('table');
+  const header = resumenTable?.querySelector('thead tr');
   if (header) {
     if (modo === 'estudiantes') {
       header.innerHTML = `
@@ -689,15 +745,12 @@ function renderReporteResumen(data) {
       `;
     } else if (modo === 'profesores') {
       header.innerHTML = `
+        <th>Fecha aplicada</th>
         <th>Profesor</th>
         <th>Materia</th>
-        <th>Grupos</th>
+        <th>Grupo</th>
+        <th>Sección</th>
         <th>Estado</th>
-        <th>Asistencias</th>
-        <th>Presentes</th>
-        <th>Ausentes</th>
-        <th>Tardías</th>
-        <th>Justificadas</th>
       `;
     } else if (modo === 'pre_matricula') {
       header.innerHTML = `
@@ -727,13 +780,13 @@ function renderReporteResumen(data) {
     }
   }
 
-  const body = document.getElementById('report-grupos-body');
+  const body = resumenBody;
   if (!body) return;
   body.innerHTML = '';
 
   if (!grupos.length) {
-    const colspan = modo === 'profesores' ? 9 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 7;
-    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">No hay registros con los filtros aplicados.</td></tr>`;
+    const colspan = modo === 'profesores' ? 6 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 7;
+    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
     return;
   }
 
@@ -785,20 +838,18 @@ function renderReporteResumen(data) {
   }
 
   if (modo === 'profesores') {
+    const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
     grupos.forEach((g) => {
       const nombre = `${g.profesor_nombre ?? ''} ${g.profesor_apellido1 ?? ''} ${g.profesor_apellido2 ?? ''}`.trim();
       const tr = document.createElement('tr');
       const estado = (g.estado || 'Activo') === 'Activo' || g.estado === 1 || g.estado === true ? 'Activo' : 'Inactivo';
       tr.innerHTML = `
+        <td>${fechaAplicada}</td>
         <td>${nombre || '-'}</td>
         <td>${g.materia || g.materia_curso || '-'}</td>
         <td>${g.grupos || g.grupos_asignados || '-'}</td>
+        <td>${g.secciones || g.nombre_seccion || '-'}</td>
         <td>${estado}</td>
-        <td>${g.asistencias_registradas ?? 0}</td>
-        <td>${g.presentes ?? 0}</td>
-        <td>${g.ausentes ?? 0}</td>
-        <td>${g.tardias ?? 0}</td>
-        <td>${g.justificadas ?? 0}</td>
       `;
       body.appendChild(tr);
     });
@@ -825,7 +876,7 @@ function renderReporteDetalle(registros) {
   const modo = obtenerModoReporteActivo();
   if (!body) return;
 
-  const detalleTable = document.querySelector('#reportes-view table.table:last-of-type');
+  const detalleTable = body.closest('table');
   if (detalleTable) {
     const thead = detalleTable.querySelector('thead tr');
     if (thead) {
@@ -880,7 +931,7 @@ function renderReporteDetalle(registros) {
 
   if (!registros.length) {
     const colspan = modo === 'profesores' ? 7 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
-    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">No hay registros detallados con estos filtros.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
     return;
   }
 

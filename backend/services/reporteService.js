@@ -215,7 +215,7 @@ export async function generarReporteResumen(filtros = {}) {
             (SELECT COUNT(*) FROM estudiante WHERE estado = TRUE) AS total_estudiantes,
             (SELECT COUNT(*) FROM profesor WHERE estado = TRUE) AS total_profesores,
             (SELECT COUNT(*) FROM grupo WHERE estado = TRUE) AS total_grupos,
-            (SELECT COUNT(*) FROM matricula WHERE estado = TRUE) AS total_matriculas`
+            (SELECT COUNT(*) FROM matricula WHERE estado_matricula = 'activa') AS total_matriculas`
     );
 
     const grupoCondiciones = ["g.estado = TRUE"];

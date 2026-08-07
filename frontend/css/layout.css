@@ -4,7 +4,8 @@
 
 /* Sidebar y Estructura Principal */
 #app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {

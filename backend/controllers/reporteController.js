@@ -32,7 +32,8 @@ export async function obtenerReporteDetalle(req, res) {
         const resultado = await generarReporteDetalle(req.query);
         res.status(200).json({
             modo: req.query?.modo || "matricula",
-            detalle: Array.isArray(resultado) ? resultado : []
+            resumen: resultado?.resumen || {},
+            detalle: Array.isArray(resultado?.detalle) ? resultado.detalle : []
         });
     } catch (error) {
         console.error(error);

@@ -68,6 +68,57 @@
           </div>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Estudiantes</span>
+              <div class="stat-value" id="report-total-estudiantes">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Profesores</span>
+              <div class="stat-value" id="report-total-profesores">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Grupos</span>
+              <div class="stat-value" id="report-total-grupos">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Presentismo</span>
+              <div class="stat-value" id="report-tasa-presentismo">0%</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Presentes</span>
+              <div class="stat-value" id="report-presentes">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Ausentes</span>
+              <div class="stat-value" id="report-ausentes">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Tardías</span>
+              <div class="stat-value" id="report-tardias">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-xl-2">
+            <div class="stat-card report-stat-card h-100 border-0 shadow-sm">
+              <span class="stat-label">Justificadas</span>
+              <div class="stat-value" id="report-justificadas">0</div>
+            </div>
+          </div>
+        </div>
+
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead>
@@ -83,6 +134,24 @@
             </thead>
             <tbody id="report-grupos-body">
               <tr><td colspan="7" class="text-center py-4 text-muted">Cargando resumen...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-responsive mt-4">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Estudiante</th>
+                <th>Grupo</th>
+                <th>Profesor</th>
+                <th>Estado</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody id="report-detalle-body">
+              <tr><td colspan="6" class="text-center py-4 text-muted">No hay registros detallados con estos filtros.</td></tr>
             </tbody>
           </table>
         </div>

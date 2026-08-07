@@ -1,6 +1,8 @@
 import pool from "../config/database.js";
 
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
+const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores"]);
+const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
 function normalizarEstado(estado) {
     return String(estado || "").toLowerCase().trim();
@@ -8,12 +10,104 @@ function normalizarEstado(estado) {
 
 function normalizarModo(modo) {
     const modoNormalizado = String(modo || "matricula").toLowerCase().trim();
-    const modosValidos = new Set(["matricula", "estudiantes", "grupos", "profesores"]);
-    return modosValidos.has(modoNormalizado) ? modoNormalizado : "matricula";
+    return MODOS_VALIDOS.has(modoNormalizado) ? modoNormalizado : "matricula";
+}
+
+function normalizarTipoReporte(tipoReporte) {
+    const tipoNormalizado = String(tipoReporte || "resumen").toLowerCase().trim();
+    return TIPOS_REPORTE_VALIDOS.has(tipoNormalizado) ? tipoNormalizado : "resumen";
+}
+
+function parsePositiveInt(value, nombreCampo) {
+    if (value === undefined || value === null || value === "") {
+        return undefined;
+    }
+
+    const numero = Number(value);
+    if (!Number.isInteger(numero) || numero <= 0) {
+        throw new Error(`El campo ${nombreCampo} debe ser un identificador válido.`);
+    }
+
+    return numero;
+}
+
+function normalizarBusqueda(busqueda) {
+    if (busqueda === undefined || busqueda === null || busqueda === "") {
+        return "";
+    }
+
+    const texto = String(busqueda).trim();
+    if (texto.length === 0) {
+        return "";
+    }
+
+    if (texto.length > 120) {
+        throw new Error("La búsqueda no puede superar 120 caracteres.");
+    }
+
+    return texto;
+}
+
+function normalizarFechaISO(fecha, nombreCampo) {
+    if (fecha === undefined || fecha === null || fecha === "") {
+        return "";
+    }
+
+    const fechaTexto = String(fecha).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaTexto)) {
+        throw new Error(`La fecha ${nombreCampo} debe tener el formato YYYY-MM-DD.`);
+    }
+
+    const valorFecha = new Date(`${fechaTexto}T00:00:00`);
+    if (Number.isNaN(valorFecha.getTime())) {
+        throw new Error(`La fecha ${nombreCampo} no es una fecha válida.`);
+    }
+
+    return fechaTexto;
+}
+
+function validarFiltrosReporte(filtros = {}) {
+    const modo = normalizarModo(filtros.modo);
+    const tipoReporte = normalizarTipoReporte(filtros.tipo_reporte || filtros.tipoReporte);
+    const id_grupo = parsePositiveInt(filtros.id_grupo, "id_grupo");
+    const id_estudiante = parsePositiveInt(filtros.id_estudiante, "id_estudiante");
+
+    const fecha_inicio = normalizarFechaISO(filtros.fecha_inicio, "fecha_inicio");
+    const fecha_fin = normalizarFechaISO(filtros.fecha_fin, "fecha_fin");
+
+    if (fecha_inicio && fecha_fin && new Date(`${fecha_inicio}T00:00:00`) > new Date(`${fecha_fin}T00:00:00`)) {
+        throw new Error("La fecha de inicio no puede ser mayor que la fecha fin.");
+    }
+
+    const estadoSolicitado = normalizarEstado(filtros.estado_asistencia ?? filtros.estado ?? "");
+    if (estadoSolicitado && !ESTADOS_VALIDOS.includes(estadoSolicitado)) {
+        throw new Error("Estado de asistencia no válido. Usa presente, ausente, tardia o justificada.");
+    }
+
+    const busqueda = normalizarBusqueda(filtros.busqueda);
+
+    return {
+        modo,
+        tipo_reporte: tipoReporte,
+        id_grupo,
+        id_estudiante,
+        fecha_inicio,
+        fecha_fin,
+        estado_asistencia: estadoSolicitado || "",
+        busqueda
+    };
 }
 
 function construirCondicionesAsistencia(filtros = {}) {
-    const { id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, busqueda } = filtros;
+    const {
+        id_grupo,
+        id_estudiante,
+        fecha_inicio,
+        fecha_fin,
+        estado_asistencia,
+        busqueda
+    } = filtros;
+
     const condiciones = ["a.estado = TRUE"];
     const valores = [];
 
@@ -28,22 +122,18 @@ function construirCondicionesAsistencia(filtros = {}) {
     }
 
     if (fecha_inicio) {
-        condiciones.push("a.fecha >= ?");
+        condiciones.push("DATE(a.fecha) >= ?");
         valores.push(fecha_inicio);
     }
 
     if (fecha_fin) {
-        condiciones.push("a.fecha <= ?");
+        condiciones.push("DATE(a.fecha) <= ?");
         valores.push(fecha_fin);
     }
 
     if (estado_asistencia) {
-        const estadoNormalizado = normalizarEstado(estado_asistencia);
-        if (!ESTADOS_VALIDOS.includes(estadoNormalizado)) {
-            throw new Error("Estado de asistencia no válido. Usa presente, ausente, tardia o justificada.");
-        }
         condiciones.push("a.estado_asistencia = ?");
-        valores.push(estadoNormalizado);
+        valores.push(estado_asistencia);
     }
 
     if (busqueda && String(busqueda).trim()) {
@@ -59,8 +149,21 @@ function construirCondicionesAsistencia(filtros = {}) {
                    OR CAST(pe.id_persona AS CHAR) LIKE ?
                    OR CAST(e.id_estudiante AS CHAR) LIKE ?
             )
+            OR a.id_profesor IN (
+                SELECT prof.id_profesor
+                FROM profesor prof
+                INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                WHERE pp.nombre LIKE ?
+                   OR pp.apellido1 LIKE ?
+                   OR pp.apellido2 LIKE ?
+                   OR CAST(pp.id_persona AS CHAR) LIKE ?
+                   OR CAST(prof.id_profesor AS CHAR) LIKE ?
+            )
         )`);
-        valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        valores.push(
+            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
+            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
+        );
     }
 
     return { condiciones, valores };
@@ -141,9 +244,11 @@ function construirDetallePorProfesor(detalle = []) {
 }
 
 export async function generarReporteCaso(filtros = {}) {
-    const modo = normalizarModo(filtros.modo);
-    const resumen = await generarReporteResumen(filtros);
-    const detalle = await generarReporteDetalle(filtros);
+    const filtrosNormalizados = validarFiltrosReporte(filtros);
+    const modo = filtrosNormalizados.modo;
+
+    const resumen = await generarReporteResumen(filtrosNormalizados);
+    const detalle = await generarReporteDetalle(filtrosNormalizados);
     const detalleArray = Array.isArray(detalle?.detalle) ? detalle.detalle : Array.isArray(detalle) ? detalle : [];
 
     switch (modo) {
@@ -154,11 +259,12 @@ export async function generarReporteCaso(filtros = {}) {
                 detalle_por_grupo: construirDetallePorEstudiante(detalleArray),
                 detalle: detalleArray,
                 filtros: {
-                    id_grupo: filtros.id_grupo || "",
-                    busqueda: filtros.busqueda || "",
-                    estado_asistencia: filtros.estado_asistencia || "",
-                    fecha_inicio: filtros.fecha_inicio || "",
-                    fecha_fin: filtros.fecha_fin || ""
+                    id_grupo: filtrosNormalizados.id_grupo || "",
+                    id_estudiante: filtrosNormalizados.id_estudiante || "",
+                    busqueda: filtrosNormalizados.busqueda || "",
+                    estado_asistencia: filtrosNormalizados.estado_asistencia || "",
+                    fecha_inicio: filtrosNormalizados.fecha_inicio || "",
+                    fecha_fin: filtrosNormalizados.fecha_fin || ""
                 }
             };
         case "profesores":
@@ -168,11 +274,12 @@ export async function generarReporteCaso(filtros = {}) {
                 detalle_por_grupo: construirDetallePorProfesor(detalleArray),
                 detalle: detalleArray,
                 filtros: {
-                    id_grupo: filtros.id_grupo || "",
-                    busqueda: filtros.busqueda || "",
-                    estado_asistencia: filtros.estado_asistencia || "",
-                    fecha_inicio: filtros.fecha_inicio || "",
-                    fecha_fin: filtros.fecha_fin || ""
+                    id_grupo: filtrosNormalizados.id_grupo || "",
+                    id_estudiante: filtrosNormalizados.id_estudiante || "",
+                    busqueda: filtrosNormalizados.busqueda || "",
+                    estado_asistencia: filtrosNormalizados.estado_asistencia || "",
+                    fecha_inicio: filtrosNormalizados.fecha_inicio || "",
+                    fecha_fin: filtrosNormalizados.fecha_fin || ""
                 }
             };
         case "grupos":
@@ -184,19 +291,21 @@ export async function generarReporteCaso(filtros = {}) {
                 detalle_por_grupo: resumen?.detalle_por_grupo || [],
                 detalle: detalleArray,
                 filtros: {
-                    id_grupo: filtros.id_grupo || "",
-                    busqueda: filtros.busqueda || "",
-                    estado_asistencia: filtros.estado_asistencia || "",
-                    fecha_inicio: filtros.fecha_inicio || "",
-                    fecha_fin: filtros.fecha_fin || ""
+                    id_grupo: filtrosNormalizados.id_grupo || "",
+                    id_estudiante: filtrosNormalizados.id_estudiante || "",
+                    busqueda: filtrosNormalizados.busqueda || "",
+                    estado_asistencia: filtrosNormalizados.estado_asistencia || "",
+                    fecha_inicio: filtrosNormalizados.fecha_inicio || "",
+                    fecha_fin: filtrosNormalizados.fecha_fin || ""
                 }
             };
     }
 }
 
 export async function generarReporteResumen(filtros = {}) {
-    const modo = normalizarModo(filtros.modo);
-    const { condiciones, valores } = construirCondicionesAsistencia(filtros);
+    const filtrosNormalizados = validarFiltrosReporte(filtros);
+    const modo = filtrosNormalizados.modo;
+    const { condiciones, valores } = construirCondicionesAsistencia(filtrosNormalizados);
 
     const [totales] = await pool.query(
         `SELECT
@@ -221,29 +330,59 @@ export async function generarReporteResumen(filtros = {}) {
     const grupoCondiciones = ["g.estado = TRUE"];
     const grupoValores = [];
 
-    if (filtros.id_grupo) {
+    if (filtrosNormalizados.id_grupo) {
         grupoCondiciones.push("g.id_grupo = ?");
-        grupoValores.push(Number(filtros.id_grupo));
+        grupoValores.push(Number(filtrosNormalizados.id_grupo));
     }
 
-    if (filtros.id_estudiante) {
+    if (filtrosNormalizados.id_estudiante) {
         grupoCondiciones.push("a.id_estudiante = ?");
-        grupoValores.push(Number(filtros.id_estudiante));
+        grupoValores.push(Number(filtrosNormalizados.id_estudiante));
     }
 
-    if (filtros.busqueda && String(filtros.busqueda).trim()) {
-        grupoCondiciones.push(`a.id_estudiante IN (
-            SELECT e.id_estudiante
-            FROM estudiante e
-            INNER JOIN persona pe ON pe.id_persona = e.id_persona
-            WHERE pe.nombre LIKE ?
-               OR pe.apellido1 LIKE ?
-               OR pe.apellido2 LIKE ?
-               OR CAST(pe.id_persona AS CHAR) LIKE ?
-               OR CAST(e.id_estudiante AS CHAR) LIKE ?
+    if (filtrosNormalizados.fecha_inicio) {
+        grupoCondiciones.push("DATE(a.fecha) >= ?");
+        grupoValores.push(filtrosNormalizados.fecha_inicio);
+    }
+
+    if (filtrosNormalizados.fecha_fin) {
+        grupoCondiciones.push("DATE(a.fecha) <= ?");
+        grupoValores.push(filtrosNormalizados.fecha_fin);
+    }
+
+    if (filtrosNormalizados.estado_asistencia) {
+        grupoCondiciones.push("a.estado_asistencia = ?");
+        grupoValores.push(filtrosNormalizados.estado_asistencia);
+    }
+
+    if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
+        grupoCondiciones.push(`(
+            a.id_estudiante IN (
+                SELECT e.id_estudiante
+                FROM estudiante e
+                INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                WHERE pe.nombre LIKE ?
+                   OR pe.apellido1 LIKE ?
+                   OR pe.apellido2 LIKE ?
+                   OR CAST(pe.id_persona AS CHAR) LIKE ?
+                   OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            )
+            OR a.id_profesor IN (
+                SELECT prof.id_profesor
+                FROM profesor prof
+                INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                WHERE pp.nombre LIKE ?
+                   OR pp.apellido1 LIKE ?
+                   OR pp.apellido2 LIKE ?
+                   OR CAST(pp.id_persona AS CHAR) LIKE ?
+                   OR CAST(prof.id_profesor AS CHAR) LIKE ?
+            )
         )`);
-        const textoBusqueda = `%${String(filtros.busqueda).trim()}%`;
-        grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        const textoBusqueda = `%${String(filtrosNormalizados.busqueda).trim()}%`;
+        grupoValores.push(
+            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
+            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
+        );
     }
 
     const [detallePorGrupo] = await pool.query(
@@ -291,12 +430,16 @@ export async function generarReporteResumen(filtros = {}) {
 }
 
 export async function generarReporteDetalle(filtros = {}) {
-    const modo = normalizarModo(filtros.modo);
-    const { condiciones, valores } = construirCondicionesAsistencia(filtros);
+    const filtrosNormalizados = validarFiltrosReporte(filtros);
+    const modo = filtrosNormalizados.modo;
+    const { condiciones, valores } = construirCondicionesAsistencia(filtrosNormalizados);
 
     const [rows] = await pool.query(
         `SELECT
+            a.id_asistencia,
             a.fecha,
+            a.id_estudiante,
+            a.id_profesor,
             a.estado_asistencia,
             a.observaciones,
             pe.nombre AS estudiante_nombre,
@@ -304,7 +447,8 @@ export async function generarReporteDetalle(filtros = {}) {
             pe.apellido2 AS estudiante_apellido2,
             g.nombre_grupo,
             pr.nombre AS profesor_nombre,
-            pr.apellido1 AS profesor_apellido1
+            pr.apellido1 AS profesor_apellido1,
+            pr.apellido2 AS profesor_apellido2
          FROM asistencia a
          INNER JOIN estudiante e ON e.id_estudiante = a.id_estudiante
          INNER JOIN persona pe ON pe.id_persona = e.id_persona

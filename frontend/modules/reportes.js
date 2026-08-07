@@ -110,28 +110,16 @@ function wireReportesEvents() {
   if (reportClear && !reportClear.dataset.wired) {
     reportClear.dataset.wired = '1';
     reportClear.addEventListener('click', () => {
-      const grupoSel = document.getElementById('report-filtro-grupo');
-      const busquedaInput = document.getElementById('report-filtro-busqueda');
-      const tipoReporteSel = document.getElementById('report-filtro-tipo');
-      const estadoSel = document.getElementById('report-filtro-estado');
-      const fechaDesde = document.getElementById('report-filtro-fecha-desde');
-      const fechaHasta = document.getElementById('report-filtro-fecha-hasta');
-
-      if (grupoSel) grupoSel.value = '';
-      if (busquedaInput) busquedaInput.value = '';
-      if (tipoReporteSel) tipoReporteSel.value = 'resumen';
-      if (estadoSel) estadoSel.value = '';
-      if (fechaDesde) fechaDesde.value = '';
-      if (fechaHasta) fechaHasta.value = '';
-      cambiarModoReporte('matricula');
-      resetearVistaReportesVacia('matricula');
+      const modoActual = obtenerModoReporteActivo();
+      limpiarFiltrosReporte(modoActual);
+      resetearVistaReportesVacia(modoActual);
     });
   }
 
   document.querySelectorAll('[data-report-mode]').forEach((button) => {
     button.addEventListener('click', () => {
       const modoSeleccionado = button.dataset.reportMode;
-      cambiarModoReporte(modoSeleccionado);
+      limpiarFiltrosReporte(modoSeleccionado);
       resetearVistaReportesVacia(modoSeleccionado);
     });
   });
@@ -181,12 +169,28 @@ async function loadReportesData() {
   resetearVistaReportesVacia(obtenerModoReporteActivo());
 }
 
+function limpiarFiltrosReporte(modo = obtenerModoReporteActivo()) {
+  const grupoSel = document.getElementById('report-filtro-grupo');
+  const busquedaInput = document.getElementById('report-filtro-busqueda');
+  const tipoReporteSel = document.getElementById('report-filtro-tipo');
+  const estadoSel = document.getElementById('report-filtro-estado');
+  const fechaDesde = document.getElementById('report-filtro-fecha-desde');
+  const fechaHasta = document.getElementById('report-filtro-fecha-hasta');
+  const config = getModoReporteConfig(modo);
+
+  if (grupoSel) grupoSel.value = '';
+  if (busquedaInput) busquedaInput.value = '';
+  if (tipoReporteSel) tipoReporteSel.value = config.tipoPorDefecto || 'resumen';
+  if (estadoSel) estadoSel.value = '';
+  if (fechaDesde) fechaDesde.value = '';
+  if (fechaHasta) fechaHasta.value = '';
+}
+
 function resetearVistaReportesVacia(modo = 'matricula') {
   const modoNormalizado = modo || 'matricula';
   reporteConsultaAplicada = false;
   cambiarModoReporte(modoNormalizado);
-  renderReporteResumen({ resumen: {}, detalle_por_grupo: [] });
-  renderReporteDetalle([]);
+  renderTablaPrincipal({ detalle_por_grupo: [], detalle: [] });
 
   window._reportePdfData = null;
 }
@@ -223,11 +227,6 @@ function cambiarModoReporte(modo) {
   }
 
   actualizarEtiquetasModo(modoNormalizado);
-
-  const detalleWrapper = document.getElementById('report-detalle-wrapper');
-  if (detalleWrapper) {
-    detalleWrapper.style.display = modoNormalizado === 'profesores' ? 'none' : '';
-  }
 }
 
 function obtenerModoReporteActivo() {
@@ -269,6 +268,28 @@ function obtenerRangoFechaAplicado(filtros) {
   }
 
   return 'Sin rango';
+}
+
+function formatearFechaMMDDYYYY(valorFecha) {
+  if (!valorFecha) return '—';
+
+  const texto = String(valorFecha).trim();
+  if (!texto) return '—';
+
+  const base = texto.includes('T') ? texto.split('T')[0] : texto;
+  const isoMatch = base.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const [, anio, mes, dia] = isoMatch;
+    return `${mes}/${dia}/${anio}`;
+  }
+
+  const parsed = new Date(texto);
+  if (Number.isNaN(parsed.getTime())) return texto;
+
+  const mes = String(parsed.getMonth() + 1).padStart(2, '0');
+  const dia = String(parsed.getDate()).padStart(2, '0');
+  const anio = String(parsed.getFullYear());
+  return `${mes}/${dia}/${anio}`;
 }
 
 function abrirVistaPreviaReporte() {
@@ -316,8 +337,8 @@ function abrirVistaPreviaReporte() {
   const chips = [
     `Grupo: ${document.getElementById('report-filtro-grupo')?.selectedOptions?.[0]?.textContent || 'Todos'}`,
     `Estado: ${filtros.estado || 'Todos'}`,
-    `Desde: ${filtros.fechaDesde || '—'}`,
-    `Hasta: ${filtros.fechaHasta || '—'}`,
+    `Desde: ${formatearFechaMMDDYYYY(filtros.fechaDesde)}`,
+    `Hasta: ${formatearFechaMMDDYYYY(filtros.fechaHasta)}`,
     `Búsqueda: ${filtros.busqueda || '—'}`
   ];
   chips.forEach((chip) => {
@@ -468,7 +489,7 @@ function abrirVistaPreviaReporte() {
     registrosPreview.slice(0, 12).forEach((r) => {
       const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
       const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''} ${r.profesor_apellido2 ?? ''}`.trim();
-      const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
+      const fecha = formatearFechaMMDDYYYY(r.fecha);
       const estado = (r.estado_asistencia || '').toLowerCase();
       const tr = document.createElement('tr');
       if (modo === 'profesores') {
@@ -497,7 +518,7 @@ function abrirVistaPreviaReporte() {
       } else if (modo === 'auditoria') {
         const nuevos = r.datos_nuevos ? JSON.stringify(r.datos_nuevos) : '—';
         tr.innerHTML = `
-          <td>${r.fecha_creacion ? String(r.fecha_creacion).split('T')[0] : '-'}</td>
+          <td>${formatearFechaMMDDYYYY(r.fecha_creacion)}</td>
           <td>${r.nombre_tabla || '-'}</td>
           <td>${r.accion_usuario || '-'}</td>
           <td>${r.usuario_nombre || r.id_usuario || '-'}</td>
@@ -715,35 +736,30 @@ async function cargarReporteResumen() {
       detalle_por_grupo: casoJson?.detalle_por_grupo || [],
       detalle: Array.isArray(casoJson?.detalle) ? casoJson.detalle : []
     };
-    renderReporteResumen(casoJson);
-    renderReporteDetalle(casoJson?.detalle || []);
+    renderTablaPrincipal(casoJson);
   } catch (error) {
     console.error('Error cargando reportes', error);
-    document.getElementById('report-grupos-body').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el resumen.</td></tr>';
-    document.getElementById('report-detalle-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al cargar el detalle.</td></tr>';
+    const body = document.getElementById('report-grupos-body');
+    if (body) {
+      body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar el reporte.</td></tr>';
+    }
   }
 }
 
-function renderReporteResumen(data) {
-  const resumen = data?.resumen || {};
-  const grupos = data?.detalle_por_grupo || [];
+function renderTablaPrincipal(data = {}) {
   const modo = obtenerModoReporteActivo();
+  const filtros = obtenerFiltrosActivos();
+  const fechaAplicada = obtenerRangoFechaAplicado(filtros);
+  const registros = modo === 'profesores'
+    ? (Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [])
+    : (Array.isArray(data?.detalle) ? data.detalle : []);
 
-  const resumenBody = document.getElementById('report-grupos-body');
-  const resumenTable = resumenBody?.closest('table');
-  const header = resumenTable?.querySelector('thead tr');
+  const body = document.getElementById('report-grupos-body');
+  const table = body?.closest('table');
+  const header = table?.querySelector('thead tr');
+
   if (header) {
-    if (modo === 'estudiantes') {
-      header.innerHTML = `
-        <th>Estudiante</th>
-        <th>Grupo</th>
-        <th>Asistencias</th>
-        <th>Presentes</th>
-        <th>Ausentes</th>
-        <th>Tardías</th>
-        <th>Justificadas</th>
-      `;
-    } else if (modo === 'profesores') {
+    if (modo === 'profesores') {
       header.innerHTML = `
         <th>Fecha aplicada</th>
         <th>Profesor</th>
@@ -755,7 +771,7 @@ function renderReporteResumen(data) {
     } else if (modo === 'pre_matricula') {
       header.innerHTML = `
         <th>Estudiante</th>
-        <th>Apellido</th>
+        <th>Cédula</th>
         <th>Estado</th>
         <th>Pre-matrícula</th>
       `;
@@ -769,178 +785,42 @@ function renderReporteResumen(data) {
       `;
     } else {
       header.innerHTML = `
+        <th>Fecha</th>
+        <th>Estudiante</th>
         <th>Grupo</th>
-        <th>Sección</th>
-        <th>Ocupados</th>
-        <th>Capacidad</th>
-        <th>Asistencias</th>
-        <th>Presentes</th>
-        <th>Ausentes</th>
+        <th>Profesor</th>
+        <th>Estado</th>
+        <th>Observaciones</th>
       `;
     }
   }
 
-  const body = resumenBody;
   if (!body) return;
   body.innerHTML = '';
 
-  if (!grupos.length) {
-    const colspan = modo === 'profesores' ? 6 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 7;
+  if (!registros.length) {
+    const colspan = modo === 'profesores' ? 6 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
     body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
     return;
   }
 
-  if (modo === 'pre_matricula') {
-    grupos.forEach((g) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>Pre-matrículas pendientes</td>
-        <td>${g.total_pre_matriculas ?? 0}</td>
-        <td>${g.total_estudiantes_activos ?? 0}</td>
-        <td>En espera</td>
-      `;
-      body.appendChild(tr);
-    });
-    return;
-  }
-
-  if (modo === 'auditoria') {
-    grupos.forEach((g) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>Registros totales</td>
-        <td>${g.total_auditorias ?? 0}</td>
-        <td>—</td>
-        <td>—</td>
-        <td>Resumen</td>
-      `;
-      body.appendChild(tr);
-    });
-    return;
-  }
-
-  if (modo === 'estudiantes') {
-    grupos.forEach((g) => {
-      const nombre = `${g.estudiante_nombre ?? ''} ${g.estudiante_apellido1 ?? ''} ${g.estudiante_apellido2 ?? ''}`.trim();
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${nombre || '-'}</td>
-        <td>${g.grupo ?? '-'}</td>
-        <td>${g.asistencias_registradas ?? 0}</td>
-        <td>${g.presentes ?? 0}</td>
-        <td>${g.ausentes ?? 0}</td>
-        <td>${g.tardias ?? 0}</td>
-        <td>${g.justificadas ?? 0}</td>
-      `;
-      body.appendChild(tr);
-    });
-    return;
-  }
-
   if (modo === 'profesores') {
-    const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
-    grupos.forEach((g) => {
+    registros.forEach((g) => {
       const nombre = `${g.profesor_nombre ?? ''} ${g.profesor_apellido1 ?? ''} ${g.profesor_apellido2 ?? ''}`.trim();
-      const tr = document.createElement('tr');
       const estado = (g.estado || 'Activo') === 'Activo' || g.estado === 1 || g.estado === true ? 'Activo' : 'Inactivo';
+      const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${fechaAplicada}</td>
         <td>${nombre || '-'}</td>
         <td>${g.materia || g.materia_curso || '-'}</td>
-        <td>${g.grupos || g.grupos_asignados || '-'}</td>
-        <td>${g.secciones || g.nombre_seccion || '-'}</td>
+        <td>${g.grupos || g.grupos_asignados || g.grupo || '-'}</td>
+        <td>${g.secciones || g.nombre_seccion || g.seccion || '-'}</td>
         <td>${estado}</td>
       `;
       body.appendChild(tr);
     });
     return;
   }
-
-  grupos.forEach((g) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${g.nombre_grupo ?? '-'}</td>
-      <td>${g.nombre_seccion ?? '-'}</td>
-      <td>${g.ocupados ?? 0}</td>
-      <td>${g.capacidad ?? 0}</td>
-      <td>${g.asistencias_registradas ?? 0}</td>
-      <td>${g.presentes ?? 0}</td>
-      <td>${g.ausentes ?? 0}</td>
-    `;
-    body.appendChild(tr);
-  });
-}
-
-function renderReporteDetalle(registros) {
-  const body = document.getElementById('report-detalle-body');
-  const modo = obtenerModoReporteActivo();
-  if (!body) return;
-
-  const detalleTable = body.closest('table');
-  if (detalleTable) {
-    const thead = detalleTable.querySelector('thead tr');
-    if (thead) {
-      if (modo === 'profesores') {
-        thead.innerHTML = `
-          <th>Fecha</th>
-          <th>Profesor</th>
-          <th>Materia</th>
-          <th>Grupo</th>
-          <th>Estado</th>
-          <th>Estudiante</th>
-          <th>Observaciones</th>
-        `;
-      } else if (modo === 'estudiantes') {
-        thead.innerHTML = `
-          <th>Fecha</th>
-          <th>Estudiante</th>
-          <th>Grupo</th>
-          <th>Profesor</th>
-          <th>Estado</th>
-          <th>Observaciones</th>
-        `;
-      } else if (modo === 'pre_matricula') {
-        thead.innerHTML = `
-          <th>Estudiante</th>
-          <th>Cédula</th>
-          <th>Estado</th>
-          <th>Pre-matrícula</th>
-        `;
-      } else if (modo === 'auditoria') {
-        thead.innerHTML = `
-          <th>Fecha</th>
-          <th>Tabla</th>
-          <th>Acción</th>
-          <th>Usuario</th>
-          <th>Detalle</th>
-        `;
-      } else {
-        thead.innerHTML = `
-          <th>Fecha</th>
-          <th>Estudiante</th>
-          <th>Grupo</th>
-          <th>Profesor</th>
-          <th>Estado</th>
-          <th>Observaciones</th>
-        `;
-      }
-    }
-  }
-
-  body.innerHTML = '';
-
-  if (!registros.length) {
-    const colspan = modo === 'profesores' ? 7 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
-    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
-    return;
-  }
-
-  const etiquetasEstado = {
-    presente: 'Presente',
-    ausente: 'Ausente',
-    tardia: 'Tardía',
-    justificada: 'Justificada'
-  };
 
   if (modo === 'pre_matricula') {
     registros.forEach((r) => {
@@ -972,48 +852,12 @@ function renderReporteDetalle(registros) {
     return;
   }
 
-  if (modo === 'estudiantes') {
-    registros.forEach((r) => {
-      const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
-      const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
-      const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
-      const estado = (r.estado_asistencia || '').toLowerCase();
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${fecha}</td>
-        <td>${estudiante || '-'}</td>
-        <td>${r.nombre_grupo ?? '-'}</td>
-        <td>${profesor || '-'}</td>
-        <td><span class="attendance-badge attendance-${estado}">${etiquetasEstado[estado] || r.estado_asistencia || '-'}</span></td>
-        <td class="observaciones-cell" title="${r.observaciones ?? ''}">${r.observaciones || '—'}</td>
-      `;
-      body.appendChild(tr);
-    });
-    return;
-  }
-
-  if (modo === 'profesores') {
-    registros.forEach((r) => {
-      const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
-      const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''} ${r.profesor_apellido2 ?? ''}`.trim();
-      const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
-      const estado = (r.estado_asistencia || '').toLowerCase();
-      const materia = r.materia_curso || r.materia || '-';
-      const profesorEstado = (r.profesor_estado === 0 || r.profesor_estado === false || String(r.profesor_estado).toLowerCase() === 'inactivo') ? 'Inactivo' : 'Activo';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${fecha}</td>
-        <td>${profesor || '-'}</td>
-        <td>${materia}</td>
-        <td>${r.nombre_grupo ?? '-'}</td>
-        <td><span class="attendance-status">${profesorEstado}</span></td>
-        <td>${estudiante || '-'}</td>
-        <td class="observaciones-cell" title="${r.observaciones ?? ''}">${r.observaciones || '—'}</td>
-      `;
-      body.appendChild(tr);
-    });
-    return;
-  }
+  const etiquetasEstado = {
+    presente: 'Presente',
+    ausente: 'Ausente',
+    tardia: 'Tardía',
+    justificada: 'Justificada'
+  };
 
   registros.forEach((r) => {
     const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();

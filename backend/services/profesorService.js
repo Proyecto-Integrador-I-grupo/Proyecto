@@ -180,7 +180,7 @@ export const destituirProfesorService = async (id_profesor, motivo = '') => {
     await connection.beginTransaction();
 
     const [rows] = await connection.query(
-      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      `SELECT id_profesor, id_persona, estado FROM profesor WHERE id_profesor = ?`,
       [id_profesor]
     );
 
@@ -191,6 +191,8 @@ export const destituirProfesorService = async (id_profesor, motivo = '') => {
     if (rows[0].estado == 0 || rows[0].estado === false) {
       throw new Error("El profesor ya se encuentra inactivo.");
     }
+
+    const id_persona = rows[0].id_persona;
 
     // Grupos que el profesor tiene activos justo antes de destituirlo: son los que
     // vamos a "congelar" en profesor_suplencia para poder restaurarlos después.
@@ -203,6 +205,14 @@ export const destituirProfesorService = async (id_profesor, motivo = '') => {
     await connection.query(
       `UPDATE profesor SET estado = FALSE WHERE id_profesor = ?`,
       [id_profesor]
+    );
+
+    // NUEVO: bloquear el acceso a la plataforma mientras esté destituido/incapacitado.
+    // authController.login ya rechaza usuario.estado = FALSE, así que esto es suficiente
+    // para cerrarle el paso sin tocar nada del login.
+    await connection.query(
+      `UPDATE usuario SET estado = FALSE WHERE id_persona = ?`,
+      [id_persona]
     );
 
     await connection.query(
@@ -225,6 +235,7 @@ export const destituirProfesorService = async (id_profesor, motivo = '') => {
     return {
       id_profesor,
       grupos_liberados: gruposActivos.length,
+      acceso_bloqueado: true,
       mensaje: "Profesor destituido / incapacitado exitosamente"
     };
   } catch (error) {
@@ -242,7 +253,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
     await connection.beginTransaction();
 
     const [rows] = await connection.query(
-      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      `SELECT id_profesor, id_persona, estado FROM profesor WHERE id_profesor = ?`,
       [id_profesor]
     );
 
@@ -254,9 +265,17 @@ export const reintegrarProfesorService = async (id_profesor) => {
       throw new Error("El profesor ya se encuentra activo.");
     }
 
+    const id_persona = rows[0].id_persona;
+
     await connection.query(
       `UPDATE profesor SET estado = TRUE WHERE id_profesor = ?`,
       [id_profesor]
+    );
+
+    // NUEVO: restaurar el acceso a la plataforma al reintegrar al profesor.
+    await connection.query(
+      `UPDATE usuario SET estado = TRUE WHERE id_persona = ?`,
+      [id_persona]
     );
 
     const [pendientes] = await connection.query(
@@ -329,6 +348,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
       grupos_restaurados: gruposRestaurados,
       grupos_omitidos: gruposOmitidos,
       asistencias_reasignadas: asistenciasReasignadas,
+      acceso_restaurado: true,
       mensaje: "Profesor reintegrado exitosamente"
     };
   } catch (error) {

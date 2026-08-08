@@ -557,17 +557,24 @@ async function imprimirReportePdf() {
 
   const modo = obtenerModoReporteActivo();
   const labels = {
-    matricula: 'Reporte de matrícula',
-    estudiantes: 'Reporte de estudiantes',
-    grupos: 'Reporte de grupos',
-    profesores: 'Reporte de profesores',
-    pre_matricula: 'Reporte de pre-matrículas',
-    auditoria: 'Reporte de auditoría'
+    matricula: 'Reporte Matricula',
+    estudiantes: 'Reporte Estudiantes',
+    grupos: 'Reporte Grupos',
+    profesores: 'Reporte Profesores',
+    pre_matricula: 'Reporte Pre-matriculas',
+    auditoria: 'Reporte Auditoria'
+  };
+  const logoLayoutByMode = {
+    matricula: { x: 182, y: 3, width: 22, height: 22 },
+    estudiantes: { x: 183, y: 4, width: 21, height: 21 },
+    grupos: { x: 184, y: 4, width: 20, height: 20 },
+    profesores: { x: 184, y: 4, width: 20, height: 20 },
+    pre_matricula: { x: 186, y: 5, width: 18, height: 18 },
+    auditoria: { x: 188, y: 6, width: 16, height: 16 }
   };
 
   const { detalle_por_grupo = [], detalle = [] } = window._reportePdfData;
   const doc = new docConstructor({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const lineHeight = 6;
   const pageHeight = 290;
   let y = 18;
 
@@ -576,8 +583,8 @@ async function imprimirReportePdf() {
     y = 18;
   };
 
-  const agregarBloque = (titulo, lineas) => {
-    if (y > pageHeight - 30) nuevaPagina();
+  const agregarTituloSeccion = (titulo) => {
+    if (y > pageHeight - 24) nuevaPagina();
     doc.setFillColor(236, 244, 255);
     doc.rect(12, y - 6, 186, 8, 'F');
     doc.setFont('helvetica', 'bold');
@@ -585,16 +592,77 @@ async function imprimirReportePdf() {
     doc.setTextColor(31, 41, 55);
     doc.text(titulo, 14, y);
     y += 8;
+  };
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(24, 24, 24);
-    lineas.forEach((linea) => {
-      if (y > pageHeight - 15) nuevaPagina();
-      doc.text(linea, 14, y);
-      y += lineHeight;
+  const truncarTexto = (texto, maxLen = 28) => {
+    const valor = String(texto ?? '-');
+    if (valor.length <= maxLen) return valor;
+    return `${valor.slice(0, maxLen - 1)}...`;
+  };
+
+  const dibujarHeaderTabla = (columnas) => {
+    const left = 12;
+    const rowHeight = 6;
+    const totalWidth = columnas.reduce((acc, col) => acc + col.width, 0);
+    const topHeaderY = y - 5;
+
+    doc.setFillColor(243, 244, 246);
+    doc.rect(left, topHeaderY, totalWidth, rowHeight, 'F');
+    doc.setDrawColor(220, 220, 220);
+    doc.rect(left, topHeaderY, totalWidth, rowHeight);
+
+    let x = left;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(45, 55, 72);
+    columnas.forEach((col) => {
+      doc.text(col.label, x + 1.2, y - 1);
+      x += col.width;
     });
+
     y += 2;
+    return { left, totalWidth, rowHeight };
+  };
+
+  const agregarTablaAcademica = (titulo, columnas, filas) => {
+    agregarTituloSeccion(titulo);
+
+    if (!filas.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text('No hay datos para imprimir con los filtros aplicados.', 14, y);
+      y += 8;
+      return;
+    }
+
+    let { left, totalWidth, rowHeight } = dibujarHeaderTabla(columnas);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.8);
+    doc.setTextColor(25, 25, 25);
+
+    filas.forEach((fila) => {
+      if (y > pageHeight - 12) {
+        nuevaPagina();
+        agregarTituloSeccion(`${titulo} (continuacion)`);
+        ({ left, totalWidth, rowHeight } = dibujarHeaderTabla(columnas));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.8);
+        doc.setTextColor(25, 25, 25);
+      }
+
+      let x = left;
+      columnas.forEach((col, idx) => {
+        doc.text(truncarTexto(fila[idx], col.maxLen || 26), x + 1.2, y + 3);
+        x += col.width;
+      });
+
+      doc.setDrawColor(235, 235, 235);
+      doc.line(left, y + 4.5, left + totalWidth, y + 4.5);
+      y += rowHeight;
+    });
+
+    y += 4;
   };
 
   doc.setFillColor(37, 99, 235);
@@ -627,67 +695,92 @@ async function imprimirReportePdf() {
 
   y = 36;
   doc.setTextColor(0, 0, 0);
+
+  let columnas = [];
+  let filas = [];
+
   if (modo === 'profesores' && detalle_por_grupo?.length) {
     const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
-    const lineasDetalle = detalle_por_grupo.slice(0, 32).flatMap((registro, index) => {
+    columnas = [
+      { label: 'Fecha aplicada', width: 32, maxLen: 20 },
+      { label: 'Profesor', width: 42, maxLen: 30 },
+      { label: 'Materia', width: 28, maxLen: 18 },
+      { label: 'Grupo(s)', width: 26, maxLen: 18 },
+      { label: 'Seccion(es)', width: 32, maxLen: 20 },
+      { label: 'Estado', width: 22, maxLen: 10 }
+    ];
+    filas = detalle_por_grupo.slice(0, 32).map((registro) => {
       const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''} ${registro.profesor_apellido2 ?? ''}`.trim() || '-';
       return [
-        `Registro ${index + 1}`,
-        `Fecha aplicada: ${fechaAplicada}`,
-        `Profesor: ${profesor}`,
-        `Materia: ${registro.materia ?? '-'}`,
-        `Grupo(s): ${registro.grupos ?? '-'}`,
-        `Sección(es): ${registro.secciones ?? '-'}`,
-        `Estado: ${registro.estado ?? 'Activo'}`,
-        ''
+        fechaAplicada,
+        profesor,
+        registro.materia ?? '-',
+        registro.grupos ?? '-',
+        registro.secciones ?? '-',
+        registro.estado ?? 'Activo'
       ];
     });
-    agregarBloque('Datos relevantes del reporte', lineasDetalle);
   } else if (detalle?.length) {
-    const lineasDetalle = detalle.slice(0, 32).flatMap((registro, index) => {
-      const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
-      const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''}`.trim() || '-';
-      const fecha = modo === 'auditoria'
-        ? formatearFechaMMDDYYYY(registro.fecha_creacion)
-        : formatearFechaMMDDYYYY(registro.fecha);
-
-      if (modo === 'auditoria') {
-        return [
-          `Registro ${index + 1}`,
-          `Fecha: ${fecha}`,
-          `Tabla: ${registro.nombre_tabla ?? '-'}`,
-          `Acción: ${registro.accion_usuario ?? '-'}`,
-          `Usuario: ${registro.usuario_nombre || registro.id_usuario || '-'}`,
-          `Detalle: ${registro.datos_nuevos ? 'Disponible' : '—'}`,
-          ''
-        ];
-      }
-
-      if (modo === 'pre_matricula') {
-        return [
-          `Registro ${index + 1}`,
-          `Estudiante: ${estudiante}`,
-          `Cédula: ${registro.id_estudiante ?? '-'}`,
-          `Estado: ${registro.estado ?? 'Activo'}`,
-          ''
-        ];
-      }
-
-      return [
-        `Registro ${index + 1}`,
-        `Fecha: ${fecha}`,
-        `Estudiante: ${estudiante}`,
-        `Grupo: ${registro.nombre_grupo ?? '-'}`,
-        `Profesor: ${profesor}`,
-        `Estado: ${registro.estado_asistencia ?? '-'}`,
-        `Observaciones: ${registro.observaciones || '—'}`,
-        ''
+    if (modo === 'auditoria') {
+      columnas = [
+        { label: 'Fecha', width: 28, maxLen: 12 },
+        { label: 'Tabla', width: 34, maxLen: 20 },
+        { label: 'Accion', width: 24, maxLen: 12 },
+        { label: 'Usuario', width: 34, maxLen: 20 },
+        { label: 'Detalle', width: 66, maxLen: 42 }
       ];
-    });
-    agregarBloque('Datos relevantes del reporte', lineasDetalle);
-  } else {
-    agregarBloque('Datos relevantes del reporte', ['No hay datos para imprimir con los filtros aplicados.']);
+      filas = detalle.slice(0, 32).map((registro) => {
+        const fecha = formatearFechaMMDDYYYY(registro.fecha_creacion);
+        return [
+          fecha,
+          registro.nombre_tabla ?? '-',
+          registro.accion_usuario ?? '-',
+          registro.usuario_nombre || registro.id_usuario || '-',
+          registro.datos_nuevos ? 'Disponible' : '-'
+        ];
+      });
+    } else if (modo === 'pre_matricula') {
+      columnas = [
+        { label: 'Estudiante', width: 70, maxLen: 42 },
+        { label: 'Cedula', width: 30, maxLen: 16 },
+        { label: 'Estado', width: 28, maxLen: 14 },
+        { label: 'Tipo', width: 58, maxLen: 30 }
+      ];
+      filas = detalle.slice(0, 32).map((registro) => {
+        const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
+        return [
+          estudiante,
+          registro.id_estudiante ?? '-',
+          registro.estado ?? 'Activo',
+          'Pre-matricula'
+        ];
+      });
+    } else {
+      columnas = [
+        { label: 'Fecha', width: 24, maxLen: 12 },
+        { label: 'Estudiante', width: 48, maxLen: 30 },
+        { label: 'Grupo', width: 24, maxLen: 14 },
+        { label: 'Profesor', width: 44, maxLen: 28 },
+        { label: 'Estado', width: 20, maxLen: 10 },
+        { label: 'Observaciones', width: 28, maxLen: 16 }
+      ];
+      filas = detalle.slice(0, 32).map((registro) => {
+        const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
+        const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''}`.trim() || '-';
+        const fecha = formatearFechaMMDDYYYY(registro.fecha);
+        return [
+          fecha,
+          estudiante,
+          registro.nombre_grupo ?? '-',
+          profesor,
+          registro.estado_asistencia ?? '-',
+          registro.observaciones || '-'
+        ];
+      });
+    }
   }
+
+  agregarTablaAcademica('Detalle academico', columnas, filas);
 
   const nombreArchivo = `${(labels[modo] || 'Reporte EduControl').replace(/\s+/g, '_')}.pdf`;
   doc.save(nombreArchivo);

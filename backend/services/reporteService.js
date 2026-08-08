@@ -140,9 +140,7 @@ function construirCondicionesAsistencia(filtros = {}) {
     if (busqueda && String(busqueda).trim()) {
         const textoBusqueda = `%${String(busqueda).trim()}%`;
 
-        const incluirProfesorEnBusqueda = modo !== "matricula";
-
-        if (!incluirProfesorEnBusqueda) {
+        if (modo === "matricula") {
             condiciones.push(`
                 a.id_estudiante IN (
                     SELECT e.id_estudiante
@@ -161,6 +159,20 @@ function construirCondicionesAsistencia(filtros = {}) {
             // que un nombre docente arrastre estudiantes asociados.
             condiciones.push(`
                 a.id_profesor NOT IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            `);
+            valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else if (modo === "profesores") {
+            condiciones.push(`
+                a.id_profesor IN (
                     SELECT prof.id_profesor
                     FROM profesor prof
                     INNER JOIN persona pp ON pp.id_persona = prof.id_persona
@@ -530,9 +542,8 @@ export async function generarReporteResumen(filtros = {}) {
 
     if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
         const textoBusqueda = `%${String(filtrosNormalizados.busqueda).trim()}%`;
-        const incluirProfesorEnBusqueda = filtrosNormalizados.modo !== "matricula";
 
-        if (!incluirProfesorEnBusqueda) {
+        if (filtrosNormalizados.modo === "matricula") {
             grupoCondiciones.push(`
                 a.id_estudiante IN (
                     SELECT e.id_estudiante
@@ -549,6 +560,20 @@ export async function generarReporteResumen(filtros = {}) {
 
             grupoCondiciones.push(`
                 a.id_profesor NOT IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            `);
+            grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else if (filtrosNormalizados.modo === "profesores") {
+            grupoCondiciones.push(`
+                a.id_profesor IN (
                     SELECT prof.id_profesor
                     FROM profesor prof
                     INNER JOIN persona pp ON pp.id_persona = prof.id_persona

@@ -311,7 +311,7 @@ function abrirVistaPreviaReporte() {
   const modalEl = document.getElementById('modalPreviewReporte');
   if (!modalEl) return;
   const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-  const { resumen = {}, detalle = [], detalle_por_grupo = [] } = window._reportePdfData;
+  const { detalle = [], detalle_por_grupo = [] } = window._reportePdfData;
   const filtros = obtenerFiltrosActivos();
   const modo = obtenerModoReporteActivo();
   const labels = {
@@ -372,113 +372,8 @@ function abrirVistaPreviaReporte() {
     }
   }
 
-  if (modo === 'profesores') {
+  if (metricsArea) {
     metricsArea.innerHTML = '';
-  } else if (modo === 'pre_matricula') {
-    metricsArea.innerHTML = `
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Pre-matrículas</span>
-          <div class="stat-value">${resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Estudiantes activos</span>
-          <div class="stat-value">${resumen.total_estudiantes ?? 0}</div>
-        </div>
-      </div>
-    `;
-  } else if (modo === 'auditoria') {
-    metricsArea.innerHTML = `
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Auditorías</span>
-          <div class="stat-value">${resumen.total_auditorias ?? resumen.total_registros ?? 0}</div>
-        </div>
-      </div>
-    `;
-  } else if (modo === 'grupos') {
-    metricsArea.innerHTML = `
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Grupos</span>
-          <div class="stat-value">${resumen.total_grupos ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Matrículas</span>
-          <div class="stat-value">${resumen.total_matriculas ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Asistencias</span>
-          <div class="stat-value">${resumen.total_asistencias ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Presentismo</span>
-          <div class="stat-value">${resumen.tasa_presentismo ?? 0}%</div>
-        </div>
-      </div>
-    `;
-  } else if (modo === 'estudiantes') {
-    metricsArea.innerHTML = `
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Estudiantes</span>
-          <div class="stat-value">${resumen.total_estudiantes ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Asistencias</span>
-          <div class="stat-value">${resumen.total_asistencias ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Presentes</span>
-          <div class="stat-value">${resumen.presentes ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Presentismo</span>
-          <div class="stat-value">${resumen.tasa_presentismo ?? 0}%</div>
-        </div>
-      </div>
-    `;
-  } else {
-    metricsArea.innerHTML = `
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Presentes</span>
-          <div class="stat-value">${resumen.presentes ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Ausentes</span>
-          <div class="stat-value">${resumen.ausentes ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Tardías</span>
-          <div class="stat-value">${resumen.tardias ?? 0}</div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="stat-card report-stat-card h-100">
-          <span class="stat-label">Tasa de presentismo</span>
-          <div class="stat-value">${resumen.tasa_presentismo ?? 0}%</div>
-        </div>
-      </div>
-    `;
   }
 
   const detalleProfesor = Array.isArray(detalle_por_grupo) ? detalle_por_grupo : [];

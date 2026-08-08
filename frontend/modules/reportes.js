@@ -77,6 +77,10 @@ function obtenerMensajeSinDatos(modo = obtenerModoReporteActivo(), filtros = obt
     return 'No se encontraron estudiantes con ese nombre en matrícula.';
   }
 
+  if (modo === 'profesores' && (filtros?.busqueda || '').trim()) {
+    return 'No se encontraron profesores con ese criterio.';
+  }
+
   return 'No hay registros con los filtros aplicados.';
 }
 
@@ -594,12 +598,6 @@ async function imprimirReportePdf() {
     y += 8;
   };
 
-  const truncarTexto = (texto, maxLen = 28) => {
-    const valor = String(texto ?? '-');
-    if (valor.length <= maxLen) return valor;
-    return `${valor.slice(0, maxLen - 1)}...`;
-  };
-
   const dibujarHeaderTabla = (columnas) => {
     const left = 12;
     const rowHeight = 6;
@@ -652,14 +650,38 @@ async function imprimirReportePdf() {
       }
 
       let x = left;
-      columnas.forEach((col, idx) => {
-        doc.text(truncarTexto(fila[idx], col.maxLen || 26), x + 1.2, y + 3);
+      const cellPaddingX = 1.2;
+      const cellPaddingY = 2.8;
+      const lineHeight = 3.6;
+      const filasEnCelda = columnas.map((col, idx) => {
+        const valor = String(fila[idx] ?? '-');
+        const anchoTexto = Math.max(col.width - (cellPaddingX * 2), 2);
+        const lineas = doc.splitTextToSize(valor, anchoTexto);
+        return Array.isArray(lineas) && lineas.length ? lineas : ['-'];
+      });
+      const maxLineas = Math.max(...filasEnCelda.map((lineas) => lineas.length));
+      const rowHeightDinamico = Math.max(rowHeight, (maxLineas * lineHeight) + 2.4);
+
+      if (y > pageHeight - rowHeightDinamico - 3) {
+        nuevaPagina();
+        agregarTituloSeccion(`${titulo} (continuacion)`);
+        ({ left, totalWidth, rowHeight } = dibujarHeaderTabla(columnas));
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.8);
+        doc.setTextColor(25, 25, 25);
+      }
+
+      filasEnCelda.forEach((lineas, idx) => {
+        const col = columnas[idx];
+        lineas.forEach((linea, lineIdx) => {
+          doc.text(linea, x + cellPaddingX, y + cellPaddingY + (lineIdx * lineHeight));
+        });
         x += col.width;
       });
 
       doc.setDrawColor(235, 235, 235);
-      doc.line(left, y + 4.5, left + totalWidth, y + 4.5);
-      y += rowHeight;
+      doc.line(left, y + rowHeightDinamico, left + totalWidth, y + rowHeightDinamico);
+      y += rowHeightDinamico;
     });
 
     y += 4;
@@ -702,14 +724,14 @@ async function imprimirReportePdf() {
   if (modo === 'profesores' && detalle_por_grupo?.length) {
     const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
     columnas = [
-      { label: 'Fecha aplicada', width: 32, maxLen: 20 },
-      { label: 'Profesor', width: 42, maxLen: 30 },
-      { label: 'Materia', width: 28, maxLen: 18 },
-      { label: 'Grupo(s)', width: 26, maxLen: 18 },
-      { label: 'Seccion(es)', width: 32, maxLen: 20 },
+      { label: 'Fecha aplicada', width: 24, maxLen: 20 },
+      { label: 'Profesor', width: 44, maxLen: 30 },
+      { label: 'Materia', width: 24, maxLen: 18 },
+      { label: 'Grupo(s)', width: 30, maxLen: 18 },
+      { label: 'Seccion(es)', width: 42, maxLen: 20 },
       { label: 'Estado', width: 22, maxLen: 10 }
     ];
-    filas = detalle_por_grupo.slice(0, 32).map((registro) => {
+    filas = detalle_por_grupo.map((registro) => {
       const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''} ${registro.profesor_apellido2 ?? ''}`.trim() || '-';
       return [
         fechaAplicada,
@@ -723,13 +745,13 @@ async function imprimirReportePdf() {
   } else if (detalle?.length) {
     if (modo === 'auditoria') {
       columnas = [
-        { label: 'Fecha', width: 28, maxLen: 12 },
-        { label: 'Tabla', width: 34, maxLen: 20 },
-        { label: 'Accion', width: 24, maxLen: 12 },
-        { label: 'Usuario', width: 34, maxLen: 20 },
-        { label: 'Detalle', width: 66, maxLen: 42 }
+        { label: 'Fecha', width: 24, maxLen: 12 },
+        { label: 'Tabla', width: 28, maxLen: 20 },
+        { label: 'Accion', width: 22, maxLen: 12 },
+        { label: 'Usuario', width: 30, maxLen: 20 },
+        { label: 'Detalle', width: 82, maxLen: 42 }
       ];
-      filas = detalle.slice(0, 32).map((registro) => {
+      filas = detalle.map((registro) => {
         const fecha = formatearFechaMMDDYYYY(registro.fecha_creacion);
         return [
           fecha,
@@ -741,12 +763,12 @@ async function imprimirReportePdf() {
       });
     } else if (modo === 'pre_matricula') {
       columnas = [
-        { label: 'Estudiante', width: 70, maxLen: 42 },
-        { label: 'Cedula', width: 30, maxLen: 16 },
-        { label: 'Estado', width: 28, maxLen: 14 },
+        { label: 'Estudiante', width: 82, maxLen: 42 },
+        { label: 'Cedula', width: 28, maxLen: 16 },
+        { label: 'Estado', width: 20, maxLen: 14 },
         { label: 'Tipo', width: 58, maxLen: 30 }
       ];
-      filas = detalle.slice(0, 32).map((registro) => {
+      filas = detalle.map((registro) => {
         const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
         return [
           estudiante,
@@ -757,14 +779,14 @@ async function imprimirReportePdf() {
       });
     } else {
       columnas = [
-        { label: 'Fecha', width: 24, maxLen: 12 },
-        { label: 'Estudiante', width: 48, maxLen: 30 },
-        { label: 'Grupo', width: 24, maxLen: 14 },
-        { label: 'Profesor', width: 44, maxLen: 28 },
-        { label: 'Estado', width: 20, maxLen: 10 },
-        { label: 'Observaciones', width: 28, maxLen: 16 }
+        { label: 'Fecha', width: 20, maxLen: 12 },
+        { label: 'Estudiante', width: 44, maxLen: 30 },
+        { label: 'Grupo', width: 22, maxLen: 14 },
+        { label: 'Profesor', width: 40, maxLen: 28 },
+        { label: 'Estado', width: 18, maxLen: 10 },
+        { label: 'Observaciones', width: 42, maxLen: 16 }
       ];
-      filas = detalle.slice(0, 32).map((registro) => {
+      filas = detalle.map((registro) => {
         const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
         const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''}`.trim() || '-';
         const fecha = formatearFechaMMDDYYYY(registro.fecha);

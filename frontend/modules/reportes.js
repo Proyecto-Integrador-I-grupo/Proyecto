@@ -68,10 +68,16 @@ const REPORTE_LOGO_SRC = '../images/logo.jpg';
 let reporteLogoDataUrlPromise = null;
 let reporteConsultaAplicada = false;
 
-function obtenerMensajeSinDatos() {
-  return reporteConsultaAplicada
-    ? 'No hay registros con los filtros aplicados.'
-    : 'Aún no hay consulta. Presiona Aplicar filtros.';
+function obtenerMensajeSinDatos(modo = obtenerModoReporteActivo(), filtros = obtenerFiltrosActivos()) {
+  if (!reporteConsultaAplicada) {
+    return 'Aún no hay consulta. Presiona Aplicar filtros.';
+  }
+
+  if (modo === 'matricula' && (filtros?.busqueda || '').trim()) {
+    return 'No se encontraron estudiantes con ese nombre en matrícula.';
+  }
+
+  return 'No hay registros con los filtros aplicados.';
 }
 
 function obtenerLogoReporteDataUrl() {
@@ -305,12 +311,12 @@ function abrirVistaPreviaReporte() {
   const filtros = obtenerFiltrosActivos();
   const modo = obtenerModoReporteActivo();
   const labels = {
-    matricula: 'Reporte de matrícula',
-    estudiantes: 'Reporte de estudiantes',
-    grupos: 'Reporte de grupos',
-    profesores: 'Reporte de profesores',
-    pre_matricula: 'Reporte de pre-matrículas',
-    auditoria: 'Reporte de auditoría'
+    matricula: 'Reporte Matrícula',
+    estudiantes: 'Reporte Estudiantes',
+    grupos: 'Reporte Grupos',
+    profesores: 'Reporte Profesores',
+    pre_matricula: 'Reporte Pre-matrículas',
+    auditoria: 'Reporte Auditoría'
   };
   const logoLayoutByMode = {
     matricula: { x: 182, y: 3, width: 22, height: 22 },
@@ -559,7 +565,7 @@ async function imprimirReportePdf() {
     auditoria: 'Reporte de auditoría'
   };
 
-  const { resumen = {}, detalle_por_grupo = [], detalle = [] } = window._reportePdfData;
+  const { detalle_por_grupo = [], detalle = [] } = window._reportePdfData;
   const doc = new docConstructor({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const lineHeight = 6;
   const pageHeight = 290;
@@ -596,7 +602,7 @@ async function imprimirReportePdf() {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text(labels[modo] || 'Reporte administrativo - EduControl', 14, 12);
+  doc.text(labels[modo] || 'Reporte EduControl', 14, 12);
 
   const logoDataUrl = await obtenerLogoReporteDataUrl();
   if (logoDataUrl) {
@@ -621,80 +627,70 @@ async function imprimirReportePdf() {
 
   y = 36;
   doc.setTextColor(0, 0, 0);
-  const filtros = {
-    Grupo: document.getElementById('report-filtro-grupo')?.selectedOptions?.[0]?.textContent || 'Todos',
-    Estado: document.getElementById('report-filtro-estado')?.value || 'Todos',
-    FechaInicio: document.getElementById('report-filtro-fecha-desde')?.value || '—',
-    FechaFin: document.getElementById('report-filtro-fecha-hasta')?.value || '—',
-    Busqueda: document.getElementById('report-filtro-busqueda')?.value || '—'
-  };
-
-  const lineasFiltros = Object.entries(filtros).map(([label, value]) => `${label}: ${value}`);
-  agregarBloque('Filtros aplicados', lineasFiltros);
-
-  const metricas = modo === 'grupos'
-    ? [
-        `Grupos: ${resumen.total_grupos ?? 0}`,
-        `Matrículas: ${resumen.total_matriculas ?? 0}`,
-        `Asistencias: ${resumen.total_asistencias ?? 0}`,
-        `Presentes: ${resumen.presentes ?? 0}`,
-        `Ausentes: ${resumen.ausentes ?? 0}`,
-        `Tasa de presentismo: ${resumen.tasa_presentismo ?? 0}%`
-      ]
-    : modo === 'estudiantes'
-      ? [
-          `Estudiantes: ${resumen.total_estudiantes ?? 0}`,
-          `Asistencias: ${resumen.total_asistencias ?? 0}`,
-          `Presentes: ${resumen.presentes ?? 0}`,
-          `Ausentes: ${resumen.ausentes ?? 0}`,
-          `Tardías: ${resumen.tardias ?? 0}`,
-          `Tasa de presentismo: ${resumen.tasa_presentismo ?? 0}%`
-        ]
-      : modo === 'profesores'
-        ? [
-            `Profesores: ${resumen.total_profesores ?? 0}`,
-            `Rango de fecha aplicado: ${obtenerRangoFechaAplicado(obtenerFiltrosActivos())}`,
-            `Grupos vinculados: ${detalle_por_grupo.length}`
-          ]
-        : [
-            `Estudiantes: ${resumen.total_estudiantes ?? 0}`,
-            `Profesores: ${resumen.total_profesores ?? 0}`,
-            `Grupos: ${resumen.total_grupos ?? 0}`,
-            `Matrículas: ${resumen.total_matriculas ?? 0}`,
-            `Presentes: ${resumen.presentes ?? 0}`,
-            `Ausentes: ${resumen.ausentes ?? 0}`,
-            `Tardías: ${resumen.tardias ?? 0}`,
-            `Justificadas: ${resumen.justificadas ?? 0}`,
-            `Tasa de presentismo: ${resumen.tasa_presentismo ?? 0}%`
-          ];
-
-  agregarBloque('Resumen general', metricas);
-
-  if (detalle_por_grupo?.length && modo !== 'estudiantes' && modo !== 'profesores') {
-    const lineasGrupo = detalle_por_grupo.map((grupo) => {
-      return `• ${grupo.nombre_grupo ?? '-'} | Sección: ${grupo.nombre_seccion ?? '-'} | Ocupados: ${grupo.ocupados ?? 0} | Capacidad: ${grupo.capacidad ?? 0} | Asistencias: ${grupo.asistencias_registradas ?? 0}`;
-    });
-    agregarBloque('Detalle por grupo', lineasGrupo);
-  }
-
   if (modo === 'profesores' && detalle_por_grupo?.length) {
     const fechaAplicada = obtenerRangoFechaAplicado(obtenerFiltrosActivos());
-    const lineasDetalle = detalle_por_grupo.slice(0, 32).map((registro) => {
+    const lineasDetalle = detalle_por_grupo.slice(0, 32).flatMap((registro, index) => {
       const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''} ${registro.profesor_apellido2 ?? ''}`.trim() || '-';
-      return `${fechaAplicada} | ${profesor} | ${registro.materia ?? '-'} | ${registro.grupos ?? '-'} | ${registro.secciones ?? '-'} | ${registro.estado ?? 'Activo'}`;
+      return [
+        `Registro ${index + 1}`,
+        `Fecha aplicada: ${fechaAplicada}`,
+        `Profesor: ${profesor}`,
+        `Materia: ${registro.materia ?? '-'}`,
+        `Grupo(s): ${registro.grupos ?? '-'}`,
+        `Sección(es): ${registro.secciones ?? '-'}`,
+        `Estado: ${registro.estado ?? 'Activo'}`,
+        ''
+      ];
     });
-    agregarBloque('Detalle de profesores', lineasDetalle);
+    agregarBloque('Datos relevantes del reporte', lineasDetalle);
   } else if (detalle?.length) {
-    const lineasDetalle = detalle.slice(0, 32).map((registro) => {
+    const lineasDetalle = detalle.slice(0, 32).flatMap((registro, index) => {
       const estudiante = `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim() || '-';
       const profesor = `${registro.profesor_nombre ?? ''} ${registro.profesor_apellido1 ?? ''}`.trim() || '-';
-      const fecha = registro.fecha ? String(registro.fecha).split('T')[0] : '-';
-      return `${fecha} | ${estudiante} | ${registro.nombre_grupo ?? '-'} | ${profesor} | ${registro.estado_asistencia ?? '-'}`;
+      const fecha = modo === 'auditoria'
+        ? formatearFechaMMDDYYYY(registro.fecha_creacion)
+        : formatearFechaMMDDYYYY(registro.fecha);
+
+      if (modo === 'auditoria') {
+        return [
+          `Registro ${index + 1}`,
+          `Fecha: ${fecha}`,
+          `Tabla: ${registro.nombre_tabla ?? '-'}`,
+          `Acción: ${registro.accion_usuario ?? '-'}`,
+          `Usuario: ${registro.usuario_nombre || registro.id_usuario || '-'}`,
+          `Detalle: ${registro.datos_nuevos ? 'Disponible' : '—'}`,
+          ''
+        ];
+      }
+
+      if (modo === 'pre_matricula') {
+        return [
+          `Registro ${index + 1}`,
+          `Estudiante: ${estudiante}`,
+          `Cédula: ${registro.id_estudiante ?? '-'}`,
+          `Estado: ${registro.estado ?? 'Activo'}`,
+          ''
+        ];
+      }
+
+      return [
+        `Registro ${index + 1}`,
+        `Fecha: ${fecha}`,
+        `Estudiante: ${estudiante}`,
+        `Grupo: ${registro.nombre_grupo ?? '-'}`,
+        `Profesor: ${profesor}`,
+        `Estado: ${registro.estado_asistencia ?? '-'}`,
+        `Observaciones: ${registro.observaciones || '—'}`,
+        ''
+      ];
     });
-    agregarBloque('Detalle de asistencias', lineasDetalle);
+    agregarBloque('Datos relevantes del reporte', lineasDetalle);
+  } else {
+    agregarBloque('Datos relevantes del reporte', ['No hay datos para imprimir con los filtros aplicados.']);
   }
 
-  doc.save('reporte-administrativo.pdf');
+  const nombreArchivo = `${(labels[modo] || 'Reporte EduControl').replace(/\s+/g, '_')}.pdf`;
+  doc.save(nombreArchivo);
 }
 
 function poblarFiltroGrupoReportes() {
@@ -800,7 +796,7 @@ function renderTablaPrincipal(data = {}) {
 
   if (!registros.length) {
     const colspan = modo === 'profesores' ? 6 : modo === 'pre_matricula' ? 4 : modo === 'auditoria' ? 5 : 6;
-    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos(modo, filtros)}</td></tr>`;
     return;
   }
 

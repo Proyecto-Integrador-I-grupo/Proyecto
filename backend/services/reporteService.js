@@ -100,6 +100,7 @@ function validarFiltrosReporte(filtros = {}) {
 
 function construirCondicionesAsistencia(filtros = {}) {
     const {
+        modo,
         id_grupo,
         id_estudiante,
         fecha_inicio,
@@ -138,32 +139,67 @@ function construirCondicionesAsistencia(filtros = {}) {
 
     if (busqueda && String(busqueda).trim()) {
         const textoBusqueda = `%${String(busqueda).trim()}%`;
-        condiciones.push(`(
-            a.id_estudiante IN (
-                SELECT e.id_estudiante
-                FROM estudiante e
-                INNER JOIN persona pe ON pe.id_persona = e.id_persona
-                WHERE pe.nombre LIKE ?
-                   OR pe.apellido1 LIKE ?
-                   OR pe.apellido2 LIKE ?
-                   OR CAST(pe.id_persona AS CHAR) LIKE ?
-                   OR CAST(e.id_estudiante AS CHAR) LIKE ?
-            )
-            OR a.id_profesor IN (
-                SELECT prof.id_profesor
-                FROM profesor prof
-                INNER JOIN persona pp ON pp.id_persona = prof.id_persona
-                WHERE pp.nombre LIKE ?
-                   OR pp.apellido1 LIKE ?
-                   OR pp.apellido2 LIKE ?
-                   OR CAST(pp.id_persona AS CHAR) LIKE ?
-                   OR CAST(prof.id_profesor AS CHAR) LIKE ?
-            )
-        )`);
-        valores.push(
-            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
-            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
-        );
+
+        const incluirProfesorEnBusqueda = modo !== "matricula";
+
+        if (!incluirProfesorEnBusqueda) {
+            condiciones.push(`
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
+                )
+            `);
+            valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+
+            // En modo matricula se excluyen coincidencias por profesor para evitar
+            // que un nombre docente arrastre estudiantes asociados.
+            condiciones.push(`
+                a.id_profesor NOT IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            `);
+            valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else {
+            condiciones.push(`(
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
+                )
+                OR a.id_profesor IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            )`);
+            valores.push(
+                textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
+                textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
+            );
+        }
     }
 
     return { condiciones, valores };
@@ -493,33 +529,65 @@ export async function generarReporteResumen(filtros = {}) {
     }
 
     if (filtrosNormalizados.busqueda && String(filtrosNormalizados.busqueda).trim()) {
-        grupoCondiciones.push(`(
-            a.id_estudiante IN (
-                SELECT e.id_estudiante
-                FROM estudiante e
-                INNER JOIN persona pe ON pe.id_persona = e.id_persona
-                WHERE pe.nombre LIKE ?
-                   OR pe.apellido1 LIKE ?
-                   OR pe.apellido2 LIKE ?
-                   OR CAST(pe.id_persona AS CHAR) LIKE ?
-                   OR CAST(e.id_estudiante AS CHAR) LIKE ?
-            )
-            OR a.id_profesor IN (
-                SELECT prof.id_profesor
-                FROM profesor prof
-                INNER JOIN persona pp ON pp.id_persona = prof.id_persona
-                WHERE pp.nombre LIKE ?
-                   OR pp.apellido1 LIKE ?
-                   OR pp.apellido2 LIKE ?
-                   OR CAST(pp.id_persona AS CHAR) LIKE ?
-                   OR CAST(prof.id_profesor AS CHAR) LIKE ?
-            )
-        )`);
         const textoBusqueda = `%${String(filtrosNormalizados.busqueda).trim()}%`;
-        grupoValores.push(
-            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
-            textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
-        );
+        const incluirProfesorEnBusqueda = filtrosNormalizados.modo !== "matricula";
+
+        if (!incluirProfesorEnBusqueda) {
+            grupoCondiciones.push(`
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
+                )
+            `);
+            grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+
+            grupoCondiciones.push(`
+                a.id_profesor NOT IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            `);
+            grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else {
+            grupoCondiciones.push(`(
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
+                )
+                OR a.id_profesor IN (
+                    SELECT prof.id_profesor
+                    FROM profesor prof
+                    INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+                    WHERE pp.nombre LIKE ?
+                       OR pp.apellido1 LIKE ?
+                       OR pp.apellido2 LIKE ?
+                       OR CAST(pp.id_persona AS CHAR) LIKE ?
+                       OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            )`);
+            grupoValores.push(
+                textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda,
+                textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda
+            );
+        }
     }
 
     const [detallePorGrupo] = await pool.query(

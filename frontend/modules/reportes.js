@@ -77,6 +77,10 @@ function obtenerMensajeSinDatos(modo = obtenerModoReporteActivo(), filtros = obt
     return 'No se encontraron estudiantes con ese nombre en matrícula.';
   }
 
+  if (modo === 'estudiantes' && (filtros?.busqueda || '').trim()) {
+    return 'No se encontraron estudiantes con ese criterio.';
+  }
+
   if (modo === 'profesores' && (filtros?.busqueda || '').trim()) {
     return 'No se encontraron profesores con ese criterio.';
   }

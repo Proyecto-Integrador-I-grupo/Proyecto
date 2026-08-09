@@ -184,6 +184,20 @@ function construirCondicionesAsistencia(filtros = {}) {
                 )
             `);
             valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else if (modo === "estudiantes") {
+            condiciones.push(`
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
+                )
+            `);
+            valores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
         } else {
             condiciones.push(`(
                 a.id_estudiante IN (
@@ -582,6 +596,20 @@ export async function generarReporteResumen(filtros = {}) {
                        OR pp.apellido2 LIKE ?
                        OR CAST(pp.id_persona AS CHAR) LIKE ?
                        OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                )
+            `);
+            grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);
+        } else if (filtrosNormalizados.modo === "estudiantes") {
+            grupoCondiciones.push(`
+                a.id_estudiante IN (
+                    SELECT e.id_estudiante
+                    FROM estudiante e
+                    INNER JOIN persona pe ON pe.id_persona = e.id_persona
+                    WHERE pe.nombre LIKE ?
+                       OR pe.apellido1 LIKE ?
+                       OR pe.apellido2 LIKE ?
+                       OR CAST(pe.id_persona AS CHAR) LIKE ?
+                       OR CAST(e.id_estudiante AS CHAR) LIKE ?
                 )
             `);
             grupoValores.push(textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda, textoBusqueda);

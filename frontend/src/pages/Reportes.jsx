@@ -64,6 +64,18 @@ export default function Reportes() {
 <button type="button" id="report-imprimir-pdf" className="btn btn-success btn-sm"><i className="bi bi-printer"></i> Imprimir PDF</button>
 </div>
 </div>
+<div className="row g-3 mb-3">
+  <div className="col-6 col-lg-3"><div className="stat-card report-stat-card h-100"><span className="stat-label">Estudiantes</span><div id="report-total-estudiantes" className="stat-value">0</div></div></div>
+  <div className="col-6 col-lg-3"><div className="stat-card report-stat-card h-100"><span className="stat-label">Profesores</span><div id="report-total-profesores" className="stat-value">0</div></div></div>
+  <div className="col-6 col-lg-3"><div className="stat-card report-stat-card h-100"><span className="stat-label">Grupos</span><div id="report-total-grupos" className="stat-value">0</div></div></div>
+  <div className="col-6 col-lg-3"><div className="stat-card report-stat-card h-100"><span className="stat-label">Presentismo</span><div id="report-tasa-presentismo" className="stat-value">0%</div></div></div>
+</div>
+<div className="row g-2 mb-4 small">
+  <div className="col-6 col-md-3"><span>Presentes: </span><strong id="report-presentes">0</strong></div>
+  <div className="col-6 col-md-3"><span>Ausentes: </span><strong id="report-ausentes">0</strong></div>
+  <div className="col-6 col-md-3"><span>Tardías: </span><strong id="report-tardias">0</strong></div>
+  <div className="col-6 col-md-3"><span>Justificadas: </span><strong id="report-justificadas">0</strong></div>
+</div>
 <div className="table-responsive">
 <table className="table table-hover align-middle mb-0">
 <thead>
@@ -82,8 +94,24 @@ export default function Reportes() {
 </tbody>
 </table>
 </div>
+<div className="mt-4">
+  <h4 className="h6">Detalle de asistencia</h4>
+  <div className="table-responsive"><table id="report-detalle-tabla" className="table table-sm table-hover"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody id="report-detalle-body"></tbody></table></div>
 </div>
 </div>
+</div>
+</div>
+
+<div className="modal fade" id="modalPreviewReporte" tabIndex="-1" aria-hidden="true">
+  <div className="modal-dialog modal-dialog-centered modal-xl"><div className="modal-content border-0 shadow-lg">
+    <div className="modal-header bg-navy text-white"><h5 className="modal-title font-serif" id="preview-reporte-titulo">Vista previa del reporte</h5><button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div className="modal-body p-4">
+      <div id="preview-reporte-filtros" className="small text-muted mb-3"></div>
+      <div id="preview-reporte-metricas" className="row g-3 mb-4"></div>
+      <div className="table-responsive"><table id="preview-reporte-tabla" className="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody id="preview-reporte-detalle-body"></tbody></table></div>
+    </div>
+    <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button><button type="button" id="preview-generar-pdf" className="btn btn-success"><i className="bi bi-file-earmark-pdf"></i> Generar PDF</button></div>
+  </div></div>
 </div>
 </section></>
   );

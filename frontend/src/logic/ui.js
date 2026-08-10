@@ -1,7 +1,7 @@
 // frontend/ui.js
-const baseUrl = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+const baseUrl = import.meta.env.VITE_API_URL || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ? "http://localhost:3000"
-  : "https://proyecto-vcz6.onrender.com";
+  : "https://proyecto-vcz6.onrender.com");
 
 const SESSION_KEY = "educontrol_usuario";
 
@@ -356,21 +356,22 @@ function aplicarRestriccionesModulos(rolNormalizado) {
 
 async function apiFetch(path, options = {}) {
   const headers = {
+    ...(options.body && !(options.body instanceof FormData)
+      ? { 'Content-Type': 'application/json' }
+      : {}),
     ...(options.headers || {})
   };
 
   if (currentUser?.id_usuario) {
-    headers['x-user-id'] =
-      currentUser.id_usuario;
+    headers['x-user-id'] = String(currentUser.id_usuario);
   }
 
-  const res = await fetch(
-    `${baseUrl}${path}`,
-    {
-      ...options,
-      headers
-    }
-  );
+  const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
+
+  const res = await fetch(url, {
+    ...options,
+    headers
+  });
 
   if (res.status === 401) {
     showToast(
@@ -430,6 +431,7 @@ function initApp() {
   });
 
   wireUsuariosForm();
+  wireUsuariosDelete();
   wireSidebarToggle();
   initAccessibilityWidget();
 
@@ -647,6 +649,10 @@ function setActiveView(viewName) {
           error
         );
       });
+  } else if (viewName === 'usuarios') {
+    Promise.resolve(loadUsuariosData()).catch((error) => {
+      console.error('EduControl: error cargando usuarios:', error);
+    });
   }
 
   if (window.innerWidth < 992) {
@@ -806,6 +812,39 @@ function wireUsuariosForm() {
   );
 }
 
+function wireUsuariosDelete() {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (!tbody || tbody.dataset.deleteWired === 'true') return;
+  tbody.dataset.deleteWired = 'true';
+
+  tbody.addEventListener('click', async (event) => {
+    const button = event.target.closest('.btn-eliminar-usuario');
+    if (!button) return;
+
+    const id = button.dataset.id;
+    if (!id) return;
+
+    if (Number(id) === Number(currentUser?.id_usuario)) {
+      showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
+      return;
+    }
+
+    if (!window.confirm('¿Deseas eliminar este usuario?')) return;
+
+    button.disabled = true;
+    try {
+      const res = await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
+      showToast('Usuario eliminado correctamente.', 'success');
+      await loadUsuariosData();
+    } catch (error) {
+      showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
+      button.disabled = false;
+    }
+  });
+}
+
 async function loadUsuariosData() {
   try {
     const res =
@@ -907,8 +946,9 @@ function renderTablaUsuarios(usuarios) {
                   `
                   : `
                     <button
-                      class="btn btn-sm btn-outline-danger"
-                      onclick="eliminarUsuario(${u.id_usuario})"
+                      type="button"
+                      class="btn btn-sm btn-outline-danger btn-eliminar-usuario"
+                      data-id="${u.id_usuario}"
                     >
                       <i class="bi bi-trash"></i>
                       Eliminar

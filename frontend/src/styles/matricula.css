@@ -65,3 +65,27 @@
     padding: 1rem .85rem;
   }
 }
+
+
+/* Selector de profesores */
+.profesor-picker {
+  padding: .75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: .85rem;
+  background: #f8fafc;
+}
+.profesor-picker .input-group-text { background: #fff; border-color: #dbe3ec; }
+.profesor-select {
+  min-height: 132px;
+  border-color: #dbe3ec;
+  background: #fff;
+}
+.profesor-select option { padding: .55rem .7rem; }
+.profesor-select option:checked { font-weight: 600; }
+.profesor-picker-gestion .profesor-select { min-height: 160px; }
+.profesor-picker .btn-link { font-size: .82rem; }
+@media (max-width: 575.98px) {
+  .profesor-picker { padding: .6rem; }
+  .profesor-select { min-height: 118px; }
+  .profesor-picker-gestion .profesor-select { min-height: 145px; }
+}

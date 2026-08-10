@@ -627,6 +627,12 @@ async function populateProfesoresSelects(isGestion = false) {
 
     filtrarProfesoresGrupo(document.getElementById('grupo-profesor-search')?.value || '');
     filtrarProfesoresGestion(document.getElementById('gestion-profesor-search')?.value || '');
+    document.getElementById('grupo-profesor-count')?.classList.remove('text-bg-primary');
+    const gestionSel = document.getElementById('gestion-grupo-profesor');
+    const gestionSearch = document.getElementById('gestion-profesor-search');
+    if (!isGestion && gestionSel) { gestionSel.disabled = true; if (gestionSearch) gestionSearch.disabled = true; }
+    const grupoSel = document.getElementById('grupo-profesor');
+    if (grupoSel) { grupoSel.disabled = false; }
     if (isGestion) {
       await cargarDetalleGestionGrupo(Number(document.getElementById('gestion-grupo-select')?.value || 0));
     }

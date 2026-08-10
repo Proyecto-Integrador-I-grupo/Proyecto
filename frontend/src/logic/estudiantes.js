@@ -19,7 +19,8 @@ import {
       if (!section) return;
       section.dataset.module = moduleName;
       wireEstudiantesEvents();
-    }
+    },
+    load: loadPersonas
   };
 
   if (document.readyState !== 'loading') {

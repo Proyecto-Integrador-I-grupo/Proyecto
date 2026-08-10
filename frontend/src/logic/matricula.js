@@ -24,7 +24,8 @@ import {
       if (!section) return;
       section.dataset.module = moduleName;
       wireMatriculaEvents();
-    }
+    },
+    load: loadMatriculaData
   };
 
   if (document.readyState !== 'loading') {
@@ -902,3 +903,4 @@ async function handleSeccionSubmit(e) {
     showToast('Error creando sección', 'error');
   }
 }
+export { loadMatriculaData, populatePersonaSelects, populateGruposSelects };

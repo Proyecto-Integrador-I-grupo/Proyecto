@@ -1,3 +1,13 @@
+import {
+  apiFetch,
+  currentUser,
+  showToast
+} from './ui.js';
+
+import {
+  populateGruposSelects
+} from './matricula.js';
+
 (function () {
   const moduleName = 'asistencia';
   window.EduControlModules = window.EduControlModules || {};
@@ -8,7 +18,8 @@
       if (!section) return;
       section.dataset.module = moduleName;
       wireAsistenciaEvents();
-    }
+    },
+    load: loadAsistenciaData
   };
 
   if (document.readyState !== 'loading') {

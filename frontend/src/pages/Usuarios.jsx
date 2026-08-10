@@ -25,7 +25,7 @@ export default function Usuarios() {
 </div>
 <div className="mb-3">
 <label className="form-label" htmlFor="usuario-correo">Correo Electrónico</label>
-<input type="email" id="usuario-correo" className="form-control" placeholder="usuario@educontrol.com" required="" />
+<input type="email" id="usuario-correo" className="form-control" placeholder="usuario@educontrol.com" autoComplete="off" required="" />
 </div>
 <div className="mb-3">
 <label className="form-label" htmlFor="usuario-rol">Rol / Permisos</label>
@@ -36,7 +36,7 @@ export default function Usuarios() {
 </div>
 <div className="mb-3">
 <label className="form-label" htmlFor="usuario-clave">Contraseña Temporal</label>
-<input type="password" id="usuario-clave" className="form-control" minLength="6" required="" />
+<input type="password" id="usuario-clave" className="form-control" minLength="8" required="" />
 </div>
 <button type="submit" id="btn-guardar-usuario" className="btn btn-primary w-100 py-2">
 <i className="bi bi-download me-1"></i> Guardar Usuario

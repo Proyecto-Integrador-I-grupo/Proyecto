@@ -32,14 +32,36 @@ export const obtenerUsuario = async (req, res) => {
 export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
+        const correoNormalizado = String(correo || "").trim().toLowerCase();
 
         // 1. Validar que el correo no esté registrado previamente
-        const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
+        const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoNormalizado);
         if (existente) {
             return res.status(409).json({ mensaje: "Ya existe un usuario registrado con ese correo." });
         }
 
         const apellidoFinal = primer_apellido || apellido1 || "";
+
+        const idRol = Number(id_rol);
+        if (!Number.isInteger(idRol) || idRol <= 0) {
+            return res.status(400).json({ mensaje: "El rol seleccionado no es válido." });
+        }
+
+        const [roles] = await queryConSesion(
+            "SELECT id_rol, nom_rol FROM rol WHERE id_rol = ? LIMIT 1",
+            [idRol],
+            req.usuarioActual?.id_usuario ?? null
+        );
+
+        if (!roles || roles.length === 0) {
+            return res.status(400).json({ mensaje: "El rol seleccionado no existe." });
+        }
+
+        const rolNormalizado = String(roles[0].nom_rol || "").trim().toLowerCase();
+        if (!["administrador", "asistente"].includes(rolNormalizado)) {
+            return res.status(400).json({ mensaje: "Solo se pueden registrar cuentas de Administrador o Asistente desde este módulo." });
+        }
+
         let idPersonaFinal = req.body.id_persona;
 
         // 2. Insertar en la tabla 'persona' incluyendo fecha_nacimiento y género por defecto
@@ -65,10 +87,10 @@ export const crearUsuario = async (req, res) => {
         // 3. Cifrar la contraseña e insertar el registro en la tabla 'usuario'
         const hash = await bcrypt.hash(contrasena, 10);
         const resultadoUsuario = await usuarioModel.crearUsuario({
-            correo,
+            correo: correoNormalizado,
             contrasena: hash,
             id_persona: idPersonaFinal,
-            id_rol: id_rol || 2,
+            id_rol: idRol,
             estado: 1
         }, req.usuarioActual?.id_usuario ?? null);
 
@@ -78,7 +100,7 @@ export const crearUsuario = async (req, res) => {
                 nombre_tabla: "usuario",
                 accion_usuario: "INSERT",
                 datos_anteriores: "",
-                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaFinal, id_rol: id_rol || 2, estado: 1 })
+                datos_nuevos: JSON.stringify({ correo: correoNormalizado, id_persona: idPersonaFinal, id_rol: idRol, estado: 1 })
             }, req.usuarioActual?.id_usuario ?? null);
         } catch (e) {
             console.error("Error registrando auditoría:", e);
@@ -108,18 +130,40 @@ export const actualizarUsuario = async (req, res) => {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        if (correo && correo !== usuario.correo) {
-            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
-            if (existente && existente.id_usuario !== id) {
+        const correoNormalizado = correo ? String(correo).trim().toLowerCase() : usuario.correo;
+
+        if (correoNormalizado !== usuario.correo) {
+            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoNormalizado);
+            if (existente && Number(existente.id_usuario) !== Number(id)) {
                 return res.status(409).json({ mensaje: "Ya existe un usuario con ese correo." });
             }
         }
 
+        const idRolFinal = id_rol ?? usuario.id_rol;
+        const [roles] = await queryConSesion(
+            "SELECT id_rol, nom_rol FROM rol WHERE id_rol = ? LIMIT 1",
+            [idRolFinal],
+            req.usuarioActual?.id_usuario ?? null
+        );
+
+        if (!roles.length || !["administrador", "asistente"].includes(String(roles[0].nom_rol || "").trim().toLowerCase())) {
+            return res.status(400).json({ mensaje: "El rol seleccionado no es válido para una cuenta administrativa." });
+        }
+
+        // Nunca permitimos que un administrador se quite su propia cuenta/rol administrativo
+        // desde el módulo de gestión.
+        if (
+            Number(id) === Number(req.usuarioActual?.id_usuario) &&
+            (Number(idRolFinal) !== Number(usuario.id_rol) || estado === false)
+        ) {
+            return res.status(400).json({ mensaje: "No puedes desactivar ni quitarte el rol administrativo de tu propia cuenta." });
+        }
+
         const datosActualizados = {
-            correo: correo ?? usuario.correo,
+            correo: correoNormalizado,
             contrasena: contrasena ? await bcrypt.hash(contrasena, 10) : usuario.contrasena,
             id_persona: id_persona ?? usuario.id_persona,
-            id_rol: id_rol ?? usuario.id_rol,
+            id_rol: idRolFinal,
             estado: typeof estado === "boolean" ? estado : usuario.estado
         };
 
@@ -150,6 +194,25 @@ export const eliminarUsuario = async (req, res) => {
 
         if (!usuario) {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
+        }
+
+        if (Number(id) === Number(req.usuarioActual?.id_usuario)) {
+            return res.status(400).json({ mensaje: "No puedes eliminar la cuenta con la que tienes la sesión activa." });
+        }
+
+        const rolObjetivo = String(usuario.nom_rol || "").trim().toLowerCase();
+        if (rolObjetivo === "administrador") {
+            const [adminsActivos] = await queryConSesion(
+                `SELECT COUNT(*) AS total
+                 FROM usuario
+                 WHERE id_rol = ? AND estado = 1`,
+                [usuario.id_rol],
+                req.usuarioActual?.id_usuario ?? null
+            );
+
+            if (Number(adminsActivos[0]?.total || 0) <= 1) {
+                return res.status(400).json({ mensaje: "No se puede eliminar al último administrador activo del sistema." });
+            }
         }
 
         await usuarioModel.eliminarUsuario(id, req.usuarioActual?.id_usuario ?? null);

@@ -7,14 +7,19 @@ import {
   updateEstudiante,
   deleteEstudiante
 } from "../controllers/estudianteController.js";
+import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-router.get("/", getEstudiantes);
-router.get("/matriculados", getEstudiantesMatriculados);
-router.get("/:id", getEstudiantePorId);
-router.post("/", createEstudiante);
-router.put("/:id", updateEstudiante);
-router.delete("/:id", deleteEstudiante);
+// Consultas: cualquier usuario autenticado puede leer la información necesaria
+// para sus módulos permitidos.
+router.get("/", requireAuth, getEstudiantes);
+router.get("/matriculados", requireAuth, getEstudiantesMatriculados);
+router.get("/:id", requireAuth, getEstudiantePorId);
+
+// Cambios de expediente: Administrador o Asistente.
+router.post("/", requireAuth, requireRole("Administrador", "Asistente"), createEstudiante);
+router.put("/:id", requireAuth, requireRole("Administrador", "Asistente"), updateEstudiante);
+router.delete("/:id", requireAuth, requireRole("Administrador"), deleteEstudiante);
 
 export default router;

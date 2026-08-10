@@ -1,3 +1,5 @@
+import { apiFetch } from './ui.js';
+
 (function () {
   const moduleName = 'dashboard';
   window.EduControlModules = window.EduControlModules || {};
@@ -7,6 +9,10 @@
       const section = document.getElementById(`${moduleName}-view`);
       if (!section) return;
       section.dataset.module = moduleName;
+    },
+
+    async load() {
+      await refreshDashboardCounts();
     }
   };
 

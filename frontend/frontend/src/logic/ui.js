@@ -351,8 +351,9 @@ function aplicarRestriccionesModulos(rolNormalizado) {
 
       let restringida = false;
 
-      // Módulos exclusivos del Administrador.
-      if (vista === 'usuarios' || vista === 'reportes') {
+      // SOLO el Administrador puede ver
+      // el botón de Gestión de Permisos/Usuarios
+      if (vista === 'usuarios') {
         restringida = !esAdmin;
 
       } else if (
@@ -569,9 +570,10 @@ function setActiveView(viewName) {
   const esAdmin =
     rolNormalizado === 'administrador';
 
-  // Usuarios y Reportes son exclusivos del Administrador.
+  // Si intentan entrar a Usuarios sin ser Admin,
+  // los devolvemos al Dashboard
   if (
-    ['usuarios', 'reportes'].includes(viewName) &&
+    viewName === 'usuarios' &&
     !esAdmin
   ) {
     showToast(

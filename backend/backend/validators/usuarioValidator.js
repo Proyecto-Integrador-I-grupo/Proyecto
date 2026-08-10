@@ -18,7 +18,7 @@ export const usuarioCreateRules = [
         .exists({ checkFalsy: true }).withMessage("La contraseña es obligatoria.")
         .isString().withMessage("La contraseña debe ser texto.")
         .trim()
-        .isLength({ min: 8 }).withMessage("La contraseña debe tener al menos 8 caracteres."),
+        .isLength({ min: 6 }).withMessage("La contraseña debe tener al menos 6 caracteres."),
     body("nombre")
         .exists({ checkFalsy: true }).withMessage("El nombre es obligatorio.")
         .isString().withMessage("El nombre debe ser texto.")
@@ -48,7 +48,7 @@ export const usuarioUpdateRules = [
         .optional({ nullable: true })
         .isString().withMessage("La contraseña debe ser texto.")
         .trim()
-        .isLength({ min: 8 }).withMessage("La contraseña debe tener al menos 8 caracteres."),
+        .isLength({ min: 6 }).withMessage("La contraseña debe tener al menos 6 caracteres."),
     body("id_persona")
         .optional({ nullable: true })
         .isInt({ gt: 0 }).withMessage("El ID de persona debe ser un número entero positivo.")

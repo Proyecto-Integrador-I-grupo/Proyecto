@@ -11,5 +11,5 @@ export const loginRules = [
         .exists({ checkFalsy: true }).withMessage("La contraseña es obligatoria.")
         .isString().withMessage("La contraseña debe ser texto.")
         .trim()
-        .isLength({ min: 6 }).withMessage("La contraseña debe tener al menos 6 caracteres.")
+        .isLength({ min: 8 }).withMessage("La contraseña debe tener al menos 8 caracteres.")
 ];

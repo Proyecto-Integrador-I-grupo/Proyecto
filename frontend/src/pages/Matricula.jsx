@@ -1,53 +1,43 @@
 import React from 'react';
 
+const Modal = ({id,title,children,lg=false}) => <div className="modal fade" id={id} tabIndex="-1" aria-hidden="true"><div className={`modal-dialog modal-dialog-centered ${lg?'modal-lg':''}`}><div className="modal-content border-0 shadow-lg"><div className="modal-header bg-navy text-white"><h5 className="modal-title font-serif">{title}</h5><button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>{children}</div></div></div>;
+
 export default function Matricula() {
   return (
-    <><section id="matricula-view" className="view hidden">
-<div className="row g-4">
-<div className="col-6 col-md-3">
-<div className="card border-0 shadow-sm text-center p-3 h-100">
-<div className="card-body d-flex flex-column align-items-center justify-content-center">
-<i className="bi bi-journal-plus text-primary fs-1 mb-2"></i>
-<h3 className="h5">Nueva Matrícula</h3>
-<p className="text-muted small mb-3">Asigna un estudiante a un grupo de clase.</p>
-<button type="button" className="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalMatricula">Procesar Matrícula</button>
-</div>
-</div>
-</div>
-<div className="col-6 col-md-3">
-<div className="card border-0 shadow-sm text-center p-3 h-100">
-<div className="card-body d-flex flex-column align-items-center justify-content-center">
-<i className="bi bi-people text-primary fs-1 mb-2"></i>
-<h3 className="h5">Grupos</h3>
-<p className="text-muted small mb-3">Configura las aulas, capacidades y docentes.</p>
-<div className="d-grid gap-2 w-100">
-<button type="button" className="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalGrupo">Crear Grupo</button>
-<button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalGestionGrupo">Gestionar Grupo</button>
-</div>
-</div>
-</div>
-</div>
-<div className="col-6 col-md-3">
-<div className="card border-0 shadow-sm text-center p-3 h-100">
-<div className="card-body d-flex flex-column align-items-center justify-content-center">
-<i className="bi bi-person-gear text-primary fs-1 mb-2"></i>
-<h3 className="h5">Gestionar Matrícula</h3>
-<p className="text-muted small mb-3">Transfiere o retira estudiantes de un grupo.</p>
-<button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalGestionMatricula">Gestionar Matrícula</button>
-</div>
-</div>
-</div>
-<div className="col-6 col-md-3">
-<div className="card border-0 shadow-sm text-center p-3 h-100">
-<div className="card-body d-flex flex-column align-items-center justify-content-center">
-<i className="bi bi-diagram-3 text-primary fs-1 mb-2"></i>
-<h3 className="h5">Secciones</h3>
-<p className="text-muted small mb-3">Administra el catálogo académico y sus secciones.</p>
-<button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalSeccion">Nueva Sección</button>
-</div>
-</div>
-</div>
-</div>
-</section></>
+    <section id="matricula-view" className="view hidden">
+      <div className="row g-4">
+        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-journal-plus text-primary fs-1 mb-2"></i><h3 className="h5">Nueva Matrícula</h3><p className="text-muted small mb-3">Asigna un estudiante a un grupo de clase.</p><button type="button" className="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalMatricula">Procesar Matrícula</button></div></div></div>
+        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-people text-primary fs-1 mb-2"></i><h3 className="h5">Grupos</h3><p className="text-muted small mb-3">Configura las aulas, capacidades y docentes.</p><div className="d-grid gap-2 w-100"><button type="button" className="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalGrupo">Crear Grupo</button><button type="button" className="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalGestionGrupo">Gestionar Grupo</button></div></div></div></div>
+        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-person-gear text-primary fs-1 mb-2"></i><h3 className="h5">Gestionar Matrícula</h3><p className="text-muted small mb-3">Transfiere o retira estudiantes de un grupo.</p><button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalGestionMatricula">Gestionar Matrícula</button></div></div></div>
+        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-diagram-3 text-primary fs-1 mb-2"></i><h3 className="h5">Secciones</h3><p className="text-muted small mb-3">Administra el catálogo académico y sus secciones.</p><button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalSeccion">Nueva Sección</button></div></div></div>
+      </div>
+
+      <Modal id="modalMatricula" title={<><i className="bi bi-journal-check"></i> Procesar Matrícula</>}>
+        <form id="matricula-form"><div className="modal-body p-4"><div className="row g-3">
+          <div className="col-12"><label className="form-label">Estudiante</label><select id="mat-persona" className="form-select" required><option value="" disabled>Seleccionar estudiante</option></select></div>
+          <div className="col-12"><label className="form-label">Buscar grupo</label><input id="mat-grupo-search" className="form-control form-control-sm mb-2" placeholder="Filtrar por nombre..." /><select id="mat-id-grupo" className="form-select" required><option value="" disabled>Seleccionar grupo</option></select><div id="mat-grupo-info" className="form-text">Selecciona un grupo para ver el cupo disponible.</div></div>
+          <div className="col-md-4"><label className="form-label">Fecha</label><input id="mat-fecha" type="date" className="form-control" required /></div><div className="col-md-4"><label className="form-label">Período</label><select id="mat-periodo" className="form-select" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div className="col-md-4"><label className="form-label">Tipo</label><select id="mat-tipo" className="form-select" required><option value="ordinaria">Ordinaria</option><option value="traslado">Traslado</option><option value="extraordinaria">Extraordinaria</option></select></div><div className="col-12"><label className="form-label">Observaciones</label><input id="mat-observaciones" maxLength="20" className="form-control" placeholder="Máximo 20 caracteres" /></div>
+        </div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" id="mat-submit" className="btn btn-primary">Completar Matrícula</button></div></form>
+      </Modal>
+
+      <Modal id="modalGrupo" title={<><i className="bi bi-people"></i> Crear Grupo</>}>
+        <form id="grupo-form"><div className="modal-body p-4"><div className="row g-3"><div className="col-12"><label className="form-label">Nombre del grupo</label><input id="grupo-nombre" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Capacidad</label><input id="grupo-capacidad" type="number" min="1" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Aula</label><input id="grupo-aula" className="form-control" /></div><div className="col-12"><label className="form-label">Profesor (opcional)</label><input id="grupo-profesor-search" className="form-control form-control-sm mb-2" placeholder="Buscar profesor..." /><select id="grupo-profesor" className="form-select" multiple size="4"></select></div><div className="col-12"><label className="form-label">Buscar sección</label><input id="grupo-seccion-search" className="form-control form-control-sm mb-2" placeholder="Nombre, nivel o año..." /><select id="grupo-seccion" className="form-select" required><option value="" disabled>Seleccionar sección</option></select><div id="grupo-seccion-empty-hint" className="form-text hidden">No hay secciones registradas.</div></div></div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Crear Grupo</button></div></form>
+      </Modal>
+
+      <Modal id="modalGestionGrupo" title={<><i className="bi bi-pencil-square"></i> Gestionar Grupo</>} lg>
+        <form id="gestion-grupo-form"><div className="modal-body p-4"><div className="row g-3"><div className="col-12"><label className="form-label">Grupo</label><select id="gestion-grupo-select" className="form-select" required><option value="" disabled>Seleccionar grupo</option></select></div><div className="col-md-6"><label className="form-label">Capacidad</label><input id="gestion-grupo-capacidad" type="number" min="1" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Aula</label><input id="gestion-grupo-aula" className="form-control" /></div><div className="col-12"><label className="form-label">Buscar profesor</label><input id="gestion-profesor-search" className="form-control form-control-sm mb-2" placeholder="Nombre o materia..." /><select id="gestion-grupo-profesor" className="form-select" multiple size="6"></select></div></div></div><div className="modal-footer d-flex justify-content-between"><button type="button" id="btn-borrar-grupo" className="btn btn-outline-danger"><i className="bi bi-trash"></i> Borrar Grupo</button><div><button type="button" className="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cerrar</button><button type="submit" className="btn btn-primary">Guardar cambios</button></div></div></form>
+      </Modal>
+
+      <Modal id="modalGestionMatricula" title={<><i className="bi bi-person-gear"></i> Gestionar Matrícula</>} lg>
+        <form id="gestion-matricula-form"><div className="modal-body p-4"><div className="row g-3"><div className="col-md-6"><label className="form-label">Grupo actual</label><select id="gm-grupo-actual" className="form-select" required><option value="" disabled>Seleccionar grupo</option></select></div><div className="col-md-6"><label className="form-label">Estudiante</label><select id="gm-estudiante" className="form-select" required disabled><option value="" disabled>Primero selecciona un grupo</option></select></div><div className="col-md-6"><label className="form-label">Acción</label><select id="gm-accion" className="form-select"><option value="transferir">Transferir</option><option value="retirar">Retirar</option></select></div><div id="gm-campos-transferir" className="col-12"><div className="row g-3"><div className="col-md-6"><label className="form-label">Grupo nuevo</label><select id="gm-grupo-nuevo" className="form-select"><option value="" disabled>Seleccionar grupo destino</option></select></div><div className="col-md-6"><label className="form-label">Fecha</label><input id="gm-fecha" type="date" className="form-control" /></div><div className="col-md-6"><label className="form-label">Período</label><select id="gm-periodo" className="form-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div className="col-md-6"><label className="form-label">Tipo</label><select id="gm-tipo" className="form-select"><option value="traslado">Traslado</option></select></div><div className="col-12"><label className="form-label">Observaciones</label><input id="gm-observaciones" maxLength="20" className="form-control" /></div></div></div><div className="col-12"><div id="gm-hint" className="form-text">Selecciona un grupo para ver a sus estudiantes.</div></div></div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" id="gm-submit" className="btn btn-primary">Guardar cambios</button></div></form>
+      </Modal>
+
+      <Modal id="modalSeccion" title={<><i className="bi bi-diagram-3"></i> Administrar Secciones</>} lg>
+        <div className="modal-body p-4"><div className="row g-4"><div className="col-md-7"><form id="seccion-form"><div className="row g-3"><div className="col-12"><label className="form-label">Nombre</label><input id="seccion-nombre" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Nivel</label><input id="seccion-nivel" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Año lectivo</label><input id="seccion-periodo" type="number" min="2000" max="2100" className="form-control" required /></div><div className="col-12"><label className="form-label">Descripción</label><textarea id="seccion-descripcion" className="form-control" rows="3"></textarea></div><div className="col-12"><button type="submit" className="btn btn-primary">Crear Sección</button></div></div></form></div><div className="col-md-5 border-start"><label className="form-label">Eliminar sección</label><select id="seccion-delete-select" className="form-select mb-2"><option value="" disabled>Seleccionar sección</option></select><button type="button" id="btn-borrar-seccion" className="btn btn-outline-danger w-100"><i className="bi bi-trash"></i> Eliminar Sección</button></div></div></div>
+      </Modal>
+
+      <Modal id="modalConfirmarEliminacion" title={<><i className="bi bi-exclamation-triangle"></i> Confirmar eliminación</>}><div className="modal-body p-4"><p>Esta acción eliminará el grupo seleccionado. ¿Deseas continuar?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="btn-confirmar-borrado-grupo" className="btn btn-danger">Eliminar grupo</button></div></Modal>
+      <Modal id="modalConfirmarEliminacionSeccion" title={<><i className="bi bi-exclamation-triangle"></i> Confirmar eliminación</>}><div className="modal-body p-4"><p>Esta acción eliminará la sección seleccionada. ¿Deseas continuar?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="btn-confirmar-borrado-seccion" className="btn btn-danger">Eliminar sección</button></div></Modal>
+    </section>
   );
 }

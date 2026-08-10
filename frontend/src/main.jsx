@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import * as bootstrap from 'bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './styles/variables.css';
@@ -13,6 +14,8 @@ import './styles/perfil.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
 import { bootLegacyRuntime } from './logic/runtime.js';
+
+window.bootstrap = bootstrap;
 
 const rootElement = document.getElementById('root');
 

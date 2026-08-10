@@ -1,3 +1,14 @@
+import {
+  apiFetch,
+  currentUser,
+  showResultModal,
+  showToast
+} from './ui.js';
+
+import {
+  refreshDashboardCounts
+} from './dashboard.js';
+
 (function () {
   const moduleName = 'estudiantes';
   window.EduControlModules = window.EduControlModules || {};

@@ -1,3 +1,19 @@
+import {
+  apiFetch,
+  currentUser,
+  showResultModal,
+  showToast
+} from './ui.js';
+
+import {
+  refreshDashboardCounts
+} from './dashboard.js';
+
+import {
+  populateProfesoresSelects,
+  filtrarProfesoresGestion
+} from './profesores.js';
+
 (function () {
   const moduleName = 'matricula';
   window.EduControlModules = window.EduControlModules || {};

@@ -148,10 +148,41 @@ export const obtenerEstudiantePorIdService = async (id_estudiante) => {
  * Misma lógica de transacción que profesorService.crearProfesorService, pero apuntando
  * a la tabla `estudiante` en vez de `profesor`.
  */
+
+/**
+ * Normaliza el género al código que utiliza la base de datos.
+ * La interfaz puede enviar "Masculino", "Femenino" u "Otro",
+ * mientras que la columna persona.genero almacena M, F u O.
+ */
+const normalizarGenero = (genero) => {
+  if (genero === null || genero === undefined) return null;
+
+  const valor = String(genero).trim().toLowerCase();
+
+  const equivalencias = {
+    masculino: "M",
+    m: "M",
+    femenino: "F",
+    f: "F",
+    otro: "O",
+    otra: "O",
+    o: "O"
+  };
+
+  const resultado = equivalencias[valor];
+
+  if (!resultado) {
+    throw new Error("El género seleccionado no es válido. Use Masculino, Femenino u Otro.");
+  }
+
+  return resultado;
+};
+
 export const crearEstudianteService = async (datos, idUsuario = null) => {
   const { nombre, apellido1, apellido2, fecha_nacimiento, genero, fecha_ingreso } = datos;
+  const generoNormalizado = normalizarGenero(genero);
 
-  if (!nombre || !apellido1 || !fecha_nacimiento || !genero) {
+  if (!nombre || !apellido1 || !fecha_nacimiento || !generoNormalizado) {
     throw new Error("Faltan campos obligatorios para registrar al estudiante.");
   }
 
@@ -173,7 +204,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
       apellido1.trim(),
       apellido2 ? apellido2.trim() : null,
       fecha_nacimiento,
-      genero
+      generoNormalizado
     ]);
 
     const id_persona = resPersona.insertId;
@@ -218,6 +249,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
  */
 export const actualizarEstudianteService = async (id_estudiante, datos, idUsuario = null) => {
   const { nombre, apellido1, apellido2, fecha_nacimiento, genero } = datos;
+  const generoNormalizado = normalizarGenero(genero);
 
   const connection = await conexionPromise.getConnection();
 
@@ -239,7 +271,7 @@ export const actualizarEstudianteService = async (id_estudiante, datos, idUsuari
       `UPDATE persona 
        SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ?
        WHERE id_persona = ?`,
-      [nombre, apellido1, apellido2 || null, fecha_nacimiento, genero, id_persona]
+      [nombre, apellido1, apellido2 || null, fecha_nacimiento, generoNormalizado, id_persona]
     );
 
     await connection.commit();

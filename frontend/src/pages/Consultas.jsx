@@ -417,36 +417,110 @@ export default function Consultas() {
       </section>
 
 
-      {/*
-        Este contenedor pertenece al detalle de Consultas.
-
-        IMPORTANTE:
-        No se elimina porque consultas.js lo utiliza mediante:
-
-        document.getElementById(
-          'consulta-detalle-contenido'
-        )
-
-        Pero debe permanecer oculto mientras no exista
-        un documento seleccionado.
-      */}
-      <section
-        id="consulta-detalle-contenido"
-        className="consulta-documento-contenido hidden"
+      <div
+        className="modal fade"
+        id="modalDetalleConsulta"
+        tabIndex="-1"
+        aria-labelledby="consulta-detalle-titulo"
+        aria-hidden="true"
       >
-        <div className="text-center py-5 text-muted">
+        <div className="modal-dialog modal-xl modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <div>
+                <h5
+                  className="modal-title mb-1"
+                  id="consulta-detalle-titulo"
+                >
+                  Vista previa
+                </h5>
+                <div
+                  id="consulta-documento-subtitulo"
+                  className="text-muted small"
+                >
+                  Sistema de Gestión Escolar
+                </div>
+              </div>
 
-          <span
-            className="spinner-border spinner-border-sm me-2"
-            role="status"
-            aria-hidden="true"
-          >
-          </span>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Cerrar"
+              ></button>
+            </div>
 
-          Preparando documento...
+            <div className="modal-body">
+              <div className="consulta-documento mb-0">
+                <div className="consulta-documento-header">
+                  <div className="consulta-documento-logo">
+                    <i className="bi bi-mortarboard-fill"></i>
+                  </div>
+                  <div className="consulta-documento-institucion">
+                    <strong>EDUCONTROL</strong>
+                    <div
+                      id="consulta-documento-titulo"
+                      className="consulta-documento-titulo"
+                    >
+                      Documento académico
+                    </div>
+                  </div>
+                  <div className="consulta-documento-meta">
+                    <strong>Fecha</strong>
+                    <span id="consulta-documento-fecha">-</span>
+                  </div>
+                </div>
 
+                <div className="consulta-documento-linea"></div>
+
+                <div
+                  id="consulta-detalle-contenido"
+                  className="consulta-documento-contenido"
+                >
+                  <div className="text-center py-5 text-muted">
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Preparando documento...
+                  </div>
+                </div>
+
+                <div className="consulta-documento-footer">
+                  Documento generado desde el Sistema de Gestión Escolar.
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                id="consulta-detalle-modificar"
+                className="btn btn-outline-primary hidden"
+              >
+                <i className="bi bi-pencil"></i> Modificar
+              </button>
+
+              <button
+                type="button"
+                id="consulta-descargar-pdf"
+                className="btn btn-primary"
+              >
+                <i className="bi bi-file-earmark-pdf"></i> Descargar PDF
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </>
   );
 }

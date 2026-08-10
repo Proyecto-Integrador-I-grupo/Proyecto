@@ -842,10 +842,10 @@ function configurarSelectoresProfesores() {
   grupo?.addEventListener('change', () => actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count'));
   gestion?.addEventListener('change', () => actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count'));
   document.getElementById('grupo-profesor-clear')?.addEventListener('click', () => {
-    if (!grupo) return; Array.from(grupo.options).forEach(o => { o.selected = false; }); actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
+    if (!grupo) return; if (grupo.options[0]) grupo.options[0].selected = true; Array.from(grupo.options).slice(1).forEach(o => { o.selected = false; }); actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
   });
   document.getElementById('gestion-profesor-clear')?.addEventListener('click', () => {
-    if (!gestion) return; Array.from(gestion.options).forEach(o => { o.selected = false; }); actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
+    if (!gestion) return; if (gestion.options[0]) gestion.options[0].selected = true; Array.from(gestion.options).slice(1).forEach(o => { o.selected = false; }); actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
   });
 }
 

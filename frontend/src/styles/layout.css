@@ -948,3 +948,74 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* =========================================================
+   CORRECCIÓN WEB — navegación lateral estable
+   Solo aplica en escritorio (>= 992px).
+   En móvil/tablet se conserva la navegación existente.
+   ========================================================= */
+@media (min-width: 992px) {
+  #app-shell {
+    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    height: 100vh;
+    min-height: 100vh;
+    max-height: 100vh;
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .sidebar > .nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .sidebar > .nav .nav-item,
+  .sidebar > .nav .nav-link {
+    min-width: 0;
+  }
+
+  .sidebar .nav-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-user {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    margin-top: auto !important;
+  }
+
+  #logout-btn {
+    display: flex !important;
+    width: 100%;
+    min-height: 40px;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+
+  .sidebar-user .d-flex {
+    min-width: 0;
+  }
+
+  #sidebar-user-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+

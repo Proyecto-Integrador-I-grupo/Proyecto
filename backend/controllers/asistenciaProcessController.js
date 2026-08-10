@@ -4,21 +4,7 @@ import { registrarAsistenciaProceso, listarAsistencias } from '../services/asist
 
 export async function crearAsistencia(req, res) {
   try {
-    const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo } = req.body;
-    const rol = (req.usuarioActual?.nom_rol || "").toLowerCase();
-
-    // Un profesor nunca puede registrar asistencia en nombre de otro profesor.
-    const idProfesor = rol === "profesor"
-      ? Number(req.usuarioActual?.id_profesor)
-      : Number(req.body.id_profesor);
-
-    if (!idProfesor) {
-      return res.status(400).json({ mensaje: "No se pudo determinar el profesor que registra la asistencia." });
-    }
-
-    if (rol === "profesor" && Number(req.body.id_profesor) && Number(req.body.id_profesor) !== idProfesor) {
-      return res.status(403).json({ mensaje: "No puedes registrar asistencia en nombre de otro profesor." });
-    }
+    const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor } = req.body;
 
     const resultado = await registrarAsistenciaProceso({
       fecha,
@@ -26,10 +12,10 @@ export async function crearAsistencia(req, res) {
       observaciones,
       id_estudiante,
       id_grupo,
-      id_profesor: idProfesor
+      id_profesor
     });
 
-    const datosNuevos = JSON.stringify({ fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor: idProfesor });
+    const datosNuevos = JSON.stringify({ fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor });
 
     try {
       await auditoriaModel.crearAuditoria({
@@ -112,23 +98,8 @@ export async function actualizarAsistencia(req, res) {
     }
     const datosAnteriores = JSON.stringify(rowsAntes[0]);
 
-    const rol = (req.usuarioActual?.nom_rol || "").toLowerCase();
-    const esProfesor = rol === "profesor";
-    const idProfesor = Number(req.usuarioActual?.id_profesor);
-
-    if (esProfesor && !idProfesor) {
-      return res.status(403).json({ mensaje: "Tu usuario no tiene un profesor asociado." });
-    }
-
-    const query = esProfesor
-      ? 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ? AND id_profesor = ? AND estado = TRUE'
-      : 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ? AND estado = TRUE';
-
-    const params = esProfesor
-      ? [estado_asistencia, observaciones || null, id, idProfesor]
-      : [estado_asistencia, observaciones || null, id];
-
-    const [result] = await db.query(query, params);
+    const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ?';
+    const [result] = await db.query(query, [estado_asistencia, observaciones || null, id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ mensaje: 'No se pudo actualizar el registro de asistencia.' });

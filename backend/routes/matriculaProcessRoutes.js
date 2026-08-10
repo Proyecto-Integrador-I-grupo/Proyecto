@@ -12,7 +12,7 @@ import {
   transferirEstudianteGrupo
 } from "../controllers/matriculaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -61,15 +61,15 @@ const validarTransferenciaEstudiante = [
 
 // Matrícula
 router.get("/matricula", requireAuth, obtenerMatriculas);
-router.post("/matricula", requireAuth, requireRole("Administrador", "Asistente"), validarMatricula, validarCampos, crearMatricula);
-router.post("/matricula/transferir", requireAuth, requireRole("Administrador", "Asistente"), validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
+router.post("/matricula", requireAuth, validarMatricula, validarCampos, crearMatricula);
+router.post("/matricula/transferir", requireAuth, validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
 
 // Grupos
 router.get("/grupos", requireAuth, obtenerGrupos);
-router.post("/grupos", requireAuth, requireRole("Administrador", "Asistente"), validarGrupo, validarCampos, crearGrupo);
-router.put("/grupos/:id", requireAuth, requireRole("Administrador", "Asistente"), validarGrupoUpdate, validarCampos, actualizarGrupo);
-router.delete("/grupos/:id", requireAuth, requireRole("Administrador"), eliminarGrupo);
+router.post("/grupos", requireAuth, validarGrupo, validarCampos, crearGrupo);
+router.put("/grupos/:id", requireAuth, validarGrupoUpdate, validarCampos, actualizarGrupo);
+router.delete("/grupos/:id", eliminarGrupo);
 router.get("/grupos/:id/detalle", requireAuth, obtenerDetalleGrupo);
-router.put("/grupos/:id/retirar-estudiante", requireAuth, requireRole("Administrador", "Asistente"), validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
+router.put("/grupos/:id/retirar-estudiante", requireAuth, validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
 
 export default router;

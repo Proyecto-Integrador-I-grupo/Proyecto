@@ -345,7 +345,6 @@ export default function App() {
                   <i className="bi bi-list"></i>
                 </button>
                 <div>
-                  <p className="eyebrow mb-0">Gestión Académica</p>
                   <h1 id="view-title" className="h4 mb-0">Dashboard</h1>
                 </div>
               </div>

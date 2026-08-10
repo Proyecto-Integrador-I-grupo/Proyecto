@@ -10,17 +10,8 @@ let appViewsReady = false;
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 let accessibilitySettings = { isDark: false, highContrast: false, fontSize: 100 };
 
-window.addEventListener('DOMContentLoaded', () => {
-  wireLoginScreen();
-  restoreAccessibilitySettings();
-  restoreSession();
-});
-
 window.addEventListener('app:views-ready', () => {
   appViewsReady = true;
-  if (currentUser) {
-    initApp();
-  }
 });
 
 /* ==========================================
@@ -303,12 +294,13 @@ function setActiveView(viewName) {
     titleElement.textContent = activeButton?.textContent.trim() || 'Dashboard';
   }
 
-  if (viewName === 'estudiantes') loadPersonas();
-  if (viewName === 'profesores') loadProfesores();
-  if (viewName === 'matricula') loadMatriculaData();
-  if (viewName === 'asistencia') loadAsistenciaData();
-  if (viewName === 'reportes') loadReportesData();
-  if (viewName === 'usuarios') loadUsuariosData();
+  // Cada módulo React/ESM registra su propia función de carga.
+  // Evitamos depender de funciones globales que antes venían del runtime monolítico.
+  if (modulo && typeof modulo.load === 'function') {
+    Promise.resolve(modulo.load()).catch((error) => {
+      console.error(`EduControl: error cargando módulo ${viewName}:`, error);
+    });
+  }
 
   if (window.innerWidth < 992) {
     document.querySelector('.sidebar')?.classList.remove('open');
@@ -582,4 +574,28 @@ function updateAccessibilityControls() {
 
   themeBtn.classList.toggle('accessibility-action-active', accessibilitySettings.isDark);
   contrastBtn.classList.toggle('accessibility-action-active', accessibilitySettings.highContrast);
+}
+
+// API pública para los módulos ES y para runtime.js.
+export {
+  apiFetch,
+  currentUser,
+  initApp,
+  setActiveView,
+  showResultModal,
+  showToast,
+  initAccessibilityWidget,
+  restoreAccessibilitySettings,
+  applyAccessibilitySettings,
+  updateAccessibilityControls
+};
+
+export function setCurrentUser(user) {
+  currentUser = user ?? null;
+  window.EduControlCurrentUser = currentUser;
+}
+
+export function clearCurrentUser() {
+  currentUser = null;
+  window.EduControlCurrentUser = null;
 }

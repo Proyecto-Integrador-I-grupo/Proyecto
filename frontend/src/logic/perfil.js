@@ -1,3 +1,10 @@
+import {
+  apiFetch,
+  currentUser,
+  showResultModal,
+  showToast
+} from './ui.js';
+
 (function () {
   const moduleName = 'perfil';
   window.EduControlModules = window.EduControlModules || {};

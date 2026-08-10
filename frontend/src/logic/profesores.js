@@ -1,3 +1,14 @@
+import {
+  apiFetch,
+  currentUser,
+  showResultModal,
+  showToast
+} from './ui.js';
+
+import {
+  refreshDashboardCounts
+} from './dashboard.js';
+
 (function () {
   const moduleName = 'profesores';
   window.EduControlModules = window.EduControlModules || {};
@@ -8,7 +19,8 @@
       if (!section) return;
       section.dataset.module = moduleName;
       wireProfesoresEvents();
-    }
+    },
+    load: loadProfesores
   };
 
   if (document.readyState !== 'loading') {
@@ -736,3 +748,4 @@ async function guardarAsignacionGrupos(idProf) {
     if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar asignación'; }
   }
 }
+export { populateProfesoresSelects, filtrarProfesoresGestion };

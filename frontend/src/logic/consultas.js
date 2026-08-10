@@ -1,3 +1,8 @@
+import {
+  apiFetch,
+  showResultModal
+} from './ui.js';
+
 (function () {
   const moduleName = 'consultas';
 

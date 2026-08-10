@@ -1,3 +1,12 @@
+import {
+  apiFetch,
+  showToast
+} from './ui.js';
+
+import {
+  populateGruposSelects
+} from './matricula.js';
+
 (function () {
   const moduleName = 'reportes';
   window.EduControlModules = window.EduControlModules || {};
@@ -8,7 +17,8 @@
       if (!section) return;
       section.dataset.module = moduleName;
       wireReportesEvents();
-    }
+    },
+    load: loadReportesData
   };
 
   if (document.readyState !== 'loading') {

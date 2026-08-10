@@ -20,7 +20,7 @@
    Contadores generales de estudiantes y profesores.
    ========================================== */
 
-async function refreshDashboardCounts() {
+export async function refreshDashboardCounts() {
   try {
     const resEst = await apiFetch('/api/estudiantes');
     if (resEst.ok) {

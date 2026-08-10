@@ -1,13 +1,15 @@
+// Runtime mínimo de compatibilidad para la migración a React.
+// La lógica funcional vive en los módulos de src/logic.
+
 import {
-  setCurrentUser,
-  clearCurrentUser,
   restoreAccessibilitySettings,
   initAccessibilityWidget,
   initApp,
+  setCurrentUser,
+  clearCurrentUser
 } from './ui.js';
 
-// runtime.js solo coordina el arranque.
-// La lógica funcional vive en cada módulo.
+// Registrar todos los módulos antes de que React sincronice la sesión.
 import './dashboard.js';
 import './estudiantes.js';
 import './profesores.js';
@@ -21,7 +23,6 @@ let booted = false;
 
 export function bootLegacyRuntime() {
   if (booted) return;
-
   booted = true;
 
   restoreAccessibilitySettings();
@@ -31,9 +32,10 @@ export function bootLegacyRuntime() {
 export function syncReactSession(user) {
   setCurrentUser(user);
 
-  if (user) {
-    initApp();
-  }
+  if (!user) return;
+
+  // React ya montó App.jsx cuando este efecto se ejecuta.
+  initApp();
 }
 
 export function legacyLogout() {

@@ -379,3 +379,143 @@
     min-height: 58px;
   }
 }
+
+/* ===== Ajuste final de estructura y responsive ===== */
+/* La página usa el scroll natural del documento; no se crea un segundo scroll interno. */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#app-shell {
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+}
+
+.sidebar {
+  min-height: 100vh;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+#content {
+  min-height: calc(100vh - 68px);
+  overflow: visible !important;
+  min-width: 0;
+}
+
+.topbar {
+  position: static !important;
+  flex: 0 0 68px;
+  min-height: 68px;
+  height: 68px;
+  overflow: hidden;
+}
+
+.sidebar-user {
+  margin-top: auto !important;
+  padding-bottom: max(.25rem, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+#logout-btn {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+  #app-shell {
+    display: block !important;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(86vw, 320px);
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 1rem !important;
+  }
+
+  .sidebar.open {
+    overflow: hidden !important;
+  }
+
+  .sidebar > .nav {
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .sidebar-user {
+    margin-top: auto !important;
+    padding-top: .75rem !important;
+    padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+  }
+
+  #content {
+    min-height: calc(100vh - 60px);
+    overflow: visible !important;
+    padding-bottom: 2rem !important;
+  }
+
+  .topbar {
+    position: static !important;
+    width: 100%;
+    height: 60px;
+    min-height: 60px;
+    flex-basis: 60px;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .sidebar {
+    width: min(90vw, 310px);
+  }
+
+  .sidebar .nav-link {
+    padding: .58rem .72rem;
+    font-size: 13px;
+  }
+
+  .sidebar-user {
+    margin-top: .65rem !important;
+  }
+
+  .sidebar-user .avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  #logout-btn {
+    min-height: 38px;
+    padding: .45rem .65rem;
+  }
+
+  .topbar {
+    height: 58px;
+    min-height: 58px;
+    flex-basis: 58px;
+    padding: .55rem .75rem !important;
+  }
+
+  #content {
+    min-height: calc(100vh - 58px);
+    padding: .85rem !important;
+  }
+}

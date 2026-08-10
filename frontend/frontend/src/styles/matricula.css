@@ -1,0 +1,133 @@
+#matricula-view .card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#matricula-view .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08) !important;
+}
+
+#matricula-view .card .bi {
+  transition: transform 0.2s ease;
+}
+
+#matricula-view .card:hover .bi {
+  transform: scale(1.08);
+}
+
+#modalMatricula input[type="text"],
+#modalGrupo input[type="text"] {
+  background-color: #F8FAFC;
+  font-size: 13px;
+}
+
+#modalMatricula input[type="text"]:focus,
+#modalGrupo input[type="text"]:focus {
+  background-color: #FFFFFF;
+}
+
+@media (max-width: 640px) {
+  #modalMatricula input[type="text"],
+  #modalGrupo input[type="text"] {
+    font-size: 16px;
+  }
+}
+
+@media (hover: none) {
+  #matricula-view .card:hover {
+    transform: none;
+    box-shadow: none !important;
+  }
+
+  #matricula-view .card:hover .bi {
+    transform: none;
+  }
+}
+#matricula-view .card {
+  border-radius: 14px;
+}
+
+#matricula-view .form-select:invalid,
+#matricula-view .form-select option[value=""] {
+  color: #64748b;
+}
+
+@media (max-width: 575.98px) {
+  #matricula-view .row > [class*="col-"] {
+    width: 100%;
+  }
+
+  #matricula-view .card {
+    min-height: 180px;
+  }
+
+  #matricula-view .card-body {
+    padding: 1rem .85rem;
+  }
+}
+
+
+/* Selector de profesores */
+.profesor-picker {
+  padding: .75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: .85rem;
+  background: #f8fafc;
+}
+.profesor-picker .input-group-text { background: #fff; border-color: #dbe3ec; }
+.profesor-select {
+  min-height: 132px;
+  border-color: #dbe3ec;
+  background: #fff;
+}
+.profesor-select option { padding: .55rem .7rem; }
+.profesor-select option:checked { font-weight: 600; }
+.profesor-picker-gestion .profesor-select { min-height: 160px; }
+.profesor-picker .btn-link { font-size: .82rem; }
+@media (max-width: 575.98px) {
+  .profesor-picker { padding: .6rem; }
+  .profesor-select { min-height: 118px; }
+  .profesor-picker-gestion .profesor-select { min-height: 145px; }
+}
+
+
+/* Selector de profesor compacto */
+.profesor-picker {
+  padding: .65rem;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+.profesor-picker .input-group {
+  max-width: 100%;
+}
+.profesor-select {
+  min-height: 42px !important;
+  height: 42px;
+  border: 1px solid #cfd8e3;
+  border-radius: 9px !important;
+  background-color: #fff;
+  color: #1e293b;
+  font-size: .92rem;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03);
+}
+.profesor-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 .2rem rgba(59,130,246,.12);
+}
+.profesor-select:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.profesor-picker .form-text {
+  line-height: 1.35;
+}
+.profesor-picker .badge {
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  .profesor-picker { padding: .55rem; }
+  .profesor-select { height: 44px; min-height: 44px !important; font-size: .95rem; }
+}

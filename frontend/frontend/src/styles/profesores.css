@@ -1,0 +1,106 @@
+#profesores-table th:nth-child(1) { width: 5%; }
+#profesores-table th:nth-child(2) { width: 22%; }
+#profesores-table th:nth-child(3) { width: 16%; }
+#profesores-table th:nth-child(4) { width: 12%; }
+#profesores-table th:nth-child(5) { width: 15%; }
+#profesores-table th:nth-child(6) { width: 12%; }
+#profesores-table th:nth-child(7) { width: 18%; text-align: right; }
+
+.profesor-actions-inline {
+  min-width: unset !important;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.profesor-actions-inline .btn {
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 0.25rem 0.45rem;
+  border-radius: 5px;
+}
+
+.profesor-actions-inline .btn i {
+  font-size: 11px;
+}
+
+.profesor-actions-inline .btn:hover {
+  transform: translateY(-1px);
+}
+
+.profesor-actions-inline .btn-outline-warning { color: #B45309; border-color: #F59E0B; }
+.profesor-actions-inline .btn-outline-success { color: #15803D; border-color: #22C55E; }
+.profesor-actions-inline .btn-outline-primary { color: #1D4ED8; border-color: #60A5FA; }
+.profesor-actions-inline .btn-outline-danger { color: #B91C1C; border-color: #FCA5A5; }
+
+.action-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.action-btn.edit { background: var(--accent-soft); color: var(--accent); border-color: rgba(37, 99, 235, 0.2); }
+.action-btn.del { background: #FEE2E2; color: var(--danger); border-color: rgba(220, 38, 38, 0.2); }
+.action-btn.restore { background: #DCFCE7; color: var(--success); border-color: rgba(22, 163, 74, 0.2); }
+.action-btn.warn { background: var(--gold-soft); color: var(--gold); border-color: rgba(217, 119, 6, 0.2); }
+
+.action-btn:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+
+.action-btn + .action-btn {
+  margin-left: 6px;
+}
+
+@media (max-width: 640px) {
+  #profesores-table th,
+  #profesores-table td {
+    white-space: nowrap;
+  }
+
+  .profesor-actions-inline .btn {
+    padding: 0.35rem 0.55rem;
+  }
+}
+.profesor-page-toolbar {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+#prof-refrescar {
+  min-width: 120px;
+}
+
+#profesores-table td,
+#profesores-table th {
+  vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+  .page-header .w-mobile-100 {
+    width: 100%;
+  }
+
+  .page-header .w-mobile-100 .btn {
+    flex: 1 1 0;
+  }
+
+  #profesores-table {
+    min-width: 820px;
+  }
+
+  .profesor-actions-inline {
+    justify-content: flex-start;
+  }
+}

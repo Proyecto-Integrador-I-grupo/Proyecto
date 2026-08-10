@@ -19,7 +19,12 @@ import conexion from "../config/database.js";
 
 export async function crearMatricula(req, res) {
   try {
-    const resultado = await procesarMatricula(req.body);
+    const datosMatricula = {
+      ...req.body,
+      // La identidad real siempre proviene de la sesión, no del navegador.
+      id_usuario: req.usuarioActual.id_usuario
+    };
+    const resultado = await procesarMatricula(datosMatricula);
 
     try {
       await auditoriaModel.crearAuditoria(
@@ -27,7 +32,7 @@ export async function crearMatricula(req, res) {
           nombre_tabla: "matricula",
           accion_usuario: "INSERT",
           datos_anteriores: "",
-          datos_nuevos: JSON.stringify(req.body)
+          datos_nuevos: JSON.stringify(datosMatricula)
         },
         req.usuarioActual?.id_usuario ?? null
       );
@@ -267,7 +272,11 @@ export async function retirarEstudianteGrupo(req, res) {
 
 export async function transferirEstudianteGrupo(req, res) {
   try {
-    const resultado = await transferirEstudianteGrupoService(req.body);
+    const datosTransferencia = {
+      ...req.body,
+      id_usuario: req.usuarioActual.id_usuario
+    };
+    const resultado = await transferirEstudianteGrupoService(datosTransferencia);
 
     try {
       await auditoriaModel.crearAuditoria(
@@ -275,12 +284,12 @@ export async function transferirEstudianteGrupo(req, res) {
           nombre_tabla: "grupo_estudiante",
           accion_usuario: "UPDATE",
           datos_anteriores: JSON.stringify({
-            id_estudiante: req.body.id_estudiante,
-            id_grupo_actual: req.body.id_grupo_actual
+            id_estudiante: datosTransferencia.id_estudiante,
+            id_grupo_actual: datosTransferencia.id_grupo_actual
           }),
           datos_nuevos: JSON.stringify({
-            id_estudiante: req.body.id_estudiante,
-            id_grupo_nuevo: req.body.id_grupo_nuevo
+            id_estudiante: datosTransferencia.id_estudiante,
+            id_grupo_nuevo: datosTransferencia.id_grupo_nuevo
           })
         },
         req.usuarioActual?.id_usuario ?? null

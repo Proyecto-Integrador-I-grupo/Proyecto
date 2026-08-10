@@ -31,5 +31,15 @@
   "src/pages/Usuarios.jsx": 2435,
   "src/pages/Estudiantes.jsx": 1505,
   "src/pages/Perfil.jsx": 3406,
-  "src/pages/Asistencia.jsx": 8895
+  "src/pages/Asistencia.jsx": 8895,
+  "additional_fixes_2026_08_10": [
+    "Sesión React sincronizada con expiración 401",
+    "Timeout de 20 segundos y mensajes de red en apiFetch",
+    "Header x-user-id centralizado para llamadas autenticadas",
+    "Dashboard con refresco manual",
+    "Perfil de usuario visible en topbar",
+    "Título del documento actualizado según la vista",
+    "Indicador de conexión sin Internet",
+    "Mejoras responsive para evitar overflow horizontal"
+  ]
 }

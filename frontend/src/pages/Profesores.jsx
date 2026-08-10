@@ -13,7 +13,20 @@ const Modal = ({id,title,children,footer}) => (
 export default function Profesores() {
   return (
     <section id="profesores-view" className="view hidden">
-      <div className="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap"><div><h2 className="card-title-serif h4 mb-1"><i className="bi bi-person-badge"></i> Cuerpo Docente</h2><p className="text-muted small mb-0">Gestiona el registro, la disponibilidad y la asignación de grupos del personal docente.</p></div><button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProfesor"><i className="bi bi-plus-lg"></i> Agregar Profesor</button></div>
+      <div className="page-header d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+        <div className="flex-grow-1">
+          <h2 className="card-title-serif h4 mb-1"><i className="bi bi-person-badge"></i> Cuerpo Docente</h2>
+          <p className="text-muted small mb-0">Gestiona el registro, la disponibilidad y la asignación de grupos del personal docente.</p>
+        </div>
+        <div className="d-flex gap-2 flex-wrap w-mobile-100">
+          <button type="button" id="prof-refrescar" className="btn btn-outline-secondary">
+            <i className="bi bi-arrow-clockwise"></i> Refrescar
+          </button>
+          <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProfesor">
+            <i className="bi bi-plus-lg"></i> Agregar Profesor
+          </button>
+        </div>
+      </div>
       <div className="row g-3 mb-4">
         {[['prof-cnt-total','Total Registrados','stat-card-primary'],['prof-cnt-activos','Activos','stat-card-success'],['prof-cnt-inactivos','Inactivos / Destituidos','stat-card-danger'],['prof-cnt-pendientes','Grupos por Restaurar','stat-card-gold']].map(([id,label,cls]) => <div className="col-6 col-lg-3" key={id}><div className={`card stat-card stat-card-sm ${cls} shadow-sm h-100`}><div className="card-body py-3"><span className="stat-label">{label}</span><div id={id} className="stat-value stat-value-sm">–</div></div></div></div>)}
       </div>

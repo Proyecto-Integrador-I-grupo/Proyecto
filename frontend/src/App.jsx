@@ -22,6 +22,37 @@ export default function App() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      logout();
+      legacyLogout();
+      setUser(null);
+      setLoginError('Tu sesión expiró. Inicia sesión nuevamente.');
+    };
+
+    window.addEventListener('educontrol:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('educontrol:session-expired', handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
+    const updateNetworkStatus = () => {
+      const el = document.getElementById('network-status');
+      if (!el) return;
+      el.classList.toggle('d-none', navigator.onLine);
+      el.textContent = navigator.onLine ? '' : 'Sin conexión';
+    };
+
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    const timer = setTimeout(updateNetworkStatus, 0);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', updateNetworkStatus);
+      window.removeEventListener('offline', updateNetworkStatus);
+    };
+  }, []);
+
   async function handleLogin(event) {
     event.preventDefault();
 
@@ -85,7 +116,11 @@ export default function App() {
         >
           <div className="login-card">
             <div className="text-center mb-4">
-              <span className="brand-mark brand-mark-lg mx-auto mb-3">EC</span>
+              <img
+                src="/images/logo.jpg"
+                alt="EduControl"
+                className="login-logo mb-3"
+              />
               <h1 className="h3 mb-1">EduControl</h1>
               <p className="text-muted small mb-0">
                 Ingresa con tus credenciales asignadas
@@ -296,6 +331,8 @@ export default function App() {
             </div>
           </aside>
 
+          <div id="sidebar-backdrop" className="sidebar-backdrop" aria-hidden="true"></div>
+
           <div className="flex-grow-1 d-flex flex-column">
             <header className="topbar d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
               <div className="d-flex align-items-center gap-2">
@@ -313,9 +350,19 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
                 <div id="assistant-permission-notice" className="asistente-notice hidden">
                   <i className="bi bi-shield-lock"></i> Módulo de Asistente
+                </div>
+                <span id="network-status" className="badge text-bg-danger d-none">
+                  Sin conexión
+                </span>
+                <div className="topbar-user d-none d-sm-flex align-items-center gap-2">
+                  <span id="topbar-avatar" className="avatar avatar-sm">--</span>
+                  <div className="lh-sm">
+                    <div id="topbar-user-name" className="fw-semibold small">—</div>
+                    <div id="topbar-user-role" className="text-muted" style={{fontSize:'11px'}}>—</div>
+                  </div>
                 </div>
               </div>
             </header>

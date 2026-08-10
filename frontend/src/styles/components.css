@@ -505,3 +505,28 @@ body.high-contrast .accessibility-toggle {
     font-size: 16px;
   }
 }
+.login-screen {
+  min-height: 100dvh;
+  padding: 1rem;
+}
+
+.login-card {
+  width: min(430px, 100%);
+  border-radius: 20px;
+}
+
+@media (max-width: 575.98px) {
+  .login-screen {
+    padding: .75rem;
+  }
+
+  .login-logo {
+    width: 68px;
+    height: 68px;
+  }
+
+  .login-card {
+    width: 100%;
+    border-radius: 16px;
+  }
+}

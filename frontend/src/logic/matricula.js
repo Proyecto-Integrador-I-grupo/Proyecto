@@ -108,7 +108,10 @@ function wireMatriculaEvents() {
     gestionGrupoBtn.dataset.wired = '1';
     gestionGrupoBtn.addEventListener('click', async () => {
       await populateGestionGrupoModal();
-      await populateProfesoresSelects(true);
+      const profSel = document.getElementById('gestion-grupo-profesor');
+      if (profSel) {
+        profSel.innerHTML = '<option value="" disabled>Selecciona un grupo para cargar profesores</option>';
+      }
     });
   }
 
@@ -126,6 +129,8 @@ function wireMatriculaEvents() {
     gestionGrupoSelect.addEventListener('change', async () => {
       const rawValue = gestionGrupoSelect.value;
       const cleanId = String(rawValue).split(':')[0].trim();
+      if (!cleanId || Number.isNaN(Number(cleanId))) return;
+      await populateProfesoresSelects(false);
       await cargarDetalleGestionGrupo(Number(cleanId));
     });
   }
@@ -185,8 +190,9 @@ function wireMatriculaEvents() {
   const btnAbrirModalGrupo = document.querySelector('[data-bs-target="#modalGrupo"]');
   if (btnAbrirModalGrupo && !btnAbrirModalGrupo.dataset.wired) {
     btnAbrirModalGrupo.dataset.wired = '1';
-    btnAbrirModalGrupo.addEventListener('click', () => {
-      populateSeccionesSelect();
+    btnAbrirModalGrupo.addEventListener('click', async () => {
+      await populateSeccionesSelect();
+      await populateProfesoresSelects(false);
     });
   }
 
@@ -438,7 +444,6 @@ async function loadMatriculaData() {
   await Promise.all([
     populatePersonaSelects(),
     populateGruposSelects(),
-    populateProfesoresSelects(),
     populateSeccionesSelect()
   ]);
 }
@@ -519,11 +524,8 @@ function filtrarGruposMatricula(termino) {
     option.hidden = !coincide;
   });
 
-  const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
-  if (primerVisible) {
-    select.value = primerVisible.value;
-    actualizarInfoCupoGrupo();
-  }
+  // No seleccionar automáticamente el primer grupo.
+  // El usuario debe elegirlo explícitamente.
 }
 
 async function borrarGrupo(idGrupo) {

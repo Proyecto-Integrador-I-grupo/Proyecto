@@ -356,13 +356,6 @@ export default function App() {
                 <span id="network-status" className="badge text-bg-danger d-none">
                   Sin conexión
                 </span>
-                <div className="topbar-user d-none d-sm-flex align-items-center gap-2">
-                  <span id="topbar-avatar" className="avatar avatar-sm">--</span>
-                  <div className="lh-sm">
-                    <div id="topbar-user-name" className="fw-semibold small">—</div>
-                    <div id="topbar-user-role" className="text-muted" style={{fontSize:'11px'}}>—</div>
-                  </div>
-                </div>
               </div>
             </header>
 

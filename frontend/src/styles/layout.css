@@ -14,7 +14,7 @@
   background: var(--navy);
   color: #F8FAFC;
   max-height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .sidebar .nav-link {
@@ -242,9 +242,8 @@
   }
 
   .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 1030;
+    position: relative;
+    z-index: 10;
     padding: .8rem 1rem !important;
   }
 
@@ -324,29 +323,8 @@
 }
 
 /* ===== Mejoras adicionales de UX y responsive ===== */
-.topbar-user {
-  min-width: 150px;
-  padding: .35rem .55rem;
-  border: 1px solid #E2E8F0;
-  border-radius: 999px;
-  background: #F8FAFC;
-}
-.topbar-user .avatar {
-  flex: 0 0 auto;
-}
 .dashboard-page-header {
   padding-bottom: .25rem;
-}
-@media (max-width: 575.98px) {
-  .dashboard-page-header {
-    align-items: stretch !important;
-  }
-  .dashboard-page-header .btn {
-    width: 100%;
-  }
-  .topbar-user {
-    display: none !important;
-  }
 }
 @media (max-width: 991.98px) {
   #app-shell {
@@ -393,17 +371,11 @@
   .topbar .d-flex.align-items-center {
     width: auto !important;
   }
-  .topbar-user {
-    max-width: 180px;
-  }
 }
 @media (max-width: 575.98px) {
   .topbar {
     flex: 0 0 58px;
     height: 58px;
     min-height: 58px;
-  }
-  .topbar .topbar-user {
-    display: none !important;
   }
 }

@@ -519,3 +519,432 @@ body {
     padding: .85rem !important;
   }
 }
+
+/* ===== Pulido responsive final ===== */
+/* El documento conserva el scroll natural del navegador. No se crean
+   contenedores internos con scroll para la navegación o el contenido. */
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#app-shell,
+#content {
+  overflow: visible !important;
+}
+
+#app-shell {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.sidebar {
+  flex: 0 0 260px;
+  width: 260px;
+  min-width: 260px;
+  overflow: visible !important;
+}
+
+.sidebar > .nav {
+  min-width: 0;
+}
+
+.sidebar .nav-link {
+  min-height: 40px;
+  line-height: 1.2;
+}
+
+.sidebar-user {
+  width: 100%;
+  min-width: 0;
+}
+
+.sidebar-user > .d-flex {
+  min-width: 0;
+}
+
+#sidebar-user-name,
+#sidebar-role-badge {
+  max-width: 100%;
+}
+
+#logout-btn {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar {
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.topbar > div {
+  min-width: 0;
+}
+
+#view-title {
+  max-width: min(62vw, 620px);
+}
+
+#content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#content > section,
+#content > .container,
+#content .card,
+#content .row,
+#content .col,
+#content [class*="col-"] {
+  min-width: 0;
+}
+
+.table-responsive {
+  max-width: 100%;
+}
+
+/* Evita que controles de acciones provoquen una página más ancha. */
+.page-header,
+.page-header > div,
+.card-header,
+.card-header > div,
+.btn-group,
+.input-group {
+  min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+  #app-shell {
+    display: block !important;
+  }
+
+  .sidebar {
+    width: min(82vw, 300px);
+    min-width: 0;
+    max-width: 300px;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden !important;
+    padding: .85rem !important;
+  }
+
+  .sidebar > .d-flex.align-items-center.gap-2 {
+    margin-bottom: .8rem !important;
+  }
+
+  .sidebar .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .sidebar .brand-name {
+    font-size: 18px;
+  }
+
+  .sidebar > .nav {
+    gap: .2rem !important;
+    margin-bottom: .65rem !important;
+  }
+
+  .sidebar .nav-link {
+    min-height: 36px;
+    padding: .5rem .65rem;
+    font-size: 13px;
+  }
+
+  .sidebar .nav-link i {
+    width: 18px;
+    font-size: 15px;
+  }
+
+  .sidebar-user {
+    padding-top: .65rem !important;
+    margin-top: .35rem !important;
+  }
+
+  .sidebar-user .avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+  }
+
+  #logout-btn {
+    min-height: 36px;
+    padding: .4rem .6rem;
+    font-size: 13px;
+  }
+
+  .topbar {
+    height: 60px;
+    min-height: 60px;
+    flex-basis: 60px;
+    padding: .55rem .85rem !important;
+  }
+
+  #view-title {
+    max-width: 55vw;
+    font-size: 1rem;
+  }
+
+  #network-status {
+    font-size: 10px;
+    padding: .3rem .45rem;
+  }
+
+  #assistant-permission-notice {
+    max-width: 32vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 11px;
+  }
+
+  #content {
+    padding: .9rem !important;
+  }
+
+  .page-header {
+    gap: .75rem !important;
+  }
+
+  .page-header .btn,
+  .page-header .btn-group {
+    max-width: 100%;
+  }
+
+  .card-header {
+    gap: .65rem !important;
+  }
+
+  .card-header > * {
+    min-width: 0;
+  }
+
+  .table-responsive {
+    border: 1px solid var(--bs-border-color);
+    border-radius: .65rem;
+  }
+
+  .modal-dialog {
+    width: auto;
+    max-width: calc(100% - 1rem);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .row {
+    --bs-gutter-x: .85rem;
+    --bs-gutter-y: .85rem;
+  }
+
+  .stat-value {
+    font-size: 27px;
+  }
+
+  .hero-card {
+    padding: 1rem !important;
+  }
+
+  .hero-card .hero-pill {
+    align-self: flex-start;
+    padding: .45rem .7rem;
+    font-size: 11px;
+  }
+
+  .table {
+    min-width: 640px;
+  }
+
+  .form-control,
+  .form-select,
+  .btn {
+    font-size: 13px;
+  }
+
+  .btn {
+    white-space: normal;
+  }
+
+  .input-group > .btn {
+    white-space: nowrap;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: .85rem 1rem;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+  }
+
+  .accessibility-widget {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .accessibility-toggle {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .sidebar {
+    width: min(88vw, 290px);
+  }
+
+  .topbar {
+    height: 56px;
+    min-height: 56px;
+    flex-basis: 56px;
+    padding: .5rem .7rem !important;
+  }
+
+  #view-title {
+    max-width: 58vw;
+    font-size: .95rem;
+  }
+
+  #sidebar-toggle {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #assistant-permission-notice {
+    display: none !important;
+  }
+
+  #content {
+    padding: .7rem !important;
+  }
+
+  .hero-card {
+    border-radius: .75rem;
+  }
+
+  .hero-card h2 {
+    font-size: 1.05rem;
+  }
+
+  .hero-card p {
+    font-size: .78rem;
+  }
+
+  .card-body {
+    padding: .85rem;
+  }
+
+  .card-header {
+    padding: .75rem .85rem;
+  }
+
+  .page-header h2,
+  .page-header h3,
+  .page-header .h2,
+  .page-header .h3 {
+    font-size: 1.1rem;
+  }
+
+  .page-header .btn,
+  .page-header .btn-group {
+    width: 100%;
+  }
+
+  .page-header .btn-group {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .table {
+    min-width: 580px;
+  }
+
+  .modal-dialog {
+    max-width: calc(100% - .5rem);
+    margin: .25rem auto;
+  }
+
+  .modal-content {
+    border-radius: .8rem;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+
+  .accessibility-menu {
+    min-width: 200px;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 380px) {
+  .sidebar {
+    width: 92vw;
+  }
+
+  .sidebar .nav-link {
+    min-height: 34px;
+    padding: .42rem .58rem;
+    font-size: 12px;
+  }
+
+  .sidebar .nav-link i {
+    font-size: 14px;
+  }
+
+  .sidebar-user {
+    padding-top: .55rem !important;
+  }
+
+  .sidebar-user .small {
+    font-size: 11px !important;
+  }
+
+  #logout-btn {
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  #content {
+    padding: .55rem !important;
+  }
+
+  .topbar {
+    padding-left: .55rem !important;
+    padding-right: .55rem !important;
+  }
+
+  #view-title {
+    max-width: 52vw;
+  }
+}
+
+/* Reduce movimiento para usuarios que lo solicitan desde el sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

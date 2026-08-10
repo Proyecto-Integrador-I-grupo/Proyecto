@@ -43,3 +43,25 @@
     transform: none;
   }
 }
+#matricula-view .card {
+  border-radius: 14px;
+}
+
+#matricula-view .form-select:invalid,
+#matricula-view .form-select option[value=""] {
+  color: #64748b;
+}
+
+@media (max-width: 575.98px) {
+  #matricula-view .row > [class*="col-"] {
+    width: 100%;
+  }
+
+  #matricula-view .card {
+    min-height: 180px;
+  }
+
+  #matricula-view .card-body {
+    padding: 1rem .85rem;
+  }
+}

@@ -75,6 +75,22 @@ function wireProfesoresEvents() {
     });
   }
 
+  const profRefrescar = document.getElementById('prof-refrescar');
+  if (profRefrescar && !profRefrescar.dataset.wired) {
+    profRefrescar.dataset.wired = '1';
+    profRefrescar.addEventListener('click', async () => {
+      profRefrescar.disabled = true;
+      profRefrescar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Actualizando...';
+      try {
+        await loadProfesores();
+        showToast('Lista de profesores actualizada.', 'success');
+      } finally {
+        profRefrescar.disabled = false;
+        profRefrescar.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refrescar';
+      }
+    });
+  }
+
   const profSearch = document.getElementById('prof-search');
   if (profSearch && !profSearch.dataset.wired) {
     profSearch.dataset.wired = '1';

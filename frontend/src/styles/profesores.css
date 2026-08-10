@@ -72,3 +72,35 @@
     padding: 0.35rem 0.55rem;
   }
 }
+.profesor-page-toolbar {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+#prof-refrescar {
+  min-width: 120px;
+}
+
+#profesores-table td,
+#profesores-table th {
+  vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+  .page-header .w-mobile-100 {
+    width: 100%;
+  }
+
+  .page-header .w-mobile-100 .btn {
+    flex: 1 1 0;
+  }
+
+  #profesores-table {
+    min-width: 820px;
+  }
+
+  .profesor-actions-inline {
+    justify-content: flex-start;
+  }
+}

@@ -155,12 +155,7 @@ async function loadAsistenciaData() {
     await populateGruposSelects();
   }
   
-  const grupoSel = document.getElementById('asis-id-grupo');
-  if (grupoSel && grupoSel.options.length > 1 && !grupoSel.value) {
-    grupoSel.value = grupoSel.options[1].value;
-  }
-
-  await cargarRosterGrupoAsistencia();
+  // No seleccionar un grupo automáticamente. El usuario lo elige al registrar asistencia.
   poblarFiltroGrupoHistorial();
   await poblarFiltroEstudiantesHistorial('');
   await poblarFiltroMateriaHistorial();
@@ -261,18 +256,30 @@ async function cargarRosterGrupoAsistencia() {
   }
 }
 
-function poblarFiltroGrupoHistorial() {
+async function poblarFiltroGrupoHistorial() {
   const sel = document.getElementById('hist-filtro-grupo');
   if (!sel) return;
+
   const valorActual = sel.value;
   sel.innerHTML = '<option value="">Todos los grupos</option>';
-  if (typeof allGrupos !== 'undefined' && Array.isArray(allGrupos)) {
-    allGrupos.forEach((g) => {
+
+  try {
+    const res = await apiFetch('/api/procesos/grupos');
+    if (!res.ok) return;
+
+    const grupos = await res.json();
+    grupos.forEach((g) => {
       const id = g.id_grupo ?? g.id;
-      sel.add(new Option(g.nombre_grupo ?? `Grupo ${id}`, id));
+      const nombre = g.nombre_grupo ?? `Grupo ${id}`;
+      sel.add(new Option(nombre, id));
     });
+
+    if (valorActual && Array.from(sel.options).some(o => String(o.value) === String(valorActual))) {
+      sel.value = valorActual;
+    }
+  } catch (error) {
+    console.error('Error cargando grupos para filtro de asistencia', error);
   }
-  sel.value = valorActual || '';
 }
 
 async function poblarFiltroEstudiantesHistorial(idGrupo) {
@@ -305,16 +312,28 @@ async function poblarFiltroEstudiantesHistorial(idGrupo) {
 async function poblarFiltroMateriaHistorial() {
   const sel = document.getElementById('hist-filtro-materia');
   if (!sel) return;
+
   const valorActual = sel.value;
   sel.innerHTML = '<option value="">Todas las materias</option>';
+
   try {
-    const res = await apiFetch('/api/procesos/materias');
+    const res = await apiFetch('/api/procesos/asistencia');
     if (!res.ok) return;
-    const materias = await res.json();
-    materias.forEach((m) => sel.add(new Option(m, m)));
-    sel.value = valorActual || '';
-  } catch (e) {
-    console.error('Error cargando materias para filtro', e);
+
+    const registros = await res.json();
+    const materias = [...new Set(
+      (Array.isArray(registros) ? registros : [])
+        .map(r => String(r.materia_curso ?? r.materia ?? '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'es'));
+
+    materias.forEach((materia) => sel.add(new Option(materia, materia)));
+
+    if (valorActual && Array.from(sel.options).some(o => o.value === valorActual)) {
+      sel.value = valorActual;
+    }
+  } catch (error) {
+    console.error('Error cargando materias para filtro', error);
   }
 }
 
@@ -328,26 +347,51 @@ async function cargarHistorialAsistencia() {
   const estado = document.getElementById('hist-filtro-estado')?.value || '';
   const fechaDesde = document.getElementById('hist-filtro-fecha-desde')?.value || '';
   const fechaHasta = document.getElementById('hist-filtro-fecha-hasta')?.value || '';
-  const busqueda = document.getElementById('hist-filtro-busqueda')?.value.trim() || '';
+  const busqueda = document.getElementById('hist-filtro-busqueda')?.value.trim().toLowerCase() || '';
 
-  const params = new URLSearchParams();
-  if (idGrupo) params.set('id_grupo', idGrupo);
-  if (idEstudiante) params.set('id_estudiante', idEstudiante);
-  if (materia) params.set('materia', materia);
-  if (estado) params.set('estado_asistencia', estado);
-  if (fechaDesde) params.set('fecha_inicio', fechaDesde);
-  if (fechaHasta) params.set('fecha_fin', fechaHasta);
-  if (busqueda) params.set('busqueda', busqueda);
-
-  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Cargando historial...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Cargando historial...</td></tr>';
 
   try {
-    const res = await apiFetch(`/api/procesos/asistencia?${params.toString()}`);
+    // Descargamos el historial base y aplicamos los filtros en el cliente.
+    // Así los filtros siguen funcionando aunque el backend no reciba todavía
+    // todos los parámetros de filtrado.
+    const res = await apiFetch('/api/procesos/asistencia');
     if (!res.ok) throw new Error('No se pudo cargar el historial');
+
     const registros = await res.json();
-    renderHistorialAsistencia(registros);
-    actualizarGraficosAsistencia(registros);
+
+    const filtrados = (Array.isArray(registros) ? registros : []).filter((r) => {
+      const registroGrupo = String(r.id_grupo ?? '');
+      const registroEstudiante = String(r.id_estudiante ?? '');
+      const registroMateria = String(r.materia_curso ?? r.materia ?? '').trim().toLowerCase();
+      const registroEstado = String(r.estado_asistencia ?? '').trim().toLowerCase();
+      const registroFecha = r.fecha ? String(r.fecha).split('T')[0] : '';
+      const textoBusqueda = [
+        r.estudiante_nombre,
+        r.estudiante_apellido1,
+        r.estudiante_apellido2,
+        r.profesor_nombre,
+        r.profesor_apellido1,
+        r.nombre_grupo,
+        r.materia_curso,
+        r.materia,
+        r.observaciones
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      if (idGrupo && registroGrupo !== String(idGrupo)) return false;
+      if (idEstudiante && registroEstudiante !== String(idEstudiante)) return false;
+      if (materia && registroMateria !== materia.toLowerCase()) return false;
+      if (estado && registroEstado !== estado.toLowerCase()) return false;
+      if (fechaDesde && (!registroFecha || registroFecha < fechaDesde)) return false;
+      if (fechaHasta && (!registroFecha || registroFecha > fechaHasta)) return false;
+      if (busqueda && !textoBusqueda.includes(busqueda)) return false;
+
+      return true;
+    });
+
+    renderHistorialAsistencia(filtrados);
   } catch (error) {
+    console.error('Error cargando historial de asistencia', error);
     tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
     actualizarGraficosAsistencia([]);
   }

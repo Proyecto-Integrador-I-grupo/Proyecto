@@ -286,6 +286,25 @@ function renderUserInfo() {
       `role-badge ${rolClase}`;
   }
 
+  const topbarName = document.getElementById('topbar-user-name');
+  const topbarRole = document.getElementById('topbar-user-role');
+  const topbarAvatar = document.getElementById('topbar-avatar');
+
+  if (topbarName) topbarName.textContent = nombreCompleto || 'Usuario';
+  if (topbarRole) topbarRole.textContent = rol;
+
+  if (topbarAvatar) {
+    if (fotoFinal) {
+      topbarAvatar.style.backgroundImage = `url("${fotoFinal}")`;
+      topbarAvatar.style.backgroundSize = 'cover';
+      topbarAvatar.style.backgroundPosition = 'center';
+      topbarAvatar.textContent = '';
+    } else {
+      topbarAvatar.style.backgroundImage = '';
+      topbarAvatar.textContent = iniciales;
+    }
+  }
+
   document.body.classList.toggle(
     'is-admin',
     esAdmin
@@ -367,22 +386,34 @@ async function apiFetch(path, options = {}) {
   }
 
   const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
 
-  const res = await fetch(url, {
-    ...options,
-    headers
-  });
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal
+    });
 
-  if (res.status === 401) {
-    showToast(
-      'Tu sesión expiró. Inicia sesión de nuevo.',
-      'error'
-    );
+    if (res.status === 401) {
+      showToast('Tu sesión expiró. Inicia sesión de nuevo.', 'error');
+      window.dispatchEvent(new CustomEvent('educontrol:session-expired'));
+      logout();
+    }
 
-    logout();
+    return res;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Verifica tu conexión e inténtalo nuevamente.');
+    }
+    if (!navigator.onLine) {
+      throw new Error('No hay conexión a Internet. Revisa tu conexión e inténtalo nuevamente.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res;
 }
 
 /* ==========================================
@@ -457,6 +488,8 @@ function wireSidebarToggle() {
 
   const sidebar =
     document.querySelector('.sidebar');
+  const backdrop =
+    document.getElementById('sidebar-backdrop');
 
   if (!toggle || !sidebar || !icon) {
     return;
@@ -483,6 +516,14 @@ function wireSidebarToggle() {
         ? 'Cerrar menú'
         : 'Abrir menú'
     );
+
+    backdrop?.classList.toggle('show', isOpen);
+    document.body.classList.toggle('sidebar-menu-open', isOpen);
+  };
+
+  const closeSidebar = () => {
+    sidebar.classList.remove('open');
+    updateToggleState();
   };
 
   toggle.addEventListener(
@@ -494,6 +535,8 @@ function wireSidebarToggle() {
     }
   );
 
+  backdrop?.addEventListener('click', closeSidebar);
+
   document.addEventListener(
     'click',
     (event) => {
@@ -501,22 +544,19 @@ function wireSidebarToggle() {
         return;
       }
 
-      if (
-        !sidebar.classList.contains('open')
-      ) {
+      if (!sidebar.classList.contains('open')) {
         return;
       }
 
       if (
         toggle.contains(event.target) ||
-        sidebar.contains(event.target)
+        sidebar.contains(event.target) ||
+        backdrop?.contains(event.target)
       ) {
         return;
       }
 
-      sidebar.classList.remove('open');
-
-      updateToggleState();
+      closeSidebar();
     }
   );
 
@@ -630,6 +670,8 @@ function setActiveView(viewName) {
       'Dashboard';
   }
 
+  document.title = `${titleElement?.textContent || 'Dashboard'} · EduControl`;
+
   /*
    * Cada módulo ES registra su propia función
    * de carga.
@@ -659,6 +701,14 @@ function setActiveView(viewName) {
     document
       .querySelector('.sidebar')
       ?.classList.remove('open');
+    document
+      .getElementById('sidebar-backdrop')
+      ?.classList.remove('show');
+    document.body.classList.remove('sidebar-menu-open');
+    const mobileToggle = document.getElementById('sidebar-toggle');
+    const mobileIcon = mobileToggle?.querySelector('i');
+    if (mobileIcon) mobileIcon.className = 'bi bi-list';
+    mobileToggle?.setAttribute('aria-label', 'Abrir menú');
   }
 }
 

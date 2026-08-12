@@ -95,17 +95,6 @@ export const eliminarSeccionService = async (idSeccion) => {
   try {
     await connection.beginTransaction();
 
-    const [gruposActivos] = await connection.query(
-      `SELECT COUNT(*) AS total
-       FROM grupo
-       WHERE id_seccion = ? AND estado = TRUE`,
-      [idSeccion]
-    );
-
-    if (Number(gruposActivos[0]?.total || 0) > 0) {
-      throw new Error("No se puede desactivar la sección porque tiene grupos activos asociados.");
-    }
-
     const [result] = await connection.query(
       `UPDATE seccion SET estado = FALSE WHERE id_seccion = ? AND estado = TRUE`,
       [idSeccion]

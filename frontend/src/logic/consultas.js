@@ -11,7 +11,6 @@ let estudiantesMatriculados = [];
 let profesores = [];
 let matriculas = [];
 let asistencias = [];
-let grupos = [];
 
 // Registro que se está mostrando en la vista previa
 let documentoActual = null;
@@ -79,90 +78,75 @@ let tipoDocumentoActual = null;
   }
 
   async function cargarConsultas() {
-  mostrarCargando();
+    mostrarCargando();
 
-  try {
-    const [
-      resEstudiantes,
-      resEstudiantesMatriculados,
-      resProfesores,
-      resMatriculas,
-      resAsistencias,
-      resGrupos
-    ] = await Promise.all([
-      apiFetch('/api/estudiantes'),
-      apiFetch('/api/estudiantes/matriculados'),
-      apiFetch('/api/profesores'),
-      apiFetch('/api/procesos/matricula'),
-      apiFetch('/api/procesos/asistencia'),
-      apiFetch('/api/procesos/grupos')
-    ]);
+    try {
+      const [
+        resEstudiantes,
+        resEstudiantesMatriculados,
+        resProfesores,
+        resMatriculas,
+        resAsistencias
+      ] = await Promise.all([
+        apiFetch('/api/estudiantes'),
+        apiFetch('/api/estudiantes/matriculados'),
+        apiFetch('/api/profesores'),
+        apiFetch('/api/procesos/matricula'),
+        apiFetch('/api/procesos/asistencia')
+      ]);
 
-    estudiantes = resEstudiantes.ok
-      ? await resEstudiantes.json()
-      : [];
-
-    estudiantesMatriculados =
-      resEstudiantesMatriculados.ok
-        ? await resEstudiantesMatriculados.json()
+      estudiantes = resEstudiantes.ok
+        ? await resEstudiantes.json()
         : [];
 
-    profesores = resProfesores.ok
-      ? await resProfesores.json()
-      : [];
+      estudiantesMatriculados =
+        resEstudiantesMatriculados.ok
+          ? await resEstudiantesMatriculados.json()
+          : [];
 
-    matriculas = resMatriculas.ok
-      ? await resMatriculas.json()
-      : [];
+      profesores = resProfesores.ok
+        ? await resProfesores.json()
+        : [];
 
-    asistencias = resAsistencias.ok
-      ? await resAsistencias.json()
-      : [];
+      matriculas = resMatriculas.ok
+        ? await resMatriculas.json()
+        : [];
 
-    grupos = resGrupos.ok
-      ? await resGrupos.json()
-      : [];
+      asistencias = resAsistencias.ok
+        ? await resAsistencias.json()
+        : [];
 
-    if (!resEstudiantesMatriculados.ok) {
-      console.warn(
-        'No se pudieron cargar los estudiantes matriculados.'
+      if (!resEstudiantesMatriculados.ok) {
+        console.warn(
+          'No se pudieron cargar los estudiantes matriculados.'
+        );
+      }
+
+      if (!resMatriculas.ok) {
+        console.warn(
+          'No se pudieron cargar las matrículas.'
+        );
+      }
+
+      if (!resAsistencias.ok) {
+        console.warn(
+          'No se pudieron cargar los registros de asistencia.'
+        );
+      }
+
+      actualizarResumen();
+      cargarFiltroGrupos();
+      cargarFiltrosMatriculados();
+      actualizarConsulta();
+    } catch (error) {
+      console.error('Error cargando consultas:', error);
+
+      mostrarError(
+        error.message ||
+        'No se pudo cargar la información.'
       );
     }
-
-    if (!resMatriculas.ok) {
-      console.warn(
-        'No se pudieron cargar las matrículas.'
-      );
-    }
-
-    if (!resAsistencias.ok) {
-      console.warn(
-        'No se pudieron cargar los registros de asistencia.'
-      );
-    }
-
-    if (!resGrupos.ok) {
-      console.warn(
-        'No se pudieron cargar los grupos.'
-      );
-    }
-
-    actualizarResumen();
-    cargarFiltroGrupos();
-    cargarFiltrosMatriculados();
-    actualizarConsulta();
-  } catch (error) {
-    console.error(
-      'Error cargando consultas:',
-      error
-    );
-
-    mostrarError(
-      error.message ||
-      'No se pudo cargar la información.'
-    );
   }
-}
 
   /* ==========================================
      RESUMEN GENERAL DE CONSULTAS
@@ -216,186 +200,162 @@ let tipoDocumentoActual = null;
      ========================================== */
 
   function actualizarConsulta() {
-  const tipo =
-    document.getElementById('consulta-tipo')?.value ||
-    'prematriculados';
+    const tipo =
+      document.getElementById('consulta-tipo')?.value ||
+      'prematriculados';
 
-  actualizarFiltroEstado(tipo);
-  actualizarTextoBusqueda(tipo);
-  actualizarFiltrosVisibles(tipo);
+    actualizarFiltroEstado(tipo);
+    actualizarTextoBusqueda(tipo);
+    actualizarFiltrosVisibles(tipo);
 
-  if (tipo === 'prematriculados') {
-    mostrarEstudiantesPrematriculados();
-    return;
+    if (tipo === 'prematriculados') {
+      mostrarEstudiantesPrematriculados();
+      return;
+    }
+
+    if (tipo === 'matriculados') {
+      mostrarEstudiantesMatriculados();
+      return;
+    }
+
+    if (tipo === 'profesores') {
+      mostrarProfesores();
+      return;
+    }
+
+    if (tipo === 'matriculas') {
+      mostrarMatriculas();
+      return;
+    }
+
+    if (tipo === 'asistencia') {
+      mostrarAsistencias();
+    }
   }
-
-  if (tipo === 'matriculados') {
-    mostrarEstudiantesMatriculados();
-    return;
-  }
-
-  if (tipo === 'profesores') {
-    mostrarProfesores();
-    return;
-  }
-
-  if (tipo === 'matriculas') {
-    mostrarMatriculas();
-    return;
-  }
-
-  if (tipo === 'asistencia') {
-    mostrarAsistencias();
-    return;
-  }
-
-  if (tipo === 'grupos') {
-    mostrarGrupos();
-  }
-}
 
   /* ==========================================
      FILTROS DINÁMICOS
      ========================================== */
 
   function actualizarFiltroEstado(tipo) {
-  const select =
-    document.getElementById('consulta-estado');
+    const select = document.getElementById('consulta-estado');
 
-  if (!select) return;
+    if (!select) return;
 
-  const valorActual = select.value;
+    const valorActual = select.value;
 
-  if (tipo === 'asistencia') {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="presente">Presente</option>
-      <option value="ausente">Ausente</option>
-      <option value="tardia">Tardía</option>
-      <option value="justificada">Justificada</option>
-    `;
-  } else if (
-    tipo === 'matriculas' ||
-    tipo === 'matriculados'
-  ) {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="activa">Activa</option>
-      <option value="inactiva">Inactiva</option>
-      <option value="retirada">Retirada</option>
-      <option value="finalizada">Finalizada</option>
-    `;
-  } else {
-    select.innerHTML = `
-      <option value="">Todos</option>
-      <option value="activo">Activo</option>
-      <option value="inactivo">Inactivo</option>
-    `;
-  }
+    if (tipo === 'asistencia') {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="presente">Presente</option>
+        <option value="ausente">Ausente</option>
+        <option value="tardia">Tardía</option>
+        <option value="justificada">Justificada</option>
+      `;
+          } else if (
+      tipo === 'matriculas' ||
+      tipo === 'matriculados'
+    ) {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="activa">Activa</option>
+        <option value="inactiva">Inactiva</option>
+        <option value="retirada">Retirada</option>
+        <option value="finalizada">Finalizada</option>
+      `;
+    } else {
+      select.innerHTML = `
+        <option value="">Todos</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+      `;
+    }
 
-  const opcionExiste =
-    Array.from(select.options).some(
-      (opcion) =>
-        opcion.value === valorActual
+    const opcionExiste = Array.from(select.options).some(
+      (opcion) => opcion.value === valorActual
     );
 
-  select.value =
-    opcionExiste
-      ? valorActual
-      : '';
-}
+    select.value = opcionExiste ? valorActual : '';
+  }
 
   function actualizarTextoBusqueda(tipo) {
-  const input =
-    document.getElementById(
+    const input = document.getElementById(
       'consulta-busqueda'
     );
 
-  if (!input) return;
+    if (!input) return;
 
-  const textos = {
-    prematriculados:
-      'Buscar estudiante pendiente...',
+    const textos = {
+      prematriculados:
+        'Buscar estudiante pendiente...',
 
-    matriculados:
-      'Buscar por estudiante, grupo, sección o nivel...',
+      matriculados:
+        'Buscar por estudiante, grupo, sección o nivel...',
 
-    profesores:
-      'Buscar por nombre o materia...',
+      profesores:
+        'Buscar por nombre o materia...',
 
-    matriculas:
-      'Buscar por estudiante o grupo...',
+      matriculas:
+        'Buscar por estudiante o grupo...',
 
-    asistencia:
-      'Buscar por estudiante, grupo o profesor...',
+      asistencia:
+        'Buscar por estudiante, grupo o profesor...'
+    };
 
-    grupos:
-      'Buscar por grupo, sección, nivel o aula...'
-  };
-
-  input.placeholder =
-    textos[tipo] ||
-    'Buscar...';
-}
+    input.placeholder =
+      textos[tipo] || 'Buscar...';
+  }
 
   function actualizarFiltrosVisibles(tipo) {
-  const filtroGrupo =
-    document.querySelector(
+    const filtroGrupo = document.querySelector(
       '.consulta-filtro-grupo'
     );
 
-  const filtroFecha =
-    document.querySelector(
+    const filtroFecha = document.querySelector(
       '.consulta-filtro-fecha'
     );
 
-  const filtroSeccion =
-    document.querySelector(
+    const filtroSeccion = document.querySelector(
       '.consulta-filtro-seccion'
     );
 
-  const filtroNivel =
-    document.querySelector(
+    const filtroNivel = document.querySelector(
       '.consulta-filtro-nivel'
     );
 
-  const usaGrupo =
-    tipo === 'matriculados' ||
-    tipo === 'matriculas' ||
-    tipo === 'asistencia';
+    const usaGrupo =
+      tipo === 'matriculados' ||
+      tipo === 'matriculas' ||
+      tipo === 'asistencia';
 
-  const usaFecha =
-    tipo === 'matriculas' ||
-    tipo === 'asistencia';
+    const usaFecha =
+      tipo === 'matriculas' ||
+      tipo === 'asistencia';
 
-  const usaSeccion =
-    tipo === 'matriculados' ||
-    tipo === 'grupos';
+    const usaInformacionAcademica =
+      tipo === 'matriculados';
 
-  const usaNivel =
-    tipo === 'matriculados' ||
-    tipo === 'grupos';
+    filtroGrupo?.classList.toggle(
+      'hidden',
+      !usaGrupo
+    );
 
-  filtroGrupo?.classList.toggle(
-    'hidden',
-    !usaGrupo
-  );
+    filtroFecha?.classList.toggle(
+      'hidden',
+      !usaFecha
+    );
 
-  filtroFecha?.classList.toggle(
-    'hidden',
-    !usaFecha
-  );
+    filtroSeccion?.classList.toggle(
+      'hidden',
+      !usaInformacionAcademica
+    );
 
-  filtroSeccion?.classList.toggle(
-    'hidden',
-    !usaSeccion
-  );
+    filtroNivel?.classList.toggle(
+      'hidden',
+      !usaInformacionAcademica
+    );
+  }
 
-  filtroNivel?.classList.toggle(
-    'hidden',
-    !usaNivel
-  );
-} 
   /* ==========================================
      ESTUDIANTES EN PRE-MATRÍCULA
      ========================================== */
@@ -716,223 +676,6 @@ let tipoDocumentoActual = null;
       body.appendChild(fila);
     });
   }
-
-  function mostrarGrupos() {
-  const busqueda = obtenerBusqueda();
-  const estadoSeleccionado = obtenerEstado();
-
-  const seccionSeleccionada =
-    document.getElementById(
-      'consulta-seccion'
-    )?.value || '';
-
-  const nivelSeleccionado =
-    document.getElementById(
-      'consulta-nivel'
-    )?.value || '';
-
-  const resultados = grupos
-    .filter((grupo) => {
-      const nombreGrupo = String(
-        grupo.nombre_grupo ?? ''
-      ).toLowerCase();
-
-      const seccion = String(
-        grupo.nombre_seccion ?? ''
-      ).toLowerCase();
-
-      const nivel = String(
-        grupo.nivel ?? ''
-      ).toLowerCase();
-
-      const aula = String(
-        grupo.aula ?? ''
-      ).toLowerCase();
-
-      const textoCompleto =
-        `${nombreGrupo} ${seccion} ${nivel} ${aula}`;
-
-      const coincideBusqueda =
-        !busqueda ||
-        textoCompleto.includes(busqueda);
-
-      const coincideSeccion =
-        !seccionSeleccionada ||
-        String(grupo.id_seccion) ===
-          String(seccionSeleccionada);
-
-      const coincideNivel =
-        !nivelSeleccionado ||
-        String(grupo.nivel) ===
-          String(nivelSeleccionado);
-
-      /*
-       * El endpoint actual solo devuelve
-       * grupos activos.
-       */
-      const coincideEstado =
-        !estadoSeleccionado ||
-        estadoSeleccionado === 'activo';
-
-      return (
-        coincideBusqueda &&
-        coincideSeccion &&
-        coincideNivel &&
-        coincideEstado
-      );
-    })
-    .sort((a, b) =>
-      String(a.nombre_grupo ?? '')
-        .localeCompare(
-          String(b.nombre_grupo ?? ''),
-          'es',
-          {
-            numeric: true,
-            sensitivity: 'base'
-          }
-        )
-    );
-
-  actualizarTitulo(
-    'Grupos registrados',
-    resultados.length
-  );
-
-  cambiarEncabezado(`
-    <tr>
-      <th>Grupo</th>
-      <th>Nivel</th>
-      <th>Sección</th>
-      <th>Aula</th>
-      <th>Estudiantes</th>
-      <th>Capacidad</th>
-      <th>Período</th>
-      <th class="text-end">Acciones</th>
-    </tr>
-  `);
-
-  if (!resultados.length) {
-    mostrarSinResultados(8);
-    return;
-  }
-
-  const body =
-    document.getElementById(
-      'consulta-tabla-body'
-    );
-
-  if (!body) return;
-
-  body.innerHTML = '';
-
-  resultados.forEach((grupo) => {
-    const ocupados =
-      Number(grupo.ocupados ?? 0);
-
-    const capacidad =
-      Number(grupo.capacidad ?? 0);
-
-    const disponible =
-      Math.max(
-        capacidad - ocupados,
-        0
-      );
-
-    const porcentaje =
-      capacidad > 0
-        ? Math.min(
-            Math.round(
-              (ocupados / capacidad) * 100
-            ),
-            100
-          )
-        : 0;
-
-    const fila =
-      document.createElement('tr');
-
-    fila.innerHTML = `
-      <td>
-        <div class="fw-semibold">
-          ${grupo.nombre_grupo ?? '-'}
-        </div>
-
-        <small class="text-muted">
-          ID #${grupo.id_grupo ?? '-'}
-        </small>
-      </td>
-
-      <td>
-        ${grupo.nivel ?? '-'}
-      </td>
-
-      <td>
-        ${grupo.nombre_seccion ?? '-'}
-      </td>
-
-      <td>
-        ${grupo.aula ?? '-'}
-      </td>
-
-      <td>
-        <div class="d-flex align-items-center gap-2">
-          <span class="fw-semibold">
-            ${ocupados}
-          </span>
-
-          <small class="text-muted">
-            matriculados
-          </small>
-        </div>
-
-        <div
-          class="progress mt-1"
-          style="height: 5px;">
-
-          <div
-            class="progress-bar"
-            role="progressbar"
-            style="width: ${porcentaje}%"
-            aria-valuenow="${porcentaje}"
-            aria-valuemin="0"
-            aria-valuemax="100">
-          </div>
-
-        </div>
-      </td>
-
-      <td>
-        <div>
-          ${ocupados} / ${capacidad}
-        </div>
-
-        <small class="text-muted">
-          ${disponible} cupos disponibles
-        </small>
-      </td>
-
-      <td>
-        ${grupo.periodo_lectivo ?? '-'}
-      </td>
-
-      <td class="text-end">
-
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-primary consulta-ver-grupo"
-          data-id="${grupo.id_grupo}">
-
-          <i class="bi bi-file-earmark-text"></i>
-          Vista previa
-
-        </button>
-
-      </td>
-    `;
-
-    body.appendChild(fila);
-  });
-}
 
   /* ==========================================
      CONSULTA DE PROFESORES
@@ -1502,219 +1245,172 @@ let tipoDocumentoActual = null;
     }
   }
     function cargarFiltrosMatriculados() {
-  const selectSeccion =
-    document.getElementById(
+    const selectSeccion = document.getElementById(
       'consulta-seccion'
     );
 
-  const selectNivel =
-    document.getElementById(
+    const selectNivel = document.getElementById(
       'consulta-nivel'
     );
 
-  const valorSeccionActual =
-    selectSeccion?.value || '';
+    const valorSeccionActual =
+      selectSeccion?.value || '';
 
-  const valorNivelActual =
-    selectNivel?.value || '';
+    const valorNivelActual =
+      selectNivel?.value || '';
 
-  const secciones = new Map();
-  const niveles = new Set();
+    const secciones = new Map();
+    const niveles = new Set();
 
-  // Datos provenientes de estudiantes matriculados
-  estudiantesMatriculados.forEach(
-    (estudiante) => {
-      if (
-        estudiante.id_seccion &&
-        estudiante.nombre_seccion
-      ) {
-        secciones.set(
-          String(estudiante.id_seccion),
+    estudiantesMatriculados.forEach(
+      (estudiante) => {
+        if (
+          estudiante.id_seccion &&
           estudiante.nombre_seccion
-        );
+        ) {
+          secciones.set(
+            String(estudiante.id_seccion),
+            estudiante.nombre_seccion
+          );
+        }
+
+        if (estudiante.nivel) {
+          niveles.add(
+            String(estudiante.nivel)
+          );
+        }
       }
+    );
 
-      if (estudiante.nivel) {
-        niveles.add(
-          String(estudiante.nivel)
-        );
-      }
-    }
-  );
+    if (selectSeccion) {
+      selectSeccion.innerHTML =
+        '<option value="">Todas las secciones</option>';
 
-  // Datos provenientes de grupos
-  grupos.forEach((grupo) => {
-    if (
-      grupo.id_seccion &&
-      grupo.nombre_seccion
-    ) {
-      secciones.set(
-        String(grupo.id_seccion),
-        grupo.nombre_seccion
-      );
-    }
-
-    if (grupo.nivel) {
-      niveles.add(
-        String(grupo.nivel)
-      );
-    }
-  });
-
-  // Llenar filtro de sección
-  if (selectSeccion) {
-    selectSeccion.innerHTML =
-      '<option value="">Todas las secciones</option>';
-
-    Array.from(secciones.entries())
-      .sort((a, b) =>
-        String(a[1]).localeCompare(
-          String(b[1]),
-          'es',
-          {
-            numeric: true,
-            sensitivity: 'base'
-          }
+      Array.from(secciones.entries())
+        .sort((a, b) =>
+          a[1].localeCompare(b[1])
         )
-      )
-      .forEach(([id, nombre]) => {
-        selectSeccion.add(
-          new Option(nombre, id)
-        );
-      });
+        .forEach(([id, nombre]) => {
+          selectSeccion.add(
+            new Option(nombre, id)
+          );
+        });
 
-    if (
-      secciones.has(
-        String(valorSeccionActual)
-      )
-    ) {
-      selectSeccion.value =
-        valorSeccionActual;
+      if (
+        secciones.has(
+          String(valorSeccionActual)
+        )
+      ) {
+        selectSeccion.value =
+          valorSeccionActual;
+      }
+    }
+
+    if (selectNivel) {
+      selectNivel.innerHTML =
+        '<option value="">Todos los niveles</option>';
+
+      Array.from(niveles)
+        .sort((a, b) =>
+          a.localeCompare(
+            b,
+            'es',
+            { numeric: true }
+          )
+        )
+        .forEach((nivel) => {
+          selectNivel.add(
+            new Option(nivel, nivel)
+          );
+        });
+
+      if (
+        niveles.has(
+          String(valorNivelActual)
+        )
+      ) {
+        selectNivel.value =
+          valorNivelActual;
+      }
     }
   }
-
-  // Llenar filtro de nivel
-  if (selectNivel) {
-    selectNivel.innerHTML =
-      '<option value="">Todos los niveles</option>';
-
-    Array.from(niveles)
-      .sort((a, b) =>
-        a.localeCompare(
-          b,
-          'es',
-          {
-            numeric: true,
-            sensitivity: 'base'
-          }
-        )
-      )
-      .forEach((nivel) => {
-        selectNivel.add(
-          new Option(nivel, nivel)
-        );
-      });
-
-    if (
-      niveles.has(
-        String(valorNivelActual)
-      )
-    ) {
-      selectNivel.value =
-        valorNivelActual;
-    }
-  }
-}
 
   /* ==========================================
      ACCIONES DE LAS TABLAS
      ========================================== */
 
   async function manejarAccionesTabla(evento) {
-  const verEstudiante =
-    evento.target.closest(
-      '.consulta-ver-estudiante'
-    );
+    const verEstudiante =
+      evento.target.closest(
+        '.consulta-ver-estudiante'
+      );
+    const verMatriculado =
+  evento.target.closest(
+    '.consulta-ver-matriculado'
+  );
 
-  const verMatriculado =
-    evento.target.closest(
-      '.consulta-ver-matriculado'
-    );
+    const editarEstudiante =
+      evento.target.closest(
+        '.consulta-editar-estudiante'
+      );
 
-  const editarEstudiante =
-    evento.target.closest(
-      '.consulta-editar-estudiante'
-    );
+    const verProfesor =
+      evento.target.closest(
+        '.consulta-ver-profesor'
+      );
 
-  const verProfesor =
-    evento.target.closest(
-      '.consulta-ver-profesor'
-    );
+    const verMatricula =
+      evento.target.closest(
+        '.consulta-ver-matricula'
+      );
 
-  const verMatricula =
-    evento.target.closest(
-      '.consulta-ver-matricula'
-    );
+    const verAsistencia =
+      evento.target.closest(
+        '.consulta-ver-asistencia'
+      );
 
-  const verAsistencia =
-    evento.target.closest(
-      '.consulta-ver-asistencia'
-    );
+    if (verEstudiante) {
+      await mostrarDetalleEstudiante(
+        verEstudiante.dataset.id
+      );
+      return;
+    }
 
-  const verGrupo =
-    evento.target.closest(
-      '.consulta-ver-grupo'
-    );
-
-  if (verEstudiante) {
-    await mostrarDetalleEstudiante(
-      verEstudiante.dataset.id
-    );
-    return;
-  }
-
-  if (editarEstudiante) {
-    await abrirEdicionEstudiante(
-      editarEstudiante.dataset.id
-    );
-    return;
-  }
+    if (editarEstudiante) {
+      await abrirEdicionEstudiante(
+        editarEstudiante.dataset.id
+      );
+      return;
+    }
 
   if (verMatriculado) {
-    mostrarDetalleMatriculado(
-      verMatriculado.dataset.estudiante,
-      verMatriculado.dataset.matricula
-    );
-    return;
-  }
+     mostrarDetalleMatriculado(
+    verMatriculado.dataset.estudiante,
+    verMatriculado.dataset.matricula
+  );
+  return;
+    }
 
-  if (verProfesor) {
-    mostrarDetalleProfesor(
-      verProfesor.dataset.id
-    );
-    return;
-  }
+    if (verProfesor) {
+      mostrarDetalleProfesor(
+        verProfesor.dataset.id
+      );
+      return;
+    }
 
-  if (verMatricula) {
-    mostrarDetalleMatricula(
-      verMatricula.dataset.id
-    );
-    return;
-  }
+    if (verMatricula) {
+      mostrarDetalleMatricula(
+        verMatricula.dataset.id
+      );
+      return;
+    }
 
-  if (verAsistencia) {
-    mostrarDetalleAsistencia(
-      verAsistencia.dataset.id
-    );
-    return;
+    if (verAsistencia) {
+      mostrarDetalleAsistencia(
+        verAsistencia.dataset.id
+      );
+    }
   }
-
-  if (verGrupo) {
-    await mostrarDetalleGrupo(
-      verGrupo.dataset.id
-    );
-  }
-}
 
   async function mostrarDetalleEstudiante(id) {
     const contenido =
@@ -2093,348 +1789,6 @@ prepararEncabezadoDocumento(
 
     abrirModalDetalle();
   }
-
-  async function mostrarDetalleGrupo(idGrupo) {
-  const contenido =
-    document.getElementById(
-      'consulta-detalle-contenido'
-    );
-
-  const titulo =
-    document.getElementById(
-      'consulta-detalle-titulo'
-    );
-
-  const modificar =
-    document.getElementById(
-      'consulta-detalle-modificar'
-    );
-
-  if (
-    !contenido ||
-    !titulo ||
-    !modificar
-  ) {
-    return;
-  }
-
-  titulo.textContent =
-    'Vista previa del grupo';
-
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
-
-  contenido.innerHTML = `
-    <div class="text-center py-5 text-muted">
-      <span
-        class="spinner-border spinner-border-sm me-2">
-      </span>
-      Preparando información del grupo...
-    </div>
-  `;
-
-  abrirModalDetalle();
-
-  try {
-    const grupo = grupos.find(
-      (item) =>
-        String(item.id_grupo) ===
-        String(idGrupo)
-    );
-
-    if (!grupo) {
-      throw new Error(
-        'No se encontró la información general del grupo.'
-      );
-    }
-
-    const respuesta = await apiFetch(
-      `/api/procesos/grupos/${idGrupo}/detalle`
-    );
-
-    if (!respuesta.ok) {
-      throw new Error(
-        'No se pudo obtener la lista del grupo.'
-      );
-    }
-
-    const detalle =
-      await respuesta.json();
-
-    const estudiantesGrupo =
-      Array.isArray(detalle.estudiantes)
-        ? [...detalle.estudiantes]
-        : [];
-
-    const profesoresGrupo =
-      Array.isArray(detalle.profesores)
-        ? detalle.profesores
-        : [];
-
-    /*
-     * El backend ya entrega los estudiantes
-     * ordenados por apellido y nombre.
-     * Dejamos también esta ordenación en frontend
-     * como respaldo.
-     */
-    estudiantesGrupo.sort((a, b) => {
-      const nombreA =
-        `${a.apellido1 ?? ''} ${
-          a.apellido2 ?? ''
-        } ${a.nombre ?? ''}`;
-
-      const nombreB =
-        `${b.apellido1 ?? ''} ${
-          b.apellido2 ?? ''
-        } ${b.nombre ?? ''}`;
-
-      return nombreA.localeCompare(
-        nombreB,
-        'es',
-        {
-          sensitivity: 'base'
-        }
-      );
-    });
-
-    const ocupados =
-      estudiantesGrupo.length;
-
-    const capacidad =
-      Number(grupo.capacidad ?? 0);
-
-    const disponibles =
-      Math.max(
-        capacidad - ocupados,
-        0
-      );
-
-    documentoActual = {
-      ...grupo,
-      estudiantes: estudiantesGrupo,
-      profesores: profesoresGrupo,
-      ocupados
-    };
-
-    tipoDocumentoActual = 'grupo';
-
-    prepararEncabezadoDocumento(
-      `Lista del grupo ${grupo.nombre_grupo ?? ''}`
-    );
-
-    const profesoresHtml =
-      profesoresGrupo.length
-        ? profesoresGrupo
-            .map((profesor) => {
-              const nombreProfesor =
-                `${profesor.nombre ?? ''} ${
-                  profesor.apellido1 ?? ''
-                } ${
-                  profesor.apellido2 ?? ''
-                }`
-                  .replace(/\s+/g, ' ')
-                  .trim();
-
-              return `
-                <div class="consulta-profesor-grupo">
-                  <div>
-                    <strong>
-                      ${nombreProfesor || '-'}
-                    </strong>
-
-                    <span class="d-block text-muted small">
-                      ${profesor.materia || 'General'}
-                    </span>
-                  </div>
-                </div>
-              `;
-            })
-            .join('')
-        : `
-            <p class="text-muted mb-0">
-              No hay profesores activos asignados a este grupo.
-            </p>
-          `;
-
-    const estudiantesHtml =
-      estudiantesGrupo.length
-        ? estudiantesGrupo
-            .map(
-              (estudiante, indice) => {
-                const nombreEstudiante =
-                  `${estudiante.apellido1 ?? ''} ${
-                    estudiante.apellido2 ?? ''
-                  }, ${
-                    estudiante.nombre ?? ''
-                  }`
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                return `
-                  <tr>
-                    <td class="text-muted">
-                      ${indice + 1}
-                    </td>
-
-                    <td>
-                      ${estudiante.id_estudiante ?? '-'}
-                    </td>
-
-                    <td class="fw-semibold">
-                      ${nombreEstudiante}
-                    </td>
-                  </tr>
-                `;
-              }
-            )
-            .join('')
-        : `
-            <tr>
-              <td
-                colspan="3"
-                class="text-center py-4 text-muted">
-                Este grupo no tiene estudiantes matriculados.
-              </td>
-            </tr>
-          `;
-
-    contenido.innerHTML = `
-      <div class="consulta-documento-seccion">
-
-        <h3 class="consulta-documento-seccion-titulo">
-          Información del grupo
-        </h3>
-
-        <div class="consulta-documento-grid">
-
-          ${crearCampoDetalleDocumento(
-            'Grupo',
-            grupo.nombre_grupo ?? '-'
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Nivel',
-            grupo.nivel ?? '-'
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Sección',
-            grupo.nombre_seccion ?? '-'
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Aula',
-            grupo.aula ?? '-'
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Período lectivo',
-            grupo.periodo_lectivo ?? '-'
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Capacidad',
-            capacidad
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Estudiantes matriculados',
-            ocupados
-          )}
-
-          ${crearCampoDetalleDocumento(
-            'Cupos disponibles',
-            disponibles
-          )}
-
-        </div>
-      </div>
-
-      <div class="consulta-documento-seccion">
-
-        <h3 class="consulta-documento-seccion-titulo">
-          Profesorado asignado
-        </h3>
-
-        <div class="consulta-profesores-grupo">
-          ${profesoresHtml}
-        </div>
-
-      </div>
-
-      <div class="consulta-documento-seccion">
-
-        <div
-          class="d-flex justify-content-between align-items-center mb-3">
-
-          <h3 class="consulta-documento-seccion-titulo mb-0">
-            Lista de estudiantes
-          </h3>
-
-          <span class="badge bg-primary">
-            ${ocupados}
-            ${
-              ocupados === 1
-                ? 'estudiante'
-                : 'estudiantes'
-            }
-          </span>
-
-        </div>
-
-        <div class="table-responsive">
-
-          <table
-            class="table table-sm consulta-lista-grupo align-middle">
-
-            <thead>
-              <tr>
-                <th style="width: 60px;">
-                  #
-                </th>
-
-                <th style="width: 120px;">
-                  ID
-                </th>
-
-                <th>
-                  Estudiante
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              ${estudiantesHtml}
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-    `;
-  } catch (error) {
-    console.error(
-      'Error mostrando detalle del grupo:',
-      error
-    );
-
-    documentoActual = null;
-    tipoDocumentoActual = null;
-
-    contenido.innerHTML = `
-      <div class="text-center py-5 text-danger">
-
-        <i
-          class="bi bi-exclamation-circle fs-2 d-block mb-2">
-        </i>
-
-        ${error.message}
-
-      </div>
-    `;
-  }
-}
 
   function mostrarDetalleMatricula(id) {
     const registro = matriculas.find(
@@ -2997,7 +2351,7 @@ function obtenerTituloDocumento() {
       'Ficha del estudiante',
 
     matriculado:
-      'Constancia de estudiante matriculado',
+    'Constancia de estudiante matriculado',
 
     profesor:
       'Ficha del profesor',
@@ -3006,10 +2360,7 @@ function obtenerTituloDocumento() {
       'Comprobante de matrícula',
 
     asistencia:
-      'Registro de asistencia',
-
-    grupo:
-      'Lista oficial del grupo'
+      'Registro de asistencia'
   };
 
   return (
@@ -3017,6 +2368,7 @@ function obtenerTituloDocumento() {
     'Documento académico'
   );
 }
+
 function obtenerCamposDocumentoPDF() {
   const registro =
     documentoActual || {};
@@ -3069,74 +2421,73 @@ function obtenerCamposDocumentoPDF() {
             ? 'Activo'
             : 'Inactivo'
       }
-    ];
+    ];if (tipoDocumentoActual === 'matriculado') {
+  const activo =
+    registro.estado == 1 ||
+    registro.estado === true;
+
+  return [
+    {
+      etiqueta: 'Identificación',
+      valor:
+        registro.id_estudiante ??
+        '-'
+    },
+    {
+      etiqueta: 'Nombre completo',
+      valor:
+        formarNombre(registro) ||
+        '-'
+    },
+    {
+      etiqueta: 'Número de matrícula',
+      valor:
+        registro.id_matricula ??
+        '-'
+    },
+    {
+      etiqueta: 'Fecha de matrícula',
+      valor:
+        limpiarFecha(
+          registro.fecha_matricula ||
+          registro.fecha_asignacion
+        )
+    },
+    {
+      etiqueta: 'Grupo',
+      valor:
+        registro.nombre_grupo ??
+        '-'
+    },
+    {
+      etiqueta: 'Sección',
+      valor:
+        registro.nombre_seccion ??
+        '-'
+    },
+    {
+      etiqueta: 'Nivel',
+      valor:
+        registro.nivel ??
+        '-'
+    },
+    {
+      etiqueta: 'Período lectivo',
+      valor:
+        registro.periodo_lectivo ??
+        '-'
+    },
+    {
+      etiqueta: 'Estado',
+      valor:
+        activo
+          ? 'Activo'
+          : 'Inactivo'
+    }
+  ];
+}
   }
 
-  if (tipoDocumentoActual === 'matriculado') {
-    const activo =
-      registro.estado == 1 ||
-      registro.estado === true;
-
-    return [
-      {
-        etiqueta: 'Identificación',
-        valor:
-          registro.id_estudiante ??
-          '-'
-      },
-      {
-        etiqueta: 'Nombre completo',
-        valor:
-          formarNombre(registro) ||
-          '-'
-      },
-      {
-        etiqueta: 'Número de matrícula',
-        valor:
-          registro.id_matricula ??
-          '-'
-      },
-      {
-        etiqueta: 'Fecha de matrícula',
-        valor:
-          limpiarFecha(
-            registro.fecha_matricula ||
-            registro.fecha_asignacion
-          )
-      },
-      {
-        etiqueta: 'Grupo',
-        valor:
-          registro.nombre_grupo ??
-          '-'
-      },
-      {
-        etiqueta: 'Sección',
-        valor:
-          registro.nombre_seccion ??
-          '-'
-      },
-      {
-        etiqueta: 'Nivel',
-        valor:
-          registro.nivel ??
-          '-'
-      },
-      {
-        etiqueta: 'Período lectivo',
-        valor:
-          registro.periodo_lectivo ??
-          '-'
-      },
-      {
-        etiqueta: 'Estado',
-        valor:
-          activo
-            ? 'Activo'
-            : 'Inactivo'
-      }
-    ];
-  }
 
   if (tipoDocumentoActual === 'profesor') {
     const activo =
@@ -3308,134 +2659,6 @@ function obtenerCamposDocumentoPDF() {
     ];
   }
 
-  if (tipoDocumentoActual === 'grupo') {
-    const estudiantesGrupo =
-      Array.isArray(registro.estudiantes)
-        ? registro.estudiantes
-        : [];
-
-    const profesoresGrupo =
-      Array.isArray(registro.profesores)
-        ? registro.profesores
-        : [];
-
-    const capacidad =
-      Number(registro.capacidad ?? 0);
-
-    const ocupados =
-      estudiantesGrupo.length;
-
-    const disponibles =
-      Math.max(
-        capacidad - ocupados,
-        0
-      );
-
-    const profesoresTexto =
-      profesoresGrupo.length
-        ? profesoresGrupo
-            .map((profesor) => {
-              const nombre = `${
-                profesor.nombre ?? ''
-              } ${
-                profesor.apellido1 ?? ''
-              } ${
-                profesor.apellido2 ?? ''
-              }`
-                .replace(/\s+/g, ' ')
-                .trim();
-
-              return `${nombre}${
-                profesor.materia
-                  ? ` - ${profesor.materia}`
-                  : ''
-              }`;
-            })
-            .join('\n')
-        : 'Sin profesor asignado';
-
-    const estudiantesTexto =
-      estudiantesGrupo.length
-        ? estudiantesGrupo
-            .map(
-              (estudiante, indice) => {
-                const nombre = `${
-                  estudiante.apellido1 ?? ''
-                } ${
-                  estudiante.apellido2 ?? ''
-                }, ${
-                  estudiante.nombre ?? ''
-                }`
-                  .replace(/\s+/g, ' ')
-                  .trim();
-
-                return `${
-                  indice + 1
-                }. ${nombre}`;
-              }
-            )
-            .join('\n')
-        : 'No hay estudiantes matriculados.';
-
-    return [
-      {
-        etiqueta: 'Grupo',
-        valor:
-          registro.nombre_grupo ??
-          '-'
-      },
-      {
-        etiqueta: 'Nivel',
-        valor:
-          registro.nivel ??
-          '-'
-      },
-      {
-        etiqueta: 'Sección',
-        valor:
-          registro.nombre_seccion ??
-          '-'
-      },
-      {
-        etiqueta: 'Aula',
-        valor:
-          registro.aula ??
-          '-'
-      },
-      {
-        etiqueta: 'Período lectivo',
-        valor:
-          registro.periodo_lectivo ??
-          '-'
-      },
-      {
-        etiqueta: 'Capacidad',
-        valor:
-          capacidad
-      },
-      {
-        etiqueta: 'Estudiantes matriculados',
-        valor:
-          ocupados
-      },
-      {
-        etiqueta: 'Cupos disponibles',
-        valor:
-          disponibles
-      },
-      {
-        etiqueta: 'Profesorado asignado',
-        valor:
-          profesoresTexto
-      },
-      {
-        etiqueta: 'Lista de estudiantes en orden alfabético',
-        valor:
-          estudiantesTexto
-      }
-    ];
-  }
-
   return [];
 }
 
@@ -3450,12 +2673,11 @@ function obtenerNombreArchivoPDF() {
         registro.id ??
         'documento'
       }.pdf`,
-
     matriculado:
-      `estudiante-matriculado-${
-        registro.id_estudiante ??
-        'documento'
-      }.pdf`,
+  `estudiante-matriculado-${
+    registro.id_estudiante ??
+    'documento'
+  }.pdf`,
 
     profesor:
       `profesor-${
@@ -3474,18 +2696,6 @@ function obtenerNombreArchivoPDF() {
       `asistencia-${
         registro.id_asistencia ??
         'documento'
-      }.pdf`,
-
-    grupo:
-      `lista-grupo-${
-        String(
-          registro.nombre_grupo ??
-          registro.id_grupo ??
-          'documento'
-        )
-          .trim()
-          .replace(/\s+/g, '-')
-          .toLowerCase()
       }.pdf`
   };
 
@@ -3493,7 +2703,7 @@ function obtenerNombreArchivoPDF() {
     nombres[tipoDocumentoActual] ||
     'documento-academico.pdf'
   );
-} 
+}
 
 function limpiarTextoPDF(valor) {
   const contenedor =

@@ -959,3 +959,5 @@ async function handleSeccionSubmit(e) {
   }
 }
 export { loadMatriculaData, populatePersonaSelects, populateGruposSelects };
+
+export { allGrupos };

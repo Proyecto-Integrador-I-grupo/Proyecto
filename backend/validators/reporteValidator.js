@@ -1,12 +1,33 @@
 import { query } from "express-validator";
 
-const validarRangoFechas = (fechaInicio, { req }) => {
+const MODOS_VALIDOS = [
+    "matricula",
+    "estudiantes",
+    "grupos",
+    "profesores",
+    "pre_matricula",
+    "auditoria"
+];
+
+const TIPOS_VALIDOS = [
+    "resumen",
+    "detalle",
+    "individual",
+    "grupo"
+];
+
+const ESTADOS_VALIDOS = [
+    "presente",
+    "ausente",
+    "tardia",
+    "justificada"
+];
+
+const validarRangoFechas = (_, { req }) => {
     const inicio = req.query?.fecha_inicio;
     const fin = req.query?.fecha_fin;
 
-    if (!inicio || !fin) {
-        return true;
-    }
+    if (!inicio || !fin) return true;
 
     if (new Date(inicio) > new Date(fin)) {
         throw new Error("La fecha de inicio no puede ser mayor que la fecha fin.");
@@ -17,38 +38,46 @@ const validarRangoFechas = (fechaInicio, { req }) => {
 
 export const reporteRules = [
     query("fecha_inicio")
-        .optional({ nullable: true })
+        .optional({ nullable: true, checkFalsy: true })
         .isISO8601()
         .withMessage("La fecha de inicio debe tener un formato válido (YYYY-MM-DD)."),
+
     query("fecha_fin")
-        .optional({ nullable: true })
+        .optional({ nullable: true, checkFalsy: true })
         .isISO8601()
         .withMessage("La fecha fin debe tener un formato válido (YYYY-MM-DD)."),
+
     query("id_grupo")
-        .optional({ nullable: true })
+        .optional({ nullable: true, checkFalsy: true })
         .isInt({ min: 1 })
         .withMessage("El grupo debe ser un identificador válido."),
+
     query("id_estudiante")
-        .optional({ nullable: true })
+        .optional({ nullable: true, checkFalsy: true })
         .isInt({ min: 1 })
         .withMessage("El estudiante debe ser un identificador válido."),
+
     query("estado_asistencia")
-        .optional({ nullable: true })
-        .isIn(["presente", "ausente", "tardia", "justificada"])
-        .withMessage("El estado de asistencia debe ser presente, ausente, tardia o justificada."),
+        .optional({ nullable: true, checkFalsy: true })
+        .isIn(ESTADOS_VALIDOS)
+        .withMessage("El estado de asistencia no es válido."),
+
     query("busqueda")
-        .optional({ nullable: true })
+        .optional({ nullable: true, checkFalsy: true })
         .isString()
         .trim()
         .isLength({ min: 1, max: 120 })
         .withMessage("La búsqueda debe contener entre 1 y 120 caracteres."),
+
     query("tipo_reporte")
-        .optional({ nullable: true })
-        .isIn(["resumen", "detalle", "individual", "grupo"])
-        .withMessage("El tipo de reporte debe ser resumen, detalle, individual o grupo."),
+        .optional({ nullable: true, checkFalsy: true })
+        .isIn(TIPOS_VALIDOS)
+        .withMessage("El tipo de reporte no es válido."),
+
     query("modo")
-        .optional({ nullable: true })
-        .isIn(["matricula", "estudiantes", "grupos", "profesores"])
-        .withMessage("El modo de reporte debe ser matricula, estudiantes, grupos o profesores."),
+        .optional({ nullable: true, checkFalsy: true })
+        .isIn(MODOS_VALIDOS)
+        .withMessage("El modo de reporte no es válido."),
+
     query().custom(validarRangoFechas)
 ];

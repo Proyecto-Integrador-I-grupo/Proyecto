@@ -81,7 +81,7 @@ async function handleLogin(e) {
   const errorBox = document.getElementById('login-error');
   const submitBtn = document.getElementById('login-submit');
 
-  const correo = correoInput ? correoInput.value.trim() : '';
+  const correo = correoInput ? correoInput.value.trim().toLowerCase() : '';
   const contrasena = contrasenaInput ? contrasenaInput.value : '';
 
   if (errorBox) {
@@ -763,7 +763,8 @@ function wireUsuariosForm() {
             'usuario-correo'
           )
           ?.value
-          .trim();
+          .trim()
+          .toLowerCase();
 
       const rolTexto =
         document.getElementById(

@@ -37,6 +37,7 @@ export default function Usuarios() {
 <div className="mb-3">
 <label className="form-label" htmlFor="usuario-clave">Contraseña Temporal</label>
 <input type="password" id="usuario-clave" className="form-control" minLength="6" required="" />
+<div className="form-text">Mínimo 6 caracteres.</div>
 </div>
 <button type="submit" id="btn-guardar-usuario" className="btn btn-primary w-100 py-2">
 <i className="bi bi-download me-1"></i> Guardar Usuario

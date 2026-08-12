@@ -11,11 +11,16 @@ function mensajeError(error, fallback) {
 export async function obtenerReporteCaso(req, res) {
     try {
         const resultado = await generarReporteCaso(req.query);
+
         res.status(200).json(resultado);
     } catch (error) {
         console.error("Error generando reporte:", error);
+
         res.status(400).json({
-            mensaje: mensajeError(error, "No se pudo generar el reporte solicitado.")
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el reporte solicitado."
+            )
         });
     }
 }
@@ -23,11 +28,16 @@ export async function obtenerReporteCaso(req, res) {
 export async function obtenerReporteResumen(req, res) {
     try {
         const resultado = await generarReporteResumen(req.query);
+
         res.status(200).json(resultado);
     } catch (error) {
         console.error("Error generando resumen:", error);
+
         res.status(400).json({
-            mensaje: mensajeError(error, "No se pudo generar el reporte de resumen.")
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el reporte de resumen."
+            )
         });
     }
 }
@@ -35,16 +45,21 @@ export async function obtenerReporteResumen(req, res) {
 export async function obtenerReporteDetalle(req, res) {
     try {
         const resultado = await generarReporteDetalle(req.query);
+
         res.status(200).json({
-            modo: req.query?.modo || "matricula",
-            resumen: {},
-            detalle_por_grupo: [],
-            detalle: Array.isArray(resultado?.detalle) ? resultado.detalle : []
+            resumen: resultado?.resumen || {},
+            detalle: Array.isArray(resultado?.detalle)
+                ? resultado.detalle
+                : []
         });
     } catch (error) {
         console.error("Error generando detalle:", error);
+
         res.status(400).json({
-            mensaje: mensajeError(error, "No se pudo generar el detalle del reporte.")
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el detalle del reporte."
+            )
         });
     }
 }

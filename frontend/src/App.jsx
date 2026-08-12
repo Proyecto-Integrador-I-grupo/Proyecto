@@ -333,7 +333,7 @@ export default function App() {
 
           <div id="sidebar-backdrop" className="sidebar-backdrop" aria-hidden="true"></div>
 
-          <div className="flex-grow-1 d-flex flex-column">
+          <div className="app-main flex-grow-1 d-flex flex-column">
             <header className="topbar d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
               <div className="d-flex align-items-center gap-2">
                 <button

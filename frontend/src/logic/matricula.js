@@ -958,4 +958,4 @@ async function handleSeccionSubmit(e) {
     showToast('Error creando sección', 'error');
   }
 }
-export { loadMatriculaData, populatePersonaSelects, populateGruposSelects };
+export { loadMatriculaData, populatePersonaSelects, populateGruposSelects, allGrupos };

@@ -63,6 +63,19 @@ export async function procesarMatricula(datos) {
       throw new Error("El estudiante ya está matriculado en este grupo.");
     }
 
+    // Regla académica: un estudiante solo puede pertenecer a un grupo activo
+    // a la vez. Se permite conservar todo el historial de matrículas anteriores.
+    const [otroGrupoActivo] = await connection.query(
+      `SELECT ge.id_grupo
+       FROM grupo_estudiante ge
+       WHERE ge.id_estudiante = ? AND ge.estado = TRUE AND ge.id_grupo <> ?
+       LIMIT 1`,
+      [id_estudiante, id_grupo]
+    );
+    if (otroGrupoActivo.length > 0) {
+      throw new Error("El estudiante ya tiene una matrícula activa en otro grupo. Debe retirarse o transferirse antes de matricularlo nuevamente.");
+    }
+
     const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 20) : null;
     const observacionesDetalle = observaciones ? observaciones.trim().slice(0, 150) : null;
 
@@ -190,6 +203,17 @@ export async function crearGrupoService(datos) {
     const id_grupo = result.insertId;
 
     if (listaProfesores.length > 0) {
+      const placeholders = listaProfesores.map(() => "?").join(",");
+      const [profesoresValidos] = await connection.query(
+        `SELECT id_profesor
+         FROM profesor
+         WHERE id_profesor IN (${placeholders}) AND estado = TRUE`,
+        listaProfesores
+      );
+      if (profesoresValidos.length !== listaProfesores.length) {
+        throw new Error("Uno o más profesores seleccionados no existen o están inactivos.");
+      }
+
       const fechaHoy = new Date().toISOString().split("T")[0];
       for (const idProf of listaProfesores) {
         await connection.query(
@@ -236,6 +260,17 @@ export async function actualizarGrupoService(idGrupo, datos) {
       throw new Error("El grupo no existe o está inactivo.");
     }
 
+    const [ocupacionRows] = await connection.query(
+      `SELECT COUNT(*) AS ocupados
+       FROM grupo_estudiante
+       WHERE id_grupo = ? AND estado = TRUE`,
+      [idGrupo]
+    );
+    const ocupados = Number(ocupacionRows[0]?.ocupados || 0);
+    if (capacidadNum < ocupados) {
+      throw new Error(`La capacidad no puede ser menor que los ${ocupados} estudiantes actualmente matriculados.`);
+    }
+
     await connection.query(
       `UPDATE grupo
        SET capacidad = ?, aula = ?
@@ -244,6 +279,16 @@ export async function actualizarGrupoService(idGrupo, datos) {
     );
 
     if (listaProfesores.length > 0) {
+      const placeholders = listaProfesores.map(() => "?").join(",");
+      const [profesoresValidos] = await connection.query(
+        `SELECT id_profesor
+         FROM profesor
+         WHERE id_profesor IN (${placeholders}) AND estado = TRUE`,
+        listaProfesores
+      );
+      if (profesoresValidos.length !== listaProfesores.length) {
+        throw new Error("Uno o más profesores seleccionados no existen o están inactivos.");
+      }
       await connection.query(
         `UPDATE grupo_profesor
          SET fecha_fin = CURDATE(), estado = FALSE
@@ -521,7 +566,7 @@ export async function retirarEstudianteGrupoService(idGrupo, idEstudiante) {
  * para que se reintente la matrícula al nuevo grupo manualmente.
  */
 export async function transferirEstudianteGrupoService(datos) {
-  const { id_estudiante, id_grupo_actual, id_grupo_nuevo } = datos;
+  const { id_estudiante, id_grupo_actual, id_grupo_nuevo, id_usuario } = datos;
 
   if (Number(id_grupo_actual) === Number(id_grupo_nuevo)) {
     throw new Error("El grupo destino debe ser diferente al grupo actual.");
@@ -531,17 +576,56 @@ export async function transferirEstudianteGrupoService(datos) {
   try {
     await connection.beginTransaction();
 
-    const [geActual] = await connection.query(
-      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
+    const [actual] = await connection.query(
+      `SELECT ge.id_grupo_estudiante
+       FROM grupo_estudiante ge
+       WHERE ge.id_grupo = ? AND ge.id_estudiante = ? AND ge.estado = TRUE
+       FOR UPDATE`,
       [id_grupo_actual, id_estudiante]
     );
-    if (geActual.length === 0) {
+    if (actual.length === 0) {
       throw new Error("El estudiante no está activo en el grupo de origen.");
+    }
+
+    const [destino] = await connection.query(
+      `SELECT g.id_grupo, g.capacidad, g.estado,
+              COUNT(ge.id_grupo_estudiante) AS ocupados
+       FROM grupo g
+       LEFT JOIN grupo_estudiante ge
+         ON ge.id_grupo = g.id_grupo AND ge.estado = TRUE
+       WHERE g.id_grupo = ?
+       GROUP BY g.id_grupo, g.capacidad, g.estado
+       FOR UPDATE`,
+      [id_grupo_nuevo]
+    );
+    if (destino.length === 0 || !destino[0].estado) {
+      throw new Error("El grupo destino no existe o está inactivo.");
+    }
+    if (Number(destino[0].ocupados) >= Number(destino[0].capacidad)) {
+      throw new Error("El grupo destino no tiene cupo disponible.");
+    }
+
+    const [usuario] = await connection.query(
+      "SELECT estado FROM usuario WHERE id_usuario = ?",
+      [id_usuario]
+    );
+    if (usuario.length === 0 || !usuario[0].estado) {
+      throw new Error("El usuario que procesa la transferencia no es válido.");
+    }
+
+    const [yaDestino] = await connection.query(
+      `SELECT id_grupo_estudiante
+       FROM grupo_estudiante
+       WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE`,
+      [id_grupo_nuevo, id_estudiante]
+    );
+    if (yaDestino.length > 0) {
+      throw new Error("El estudiante ya está activo en el grupo destino.");
     }
 
     await connection.query(
       "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
-      [geActual[0].id_grupo_estudiante]
+      [actual[0].id_grupo_estudiante]
     );
 
     await connection.query(
@@ -552,21 +636,46 @@ export async function transferirEstudianteGrupoService(datos) {
       [id_grupo_actual, id_estudiante]
     );
 
+    const fecha = datos.fecha || new Date().toISOString().slice(0, 10);
+    const periodo = datos.periodo;
+    const anio = datos.anio;
+    const tipo = datos.tipo || "transferencia";
+    const estado = datos.estado || "activa";
+    const observaciones = datos.observaciones || "Transferencia de grupo";
+
+    await connection.query(
+      "CALL sp_registrar_matricula(?, ?, ?, ?, ?, ?, ?, ?)",
+      [fecha, periodo, anio, tipo, estado, String(observaciones).trim().slice(0, 20), id_estudiante, id_usuario]
+    );
+
+    const [[{ id_matricula }]] = await connection.query(
+      "SELECT LAST_INSERT_ID() AS id_matricula"
+    );
+
+    if (id_matricula) {
+      await connection.query(
+        "CALL sp_registrar_detalle_matricula(?, ?, ?, ?)",
+        [fecha, String(observaciones).trim().slice(0, 150), id_matricula, id_grupo_nuevo]
+      );
+    }
+
+    await connection.query(
+      "CALL sp_asignar_estudiante_grupo(?, ?, ?)",
+      [fecha, id_grupo_nuevo, id_estudiante]
+    );
+
     await connection.commit();
+    return {
+      mensaje: "Estudiante transferido correctamente al nuevo grupo.",
+      id_matricula,
+      id_grupo_anterior: Number(id_grupo_actual),
+      id_grupo_nuevo: Number(id_grupo_nuevo)
+    };
   } catch (error) {
     await connection.rollback();
     throw error;
   } finally {
     connection.release();
   }
-
-  try {
-    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo });
-  } catch (error) {
-    throw new Error(
-      `El estudiante se retiró del grupo anterior, pero no se pudo matricular en el grupo nuevo: ${error.message}`
-    );
-  }
 }
-
 export default procesarMatricula;

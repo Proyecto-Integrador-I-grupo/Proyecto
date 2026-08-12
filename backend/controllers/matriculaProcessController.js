@@ -19,7 +19,7 @@ import conexion from "../config/database.js";
 
 export async function crearMatricula(req, res) {
   try {
-    const resultado = await procesarMatricula(req.body);
+    const resultado = await procesarMatricula({ ...req.body, id_usuario: req.usuarioActual?.id_usuario });
 
     try {
       await auditoriaModel.crearAuditoria(
@@ -267,7 +267,7 @@ export async function retirarEstudianteGrupo(req, res) {
 
 export async function transferirEstudianteGrupo(req, res) {
   try {
-    const resultado = await transferirEstudianteGrupoService(req.body);
+    const resultado = await transferirEstudianteGrupoService({ ...req.body, id_usuario: req.usuarioActual?.id_usuario });
 
     try {
       await auditoriaModel.crearAuditoria(

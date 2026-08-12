@@ -1,13 +1,26 @@
-import { generarReporteResumen, generarReporteDetalle, generarReporteCaso } from "../services/reporteService.js";
+import {
+    generarReporteResumen,
+    generarReporteDetalle,
+    generarReporteCaso
+} from "../services/reporteService.js";
+
+function mensajeError(error, fallback) {
+    return error?.message || fallback;
+}
 
 export async function obtenerReporteCaso(req, res) {
     try {
         const resultado = await generarReporteCaso(req.query);
+
         res.status(200).json(resultado);
     } catch (error) {
-        console.error(error);
+        console.error("Error generando reporte:", error);
+
         res.status(400).json({
-            mensaje: error.message || "No se pudo generar el reporte solicitado."
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el reporte solicitado."
+            )
         });
     }
 }
@@ -15,14 +28,16 @@ export async function obtenerReporteCaso(req, res) {
 export async function obtenerReporteResumen(req, res) {
     try {
         const resultado = await generarReporteResumen(req.query);
-        res.status(200).json({
-            modo: req.query?.modo || "matricula",
-            ...resultado
-        });
+
+        res.status(200).json(resultado);
     } catch (error) {
-        console.error(error);
+        console.error("Error generando resumen:", error);
+
         res.status(400).json({
-            mensaje: error.message || "No se pudo generar el reporte de resumen."
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el reporte de resumen."
+            )
         });
     }
 }
@@ -30,15 +45,21 @@ export async function obtenerReporteResumen(req, res) {
 export async function obtenerReporteDetalle(req, res) {
     try {
         const resultado = await generarReporteDetalle(req.query);
+
         res.status(200).json({
-            modo: req.query?.modo || "matricula",
             resumen: resultado?.resumen || {},
-            detalle: Array.isArray(resultado?.detalle) ? resultado.detalle : []
+            detalle: Array.isArray(resultado?.detalle)
+                ? resultado.detalle
+                : []
         });
     } catch (error) {
-        console.error(error);
+        console.error("Error generando detalle:", error);
+
         res.status(400).json({
-            mensaje: error.message || "No se pudo generar el detalle del reporte."
+            mensaje: mensajeError(
+                error,
+                "No se pudo generar el detalle del reporte."
+            )
         });
     }
 }

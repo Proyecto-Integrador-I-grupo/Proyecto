@@ -3,54 +3,90 @@
   flex-direction: column;
   gap: 1rem;
 }
-
 .report-menu-top {
-  overflow-x: auto;
+  width: 100%;
 }
-
+.report-mode-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .report-mode-switcher .btn {
-  min-width: 140px;
-  border-radius: 0.75rem;
+  flex: 1 1 150px;
+  min-width: 120px;
+  border-radius: 0.75rem !important;
+  white-space: nowrap;
 }
-
-@media (max-width: 640px) {
-  .report-mode-switcher .btn {
-    min-width: 110px;
-    font-size: 13px;
-  }
-
-  .report-stat-card,
-  .preview-reporte-body .stat-card {
-    min-height: auto;
-  }
-}
-
 .report-mode-switcher .btn.active {
   background: linear-gradient(135deg, var(--accent), #1d4ed8);
   color: #fff;
   box-shadow: 0 8px 22px rgba(37, 99, 235, 0.25);
 }
-
 .report-filter-field {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 .report-filter-field[data-filter="fecha-desde"] input,
 .report-filter-field[data-filter="fecha-hasta"] input {
   min-width: 138px;
   font-variant-numeric: tabular-nums;
 }
-
 .report-filter-field.is-hidden {
   display: none;
 }
-
+.report-filter-field input[type="date"] {
+  min-width: 0;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.report-actions {
+  justify-content: flex-end;
+}
+.report-empty-state {
+  margin-top: 1.25rem;
+  padding: 1.5rem;
+  border: 1px dashed rgba(100, 116, 139, 0.35);
+  border-radius: 1rem;
+  text-align: center;
+  background: rgba(248, 250, 252, 0.8);
+}
+.report-empty-state i {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+}
+.report-empty-state strong,
+.report-empty-state span {
+  display: block;
+}
+.report-empty-state span {
+  margin-top: 0.25rem;
+  color: #64748b;
+}
+.report-preview-metric {
+  height: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.9rem;
+  background: #fff;
+}
+.report-preview-metric span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.report-preview-metric strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
 .preview-reporte-chip-area {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-
 .preview-reporte-chip {
   background: rgba(37, 99, 235, 0.08);
   color: var(--accent);
@@ -60,7 +96,6 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
-
 .preview-reporte-logo {
   width: 52px;
   height: 52px;
@@ -69,7 +104,6 @@
   background: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
-
 @media (max-width: 640px) {
   .preview-reporte-logo {
     width: 42px;
@@ -77,33 +111,48 @@
     border-radius: 10px;
   }
 }
-
 .preview-reporte-body .stat-card {
   min-height: 92px;
 }
-
-.report-stat-card {
-  min-height: 120px;
+@media (max-width: 768px) {
+  .report-mode-switcher .btn {
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 0;
+    font-size: 0.82rem;
+    padding-inline: 0.55rem;
+  }
+  .report-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .report-actions .btn {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
 }
-
-.stat-card-primary {
-  border-top-color: var(--accent) !important;
+@media (max-width: 480px) {
+  .report-mode-switcher .btn {
+    flex-basis: 100%;
+  }
+  .report-actions .btn {
+    flex-basis: 100%;
+  }
+  .preview-reporte-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+  .preview-reporte-body {
+    padding: 1rem !important;
+  }
 }
-
-.stat-card-primary .stat-value-sm {
-  color: var(--accent);
-}
-
 @media print {
   body * {
     visibility: hidden;
   }
-
   #reportes-view,
   #reportes-view * {
     visibility: visible;
   }
-
   #reportes-view {
     position: absolute;
     left: 0;
@@ -112,26 +161,22 @@
     padding: 0;
     margin: 0;
   }
-
-  .hero-card,
+  .report-mode-switcher,
   #report-aplicar,
   #report-limpiar,
+  #report-vista-previa,
   #report-imprimir-pdf,
   .filter-bar,
   .nav-sidebar,
   .app-shell,
   .topbar,
   .sidebar,
-  .report-shell .card:nth-child(2) .card-body > div:not(.table-responsive),
-  .report-shell .card:nth-child(2) .card-body .d-flex,
-  .report-shell .card:nth-child(2) .card-body .table-responsive {
+  .report-empty-state {
     display: none !important;
   }
-
   .report-shell {
     gap: 0;
   }
-
   .table {
     font-size: 12px;
   }

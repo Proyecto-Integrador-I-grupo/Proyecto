@@ -12,6 +12,7 @@ import asistenciaProcessRoutes from "./routes/asistenciaProcessRoutes.js";
 import seccionRoutes from "./routes/seccionRoutes.js";
 import reporteRoutes from "./routes/reporteRoutes.js";
 import auditoriaRoutes from "./routes/auditoriaRoutes.js";
+import finanzaRoutes from "./routes/finanzaRoutes.js";
 
 import { identificarUsuario } from "./middleware/authMiddleware.js";
 
@@ -62,5 +63,6 @@ app.use("/api/procesos", asistenciaProcessRoutes);
 app.use("/api/procesos", reporteRoutes);
 // Rutas de auditoría
 app.use("/api/auditorias", auditoriaRoutes);
+app.use("/api/finanzas", finanzaRoutes);
 
 export default app; 

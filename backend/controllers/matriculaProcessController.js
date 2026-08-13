@@ -12,6 +12,7 @@ import {
 
 import * as auditoriaModel from "../models/auditoriaModel.js";
 import conexion from "../config/database.js";
+import { crearCargoMatriculaSiCorresponde } from "../services/finanzaService.js";
 
 /* ==========================================
    MATRÍCULAS
@@ -38,7 +39,19 @@ export async function crearMatricula(req, res) {
       );
     }
 
-    res.status(201).json(resultado);
+    let cargo = null;
+    try {
+      cargo = await crearCargoMatriculaSiCorresponde({
+        id_matricula: resultado.id_matricula,
+        id_estudiante: req.body.id_estudiante,
+        id_usuario: req.usuarioActual?.id_usuario ?? req.body.id_usuario ?? null,
+        anio: req.body.anio
+      });
+    } catch (errorCargo) {
+      console.error("No se pudo generar automáticamente el cargo de matrícula:", errorCargo);
+    }
+
+    res.status(201).json({ ...resultado, cargo });
   } catch (error) {
     res.status(400).json({
       mensaje: error.message

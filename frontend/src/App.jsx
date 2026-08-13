@@ -8,6 +8,7 @@ import Reportes from './pages/Reportes';
 import Consultas from './pages/Consultas';
 import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
+import Pagos from './pages/Pagos';
 import { getCurrentUser, login, logout } from './services/auth';
 import { syncReactSession, legacyLogout } from './logic/runtime';
 
@@ -270,6 +271,17 @@ export default function App() {
                 </button>
               </li>
 
+
+              <li className="nav-item">
+                <button
+                  type="button"
+                  data-view="pagos"
+                  className="nav-link w-100 text-start d-flex align-items-center gap-2"
+                >
+                  <i className="bi bi-cash-coin"></i> Pagos y facturación
+                </button>
+              </li>
+
               <li className="nav-item">
                 <button
                   type="button"
@@ -368,7 +380,7 @@ export default function App() {
                     <p className="eyebrow mb-1">Panel de Control</p>
                     <h2 className="h4 mb-1">Bienvenido a EduControl</h2>
                     <p className="mb-0 text-white-50 small">
-                      Administración integral de matrículas, profesores, asistencia y expedientes.
+                      Administración académica y financiera para una escuela privada.
                     </p>
                   </div>
                   <div className="hero-pill">
@@ -383,6 +395,7 @@ export default function App() {
               <Matricula />
               <Profesores />
               <Asistencia />
+              <Pagos />
               <Reportes />
               <Consultas />
               <Usuarios />

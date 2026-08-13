@@ -14,6 +14,7 @@ import './estudiantes.js';
 import './profesores.js';
 import './matricula.js';
 import './asistencia.js';
+import './pagos.js';
 import './consultas.js';
 import './reportes.js';
 import './perfil.js';

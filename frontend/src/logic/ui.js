@@ -209,6 +209,7 @@ const VISTAS_RESTRINGIDAS_PROFESOR = [
   'matricula',
   'estudiantes',
   'profesores',
+  'pagos',
   'usuarios'
 ];
 

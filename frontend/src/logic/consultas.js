@@ -12,6 +12,7 @@ let estudiantesMatriculados = [];
 let profesores = [];
 let matriculas = [];
 let asistencias = [];
+let gruposAsignados = [];
 
 // Registro que se está mostrando en la vista previa
 let documentoActual = null;
@@ -138,17 +139,26 @@ function aplicarPermisosConsultaUI() {
         return await response.json();
       };
 
-      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias] = await Promise.all([
+      const pedirGrupos = async () => {
+        const response = await apiFetch('/api/procesos/grupos');
+        if (!response.ok) return [];
+        const data = await response.json().catch(() => []);
+        return Array.isArray(data) ? data : [];
+      };
+
+      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, gruposAsignados] = await Promise.all([
         pedir('prematriculados', '/api/estudiantes'),
         pedir('matriculados', '/api/estudiantes/matriculados'),
         pedir('profesores', '/api/profesores'),
         pedir('matriculas', '/api/procesos/matricula'),
-        pedir('asistencia', '/api/procesos/asistencia')
+        pedir('asistencia', '/api/procesos/asistencia'),
+        pedirGrupos()
       ]);
 
       actualizarResumen();
       cargarFiltroGrupos();
       cargarFiltrosMatriculados();
+      actualizarContextoProfesor();
       actualizarConsulta();
     } catch (error) {
       console.error('Error cargando consultas:', error);
@@ -858,7 +868,7 @@ function aplicarPermisosConsultaUI() {
           .toLowerCase();
 
         const grupo = String(
-          registro.nombre_grupo ?? ''
+          `${registro.nombre_grupo ?? ''} ${registro.nombre_seccion ?? ''} ${registro.nivel ?? ''}`
         ).toLowerCase();
 
         const estado = String(
@@ -957,7 +967,7 @@ function aplicarPermisosConsultaUI() {
         </td>
 
         <td>
-          ${registro.nombre_grupo ?? '-'}
+          ${etiquetaGrupo(registro)}
         </td>
 
         <td>
@@ -1029,7 +1039,7 @@ function aplicarPermisosConsultaUI() {
           .toLowerCase();
 
         const grupo = String(
-          registro.nombre_grupo ?? ''
+          `${registro.nombre_grupo ?? ''} ${registro.nombre_seccion ?? ''} ${registro.nivel ?? ''}`
         ).toLowerCase();
 
         const estado = String(
@@ -1131,7 +1141,7 @@ function aplicarPermisosConsultaUI() {
         </td>
 
         <td>
-          ${registro.nombre_grupo ?? '-'}
+          ${etiquetaGrupo(registro)}
         </td>
 
         <td>
@@ -1211,59 +1221,106 @@ function aplicarPermisosConsultaUI() {
     const valorActual = select.value;
     const grupos = new Map();
 
-    estudiantesMatriculados.forEach(
-      (registro) => {
-        if (
-          registro.id_grupo &&
-          registro.nombre_grupo
-        ) {
-          grupos.set(
-            String(registro.id_grupo),
-            registro.nombre_grupo
-          );
-        }
-      }
-    );
+    const registrarGrupo = (registro) => {
+      const id = registro?.id_grupo;
+      const nombre = registro?.nombre_grupo;
+      if (!id || !nombre) return;
 
-    matriculas.forEach((registro) => {
-      if (
-        registro.id_grupo &&
-        registro.nombre_grupo
-      ) {
-        grupos.set(
-          String(registro.id_grupo),
-          registro.nombre_grupo
-        );
-      }
-    });
+      grupos.set(String(id), {
+        id,
+        nombre,
+        seccion: registro.nombre_seccion ?? '',
+        nivel: registro.nivel ?? ''
+      });
+    };
 
-    asistencias.forEach((registro) => {
-      if (
-        registro.id_grupo &&
-        registro.nombre_grupo
-      ) {
-        grupos.set(
-          String(registro.id_grupo),
-          registro.nombre_grupo
-        );
-      }
-    });
+    gruposAsignados.forEach(registrarGrupo);
+    estudiantesMatriculados.forEach(registrarGrupo);
+    matriculas.forEach(registrarGrupo);
+    asistencias.forEach(registrarGrupo);
 
     select.innerHTML =
       '<option value="">Todos los grupos</option>';
 
-    grupos.forEach((nombre, id) => {
-      select.add(
-        new Option(nombre, id)
-      );
+    Array.from(grupos.values())
+      .sort((a, b) =>
+        etiquetaGrupo(a).localeCompare(etiquetaGrupo(b), 'es')
+      )
+      .forEach((grupo) => {
+        select.add(
+          new Option(etiquetaGrupo(grupo), grupo.id)
+        );
+      });
+
+    const opcionExiste = Array.from(select.options)
+      .some((option) => option.value === valorActual);
+
+    select.value = opcionExiste ? valorActual : '';
+  }
+
+  function etiquetaGrupo(registro) {
+    const nombre = String(registro?.nombre_grupo || registro?.nombre || 'Grupo').trim();
+    const seccion = String(registro?.nombre_seccion || registro?.seccion || '').trim();
+    const nivel = String(registro?.nivel || '').trim();
+    const idGrupo = registro?.id_grupo ?? registro?.id ?? '';
+
+    const partes = [nombre];
+    partes.push(seccion ? `Sección ${seccion}` : 'Sección sin definir');
+    if (nivel) partes.push(`Nivel ${nivel}`);
+    if (idGrupo !== '') partes.push(`Grupo #${idGrupo}`);
+
+    return partes.join(' · ');
+  }
+
+  function actualizarContextoProfesor() {
+    const box = document.getElementById('consulta-profesor-contexto');
+    const gruposEl = document.getElementById('consulta-profesor-grupos');
+
+    if (!box || !gruposEl) return;
+
+    const esProfesor = rolActual() === 'profesor';
+    box.classList.toggle('hidden', !esProfesor);
+
+    if (!esProfesor) {
+      gruposEl.textContent = '';
+      return;
+    }
+
+    if (!gruposAsignados.length) {
+      gruposEl.textContent = 'No tienes grupos activos asignados.';
+      return;
+    }
+
+    gruposEl.innerHTML = '';
+
+    const gruposUnicos = [];
+    const idsVistos = new Set();
+
+    gruposAsignados.forEach((grupo) => {
+      const clave = String(grupo?.id_grupo ?? etiquetaGrupo(grupo));
+      if (idsVistos.has(clave)) return;
+      idsVistos.add(clave);
+      gruposUnicos.push(grupo);
     });
 
-    if (
-      grupos.has(String(valorActual))
-    ) {
-      select.value = valorActual;
-    }
+    gruposUnicos.forEach((grupo) => {
+      const chip = document.createElement('span');
+      chip.className = 'consulta-profesor-grupo-chip';
+
+      const nombre = document.createElement('strong');
+      nombre.textContent = grupo?.nombre_grupo || grupo?.nombre || 'Grupo';
+      chip.appendChild(nombre);
+
+      const detalle = document.createElement('span');
+      const seccion = String(grupo?.nombre_seccion || grupo?.seccion || '').trim();
+      const nivel = String(grupo?.nivel || '').trim();
+      detalle.textContent = `Sección: ${seccion || 'Sin definir'}${nivel ? ` · Nivel: ${nivel}` : ''}`;
+      chip.appendChild(detalle);
+
+      gruposEl.appendChild(chip);
+    });
   }
+
     function cargarFiltrosMatriculados() {
     const selectSeccion = document.getElementById(
       'consulta-seccion'
@@ -2655,9 +2712,7 @@ function obtenerCamposDocumentoPDF() {
       },
       {
         etiqueta: 'Grupo',
-        valor:
-          registro.nombre_grupo ??
-          '-'
+        valor: etiquetaGrupo(registro)
       },
       {
         etiqueta: 'Profesor',

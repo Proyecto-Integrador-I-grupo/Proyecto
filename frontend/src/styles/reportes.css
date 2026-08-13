@@ -6,30 +6,27 @@
 .report-mode-switcher .btn:hover { background:#f8fafc; border-color:rgba(37,99,235,.35); }
 .report-mode-switcher .btn.active { background:linear-gradient(135deg,var(--accent),#1d4ed8); color:#fff; border-color:transparent; box-shadow:0 8px 22px rgba(37,99,235,.2); }
 .report-filter-panel { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.9rem; padding:1rem; }
+.report-filter-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  align-items:end;
+  margin:0;
+}
 .report-filter-field { display:flex; flex-direction:column; justify-content:flex-end; transition:opacity .2s ease,transform .2s ease; }
 .report-filter-field.is-hidden { display:none; }
+.report-filter-grid > .report-filter-field { min-width:0; }
 .report-filter-panel .form-label { min-height:1rem; margin-bottom:.35rem; line-height:1.2; }
 .report-filter-panel .form-control-sm,
 .report-filter-panel .form-select-sm { min-height:31px; }
+.report-filter-panel .form-control-sm,
+.report-filter-panel .form-select-sm { width:100%; min-width:0; }
 .report-filter-panel input[type="date"].form-control-sm { line-height:1.25; }
-.report-filter-field[data-filter="fecha-desde"],
-.report-filter-field[data-filter="fecha-hasta"] { flex:0 0 auto; }
 .report-filter-field[data-filter="fecha-desde"] input,
 .report-filter-field[data-filter="fecha-hasta"] input {
-  width:100%;
-  min-width:116px;
-  max-width:142px;
+  min-width:0;
   font-size:.82rem;
   padding-inline:.45rem;
   font-variant-numeric:tabular-nums;
-}
-
-@media (min-width:576px) {
-  .report-filter-field[data-filter="fecha-desde"],
-  .report-filter-field[data-filter="fecha-hasta"] {
-    width:auto;
-    max-width:none;
-  }
 }
 
 .report-filter-error { border:1px solid #fecaca; background:#fef2f2; color:#b91c1c; border-radius:.65rem; padding:.55rem .75rem; font-size:.82rem; }
@@ -57,17 +54,17 @@
 
 @media (max-width:1199px) { .report-mode-switcher { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media (max-width:767px) {
+  .report-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .report-mode-switcher { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .report-mode-switcher .btn { font-size:.78rem; padding:.55rem .4rem; }
   .report-toolbar { align-items:stretch !important; }
   .report-actions { width:100%; display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .report-actions .btn { width:100%; }
-  .report-filter-field[data-filter="fecha-desde"] input,
-  .report-filter-field[data-filter="fecha-hasta"] input { max-width:none; }
   .preview-reporte-logo { width:42px; height:42px; border-radius:10px; }
   .modal-xl { --bs-modal-width: calc(100vw - 1rem); }
 }
 @media (max-width:420px) {
+  .report-filter-grid { grid-template-columns:1fr; }
   .report-mode-switcher { grid-template-columns:1fr; }
   .report-actions { grid-template-columns:1fr; }
   .report-filter-panel { padding:.75rem; }

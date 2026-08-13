@@ -581,7 +581,6 @@ export async function generarReporteDetalle(filtros = {}) {
             a.id_profesor,
             a.estado_asistencia,
             a.observaciones,
-            a.id_grupo,
             pe.nombre AS estudiante_nombre,
             pe.apellido1 AS estudiante_apellido1,
             pe.apellido2 AS estudiante_apellido2,
@@ -606,19 +605,5 @@ export async function generarReporteDetalle(filtros = {}) {
         valores
     );
 
-    if (f.modo !== "matricula") {
-        return { modo: f.modo, detalle: rows };
-    }
-
-    // En matrículas se requiere una fila por estudiante/grupo: dejamos el registro más reciente.
-    const vistos = new Set();
-    const detalleUnico = [];
-    for (const row of rows) {
-        const key = `${row.id_estudiante}-${row.id_grupo ?? row.nombre_grupo ?? ""}`;
-        if (vistos.has(key)) continue;
-        vistos.add(key);
-        detalleUnico.push(row);
-    }
-
-    return { modo: f.modo, detalle: detalleUnico };
+    return { modo: f.modo, detalle: rows };
 }

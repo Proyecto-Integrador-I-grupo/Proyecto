@@ -26,6 +26,21 @@ export default function Consultas() {
           </div>
         </div>
 
+        <div
+          id="consulta-profesor-contexto"
+          className="consulta-profesor-contexto hidden mb-4"
+        >
+          <div className="consulta-profesor-contexto-icon">
+            <i className="bi bi-person-video3"></i>
+          </div>
+          <div>
+            <div className="fw-semibold">Consultando tus grupos asignados</div>
+            <div id="consulta-profesor-grupos" className="small text-muted mt-1">
+              Cargando grupos...
+            </div>
+          </div>
+        </div>
+
         <div className="row g-3 mb-4">
 
           <div className="col-6 col-lg">

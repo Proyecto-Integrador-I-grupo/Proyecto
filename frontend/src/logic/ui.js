@@ -328,10 +328,8 @@ function renderUserInfo() {
     );
 
   if (assistantBanner) {
-    assistantBanner.classList.toggle(
-      'hidden',
-      esAdmin
-    );
+    const esAsistente = !esAdmin && !esProfesor;
+    assistantBanner.classList.toggle('hidden', !esAsistente);
   }
 
   aplicarRestriccionesModulos(
@@ -423,64 +421,42 @@ async function apiFetch(path, options = {}) {
    ========================================== */
 
 function initApp() {
-  /*
-   * React puede volver a ejecutar esta función
-   * después de actualizar el estado de sesión.
-   *
-   * Evitamos registrar los mismos listeners
-   * varias veces.
-   */
-  if (appInitialized) {
-    views = document.querySelectorAll(
-      '.sidebar button[data-view]'
-    );
-
-    const activeButton =
-      document.querySelector(
-        '.sidebar button[data-view].active'
-      );
-
-    setActiveView(
-      activeButton?.dataset.view ||
-      sessionStorage.getItem(ACTIVE_VIEW_KEY) ||
-      'dashboard'
-    );
-
-    return;
-  }
-
   views = document.querySelectorAll(
     '.sidebar button[data-view]'
   );
 
+  if (!views.length) {
+    return false;
+  }
+
   views.forEach((button) => {
-    button.addEventListener(
-      'click',
-      () => {
-        setActiveView(
-          button.dataset.view
-        );
-      }
-    );
+    if (button.dataset.viewWired === 'true') {
+      return;
+    }
+
+    button.dataset.viewWired = 'true';
+    button.addEventListener('click', () => {
+      setActiveView(button.dataset.view);
+    });
   });
 
-  wireUsuariosForm();
-  wireUsuariosDelete();
-  wireSidebarToggle();
-  initAccessibilityWidget();
+  if (!appInitialized) {
+    wireUsuariosForm();
+    wireUsuariosDelete();
+    wireSidebarToggle();
+    initAccessibilityWidget();
+    appInitialized = true;
+  } else {
+    wireSidebarToggle();
+  }
 
-  appInitialized = true;
+  const vistaGuardada =
+    sessionStorage.getItem(ACTIVE_VIEW_KEY) ||
+    document.querySelector('.sidebar button[data-view].active')?.dataset.view ||
+    'dashboard';
 
-  /*
-   * React ya renderizó las páginas.
-   * Solo activamos la vista inicial.
-   *
-   * NO llamamos refreshDashboardCounts()
-   * aquí porque esa lógica pertenece al
-   * módulo dashboard.js.
-   */
-  const vistaGuardada = sessionStorage.getItem(ACTIVE_VIEW_KEY) || 'dashboard';
   setActiveView(vistaGuardada);
+  return true;
 }
 
 function wireSidebarToggle() {

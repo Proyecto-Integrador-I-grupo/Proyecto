@@ -1,6 +1,34 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
 
+const MATERIAS_BASICAS = new Map([
+  ["español", "Español"],
+  ["espanol", "Español"],
+  ["matemática", "Matemáticas"],
+  ["matematica", "Matemáticas"],
+  ["matemáticas", "Matemáticas"],
+  ["matematicas", "Matemáticas"],
+  ["ciencias", "Ciencias"],
+  ["ciencias naturales", "Ciencias"],
+  ["estudios sociales", "Estudios Sociales"],
+  ["inglés", "Inglés"],
+  ["ingles", "Inglés"],
+  ["educación física", "Educación Física"],
+  ["educacion fisica", "Educación Física"],
+  ["informática", "Informática"],
+  ["informatica", "Informática"],
+  ["artes", "Artes"]
+]);
+
+const normalizarMateriaProfesor = (materia) => {
+  const clave = String(materia ?? "").trim().toLowerCase();
+  const normalizada = MATERIAS_BASICAS.get(clave);
+  if (!normalizada) {
+    throw new Error("La materia seleccionada no es válida. Selecciona una de las 8 materias básicas disponibles.");
+  }
+  return normalizada;
+};
+
 const normalizarGeneroProfesor = (genero) => {
   const valor = String(genero ?? "").trim().toLowerCase();
   const mapa = {
@@ -78,6 +106,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
   }
 
   const generoNormalizado = normalizarGeneroProfesor(genero);
+  const materiaNormalizada = normalizarMateriaProfesor(materia);
   const nombreLimpio = nombre.trim();
   const apellido1Limpio = apellido1.trim();
   const apellido2Limpio = apellido2 ? apellido2.trim() : null;
@@ -151,7 +180,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     `;
     const [resProfesor] = await connection.query(queryProfesor, [
       id_persona,
-      materia.trim(),
+      materiaNormalizada,
       fecha_ingreso || new Date().toISOString().split("T")[0]
     ]);
 
@@ -180,7 +209,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       nombre,
       apellido1,
       apellido2,
-      materia,
+      materia: materiaNormalizada,
       fecha_ingreso,
       correo: correoLimpio,
       estado: 1

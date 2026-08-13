@@ -6,10 +6,13 @@
 .report-mode-switcher .btn:hover { background:#f8fafc; border-color:rgba(37,99,235,.35); }
 .report-mode-switcher .btn.active { background:linear-gradient(135deg,var(--accent),#1d4ed8); color:#fff; border-color:transparent; box-shadow:0 8px 22px rgba(37,99,235,.2); }
 .report-filter-panel { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.9rem; padding:1rem; }
-.report-filter-field { transition:opacity .2s ease,transform .2s ease; }
+.report-filter-field { display:flex; flex-direction:column; justify-content:flex-end; transition:opacity .2s ease,transform .2s ease; }
 .report-filter-field.is-hidden { display:none; }
+.report-filter-panel .form-label { min-height:1rem; margin-bottom:.35rem; line-height:1.2; }
+.report-filter-panel .form-control-sm,
+.report-filter-panel .form-select-sm { min-height:31px; }
+.report-filter-panel input[type="date"].form-control-sm { line-height:1.25; }
 .report-filter-field[data-filter="fecha-desde"] input,.report-filter-field[data-filter="fecha-hasta"] input { min-width:138px; font-variant-numeric:tabular-nums; }
-.report-search-hint { font-size:.72rem; line-height:1.25; }
 .report-filter-error { border:1px solid #fecaca; background:#fef2f2; color:#b91c1c; border-radius:.65rem; padding:.55rem .75rem; font-size:.82rem; }
 .report-actions .btn { border-radius:.65rem; }
 .report-table-wrap,.preview-table-wrap { border:1px solid #e2e8f0; border-radius:.8rem; }

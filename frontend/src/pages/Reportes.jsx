@@ -8,7 +8,7 @@ export default function Reportes() {
           <div className="card-body p-3 p-lg-4">
             <div className="report-menu-top mb-3">
               <div className="report-mode-switcher" role="group" aria-label="Casos de reporte">
-                <button type="button" className="btn btn-sm active" data-report-mode="matricula"><i className="bi bi-journal-check" /> Matrícula</button>
+                <button type="button" className="btn btn-sm active" data-report-mode="matricula"><i className="bi bi-journal-check" /> Matrículas</button>
                 <button type="button" className="btn btn-sm" data-report-mode="estudiantes"><i className="bi bi-people-fill" /> Estudiantes</button>
                 <button type="button" className="btn btn-sm" data-report-mode="grupos"><i className="bi bi-diagram-3" /> Grupos</button>
                 <button type="button" className="btn btn-sm" data-report-mode="profesores"><i className="bi bi-person-badge" /> Profesores</button>
@@ -29,12 +29,12 @@ export default function Reportes() {
                 <div className="col-12 col-sm-6 col-lg-3 report-filter-field" data-filter="busqueda">
                   <label id="report-busqueda-label" className="form-label" htmlFor="report-filtro-busqueda">Estudiante / Cédula</label>
                   <input id="report-filtro-busqueda" type="text" maxLength="120" className="form-control form-control-sm" placeholder="Nombre, apellido o cédula" autoComplete="off" />
-                  <div id="report-search-hint" className="form-text report-search-hint">Puedes buscar por nombre, apellido o identificador.</div>
                 </div>
 
                 <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="tipo">
                   <label className="form-label" htmlFor="report-filtro-tipo">Tipo de reporte</label>
                   <select id="report-filtro-tipo" className="form-select form-select-sm">
+                    <option value="">Todos los tipos</option>
                     <option value="resumen">Resumen</option>
                     <option value="detalle">Detalle</option>
                     <option value="individual">Individual</option>
@@ -43,13 +43,10 @@ export default function Reportes() {
                 </div>
 
                 <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="estado">
-                  <label className="form-label" htmlFor="report-filtro-estado">Estado</label>
+                  <label id="report-estado-label" className="form-label" htmlFor="report-filtro-estado">Estado del estudiante</label>
                   <select id="report-filtro-estado" className="form-select form-select-sm">
-                    <option value="">Todos los estados</option>
-                    <option value="presente">Presente</option>
-                    <option value="ausente">Ausente</option>
-                    <option value="tardia">Tardía</option>
-                    <option value="justificada">Justificada</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
                   </select>
                 </div>
 

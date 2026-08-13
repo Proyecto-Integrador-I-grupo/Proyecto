@@ -2,20 +2,22 @@ import { apiFetch, showToast } from './ui.js';
 import { populateGruposSelects, allGrupos } from './matricula.js';
 
 const MODOS = {
-  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula', hint: 'Busca únicamente estudiantes matriculados.', titulo: 'Reporte de matrícula' },
-  estudiantes: { tipo: 'individual', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante o profesor', placeholder: 'Estudiante, cédula o profesor relacionado', hint: 'Puedes buscar al estudiante directamente o escribir el nombre del profesor que le registra asistencia.', titulo: 'Reporte de estudiantes' },
-  grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', hint: '', titulo: 'Reporte de grupos' },
-  profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / Cédula', placeholder: 'Nombre, apellido o cédula del profesor', hint: 'Muestra grupos, secciones y estudiantes asociados al profesor.', titulo: 'Reporte de profesores' },
-  pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del pre-registro', hint: 'Lista estudiantes activos que todavía no tienen grupo asignado.', titulo: 'Reporte de pre-matrículas' },
-  auditoria: { tipo: 'detalle', filtros: ['busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Auditoría / Acción', placeholder: 'Tabla, usuario, acción o contenido del cambio', hint: 'Puedes buscar por tabla, acción, usuario o contenido registrado.', titulo: 'Reporte de auditoría' }
+  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula', titulo: 'Reporte de matrícula' },
+  estudiantes: { tipo: 'individual', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del estudiante', titulo: 'Reporte de estudiantes' },
+  grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', titulo: 'Reporte de grupos' },
+  profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / Cédula', placeholder: 'Nombre, apellido o cédula del profesor', titulo: 'Reporte de profesores' },
+  pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del pre-registro', titulo: 'Reporte de pre-matrículas' },
+  auditoria: { tipo: 'detalle', filtros: ['busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Auditoría / Acción', placeholder: 'Tabla, usuario, acción o contenido del cambio', titulo: 'Reporte de auditoría' }
 };
 
-const ESTADOS = ['presente', 'ausente', 'tardia', 'justificada'];
+const ESTADOS_ASISTENCIA = ['presente', 'ausente', 'tardia', 'justificada'];
+const ESTADOS_ACTIVO = ['activo', 'inactivo'];
 const TIPOS_REPORTE = ['resumen', 'detalle', 'individual', 'grupo'];
 const REPORTE_LOGO_SRC = '/images/logo.jpg';
 let consultaAplicada = false;
 let reporteActual = null;
 let reporteLogoDataUrlPromise = null;
+let reporteCargando = false;
 
 (function registerModule() {
   const moduleName = 'reportes';
@@ -32,6 +34,7 @@ async function loadReportesData() {
   limpiarFiltrosReporte('matricula');
   cambiarModoReporte('matricula');
   resetearDatosReporte();
+  actualizarEstadoBotonAplicar();
 }
 
 function wireReportesEvents() {
@@ -65,7 +68,18 @@ function wireReportesEvents() {
     const input = document.getElementById(id);
     if (input && !input.dataset.wired) {
       input.dataset.wired = '1';
-      input.addEventListener('change', validarRangoFechasEnUI);
+      input.addEventListener('change', () => {
+        validarRangoFechasEnUI();
+        actualizarEstadoBotonAplicar();
+      });
+    }
+  });
+
+  ['report-filtro-grupo', 'report-filtro-tipo', 'report-filtro-estado'].forEach((id) => {
+    const select = document.getElementById(id);
+    if (select && !select.dataset.wired) {
+      select.dataset.wired = '1';
+      select.addEventListener('change', actualizarEstadoBotonAplicar);
     }
   });
 
@@ -75,6 +89,7 @@ function wireReportesEvents() {
     search.addEventListener('input', () => {
       if (search.value.length > 120) search.value = search.value.slice(0, 120);
       limpiarError();
+      actualizarEstadoBotonAplicar();
     });
     search.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') cargarReporte();
@@ -103,19 +118,51 @@ function cambiarModoReporte(modo = 'matricula') {
   });
 
   const tipo = document.getElementById('report-filtro-tipo');
-  if (tipo) tipo.value = config.tipo;
+  if (tipo) tipo.value = '';
   const label = document.getElementById('report-busqueda-label');
   if (label) label.textContent = config.label;
   const input = document.getElementById('report-filtro-busqueda');
   if (input) input.placeholder = config.placeholder;
-  const hint = document.getElementById('report-search-hint');
-  if (hint) { hint.textContent = config.hint || ''; hint.hidden = !config.hint; }
+  actualizarOpcionesEstado(actual);
   const title = document.querySelector('#reportes-view .card-title-serif');
   if (title) title.innerHTML = `<i class="bi bi-bar-chart"></i> ${config.titulo}`;
 
   actualizarResumenTexto();
   limpiarError();
+  actualizarEstadoBotonAplicar();
   return actual;
+}
+
+function actualizarOpcionesEstado(modo = obtenerModoReporteActivo()) {
+  const select = document.getElementById('report-filtro-estado');
+  const label = document.getElementById('report-estado-label');
+  if (!select) return;
+
+  const valorActual = String(select.value || '').toLowerCase();
+  const esMatricula = modo === 'matricula';
+  const opciones = esMatricula
+    ? [
+      { value: 'activo', label: 'Activo' },
+      { value: 'inactivo', label: 'Inactivo' }
+    ]
+    : [
+      { value: '', label: 'Todos los estados' },
+      { value: 'presente', label: 'Presente' },
+      { value: 'ausente', label: 'Ausente' },
+      { value: 'tardia', label: 'Tardía' },
+      { value: 'justificada', label: 'Justificada' }
+    ];
+
+  if (label) {
+    label.textContent = esMatricula ? 'Estado del estudiante' : 'Estado de asistencia';
+  }
+
+  select.innerHTML = opciones.map((opcion) => `<option value="${opcion.value}">${opcion.label}</option>`).join('');
+  if (opciones.some((opcion) => opcion.value === valorActual)) {
+    select.value = valorActual;
+  } else if (esMatricula) {
+    select.value = 'activo';
+  }
 }
 
 function obtenerModoReporteActivo() {
@@ -126,7 +173,7 @@ function obtenerFiltrosActivos() {
   return {
     id_grupo: document.getElementById('report-filtro-grupo')?.value || '',
     busqueda: document.getElementById('report-filtro-busqueda')?.value.trim() || '',
-    tipo_reporte: document.getElementById('report-filtro-tipo')?.value || 'resumen',
+    tipo_reporte: document.getElementById('report-filtro-tipo')?.value || '',
     estado_asistencia: document.getElementById('report-filtro-estado')?.value || '',
     fecha_inicio: document.getElementById('report-filtro-fecha-desde')?.value || '',
     fecha_fin: document.getElementById('report-filtro-fecha-hasta')?.value || '',
@@ -134,11 +181,38 @@ function obtenerFiltrosActivos() {
   };
 }
 
+function hayFiltrosAplicados(filtros) {
+  const modo = filtros?.modo || obtenerModoReporteActivo();
+  const config = MODOS[modo] || MODOS.matricula;
+  const checks = {
+    grupo: Boolean((filtros.id_grupo || '').trim()),
+    busqueda: Boolean((filtros.busqueda || '').trim()),
+    tipo: Boolean((filtros.tipo_reporte || '').trim()),
+    estado: Boolean((filtros.estado_asistencia || '').trim()),
+    'fecha-desde': Boolean((filtros.fecha_inicio || '').trim()),
+    'fecha-hasta': Boolean((filtros.fecha_fin || '').trim())
+  };
+  return (config.filtros || []).some((filtro) => checks[filtro]);
+}
+
+function actualizarEstadoBotonAplicar() {
+  const button = document.getElementById('report-aplicar');
+  if (!button) return;
+
+  const filtros = obtenerFiltrosActivos();
+  const habilitadoPorFiltros = hayFiltrosAplicados(filtros);
+  button.disabled = reporteCargando || !habilitadoPorFiltros;
+}
+
 function validarFiltros(filtros) {
+  const modo = filtros.modo || obtenerModoReporteActivo();
   if (filtros.fecha_inicio && filtros.fecha_fin && filtros.fecha_inicio > filtros.fecha_fin) return 'La fecha de inicio no puede ser mayor que la fecha fin.';
   if ((filtros.busqueda || '').length > 120) return 'La búsqueda no puede superar 120 caracteres.';
-  if (filtros.estado_asistencia && !ESTADOS.includes(filtros.estado_asistencia)) return 'El estado de asistencia seleccionado no es válido.';
-  if (!TIPOS_REPORTE.includes(filtros.tipo_reporte)) return 'El tipo de reporte seleccionado no es válido.';
+  if (filtros.estado_asistencia) {
+    if (modo === 'matricula' && !ESTADOS_ACTIVO.includes(filtros.estado_asistencia)) return 'El estado del estudiante seleccionado no es válido.';
+    if (modo !== 'matricula' && !ESTADOS_ASISTENCIA.includes(filtros.estado_asistencia)) return 'El estado de asistencia seleccionado no es válido.';
+  }
+  if (filtros.tipo_reporte && !TIPOS_REPORTE.includes(filtros.tipo_reporte)) return 'El tipo de reporte seleccionado no es válido.';
   if (!MODOS[filtros.modo]) return 'El modo de reporte seleccionado no es válido.';
   return '';
 }
@@ -167,10 +241,24 @@ async function cargarReporte() {
   const error = validarFiltros(filtros);
   if (error) { mostrarError(error); showToast(error, 'error'); return; }
 
+  if (!hayFiltrosAplicados(filtros)) {
+    consultaAplicada = false;
+    reporteActual = null;
+    window._reportePdfData = null;
+    renderTablaPrincipal({ detalle_por_grupo: [], detalle: [] });
+    renderEmptyState({ detalle_por_grupo: [], detalle: [] }, 'Debes seleccionar al menos un filtro para generar el reporte.');
+    actualizarResumenTexto(null, 'Selecciona al menos un filtro antes de aplicar.');
+    showToast('Selecciona al menos un filtro para generar el reporte.', 'warning');
+    actualizarEstadoBotonAplicar();
+    return;
+  }
+
   limpiarError();
   const button = document.getElementById('report-aplicar');
   const oldText = button?.innerHTML;
-  if (button) { button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...'; }
+  reporteCargando = true;
+  if (button) { button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...'; }
+  actualizarEstadoBotonAplicar();
 
   try {
     const params = new URLSearchParams();
@@ -201,18 +289,20 @@ async function cargarReporte() {
     actualizarResumenTexto(null, error.message);
     showToast(error.message || 'No se pudo generar el reporte.', 'error');
   } finally {
-    if (button) { button.disabled = false; button.innerHTML = oldText; }
+    reporteCargando = false;
+    if (button) { button.innerHTML = oldText; }
+    actualizarEstadoBotonAplicar();
   }
 }
 
 function limpiarFiltrosReporte(modo = obtenerModoReporteActivo()) {
-  const config = MODOS[modo] || MODOS.matricula;
   const values = {
-    'report-filtro-grupo': '', 'report-filtro-busqueda': '', 'report-filtro-tipo': config.tipo,
+    'report-filtro-grupo': '', 'report-filtro-busqueda': '', 'report-filtro-tipo': '',
     'report-filtro-estado': '', 'report-filtro-fecha-desde': '', 'report-filtro-fecha-hasta': ''
   };
   Object.entries(values).forEach(([id, value]) => { const el = document.getElementById(id); if (el) el.value = value; });
   limpiarError();
+  actualizarEstadoBotonAplicar();
 }
 
 function limpiarReporte() {
@@ -229,6 +319,7 @@ function resetearDatosReporte() {
   renderTablaPrincipal({ detalle_por_grupo: [], detalle: [] });
   renderEmptyState(null);
   actualizarResumenTexto();
+  actualizarEstadoBotonAplicar();
 }
 
 function actualizarResumenTexto(data = reporteActual, error = '') {
@@ -293,8 +384,8 @@ function renderTablaPrincipal(data = {}) {
     head.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>';
     renderRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return;
   }
-  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th>';
-  renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), formatearEstadoAsistencia(r.estado_asistencia), r.observaciones || '—']);
+  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th><th>Observaciones</th>';
+  renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones || '—']);
 }
 
 function renderRows(body, rows, mapper) {
@@ -380,7 +471,7 @@ function abrirVistaPreviaReporte() {
   const auditNote = document.getElementById('preview-auditoria-note');
   if (auditNote) auditNote.hidden = modo !== 'auditoria';
   renderPreviewFilters(obtenerFiltrosActivos());
-  renderPreviewMetrics(reporteActual.resumen || {});
+  renderPreviewMetrics(reporteActual.resumen || {}, reporteActual);
   renderPreviewTable(reporteActual);
   if (window.bootstrap?.Modal) (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
 }
@@ -393,7 +484,12 @@ function renderPreviewFilters(filtros) {
   const grupoTexto = document.getElementById('report-filtro-grupo')?.selectedOptions?.[0]?.textContent || 'Todos los grupos';
   const chips = [];
   if (config.filtros.includes('grupo')) chips.push(`Grupo: ${grupoTexto}`);
-  if (config.filtros.includes('estado')) chips.push(`Estado: ${filtros.estado_asistencia ? formatearEstadoAsistencia(filtros.estado_asistencia) : 'Todos'}`);
+  if (config.filtros.includes('estado')) {
+    const textoEstado = filtros.estado_asistencia
+      ? (filtros.modo === 'matricula' ? normalizarEstadoActivo(filtros.estado_asistencia) : formatearEstadoAsistencia(filtros.estado_asistencia))
+      : 'Todos';
+    chips.push(`Estado: ${textoEstado}`);
+  }
   if (filtros.fecha_inicio) chips.push(`Desde: ${formatDate(filtros.fecha_inicio)}`);
   if (filtros.fecha_fin) chips.push(`Hasta: ${formatDate(filtros.fecha_fin)}`);
   if (filtros.busqueda) chips.push(`Búsqueda: ${filtros.busqueda}`);
@@ -401,13 +497,19 @@ function renderPreviewFilters(filtros) {
   chips.forEach(text => { const span = document.createElement('span'); span.className = 'preview-reporte-chip'; span.textContent = text; area.appendChild(span); });
 }
 
-function renderPreviewMetrics(resumen) {
+function renderPreviewMetrics(resumen, data = reporteActual) {
   const area = document.getElementById('preview-reporte-metricas');
   if (!area) return;
   const modo = obtenerModoReporteActivo();
   let metrics = [];
   if (modo === 'auditoria') metrics = [['Auditorías', resumen.total_auditorias ?? 0], ['Registros', resumen.total_registros ?? 0]];
   else if (modo === 'pre_matricula') metrics = [['Pre-matrículas', resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0], ['Estudiantes', resumen.total_estudiantes ?? 0]];
+  else if (modo === 'profesores') {
+    const profesores = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
+    const activos = profesores.filter((p) => normalizarEstadoActivo(p.estado ?? p.profesor_estado) === 'Activo').length;
+    const inactivos = Math.max(0, profesores.length - activos);
+    metrics = [['Profesores', profesores.length], ['Activos', activos], ['Inactivos', inactivos]];
+  }
   else metrics = [['Estudiantes', resumen.total_estudiantes ?? 0], ['Profesores', resumen.total_profesores ?? 0], ['Grupos', resumen.total_grupos ?? 0], ['Presentismo', `${resumen.tasa_presentismo ?? 0}%`]];
   area.innerHTML = metrics.map(([label, value]) => `<div class="col-6 col-lg-3"><div class="report-preview-metric"><span>${label}</span><strong>${value}</strong></div></div>`).join('');
 }
@@ -422,10 +524,10 @@ function renderPreviewTable(data) {
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
-  if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estudiantes</th><th>Asistencias</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', r.estudiantes_asociados ?? 0, r.asistencias_registradas ?? 0]); return; }
+  if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0]); return; }
-  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th>';
-  renderPreviewRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), formatearEstadoAsistencia(r.estado_asistencia), r.observaciones ?? '—']);
+  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th><th>Observaciones</th>';
+  renderPreviewRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones ?? '—']);
 }
 
 function renderPreviewRows(body, rows, mapper) {
@@ -496,7 +598,12 @@ function descripcionFiltrosPdf(filtros) {
   const config = MODOS[filtros.modo] || MODOS.matricula;
   if (config.filtros.includes('grupo')) items.push(`Grupo ${document.getElementById('report-filtro-grupo')?.selectedOptions?.[0]?.textContent || 'Todos'}`);
   if (filtros.busqueda) items.push(`Búsqueda "${filtros.busqueda}"`);
-  if (filtros.estado_asistencia) items.push(`Estado ${formatearEstadoAsistencia(filtros.estado_asistencia)}`);
+  if (filtros.estado_asistencia) {
+    const textoEstado = filtros.modo === 'matricula'
+      ? normalizarEstadoActivo(filtros.estado_asistencia)
+      : formatearEstadoAsistencia(filtros.estado_asistencia);
+    items.push(`Estado ${textoEstado}`);
+  }
   if (filtros.fecha_inicio || filtros.fecha_fin) items.push(obtenerRangoFechaAplicado(filtros));
   return items.length ? items.join(' · ') : 'Sin filtros adicionales';
 }
@@ -527,8 +634,8 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
     filas: agrupado.map(r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0])
   };
   return {
-    columnas: [{ label: 'Fecha', width: 24 }, { label: 'Estudiante', width: 48 }, { label: 'Grupo', width: 25 }, { label: 'Profesor', width: 42 }, { label: 'Estado', width: 24 }, { label: 'Observaciones', width: usable - 163 }],
-    filas: detalle.map(r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), formatearEstadoAsistencia(r.estado_asistencia), r.observaciones || '-'])
+    columnas: [{ label: 'Fecha', width: 24 }, { label: 'Estudiante', width: 48 }, { label: 'Grupo', width: 25 }, { label: 'Profesor', width: 42 }, { label: 'Estado estudiante', width: 32 }, { label: 'Observaciones', width: usable - 171 }],
+    filas: detalle.map(r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones || '-'])
   };
 }
 

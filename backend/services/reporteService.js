@@ -1,6 +1,7 @@
 import pool from "../config/database.js";
 
-const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
+const ESTADOS_ASISTENCIA_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
+const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
 const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]);
 const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
@@ -58,9 +59,22 @@ function validarFiltrosReporte(filtros = {}) {
         throw new Error("La fecha de inicio no puede ser mayor que la fecha fin.");
     }
 
-    const estado_asistencia = normalizarEstado(filtros.estado_asistencia ?? filtros.estado ?? "");
-    if (estado_asistencia && !ESTADOS_VALIDOS.includes(estado_asistencia)) {
-        throw new Error("Estado de asistencia no válido. Usa presente, ausente, tardia o justificada.");
+    const estadoSolicitado = normalizarEstado(filtros.estado_asistencia ?? filtros.estado ?? "");
+    let estado_asistencia = "";
+    let estado_estudiante = "";
+
+    if (estadoSolicitado) {
+        if (modo === "matricula") {
+            if (!ESTADOS_ACTIVO_VALIDOS.includes(estadoSolicitado)) {
+                throw new Error("Estado de estudiante no válido. Usa activo o inactivo.");
+            }
+            estado_estudiante = estadoSolicitado;
+        } else {
+            if (!ESTADOS_ASISTENCIA_VALIDOS.includes(estadoSolicitado)) {
+                throw new Error("Estado de asistencia no válido. Usa presente, ausente, tardia o justificada.");
+            }
+            estado_asistencia = estadoSolicitado;
+        }
     }
 
     const busqueda = normalizarBusqueda(filtros.busqueda);
@@ -73,6 +87,7 @@ function validarFiltrosReporte(filtros = {}) {
         fecha_inicio,
         fecha_fin,
         estado_asistencia,
+        estado_estudiante,
         busqueda
     };
 }
@@ -110,7 +125,7 @@ function pushBusquedaValores(valores, texto, repeticiones = 1) {
 }
 
 function construirCondicionesAsistencia(filtros = {}) {
-    const { modo, id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, busqueda } = filtros;
+    const { modo, id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, estado_estudiante, busqueda } = filtros;
     const condiciones = ["a.estado = TRUE"];
     const valores = [];
 
@@ -133,6 +148,17 @@ function construirCondicionesAsistencia(filtros = {}) {
     if (estado_asistencia) {
         condiciones.push("a.estado_asistencia = ?");
         valores.push(estado_asistencia);
+    }
+
+    if (estado_estudiante) {
+        condiciones.push(`
+            a.id_estudiante IN (
+                SELECT e.id_estudiante
+                FROM estudiante e
+                WHERE e.estado = ?
+            )
+        `);
+        valores.push(estado_estudiante === "activo");
     }
 
     if (busqueda) {
@@ -375,6 +401,16 @@ export async function generarReporteResumen(filtros = {}) {
         grupoCondiciones.push("(a.id_asistencia IS NULL OR a.estado_asistencia = ?)");
         grupoValores.push(f.estado_asistencia);
     }
+    if (f.estado_estudiante) {
+        grupoCondiciones.push(`
+            (a.id_asistencia IS NULL OR a.id_estudiante IN (
+                SELECT e.id_estudiante
+                FROM estudiante e
+                WHERE e.estado = ?
+            ))
+        `);
+        grupoValores.push(f.estado_estudiante === "activo");
+    }
     if (f.busqueda) {
         const texto = `%${f.busqueda}%`;
         const student = `a.id_estudiante IN (
@@ -532,6 +568,7 @@ export async function generarReporteDetalle(filtros = {}) {
             pe.nombre AS estudiante_nombre,
             pe.apellido1 AS estudiante_apellido1,
             pe.apellido2 AS estudiante_apellido2,
+            e.estado AS estudiante_estado,
             g.nombre_grupo,
             s.nombre_seccion,
             pr.nombre AS profesor_nombre,

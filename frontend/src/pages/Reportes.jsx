@@ -18,20 +18,20 @@ export default function Reportes() {
             </div>
 
             <div className="filter-bar report-filter-panel mb-3">
-              <div className="row g-2 align-items-end">
-                <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="grupo">
+              <div className="row g-2 align-items-end report-filter-grid">
+                <div className="report-filter-field" data-filter="grupo">
                   <label className="form-label" htmlFor="report-filtro-grupo">Grupo</label>
                   <select id="report-filtro-grupo" className="form-select form-select-sm">
                     <option value="">Todos los grupos</option>
                   </select>
                 </div>
 
-                <div className="col-12 col-sm-6 col-lg-3 report-filter-field" data-filter="busqueda">
+                <div className="report-filter-field" data-filter="busqueda">
                   <label id="report-busqueda-label" className="form-label" htmlFor="report-filtro-busqueda">Estudiante / Cédula</label>
                   <input id="report-filtro-busqueda" type="text" maxLength="120" className="form-control form-control-sm" placeholder="Nombre, apellido o cédula" autoComplete="off" />
                 </div>
 
-                <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="tipo">
+                <div className="report-filter-field" data-filter="tipo">
                   <label className="form-label" htmlFor="report-filtro-tipo">Tipo de reporte</label>
                   <select id="report-filtro-tipo" className="form-select form-select-sm">
                     <option value="">Todos los tipos</option>
@@ -42,19 +42,19 @@ export default function Reportes() {
                   </select>
                 </div>
 
-                <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="estado">
+                <div className="report-filter-field" data-filter="estado">
                   <label id="report-estado-label" className="form-label" htmlFor="report-filtro-estado">Estado del estudiante</label>
                   <select id="report-filtro-estado" className="form-select form-select-sm">
                     <option value="">--Seleccionar--</option>
                   </select>
                 </div>
 
-                <div className="col-6 col-sm-6 col-lg report-filter-field" data-filter="fecha-desde">
+                <div className="report-filter-field" data-filter="fecha-desde">
                   <label className="form-label" htmlFor="report-filtro-fecha-desde">Desde</label>
                   <input id="report-filtro-fecha-desde" type="date" className="form-control form-control-sm" />
                 </div>
 
-                <div className="col-6 col-sm-6 col-lg report-filter-field" data-filter="fecha-hasta">
+                <div className="report-filter-field" data-filter="fecha-hasta">
                   <label className="form-label" htmlFor="report-filtro-fecha-hasta">Hasta</label>
                   <input id="report-filtro-fecha-hasta" type="date" className="form-control form-control-sm" />
                 </div>

@@ -36,6 +36,22 @@ function normalizarBusqueda(busqueda) {
     return texto;
 }
 
+function normalizarTextoBusquedaSql(texto = "") {
+    return String(texto)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function construirLikeBusqueda(busqueda = "") {
+    return `%${normalizarTextoBusquedaSql(busqueda)}%`;
+}
+
+function sqlTextoNormalizado(expr) {
+    return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(${expr}, '')), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'ü', 'u'), 'ñ', 'n')`;
+}
+
 function normalizarFechaISO(fecha, nombreCampo) {
     if (fecha === undefined || fecha === null || fecha === "") return "";
     const texto = String(fecha).trim();
@@ -97,10 +113,10 @@ function busquedaEstudianteSql(alias = "a") {
         SELECT e.id_estudiante
         FROM estudiante e
         INNER JOIN persona pe ON pe.id_persona = e.id_persona
-        WHERE pe.nombre LIKE ?
-           OR pe.apellido1 LIKE ?
-           OR pe.apellido2 LIKE ?
-           OR CAST(pe.id_persona AS CHAR) LIKE ?
+        WHERE ${sqlTextoNormalizado("pe.nombre")} LIKE ?
+           OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ?
+           OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ?
+           OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ?
            OR CAST(e.id_estudiante AS CHAR) LIKE ?
     )`;
 }
@@ -110,10 +126,10 @@ function busquedaProfesorSql(alias = "a") {
         SELECT prof.id_profesor
         FROM profesor prof
         INNER JOIN persona pp ON pp.id_persona = prof.id_persona
-        WHERE pp.nombre LIKE ?
-           OR pp.apellido1 LIKE ?
-           OR pp.apellido2 LIKE ?
-           OR CAST(pp.id_persona AS CHAR) LIKE ?
+        WHERE ${sqlTextoNormalizado("pp.nombre")} LIKE ?
+           OR ${sqlTextoNormalizado("pp.apellido1")} LIKE ?
+           OR ${sqlTextoNormalizado("pp.apellido2")} LIKE ?
+           OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2))")} LIKE ?
            OR CAST(prof.id_profesor AS CHAR) LIKE ?
     )`;
 }
@@ -162,7 +178,7 @@ function construirCondicionesAsistencia(filtros = {}) {
     }
 
     if (busqueda) {
-        const texto = `%${busqueda}%`;
+        const texto = construirLikeBusqueda(busqueda);
         const estudiante = busquedaEstudianteSql("a");
         const profesor = busquedaProfesorSql("a");
 
@@ -300,8 +316,8 @@ export async function generarReporteResumen(filtros = {}) {
         const condiciones = [];
         const valores = [];
         if (f.busqueda) {
-            const texto = `%${f.busqueda}%`;
-            condiciones.push(`(pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ? OR CAST(pe.id_persona AS CHAR) LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(${sqlTextoNormalizado("pe.nombre")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
             valores.push(texto, texto, texto, texto, texto);
         }
         const extra = condiciones.length ? `AND ${condiciones.join(" AND ")}` : "";
@@ -412,16 +428,16 @@ export async function generarReporteResumen(filtros = {}) {
         grupoValores.push(f.estado_estudiante === "activo");
     }
     if (f.busqueda) {
-        const texto = `%${f.busqueda}%`;
+        const texto = construirLikeBusqueda(f.busqueda);
         const student = `a.id_estudiante IN (
             SELECT e.id_estudiante FROM estudiante e
             INNER JOIN persona pe ON pe.id_persona = e.id_persona
-            WHERE pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ? OR CAST(pe.id_persona AS CHAR) LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            WHERE ${sqlTextoNormalizado("pe.nombre")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?
         )`;
         const professor = `a.id_profesor IN (
             SELECT prof.id_profesor FROM profesor prof
             INNER JOIN persona pp ON pp.id_persona = prof.id_persona
-            WHERE pp.nombre LIKE ? OR pp.apellido1 LIKE ? OR pp.apellido2 LIKE ? OR CAST(pp.id_persona AS CHAR) LIKE ? OR CAST(prof.id_profesor AS CHAR) LIKE ?
+            WHERE ${sqlTextoNormalizado("pp.nombre")} LIKE ? OR ${sqlTextoNormalizado("pp.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pp.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2))")} LIKE ? OR CAST(prof.id_profesor AS CHAR) LIKE ?
         )`;
         if (f.modo === "matricula") {
             grupoCondiciones.push(`(a.id_asistencia IS NULL OR ${student})`);
@@ -485,8 +501,8 @@ export async function generarReporteDetalle(filtros = {}) {
         const condiciones = [];
         const valores = [];
         if (f.busqueda) {
-            const texto = `%${f.busqueda}%`;
-            condiciones.push(`(pe.nombre LIKE ? OR pe.apellido1 LIKE ? OR pe.apellido2 LIKE ? OR CAST(pe.id_persona AS CHAR) LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(${sqlTextoNormalizado("pe.nombre")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
             valores.push(texto, texto, texto, texto, texto);
         }
         const extra = condiciones.length ? `AND ${condiciones.join(" AND ")}` : "";
@@ -565,6 +581,7 @@ export async function generarReporteDetalle(filtros = {}) {
             a.id_profesor,
             a.estado_asistencia,
             a.observaciones,
+            a.id_grupo,
             pe.nombre AS estudiante_nombre,
             pe.apellido1 AS estudiante_apellido1,
             pe.apellido2 AS estudiante_apellido2,
@@ -589,5 +606,19 @@ export async function generarReporteDetalle(filtros = {}) {
         valores
     );
 
-    return { modo: f.modo, detalle: rows };
+    if (f.modo !== "matricula") {
+        return { modo: f.modo, detalle: rows };
+    }
+
+    // En matrículas se requiere una fila por estudiante/grupo: dejamos el registro más reciente.
+    const vistos = new Set();
+    const detalleUnico = [];
+    for (const row of rows) {
+        const key = `${row.id_estudiante}-${row.id_grupo ?? row.nombre_grupo ?? ""}`;
+        if (vistos.has(key)) continue;
+        vistos.add(key);
+        detalleUnico.push(row);
+    }
+
+    return { modo: f.modo, detalle: detalleUnico };
 }

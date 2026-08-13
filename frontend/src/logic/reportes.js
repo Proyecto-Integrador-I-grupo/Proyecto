@@ -2,7 +2,7 @@ import { apiFetch, showToast } from './ui.js';
 import { populateGruposSelects, allGrupos } from './matricula.js';
 
 const MODOS = {
-  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula', titulo: 'Reporte de matrícula' },
+  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula', titulo: 'Reporte de matrícula' },
   estudiantes: { tipo: 'individual', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del estudiante', titulo: 'Reporte de estudiantes' },
   grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', titulo: 'Reporte de grupos' },
   profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / Cédula', placeholder: 'Nombre, apellido o cédula del profesor', titulo: 'Reporte de profesores' },
@@ -199,7 +199,10 @@ function hayFiltrosAplicados(filtros) {
 function actualizarEstadoBotonAplicar() {
   const button = document.getElementById('report-aplicar');
   if (!button) return;
-  button.disabled = reporteCargando;
+  const deshabilitado = Boolean(reporteCargando);
+  button.disabled = deshabilitado;
+  button.classList.toggle('disabled', deshabilitado);
+  button.setAttribute('aria-disabled', String(deshabilitado));
 }
 
 function validarFiltros(filtros) {

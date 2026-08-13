@@ -83,10 +83,45 @@ export const actualizarUsuario = async (id, usuario, idUsuario) => {
     return resultado;
 };
 
+export const actualizarPersonaUsuario = async (idPersona, datos, idUsuario) => {
+    const sql = `
+        UPDATE persona
+        SET nombre = ?, apellido1 = ?
+        WHERE id_persona = ?;
+    `;
+    return queryConSesion(sql, [datos.nombre, datos.apellido1, idPersona], idUsuario);
+};
+
 export const eliminarUsuario = async (id, idUsuario) => {
     const sql = `UPDATE usuario SET estado = 0 WHERE id_usuario = ?;`;
     const resultado = await queryConSesion(sql, [id], idUsuario);
     return resultado;
+};
+
+export const obtenerUsuarioConClavePorId = async (id) => {
+    const sql = `
+        SELECT
+            u.id_usuario,
+            u.correo,
+            u.contrasena,
+            u.estado,
+            r.id_rol,
+            r.nom_rol,
+            p.id_persona,
+            p.nombre,
+            p.apellido1,
+            p.apellido2,
+            p.foto,
+            pr.id_profesor
+        FROM usuario u
+        JOIN rol r ON r.id_rol = u.id_rol
+        JOIN persona p ON p.id_persona = u.id_persona
+        LEFT JOIN profesor pr ON pr.id_persona = p.id_persona
+        WHERE u.id_usuario = ?
+        LIMIT 1;
+    `;
+    const [rows] = await conexion.query(sql, [id]);
+    return rows[0];
 };
 
 export const obtenerUsuarioPorId = async (id) => {

@@ -142,6 +142,7 @@ function actualizarOpcionesEstado(modo = obtenerModoReporteActivo()) {
   const esMatricula = modo === 'matricula';
   const opciones = esMatricula
     ? [
+      { value: '', label: '--Seleccionar--' },
       { value: 'activo', label: 'Activo' },
       { value: 'inactivo', label: 'Inactivo' }
     ]
@@ -160,8 +161,8 @@ function actualizarOpcionesEstado(modo = obtenerModoReporteActivo()) {
   select.innerHTML = opciones.map((opcion) => `<option value="${opcion.value}">${opcion.label}</option>`).join('');
   if (opciones.some((opcion) => opcion.value === valorActual)) {
     select.value = valorActual;
-  } else if (esMatricula) {
-    select.value = 'activo';
+  } else {
+    select.value = '';
   }
 }
 
@@ -198,10 +199,7 @@ function hayFiltrosAplicados(filtros) {
 function actualizarEstadoBotonAplicar() {
   const button = document.getElementById('report-aplicar');
   if (!button) return;
-
-  const filtros = obtenerFiltrosActivos();
-  const habilitadoPorFiltros = hayFiltrosAplicados(filtros);
-  button.disabled = reporteCargando || !habilitadoPorFiltros;
+  button.disabled = reporteCargando;
 }
 
 function validarFiltros(filtros) {
@@ -240,18 +238,6 @@ async function cargarReporte() {
   const filtros = obtenerFiltrosActivos();
   const error = validarFiltros(filtros);
   if (error) { mostrarError(error); showToast(error, 'error'); return; }
-
-  if (!hayFiltrosAplicados(filtros)) {
-    consultaAplicada = false;
-    reporteActual = null;
-    window._reportePdfData = null;
-    renderTablaPrincipal({ detalle_por_grupo: [], detalle: [] });
-    renderEmptyState({ detalle_por_grupo: [], detalle: [] }, 'Debes seleccionar al menos un filtro para generar el reporte.');
-    actualizarResumenTexto(null, 'Selecciona al menos un filtro antes de aplicar.');
-    showToast('Selecciona al menos un filtro para generar el reporte.', 'warning');
-    actualizarEstadoBotonAplicar();
-    return;
-  }
 
   limpiarError();
   const button = document.getElementById('report-aplicar');
@@ -377,15 +363,15 @@ function renderTablaPrincipal(data = {}) {
     renderRows(body, agrupado, r => [fullName(r), r.grupo ?? r.nombre_grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0, r.tardias ?? 0, r.justificadas ?? 0]); return;
   }
   if (modo === 'profesores') {
-    head.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estudiantes</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>';
-    renderRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? r.materia_curso ?? '-', r.grupos ?? r.grupo ?? '-', r.secciones ?? r.seccion ?? '-', r.estudiantes_asociados ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return;
+    head.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estudiantes</th><th>Estado</th>';
+    renderRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? r.materia_curso ?? '-', r.grupos ?? r.grupo ?? '-', r.secciones ?? r.seccion ?? '-', r.estudiantes_asociados ?? 0, normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return;
   }
   if (modo === 'grupos') {
     head.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>';
     renderRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return;
   }
-  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th><th>Observaciones</th>';
-  renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones || '—']);
+  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
+  renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)]);
 }
 
 function renderRows(body, rows, mapper) {
@@ -526,8 +512,8 @@ function renderPreviewTable(data) {
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0]); return; }
-  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th><th>Observaciones</th>';
-  renderPreviewRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones ?? '—']);
+  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
+  renderPreviewRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)]);
 }
 
 function renderPreviewRows(body, rows, mapper) {
@@ -626,16 +612,16 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
     filas: agrupado.map(r => [fullName(r), r.grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0, r.tardias ?? 0, r.justificadas ?? 0])
   };
   if (modo === 'profesores') return {
-    columnas: [{ label: 'Profesor', width: 52 }, { label: 'Materia', width: 38 }, { label: 'Grupo(s)', width: 42 }, { label: 'Sección(es)', width: 48 }, { label: 'Estudiantes', width: 28 }, { label: 'Asist.', width: 26 }, { label: 'Estado', width: usable - 234 }],
-    filas: agrupado.map(r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', r.estudiantes_asociados ?? 0, r.asistencias_registradas ?? 0, r.estado ?? 'Activo'])
+    columnas: [{ label: 'Profesor', width: 56 }, { label: 'Materia', width: 42 }, { label: 'Grupo(s)', width: 46 }, { label: 'Sección(es)', width: 52 }, { label: 'Estudiantes', width: 30 }, { label: 'Estado', width: usable - 226 }],
+    filas: agrupado.map(r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', r.estudiantes_asociados ?? 0, normalizarEstadoActivo(r.estado ?? r.profesor_estado)])
   };
   if (modo === 'grupos') return {
     columnas: [{ label: 'Grupo', width: 35 }, { label: 'Sección', width: 35 }, { label: 'Ocupados', width: 28 }, { label: 'Capacidad', width: 28 }, { label: 'Asistencias', width: 30 }, { label: 'Presentes', width: 30 }, { label: 'Ausentes', width: usable - 186 }],
     filas: agrupado.map(r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0])
   };
   return {
-    columnas: [{ label: 'Fecha', width: 24 }, { label: 'Estudiante', width: 48 }, { label: 'Grupo', width: 25 }, { label: 'Profesor', width: 42 }, { label: 'Estado estudiante', width: 32 }, { label: 'Observaciones', width: usable - 171 }],
-    filas: detalle.map(r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado), r.observaciones || '-'])
+    columnas: [{ label: 'Fecha', width: 26 }, { label: 'Estudiante', width: 56 }, { label: 'Grupo', width: 26 }, { label: 'Profesor', width: 50 }, { label: 'Estado estudiante', width: usable - 158 }],
+    filas: detalle.map(r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)])
   };
 }
 

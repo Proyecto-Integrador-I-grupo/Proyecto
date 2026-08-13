@@ -23,8 +23,8 @@ const validarMatricula = [
   body("anio").isInt({ min: 2000, max: 2100 }).withMessage("El año lectivo no es válido."),
   body("tipo").notEmpty().isLength({ max: 20 }).withMessage("El tipo de matrícula es obligatorio (máx. 20 caracteres)."),
   body("estado").notEmpty().isLength({ max: 20 }).withMessage("El estado de la matrícula es obligatorio (máx. 20 caracteres)."),
-  body("observaciones").optional({ nullable: true }).isLength({ max: 20 })
-    .withMessage("Las observaciones no pueden superar 20 caracteres (limitación del procedimiento de matrícula)."),
+  body("observaciones").optional({ nullable: true }).isLength({ max: 150 })
+    .withMessage("Las observaciones no pueden superar 150 caracteres."),
   body("id_estudiante").isInt({ min: 1 }).withMessage("Debe seleccionar un estudiante."),
   body("id_usuario").isInt({ min: 1 }).withMessage("Falta el usuario que procesa la matrícula."),
   body("id_grupo").isInt({ min: 1 }).withMessage("Debe seleccionar un grupo.")
@@ -51,8 +51,8 @@ const validarTransferenciaEstudiante = [
   body("anio").isInt({ min: 2000, max: 2100 }).withMessage("El año lectivo no es válido."),
   body("tipo").notEmpty().isLength({ max: 20 }).withMessage("El tipo de matrícula es obligatorio (máx. 20 caracteres)."),
   body("estado").notEmpty().isLength({ max: 20 }).withMessage("El estado de la matrícula es obligatorio (máx. 20 caracteres)."),
-  body("observaciones").optional({ nullable: true }).isLength({ max: 20 })
-    .withMessage("Las observaciones no pueden superar 20 caracteres (limitación del procedimiento de matrícula)."),
+  body("observaciones").optional({ nullable: true }).isLength({ max: 150 })
+    .withMessage("Las observaciones no pueden superar 150 caracteres."),
   body("id_estudiante").isInt({ min: 1 }).withMessage("Debe indicar el estudiante."),
   body("id_usuario").isInt({ min: 1 }).withMessage("Falta el usuario que procesa la transferencia."),
   body("id_grupo_actual").isInt({ min: 1 }).withMessage("Debe indicar el grupo de origen."),

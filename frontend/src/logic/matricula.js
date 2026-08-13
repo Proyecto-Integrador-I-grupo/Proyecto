@@ -421,7 +421,7 @@ async function handleGestionMatriculaSubmit(e) {
         anio,
         tipo: document.getElementById('gm-tipo')?.value || 'traslado',
         estado: 'activa',
-        observaciones: document.getElementById('gm-observaciones')?.value.trim().slice(0, 20) || null,
+        observaciones: document.getElementById('gm-observaciones')?.value.trim().slice(0, 150) || null,
         id_usuario: currentUser?.id_usuario ?? 1
       };
 
@@ -705,7 +705,13 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   const profClear = document.getElementById('gestion-profesor-clear');
   if (profSearch) profSearch.disabled = false;
   if (profClear) profClear.disabled = false;
+  const ocupadosActuales = Number(grupo.ocupados ?? 0);
   capacidadInput.value = grupo.capacidad ?? 30;
+  capacidadInput.min = String(Math.max(1, ocupadosActuales));
+  capacidadInput.dataset.ocupados = String(ocupadosActuales);
+  capacidadInput.title = ocupadosActuales > 0
+    ? `Este grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'}. La capacidad no puede ser menor a ${ocupadosActuales}.`
+    : 'La capacidad debe ser mayor a cero.';
   aulaSelect.value = grupo.aula ?? '';
 
   try {
@@ -738,6 +744,21 @@ async function handleGestionGrupoSubmit(e) {
 
   if (!idGrupo || !capacidad) {
     showToast('Selecciona un grupo y capacidad.', 'error');
+    return;
+  }
+
+  const grupoActual = allGrupos.find((g) => Number(g.id_grupo ?? g.id) === idGrupo);
+  const ocupadosActuales = Number(
+    grupoActual?.ocupados ??
+    document.getElementById('gestion-grupo-capacidad')?.dataset.ocupados ??
+    0
+  );
+
+  if (capacidad < ocupadosActuales) {
+    showToast(
+      `No puedes reducir la capacidad a ${capacidad}. Hay ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'} en este grupo.`,
+      'error'
+    );
     return;
   }
 
@@ -790,7 +811,7 @@ async function handleMatriculaSubmit(e) {
     anio,
     tipo: document.getElementById('mat-tipo').value,
     estado: 'activa',
-    observaciones: document.getElementById('mat-observaciones').value.trim().slice(0, 20) || null,
+    observaciones: document.getElementById('mat-observaciones').value.trim().slice(0, 150) || null,
     id_estudiante: personaId,
     id_usuario: currentUser?.id_usuario ?? 1,
     id_grupo: id_grupo

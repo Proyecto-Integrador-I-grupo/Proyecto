@@ -233,11 +233,24 @@ export async function actualizarGrupoService(idGrupo, datos) {
     await connection.beginTransaction();
 
     const [grupoRows] = await connection.query(
-      "SELECT id_grupo, estado FROM grupo WHERE id_grupo = ? AND estado = TRUE",
+      `SELECT
+          id_grupo,
+          estado,
+          fn_estudiantes_grupo(id_grupo) AS ocupados
+       FROM grupo
+       WHERE id_grupo = ? AND estado = TRUE
+       FOR UPDATE`,
       [idGrupo]
     );
     if (grupoRows.length === 0) {
       throw new Error("El grupo no existe o está inactivo.");
+    }
+
+    const ocupadosActuales = Number(grupoRows[0].ocupados || 0);
+    if (capacidadNum < ocupadosActuales) {
+      throw new Error(
+        `No puedes reducir la capacidad a ${capacidadNum}. El grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? "" : "s"} matriculado${ocupadosActuales === 1 ? "" : "s"}. La capacidad mínima permitida es ${ocupadosActuales}.`
+      );
     }
 
     await connection.query(

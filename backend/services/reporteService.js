@@ -238,14 +238,31 @@ function construirDetallePorEstudiante(detalle = []) {
 
     detalle.forEach((registro) => {
         const id = registro.id_estudiante ?? registro.estudiante_id ?? "sin-id";
-        const key = `estudiante-${id}`;
+        const idGrupo = registro.id_grupo ?? "sin-grupo";
+        const key = `estudiante-${id}-grupo-${idGrupo}`;
+        const nombreGrupo = registro.nombre_grupo || "-";
+        const seccion = registro.nombre_seccion || "";
+        const nivel = registro.nivel || "";
+        const seccionTexto = seccion
+            ? (/secci[oó]n/i.test(String(seccion)) ? String(seccion) : `Sección ${seccion}`)
+            : "";
+        const grupoEtiqueta = seccionTexto
+            ? `${nombreGrupo} · ${seccionTexto}${nivel && String(nivel).toLowerCase() !== String(seccion).toLowerCase() ? ` · Nivel ${nivel}` : ""}`
+            : (nivel ? `${nombreGrupo} · Nivel ${nivel}` : nombreGrupo);
+
         if (!mapa.has(key)) {
             mapa.set(key, {
                 id_estudiante: id,
+                id_grupo: registro.id_grupo ?? null,
                 estudiante_nombre: registro.estudiante_nombre || "-",
                 estudiante_apellido1: registro.estudiante_apellido1 || "",
                 estudiante_apellido2: registro.estudiante_apellido2 || "",
-                grupo: registro.nombre_grupo || "-",
+                estudiante_estado: registro.estudiante_estado ?? registro.estado ?? 1,
+                nombre_grupo: nombreGrupo,
+                nombre_seccion: seccion || "-",
+                nivel: nivel || "-",
+                grupo: grupoEtiqueta,
+                grupo_etiqueta: grupoEtiqueta,
                 profesores: [],
                 asistencias_registradas: 0,
                 presentes: 0,
@@ -256,20 +273,133 @@ function construirDetallePorEstudiante(detalle = []) {
         }
 
         const item = mapa.get(key);
-        item.asistencias_registradas += 1;
         const profesor = `${registro.profesor_nombre || ""} ${registro.profesor_apellido1 || ""} ${registro.profesor_apellido2 || ""}`.trim();
         if (profesor && !item.profesores.includes(profesor)) item.profesores.push(profesor);
 
-        const estado = normalizarEstado(registro.estado_asistencia);
-        if (estado === "presente") item.presentes += 1;
-        if (estado === "ausente") item.ausentes += 1;
-        if (estado === "tardia") item.tardias += 1;
-        if (estado === "justificada") item.justificadas += 1;
+        if (registro.id_asistencia) {
+            item.asistencias_registradas += 1;
+            const estado = normalizarEstado(registro.estado_asistencia);
+            if (estado === "presente") item.presentes += 1;
+            if (estado === "ausente") item.ausentes += 1;
+            if (estado === "tardia") item.tardias += 1;
+            if (estado === "justificada") item.justificadas += 1;
+        }
     });
 
     return Array.from(mapa.values())
-        .map((item) => ({ ...item, profesor: item.profesores.join(", ") || "-" }))
-        .sort((a, b) => `${a.estudiante_nombre} ${a.estudiante_apellido1}`.localeCompare(`${b.estudiante_nombre} ${b.estudiante_apellido1}`));
+        .map((item) => ({
+            ...item,
+            profesor: item.profesores.join(", ") || "-",
+            tasa_presentismo: item.asistencias_registradas
+                ? Math.round((item.presentes / item.asistencias_registradas) * 100)
+                : 0
+        }))
+        .sort((a, b) => {
+            const grupoCompare = String(a.grupo_etiqueta || "").localeCompare(String(b.grupo_etiqueta || ""));
+            if (grupoCompare !== 0) return grupoCompare;
+            return `${a.estudiante_nombre} ${a.estudiante_apellido1}`.localeCompare(`${b.estudiante_nombre} ${b.estudiante_apellido1}`);
+        });
+}
+
+async function generarDetalleEstudiantesAsignados(filtros = {}) {
+    const condiciones = [
+        "ge.estado = TRUE",
+        "g.estado = TRUE",
+        "e.estado = TRUE",
+        "gp.estado = TRUE",
+        "prof.estado = TRUE"
+    ];
+    const valores = [];
+    const asistenciaJoin = ["a.estado = TRUE"];
+    const asistenciaValores = [];
+
+    if (filtros.scope_profesor_id) {
+        condiciones.push("gp.id_profesor = ?");
+        valores.push(filtros.scope_profesor_id);
+    }
+
+    if (filtros.id_grupo) {
+        condiciones.push("g.id_grupo = ?");
+        valores.push(filtros.id_grupo);
+    }
+
+    if (filtros.id_estudiante) {
+        condiciones.push("e.id_estudiante = ?");
+        valores.push(filtros.id_estudiante);
+    }
+
+    if (filtros.fecha_inicio) {
+        asistenciaJoin.push("DATE(a.fecha) >= ?");
+        asistenciaValores.push(filtros.fecha_inicio);
+    }
+
+    if (filtros.fecha_fin) {
+        asistenciaJoin.push("DATE(a.fecha) <= ?");
+        asistenciaValores.push(filtros.fecha_fin);
+    }
+
+    if (filtros.estado_asistencia) {
+        asistenciaJoin.push("a.estado_asistencia = ?");
+        asistenciaValores.push(filtros.estado_asistencia);
+        condiciones.push("a.id_asistencia IS NOT NULL");
+    }
+
+    if (filtros.busqueda) {
+        const texto = construirLikeBusqueda(filtros.busqueda);
+        condiciones.push(`(
+            ${sqlTextoNormalizado("pe.nombre")} LIKE ?
+            OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ?
+            OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ?
+            OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ?
+            OR CAST(e.id_estudiante AS CHAR) LIKE ?
+            OR ${sqlTextoNormalizado("pp.nombre")} LIKE ?
+            OR ${sqlTextoNormalizado("pp.apellido1")} LIKE ?
+            OR ${sqlTextoNormalizado("pp.apellido2")} LIKE ?
+            OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2))")} LIKE ?
+            OR CAST(prof.id_profesor AS CHAR) LIKE ?
+        )`);
+        pushBusquedaValores(valores, texto, 2);
+    }
+
+    const [rows] = await pool.query(
+        `SELECT
+            e.id_estudiante,
+            e.estado AS estudiante_estado,
+            pe.nombre AS estudiante_nombre,
+            pe.apellido1 AS estudiante_apellido1,
+            pe.apellido2 AS estudiante_apellido2,
+            g.id_grupo,
+            g.nombre_grupo,
+            s.nombre_seccion,
+            s.nivel,
+            prof.id_profesor,
+            pp.nombre AS profesor_nombre,
+            pp.apellido1 AS profesor_apellido1,
+            pp.apellido2 AS profesor_apellido2,
+            prof.materia AS materia_curso,
+            a.id_asistencia,
+            a.fecha,
+            a.estado_asistencia,
+            a.observaciones
+         FROM grupo_estudiante ge
+         INNER JOIN estudiante e ON e.id_estudiante = ge.id_estudiante
+         INNER JOIN persona pe ON pe.id_persona = e.id_persona
+         INNER JOIN grupo g ON g.id_grupo = ge.id_grupo
+         INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+         INNER JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo
+         INNER JOIN profesor prof ON prof.id_profesor = gp.id_profesor
+         INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+         LEFT JOIN asistencia a
+           ON a.id_estudiante = e.id_estudiante
+          AND a.id_grupo = g.id_grupo
+          AND a.id_profesor = prof.id_profesor
+          AND ${asistenciaJoin.join(" AND ")}
+         WHERE ${condiciones.join(" AND ")}
+         ORDER BY s.nivel, s.nombre_seccion, g.nombre_grupo, pe.apellido1, pe.apellido2, pe.nombre, a.fecha DESC`,
+        [...asistenciaValores, ...valores]
+    );
+
+    return rows;
 }
 
 function construirDetallePorProfesor(detalle = []) {
@@ -325,7 +455,9 @@ function construirDetallePorProfesor(detalle = []) {
 export async function generarReporteCaso(filtros = {}, usuarioActual = null) {
     const filtrosNormalizados = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
     const resumen = await generarReporteResumen(filtrosNormalizados, usuarioActual);
-    const detalleResultado = await generarReporteDetalle(filtrosNormalizados, usuarioActual);
+    const detalleResultado = filtrosNormalizados.modo === "estudiantes"
+        ? { modo: "estudiantes", detalle: await generarDetalleEstudiantesAsignados(filtrosNormalizados) }
+        : await generarReporteDetalle(filtrosNormalizados, usuarioActual);
     const detalle = Array.isArray(detalleResultado?.detalle) ? detalleResultado.detalle : [];
 
     let detalle_por_grupo = resumen?.detalle_por_grupo || [];
@@ -519,12 +651,16 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
     if (f.scope_profesor_id) {
         const [scopeRows] = await pool.query(
             `SELECT
-                COUNT(DISTINCT a.id_estudiante) AS total_estudiantes,
+                COUNT(DISTINCT ge.id_estudiante) AS total_estudiantes,
                 1 AS total_profesores,
-                COUNT(DISTINCT a.id_grupo) AS total_grupos,
+                COUNT(DISTINCT gp.id_grupo) AS total_grupos,
                 0 AS total_matriculas
-             FROM asistencia a
-             WHERE a.estado = TRUE AND a.id_profesor = ?`,
+             FROM grupo_profesor gp
+             LEFT JOIN grupo_estudiante ge
+               ON ge.id_grupo = gp.id_grupo
+              AND ge.estado = TRUE
+             WHERE gp.estado = TRUE
+               AND gp.id_profesor = ?`,
             [f.scope_profesor_id]
         );
         base = scopeRows[0] || base;
@@ -554,6 +690,11 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
 
 export async function generarReporteDetalle(filtros = {}, usuarioActual = null) {
     const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
+
+    if (f.modo === "estudiantes") {
+        const rows = await generarDetalleEstudiantesAsignados(f);
+        return { modo: f.modo, detalle: rows };
+    }
 
     if (f.modo === "pre_matricula") {
         const condiciones = [];

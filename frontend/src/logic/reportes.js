@@ -29,6 +29,26 @@ function obtenerRolActual() {
   return String(currentUser?.rol || '').toLowerCase().trim();
 }
 
+function esProfesorActual() {
+  return obtenerRolActual() === 'profesor';
+}
+
+function etiquetaGrupo(grupo = {}) {
+  const nombre = String(grupo.nombre_grupo || grupo.grupo || 'Grupo').trim();
+  const seccion = String(grupo.nombre_seccion || '').trim();
+  const nivel = String(grupo.nivel || '').trim();
+  const seccionTexto = seccion
+    ? (/secci[oó]n/i.test(seccion) ? seccion : `Sección ${seccion}`)
+    : '';
+
+  if (seccionTexto && nivel && seccion.toLowerCase() !== nivel.toLowerCase()) {
+    return `${nombre} · ${seccionTexto} · Nivel ${nivel}`;
+  }
+  if (seccionTexto) return `${nombre} · ${seccionTexto}`;
+  if (nivel) return `${nombre} · Nivel ${nivel}`;
+  return nombre;
+}
+
 function modosPermitidosActuales() {
   return MODOS_POR_ROL[obtenerRolActual()] || [];
 }
@@ -414,8 +434,8 @@ function renderTablaPrincipal(data = {}) {
   }
   if (modo === 'auditoria') { renderAuditoria(body, head, detalle, false); return; }
   if (modo === 'estudiantes') {
-    head.innerHTML = '<th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th><th>Tardías</th><th>Justificadas</th>';
-    renderRows(body, agrupado, r => [fullName(r), r.grupo ?? r.nombre_grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0, r.tardias ?? 0, r.justificadas ?? 0]); return;
+    renderEstudiantesReporte(body, head, agrupado);
+    return;
   }
   if (modo === 'profesores') {
     head.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estudiantes</th><th>Estado</th>';
@@ -427,6 +447,50 @@ function renderTablaPrincipal(data = {}) {
   }
   head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
   renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)]);
+}
+
+function renderEstudiantesReporte(body, head, rows = []) {
+  const profesor = esProfesorActual();
+  head.innerHTML = `<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th><th>Tardías</th><th>Justificadas</th>${profesor ? '<th>Boleta</th>' : ''}`;
+  body.innerHTML = '';
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="${profesor ? 9 : 8}" class="text-center py-5 text-muted">${obtenerMensajeSinDatos()}</td></tr>`;
+    return;
+  }
+
+  rows.slice(0, 500).forEach((r) => {
+    const tr = document.createElement('tr');
+    const valores = [
+      fullName(r),
+      r.grupo_etiqueta || r.grupo || etiquetaGrupo(r),
+      r.profesor || '-',
+      r.asistencias_registradas ?? 0,
+      r.presentes ?? 0,
+      r.ausentes ?? 0,
+      r.tardias ?? 0,
+      r.justificadas ?? 0
+    ];
+
+    valores.forEach((value) => {
+      const td = document.createElement('td');
+      td.textContent = value == null || value === '' ? '-' : String(value);
+      tr.appendChild(td);
+    });
+
+    if (profesor) {
+      const td = document.createElement('td');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-outline-primary btn-sm text-nowrap';
+      button.innerHTML = '<i class="bi bi-file-earmark-person"></i> Boleta';
+      button.addEventListener('click', () => generarBoletaEstudiante(r));
+      td.appendChild(button);
+      tr.appendChild(td);
+    }
+
+    body.appendChild(tr);
+  });
 }
 
 function renderRows(body, rows, mapper) {
@@ -564,7 +628,7 @@ function renderPreviewTable(data) {
   const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
-  if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
+  if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0]); return; }
   header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
@@ -664,7 +728,7 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
   };
   if (modo === 'estudiantes') return {
     columnas: [{ label: 'Estudiante', width: 50 }, { label: 'Grupo', width: 30 }, { label: 'Profesor(es)', width: 55 }, { label: 'Asist.', width: 24 }, { label: 'Pres.', width: 22 }, { label: 'Aus.', width: 22 }, { label: 'Tard.', width: 22 }, { label: 'Just.', width: usable - 225 }],
-    filas: agrupado.map(r => [fullName(r), r.grupo ?? '-', r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0, r.tardias ?? 0, r.justificadas ?? 0])
+    filas: agrupado.map(r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0, r.tardias ?? 0, r.justificadas ?? 0])
   };
   if (modo === 'profesores') return {
     columnas: [{ label: 'Profesor', width: 56 }, { label: 'Materia', width: 42 }, { label: 'Grupo(s)', width: 46 }, { label: 'Sección(es)', width: 52 }, { label: 'Estudiantes', width: 30 }, { label: 'Estado', width: usable - 226 }],
@@ -748,6 +812,151 @@ function compactarJson(value) {
   return text.length > 280 ? `${text.slice(0, 277)}...` : text;
 }
 
+async function generarBoletaEstudiante(estudiante) {
+  if (!esProfesorActual()) {
+    showToast('La boleta individual está disponible únicamente para profesores.', 'error');
+    return;
+  }
+
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) {
+    showToast('No se pudo iniciar el generador de PDF.', 'error');
+    return;
+  }
+
+  const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const nombre = fullName(estudiante);
+  const grupo = estudiante.grupo_etiqueta || estudiante.grupo || etiquetaGrupo(estudiante);
+  const profesor = estudiante.profesor || `${currentUser?.nombre || ''} ${currentUser?.apellido1 || ''} ${currentUser?.apellido2 || ''}`.trim() || 'Profesor';
+  const asistencias = Number(estudiante.asistencias_registradas || 0);
+  const presentes = Number(estudiante.presentes || 0);
+  const ausentes = Number(estudiante.ausentes || 0);
+  const tardias = Number(estudiante.tardias || 0);
+  const justificadas = Number(estudiante.justificadas || 0);
+  const presentismo = asistencias ? Math.round((presentes / asistencias) * 100) : 0;
+  const filtros = reporteActual?.filtros || obtenerFiltrosActivos();
+  const detalleAsistencia = (Array.isArray(reporteActual?.detalle) ? reporteActual.detalle : [])
+    .filter((r) => Number(r.id_estudiante) === Number(estudiante.id_estudiante)
+      && (!estudiante.id_grupo || Number(r.id_grupo) === Number(estudiante.id_grupo))
+      && r.id_asistencia)
+    .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+
+  doc.setFillColor(15, 29, 53);
+  doc.rect(0, 0, 210, 34, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.text('Boleta de seguimiento del estudiante', 14, 14);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('EduControl · Seguimiento académico y de asistencia', 14, 21);
+  doc.text(`Emitida: ${new Date().toLocaleString('es-CR')}`, 14, 27);
+
+  const logo = await obtenerLogoReporteDataUrl();
+  if (logo) {
+    try { doc.addImage(logo, 'JPEG', 178, 4, 24, 24); } catch (error) { console.warn(error); }
+  }
+
+  let y = 46;
+  doc.setTextColor(31, 41, 55);
+  doc.setFillColor(242, 246, 252);
+  doc.roundedRect(12, y - 6, 186, 37, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Información del estudiante', 18, y + 1);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Estudiante: ${nombre}`, 18, y + 9);
+  doc.text(`Grupo / sección: ${grupo}`, 18, y + 16);
+  doc.text(`Profesor: ${profesor}`, 18, y + 23);
+  y += 45;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Resumen de asistencia', 14, y);
+  y += 8;
+
+  const tarjetas = [
+    ['Asistencias', asistencias],
+    ['Presentes', presentes],
+    ['Ausentes', ausentes],
+    ['Tardías', tardias],
+    ['Justificadas', justificadas],
+    ['Presentismo', `${presentismo}%`]
+  ];
+
+  tarjetas.forEach(([label, value], index) => {
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 14 + col * 62;
+    const yy = y + row * 24;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(220, 226, 234);
+    doc.roundedRect(x, yy, 56, 18, 2, 2, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(90, 101, 115);
+    doc.text(label, x + 4, yy + 6);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(31, 41, 55);
+    doc.text(String(value), x + 4, yy + 14);
+  });
+
+  y += 57;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(55, 65, 81);
+  doc.text(`Periodo consultado: ${obtenerRangoFechaAplicado(filtros)}`, 14, y);
+  y += 10;
+
+  if (!asistencias) {
+    doc.setFillColor(255, 248, 230);
+    doc.roundedRect(12, y, 186, 18, 2, 2, 'F');
+    doc.setTextColor(120, 84, 20);
+    doc.text('El estudiante pertenece al grupo, pero todavía no tiene asistencias registradas en el periodo consultado.', 17, y + 7, { maxWidth: 176 });
+    y += 26;
+  } else {
+    doc.setTextColor(31, 41, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Detalle reciente', 14, y);
+    y += 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+
+    detalleAsistencia.slice(0, 8).forEach((registro) => {
+      const estado = String(registro.estado_asistencia || '-');
+      const observacion = String(registro.observaciones || 'Sin observación');
+      const texto = `${formatDate(registro.fecha)} · ${estado} · ${observacion}`;
+      const lineas = doc.splitTextToSize(texto, 176);
+      const alto = Math.max(5, lineas.length * 4);
+      if (y + alto > 245) return;
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, y - 3.5, 182, alto + 2, 1.5, 1.5, 'F');
+      doc.setTextColor(55, 65, 81);
+      doc.text(lineas, 18, y);
+      y += alto + 4;
+    });
+  }
+
+  const firmaY = Math.max(265, y + 18);
+  if (firmaY > 276) {
+    doc.addPage();
+  }
+  const finalFirmaY = firmaY > 276 ? 245 : firmaY;
+  doc.setDrawColor(190, 198, 210);
+  doc.line(28, finalFirmaY, 88, finalFirmaY);
+  doc.line(122, finalFirmaY, 182, finalFirmaY);
+  doc.setTextColor(80, 90, 105);
+  doc.setFontSize(9);
+  doc.text('Firma del profesor', 46, finalFirmaY + 6);
+  doc.text('Firma del encargado', 140, finalFirmaY + 6);
+
+  const safeName = nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+/g, '_');
+  doc.save(`Boleta_${safeName}.pdf`);
+}
+
 function obtenerLogoReporteDataUrl() {
   if (!reporteLogoDataUrlPromise) {
     reporteLogoDataUrlPromise = fetch(REPORTE_LOGO_SRC)
@@ -773,7 +982,11 @@ function poblarFiltroGrupoReportes() {
   const current = select.value;
   select.innerHTML = '<option value="">Todos los grupos</option>';
   const grupos = Array.isArray(allGrupos) ? allGrupos : [];
-  grupos.forEach(grupo => { const id = grupo.id_grupo ?? grupo.id; if (id != null) select.add(new Option(grupo.nombre_grupo ?? `Grupo ${id}`, id)); });
+  grupos.forEach((grupo) => {
+    const id = grupo.id_grupo ?? grupo.id;
+    if (id == null) return;
+    select.add(new Option(etiquetaGrupo(grupo), id));
+  });
   select.value = current || '';
 }
 

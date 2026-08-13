@@ -58,7 +58,7 @@ function wireAsistenciaEvents() {
   const matrixBody = document.getElementById('asis-matrix-body');
   if (matrixBody && !matrixBody.dataset.wired) {
     matrixBody.dataset.wired = '1';
-    matrixBody.addEventListener('click', manejarCelda);
+    matrixBody.addEventListener('click', manejarAccionMatriz);
   }
 
   const historyBody = document.getElementById('asis-historial-body');
@@ -71,6 +71,12 @@ function wireAsistenciaEvents() {
   if (editForm && !editForm.dataset.wired) {
     editForm.dataset.wired = '1';
     editForm.addEventListener('submit', guardarEdicionHistorial);
+  }
+
+  const observationForm = document.getElementById('asis-observacion-form');
+  if (observationForm && !observationForm.dataset.wired) {
+    observationForm.dataset.wired = '1';
+    observationForm.addEventListener('submit', guardarObservacionMatriz);
   }
 
   const collapse = document.getElementById('asis-historial-detallado');
@@ -302,18 +308,22 @@ function renderMatriz() {
       const key = `${e.id_estudiante}-${d.fecha}`;
       const registro = porClave.get(key);
       const estado = registro?.estado_asistencia || '';
+      const observaciones = registro?.observaciones || '';
       return `<td class="attendance-cell">
-        <button
-          type="button"
-          class="attendance-cell-btn ${estado ? `is-${estado}` : 'is-empty'}"
-          data-key="${key}"
-          data-id-estudiante="${e.id_estudiante}"
-          data-fecha="${d.fecha}"
-          data-id-asistencia="${registro?.id_asistencia || ''}"
-          data-estado="${estado}"
-          title="${estado ? nombreEstado(estado) : 'Sin registrar'}"
-          ${puedeEditar() ? '' : 'disabled'}
-        >${ETIQUETAS[estado] || '·'}</button>
+        <div class="attendance-cell-stack">
+          <button
+            type="button"
+            class="attendance-cell-btn ${estado ? `is-${estado}` : 'is-empty'}"
+            data-key="${key}"
+            data-id-estudiante="${e.id_estudiante}"
+            data-fecha="${d.fecha}"
+            data-id-asistencia="${registro?.id_asistencia || ''}"
+            data-estado="${estado}"
+            title="${estado ? nombreEstado(estado) : 'Sin registrar'}"
+            ${puedeEditar() ? '' : 'disabled'}
+          >${ETIQUETAS[estado] || '·'}</button>
+          ${puedeEditar() ? `<button type="button" class="attendance-note-btn ${observaciones ? 'has-note' : ''}" data-key="${key}" data-id-estudiante="${e.id_estudiante}" data-fecha="${d.fecha}" data-id-asistencia="${registro?.id_asistencia || ''}" title="${observaciones ? 'Editar observación' : 'Agregar observación'}"><i class="bi ${observaciones ? 'bi-chat-left-text-fill' : 'bi-chat-left-text'}"></i></button>` : ''}
+        </div>
       </td>`;
     }).join('');
 
@@ -331,6 +341,90 @@ function renderMatriz() {
   if (summary) summary.textContent = `${groupText} · ${valor} · ${estudiantes.length} estudiantes`;
 }
 
+function manejarAccionMatriz(event) {
+  const note = event.target.closest('.attendance-note-btn');
+  if (note) {
+    abrirObservacionMatriz(note);
+    return;
+  }
+
+  manejarCelda(event);
+}
+
+function abrirObservacionMatriz(button) {
+  if (!puedeEditar()) return;
+
+  const key = button.dataset.key;
+  const idEstudiante = Number(button.dataset.idEstudiante || 0);
+  const fecha = button.dataset.fecha || '';
+  const idAsistencia = Number(button.dataset.idAsistencia || 0) || null;
+  const registro = registrosMes.find((r) => String(r.id_estudiante) === String(idEstudiante) && String(r.fecha || '').split('T')[0] === fecha);
+  const pendiente = cambiosPendientes.get(key);
+  const estudiante = (detalleGrupo?.estudiantes || []).find((e) => Number(e.id_estudiante) === idEstudiante);
+  const nombre = `${estudiante?.nombre ?? ''} ${estudiante?.apellido1 ?? ''} ${estudiante?.apellido2 ?? ''}`.trim();
+
+  const stateButton = document.querySelector(`.attendance-cell-btn[data-key="${CSS.escape(key)}"]`);
+  const estado = pendiente?.estado ?? stateButton?.dataset.estado ?? registro?.estado_asistencia ?? '';
+  const observaciones = pendiente?.observaciones ?? registro?.observaciones ?? '';
+
+  document.getElementById('asis-observacion-key').value = key;
+  document.getElementById('asis-observacion-id-estudiante').value = idEstudiante;
+  document.getElementById('asis-observacion-fecha').value = fecha;
+  document.getElementById('asis-observacion-id-asistencia').value = idAsistencia || '';
+  document.getElementById('asis-observacion-estudiante').value = nombre || `Estudiante #${idEstudiante}`;
+  document.getElementById('asis-observacion-fecha-texto').value = formatearFecha(fecha);
+  document.getElementById('asis-observacion-estado').value = estado || '';
+  document.getElementById('asis-observacion-texto').value = observaciones || '';
+
+  const modalEl = document.getElementById('modalObservacionAsistencia');
+  if (modalEl && window.bootstrap?.Modal) {
+    (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+  }
+}
+
+function guardarObservacionMatriz(event) {
+  event.preventDefault();
+
+  const key = document.getElementById('asis-observacion-key')?.value || '';
+  const idEstudiante = Number(document.getElementById('asis-observacion-id-estudiante')?.value || 0);
+  const fecha = document.getElementById('asis-observacion-fecha')?.value || '';
+  const idAsistencia = Number(document.getElementById('asis-observacion-id-asistencia')?.value || 0) || null;
+  const estado = document.getElementById('asis-observacion-estado')?.value || '';
+  const observaciones = document.getElementById('asis-observacion-texto')?.value.trim().slice(0, 250) || null;
+
+  if (!key || !idEstudiante || !fecha) return;
+  if (!estado) {
+    showToast('Selecciona un estado de asistencia antes de agregar la observación.', 'error');
+    return;
+  }
+
+  cambiosPendientes.set(key, {
+    id_asistencia: idAsistencia,
+    id_estudiante: idEstudiante,
+    fecha,
+    estado,
+    observaciones
+  });
+
+  const stateButton = document.querySelector(`.attendance-cell-btn[data-key="${CSS.escape(key)}"]`);
+  if (stateButton) {
+    stateButton.dataset.estado = estado;
+    stateButton.textContent = ETIQUETAS[estado] || '·';
+    stateButton.className = `attendance-cell-btn is-${estado} is-dirty`;
+    stateButton.title = nombreEstado(estado);
+  }
+
+  const noteButton = document.querySelector(`.attendance-note-btn[data-key="${CSS.escape(key)}"]`);
+  if (noteButton) {
+    noteButton.classList.toggle('has-note', Boolean(observaciones));
+    noteButton.innerHTML = `<i class="bi ${observaciones ? 'bi-chat-left-text-fill' : 'bi-chat-left-text'}"></i>`;
+    noteButton.title = observaciones ? 'Editar observación' : 'Agregar observación';
+  }
+
+  actualizarCambiosPendientes();
+  window.bootstrap?.Modal.getInstance(document.getElementById('modalObservacionAsistencia'))?.hide();
+}
+
 function manejarCelda(event) {
   const button = event.target.closest('.attendance-cell-btn');
   if (!button || !puedeEditar()) return;
@@ -344,11 +438,16 @@ function manejarCelda(event) {
   button.className = `attendance-cell-btn ${siguiente ? `is-${siguiente}` : 'is-empty'} is-dirty`;
   button.title = siguiente ? nombreEstado(siguiente) : 'Sin registrar';
 
-  cambiosPendientes.set(button.dataset.key, {
+  const key = button.dataset.key;
+  const existente = cambiosPendientes.get(key);
+  const registro = registrosMes.find((r) => Number(r.id_asistencia) === Number(button.dataset.idAsistencia || 0));
+
+  cambiosPendientes.set(key, {
     id_asistencia: Number(button.dataset.idAsistencia || 0) || null,
     id_estudiante: Number(button.dataset.idEstudiante),
     fecha: button.dataset.fecha,
-    estado: siguiente
+    estado: siguiente,
+    observaciones: existente?.observaciones ?? registro?.observaciones ?? null
   });
 
   actualizarCambiosPendientes();
@@ -401,7 +500,7 @@ async function guardarCambiosMes() {
             method: 'PUT',
             body: JSON.stringify({
               estado_asistencia: cambio.estado,
-              observaciones: registro?.observaciones || null
+              observaciones: cambio.observaciones ?? registro?.observaciones ?? null
             })
           });
           if (!res.ok) throw new Error();
@@ -411,7 +510,7 @@ async function guardarCambiosMes() {
             body: JSON.stringify({
               fecha: cambio.fecha,
               estado_asistencia: cambio.estado,
-              observaciones: null,
+              observaciones: cambio.observaciones ?? null,
               id_estudiante: cambio.id_estudiante,
               id_grupo: grupoActual,
               id_profesor: idProfesor

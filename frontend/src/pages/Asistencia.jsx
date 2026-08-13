@@ -47,7 +47,7 @@ export default function Asistencia() {
             <span><b className="legend-dot ausente">A</b> Ausente</span>
             <span><b className="legend-dot tardia">T</b> Tardía</span>
             <span><b className="legend-dot justificada">J</b> Justificada</span>
-            <span className="text-muted"><i className="bi bi-info-circle"></i> Pulsa una celda para cambiar el estado.</span>
+            <span className="text-muted"><i className="bi bi-info-circle"></i> Pulsa el estado para cambiarlo y usa el icono de comentario para agregar una observación.</span>
           </div>
           <div id="asis-bitacora-hint" className="form-text mt-2">
             Selecciona un grupo para cargar sus estudiantes.
@@ -131,6 +131,55 @@ export default function Asistencia() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div className="modal fade" id="modalObservacionAsistencia" tabIndex="-1" aria-hidden="true">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow-lg">
+            <div className="modal-header bg-navy text-white">
+              <h5 className="modal-title font-serif"><i className="bi bi-chat-left-text"></i> Observación de asistencia</h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="asis-observacion-form">
+              <div className="modal-body p-4">
+                <input type="hidden" id="asis-observacion-key" />
+                <input type="hidden" id="asis-observacion-id-estudiante" />
+                <input type="hidden" id="asis-observacion-fecha" />
+                <input type="hidden" id="asis-observacion-id-asistencia" />
+                <div className="mb-3">
+                  <label className="form-label">Estudiante</label>
+                  <input id="asis-observacion-estudiante" className="form-control bg-light" disabled />
+                </div>
+                <div className="row g-3 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Fecha</label>
+                    <input id="asis-observacion-fecha-texto" className="form-control bg-light" disabled />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Estado</label>
+                    <select id="asis-observacion-estado" className="form-select" required>
+                      <option value="">Seleccionar estado</option>
+                      <option value="presente">Presente</option>
+                      <option value="ausente">Ausente</option>
+                      <option value="tardia">Tardía</option>
+                      <option value="justificada">Justificada</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Observaciones</label>
+                  <textarea id="asis-observacion-texto" className="form-control" rows="4" maxLength="250" placeholder="Escribe una observación opcional para este día..."></textarea>
+                  <div className="form-text">Máximo 250 caracteres.</div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" className="btn btn-primary">Aplicar a la bitácora</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

@@ -261,3 +261,43 @@
     height: 29px;
   }
 }
+
+.attendance-cell-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .18rem;
+}
+
+.attendance-note-btn {
+  width: 24px;
+  height: 20px;
+  border: 0;
+  border-radius: .4rem;
+  background: transparent;
+  color: #94a3b8;
+  font-size: .68rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color .12s ease, color .12s ease, transform .12s ease;
+}
+
+.attendance-note-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.attendance-note-btn.has-note {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+@media (max-width: 767.98px) {
+  .attendance-note-btn {
+    width: 22px;
+    height: 18px;
+  }
+}

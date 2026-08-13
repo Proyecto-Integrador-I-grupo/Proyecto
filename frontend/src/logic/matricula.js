@@ -283,7 +283,7 @@ function poblarSelectGruposGestionMatricula() {
     selActual.innerHTML = '<option value="" disabled selected>Seleccionar grupo</option>';
     allGrupos.forEach((g) => {
       const id = g.id_grupo ?? g.id;
-      selActual.add(new Option(`${g.nombre_grupo ?? 'Grupo'} · ${g.nivel ?? ''}`, id));
+      selActual.add(new Option(`${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : (g.nivel ? ` · ${g.nivel}` : '')}`, id));
     });
   }
 
@@ -294,7 +294,7 @@ function poblarSelectGruposGestionMatricula() {
       const ocupados = g.ocupados ?? 0;
       const capacidad = g.capacidad ?? 0;
       const lleno = ocupados >= capacidad;
-      const opt = new Option(`${g.nombre_grupo ?? 'Grupo'} · Cupo ${ocupados}/${capacidad}${lleno ? ' (LLENO)' : ''}`, id);
+      const opt = new Option(`${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : ''} · Cupo ${ocupados}/${capacidad}${lleno ? ' (LLENO)' : ''}`, id);
       opt.disabled = lleno;
       selNuevo.add(opt);
     });
@@ -506,7 +506,7 @@ async function populateGruposSelects() {
       const ocupados = g.ocupados ?? 0;
       const capacidad = g.capacidad ?? 0;
       const lleno = ocupados >= capacidad;
-      const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nivel ?? ''} — Ocupados: ${ocupados}/${capacidad}${lleno ? ' (CUPO LLENO)' : ''}`;
+      const etiqueta = `${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : (g.nivel ? ` · ${g.nivel}` : '')} — Ocupados: ${ocupados}/${capacidad}${lleno ? ' (CUPO LLENO)' : ''}`;
 
       if (matGrupoSel) {
         const optMat = new Option(etiqueta, id);

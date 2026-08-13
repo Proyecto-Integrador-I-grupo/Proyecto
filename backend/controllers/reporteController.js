@@ -6,7 +6,7 @@ function mensajeError(error, fallback) {
 
 export async function obtenerReporteCaso(req, res) {
     try {
-        const resultado = await generarReporteCaso(req.query);
+        const resultado = await generarReporteCaso(req.query, req.usuarioActual);
         res.status(200).json(resultado);
     } catch (error) {
         console.error("Error generando reporte:", error);
@@ -16,7 +16,7 @@ export async function obtenerReporteCaso(req, res) {
 
 export async function obtenerReporteResumen(req, res) {
     try {
-        const resultado = await generarReporteResumen(req.query);
+        const resultado = await generarReporteResumen(req.query, req.usuarioActual);
         res.status(200).json(resultado);
     } catch (error) {
         console.error("Error generando resumen:", error);
@@ -26,7 +26,7 @@ export async function obtenerReporteResumen(req, res) {
 
 export async function obtenerReporteDetalle(req, res) {
     try {
-        const resultado = await generarReporteDetalle(req.query);
+        const resultado = await generarReporteDetalle(req.query, req.usuarioActual);
         res.status(200).json({
             modo: resultado?.modo || req.query?.modo || "matricula",
             detalle: Array.isArray(resultado?.detalle) ? resultado.detalle : []

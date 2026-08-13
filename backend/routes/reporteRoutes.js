@@ -9,7 +9,7 @@ const router = express.Router();
 router.get(
     "/reportes/caso",
     requireAuth,
-    requireRole("Administrador"),
+    requireRole("Administrador", "Asistente", "Profesor"),
     reporteRules,
     validarCampos,
     obtenerReporteCaso
@@ -18,7 +18,7 @@ router.get(
 router.get(
     "/reportes/resumen",
     requireAuth,
-    requireRole("Administrador"),
+    requireRole("Administrador", "Asistente", "Profesor"),
     reporteRules,
     validarCampos,
     obtenerReporteResumen
@@ -27,7 +27,7 @@ router.get(
 router.get(
     "/reportes/detalle",
     requireAuth,
-    requireRole("Administrador"),
+    requireRole("Administrador", "Asistente", "Profesor"),
     reporteRules,
     validarCampos,
     obtenerReporteDetalle

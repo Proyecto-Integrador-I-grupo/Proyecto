@@ -31,7 +31,17 @@ export const obtenerProfesoresService = async () => {
       pr.materia,
       pr.fecha_ingreso,
       pr.estado,
-      GROUP_CONCAT(DISTINCT g.nombre_grupo ORDER BY g.nombre_grupo SEPARATOR ', ') AS grupos_asignados,
+      GROUP_CONCAT(
+        DISTINCT CONCAT(
+          g.nombre_grupo,
+          CASE
+            WHEN s.nombre_seccion IS NOT NULL AND s.nombre_seccion <> ''
+              THEN CONCAT(' · ', s.nombre_seccion)
+            ELSE ''
+          END
+        )
+        ORDER BY g.nombre_grupo SEPARATOR ', '
+      ) AS grupos_asignados,
       GROUP_CONCAT(DISTINCT g.id_grupo ORDER BY g.nombre_grupo SEPARATOR ',') AS grupos_ids,
       (
         SELECT COUNT(*) FROM profesor_suplencia ps 
@@ -41,6 +51,7 @@ export const obtenerProfesoresService = async () => {
     INNER JOIN persona p ON pr.id_persona = p.id_persona
     LEFT JOIN grupo_profesor gp ON gp.id_profesor = pr.id_profesor AND gp.estado = TRUE AND gp.fecha_fin IS NULL
     LEFT JOIN grupo g ON g.id_grupo = gp.id_grupo
+    LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
     GROUP BY pr.id_profesor
     ORDER BY pr.id_profesor DESC
   `;
@@ -696,6 +707,7 @@ export const obtenerSuplenciasPendientesService = async () => {
       ps.id_suplencia,
       ps.id_grupo,
       g.nombre_grupo,
+      s.nombre_seccion,
       ps.id_profesor_titular,
       CONCAT(pt.nombre, ' ', pt.apellido1) AS titular_nombre,
       ps.id_profesor_suplente,
@@ -705,6 +717,7 @@ export const obtenerSuplenciasPendientesService = async () => {
       ps.motivo
     FROM profesor_suplencia ps
     INNER JOIN grupo g ON g.id_grupo = ps.id_grupo
+    LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
     INNER JOIN profesor prt ON prt.id_profesor = ps.id_profesor_titular
     INNER JOIN persona pt ON pt.id_persona = prt.id_persona
     LEFT JOIN profesor prs ON prs.id_profesor = ps.id_profesor_suplente

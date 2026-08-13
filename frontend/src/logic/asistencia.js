@@ -1,24 +1,25 @@
-import {
-  apiFetch,
-  currentUser,
-  showToast
-} from './ui.js';
+import { apiFetch, currentUser, showToast, showResultModal } from './ui.js';
 
-import {
-  populateGruposSelects
-} from './matricula.js';
+const ESTADOS = ['', 'presente', 'ausente', 'tardia', 'justificada'];
+const ETIQUETAS = {
+  presente: 'P',
+  ausente: 'A',
+  tardia: 'T',
+  justificada: 'J'
+};
 
-(function () {
+let grupoActual = null;
+let detalleGrupo = null;
+let registrosMes = [];
+let cambiosPendientes = new Map();
+let historialCompleto = [];
+
+(function registerModule() {
   const moduleName = 'asistencia';
   window.EduControlModules = window.EduControlModules || {};
   window.EduControlModules[moduleName] = {
     name: moduleName,
-    init() {
-      const section = document.getElementById(`${moduleName}-view`);
-      if (!section) return;
-      section.dataset.module = moduleName;
-      wireAsistenciaEvents();
-    },
+    init: wireAsistenciaEvents,
     load: loadAsistenciaData
   };
 
@@ -27,578 +28,580 @@ import {
   }
 })();
 
-/* ==========================================
-   MÓDULO DE ASISTENCIA 
-   ========================================== */
+function rolActual() {
+  return String(currentUser?.rol || '').toLowerCase().trim();
+}
 
-let asistenciaChartInstance = null;
+function puedeEditar() {
+  return ['administrador', 'profesor'].includes(rolActual());
+}
+
+function esAdmin() {
+  return rolActual() === 'administrador';
+}
+
+function mesActualISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 function wireAsistenciaEvents() {
-  const asisForm = document.getElementById('asistencia-form');
-  if (asisForm && !asisForm.dataset.wired) {
-    asisForm.dataset.wired = '1';
-    asisForm.addEventListener('submit', handleAsistenciaSubmit);
+  wire('asis-refrescar', 'click', loadAsistenciaData);
+  wire('asis-bitacora-grupo', 'change', cargarGrupoSeleccionado);
+  wire('asis-bitacora-mes', 'change', cargarBitacora);
+  wire('asis-bitacora-profesor', 'change', cargarBitacora);
+  wire('asis-guardar-mes', 'click', guardarCambiosMes);
+  wire('asis-historial-refrescar', 'click', cargarHistorial);
+  wire('asis-historial-busqueda', 'input', renderHistorialFiltrado);
+  wire('asis-historial-estado', 'change', renderHistorialFiltrado);
+
+  const matrixBody = document.getElementById('asis-matrix-body');
+  if (matrixBody && !matrixBody.dataset.wired) {
+    matrixBody.dataset.wired = '1';
+    matrixBody.addEventListener('click', manejarCelda);
   }
 
-  const modForm = document.getElementById('modificar-asistencia-form');
-  if (modForm && !modForm.dataset.wired) {
-    modForm.dataset.wired = '1';
-    modForm.addEventListener('submit', handleModificarAsistenciaSubmit);
+  const historyBody = document.getElementById('asis-historial-body');
+  if (historyBody && !historyBody.dataset.wired) {
+    historyBody.dataset.wired = '1';
+    historyBody.addEventListener('click', manejarAccionHistorial);
   }
 
-  const asisGrupoSelEl = document.getElementById('asis-id-grupo');
-  if (asisGrupoSelEl && !asisGrupoSelEl.dataset.wired) {
-    asisGrupoSelEl.dataset.wired = '1';
-    asisGrupoSelEl.addEventListener('change', () => {
-      cargarRosterGrupoAsistencia();
-    });
+  const editForm = document.getElementById('asis-editar-form');
+  if (editForm && !editForm.dataset.wired) {
+    editForm.dataset.wired = '1';
+    editForm.addEventListener('submit', guardarEdicionHistorial);
   }
 
-  // --- Filtros del historial en cascada ---
-  const histGrupoSel = document.getElementById('hist-filtro-grupo');
-  if (histGrupoSel && !histGrupoSel.dataset.wired) {
-    histGrupoSel.dataset.wired = '1';
-    histGrupoSel.addEventListener('change', async () => {
-      await poblarFiltroEstudiantesHistorial(histGrupoSel.value);
-      cargarHistorialAsistencia();
-    });
+  const collapse = document.getElementById('asis-historial-detallado');
+  if (collapse && !collapse.dataset.wired) {
+    collapse.dataset.wired = '1';
+    collapse.addEventListener('show.bs.collapse', cargarHistorial);
   }
+}
 
-  const histEstudianteSel = document.getElementById('hist-filtro-estudiante');
-  if (histEstudianteSel && !histEstudianteSel.dataset.wired) {
-    histEstudianteSel.dataset.wired = '1';
-    histEstudianteSel.addEventListener('change', cargarHistorialAsistencia);
-  }
-
-  // NUEVO: filtro de Materia/Curso
-  const histMateriaSel = document.getElementById('hist-filtro-materia');
-  if (histMateriaSel && !histMateriaSel.dataset.wired) {
-    histMateriaSel.dataset.wired = '1';
-    histMateriaSel.addEventListener('change', cargarHistorialAsistencia);
-  }
-
-  const histEstadoSel = document.getElementById('hist-filtro-estado');
-  if (histEstadoSel && !histEstadoSel.dataset.wired) {
-    histEstadoSel.dataset.wired = '1';
-    histEstadoSel.addEventListener('change', cargarHistorialAsistencia);
-  }
-
-  const histDesde = document.getElementById('hist-filtro-fecha-desde');
-  if (histDesde && !histDesde.dataset.wired) {
-    histDesde.dataset.wired = '1';
-    histDesde.addEventListener('change', cargarHistorialAsistencia);
-  }
-
-  const histHasta = document.getElementById('hist-filtro-fecha-hasta');
-  if (histHasta && !histHasta.dataset.wired) {
-    histHasta.dataset.wired = '1';
-    histHasta.addEventListener('change', cargarHistorialAsistencia);
-  }
-
-  const histBusqueda = document.getElementById('hist-filtro-busqueda');
-  if (histBusqueda && !histBusqueda.dataset.wired) {
-    histBusqueda.dataset.wired = '1';
-    let debounceTimer = null;
-    histBusqueda.addEventListener('input', () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(cargarHistorialAsistencia, 350);
-    });
-  }
-
-  const histLimpiar = document.getElementById('hist-limpiar-filtros');
-  if (histLimpiar && !histLimpiar.dataset.wired) {
-    histLimpiar.dataset.wired = '1';
-    histLimpiar.addEventListener('click', async () => {
-      if (histGrupoSel) histGrupoSel.value = '';
-      await poblarFiltroEstudiantesHistorial('');
-      if (histEstudianteSel) histEstudianteSel.value = '';
-      if (histMateriaSel) histMateriaSel.value = '';
-      if (histEstadoSel) histEstadoSel.value = '';
-      if (histDesde) histDesde.value = '';
-      if (histHasta) histHasta.value = '';
-      if (histBusqueda) histBusqueda.value = '';
-      cargarHistorialAsistencia();
-    });
-  }
-
-  const histRefrescar = document.getElementById('hist-refrescar');
-  if (histRefrescar && !histRefrescar.dataset.wired) {
-    histRefrescar.dataset.wired = '1';
-    histRefrescar.addEventListener('click', cargarHistorialAsistencia);
-  }
-
-  const hoyISO = new Date().toISOString().split('T')[0];
-  const asisFechaInput = document.getElementById('asis-fecha');
-  if (asisFechaInput) { asisFechaInput.max = hoyISO; if (!asisFechaInput.value) asisFechaInput.value = hoyISO; }
-
-  // Asegurar que al abrir el modal de asistencia se recarguen los grupos correctamente y se cargue el roster si ya hay uno seleccionado
-  const modalRegistrarAsistenciaEl = document.getElementById('modalRegistrarAsistencia');
-  if (modalRegistrarAsistenciaEl && !modalRegistrarAsistenciaEl.dataset.wired) {
-    modalRegistrarAsistenciaEl.dataset.wired = '1';
-    modalRegistrarAsistenciaEl.addEventListener('show.bs.modal', async () => {
-      if (typeof populateGruposSelects === 'function') {
-        await populateGruposSelects();
-      }
-      const grupoSel = document.getElementById('asis-id-grupo');
-      if (grupoSel && grupoSel.value) {
-        await cargarRosterGrupoAsistencia();
-      } else if (grupoSel && grupoSel.options.length > 1) {
-        grupoSel.value = grupoSel.options[1].value;
-        await cargarRosterGrupoAsistencia();
-      }
-    });
-  }
+function wire(id, event, handler) {
+  const el = document.getElementById(id);
+  if (!el || el.dataset.wired) return;
+  el.dataset.wired = '1';
+  el.addEventListener(event, handler);
 }
 
 async function loadAsistenciaData() {
-  if (typeof populateGruposSelects === 'function') {
-    await populateGruposSelects();
-  }
-  
-  // No seleccionar un grupo automáticamente. El usuario lo elige al registrar asistencia.
-  poblarFiltroGrupoHistorial();
-  await poblarFiltroEstudiantesHistorial('');
-  await poblarFiltroMateriaHistorial();
-  await cargarHistorialAsistencia();
-}
+  const month = document.getElementById('asis-bitacora-mes');
+  if (month && !month.value) month.value = mesActualISO();
 
-async function cargarRosterGrupoAsistencia() {
-  const grupoSel = document.getElementById('asis-id-grupo');
-  const personaSel = document.getElementById('asis-persona');
-  const profesorSel = document.getElementById('asis-id-profesor');
-  const hint = document.getElementById('asis-grupo-hint');
-  if (!grupoSel || !personaSel || !profesorSel) return;
+  await poblarGrupos();
+  aplicarPermisosUI();
 
-  const idGrupo = parseInt(grupoSel.value, 10);
-  
-  if (!idGrupo || isNaN(idGrupo)) {
-    personaSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
-    profesorSel.innerHTML = '<option value="" disabled selected>Primero selecciona un grupo</option>';
-    personaSel.disabled = true;
-    profesorSel.disabled = true;
-    if (hint) {
-      hint.textContent = 'Selecciona el grupo para filtrar automáticamente el roster.';
-      hint.classList.remove('text-danger');
-    }
-    return;
-  }
-
-  personaSel.innerHTML = '<option value="" disabled selected>Cargando estudiantes...</option>';
-  profesorSel.innerHTML = '<option value="" disabled selected>Cargando profesor...</option>';
-  personaSel.disabled = true;
-  profesorSel.disabled = true;
-
-  try {
-    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/detalle`);
-    if (!res.ok) throw new Error('No se pudo cargar el detalle del grupo');
-    const detalle = await res.json();
-
-    // Guardia anti-race-condition: si mientras esta petición estaba en
-    // vuelo el usuario (o el modal al abrirse) cambió el grupo seleccionado,
-    // esta respuesta ya quedó vieja/obsoleta. Se descarta para no pisar
-    // con datos del grupo anterior lo que corresponde al grupo actual.
-    // Esto es lo que causaba que, por ejemplo, al seleccionar "1-B" se
-    // terminara mostrando el profesor y los estudiantes de "1-A".
-    const idGrupoActualEnPantalla = parseInt(grupoSel.value, 10);
-    if (idGrupoActualEnPantalla !== idGrupo) {
-      return;
-    }
-
-    // Poblar estudiantes
-    personaSel.innerHTML = '<option value="" disabled selected>Seleccionar estudiante</option>';
-    const estudiantes = detalle.estudiantes || [];
-    estudiantes.forEach((e) => {
-      const texto = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
-      personaSel.add(new Option(texto, e.id_estudiante));
-    });
-    personaSel.disabled = estudiantes.length === 0;
-
-    // Poblar profesores
-    profesorSel.innerHTML = '<option value="" disabled selected>Seleccionar profesor</option>';
-    const rolActual = (currentUser?.rol || '').toLowerCase();
-
-    if (rolActual === 'profesor' && currentUser?.id_profesor) {
-      // Un profesor únicamente puede registrar asistencia bajo su propio nombre.
-      // No usamos la lista que devuelve el detalle del grupo (esa refleja el/los
-      // profesor(es) vinculados en grupo_profesor, que puede no coincidir con
-      // quien tiene la sesión abierta, p. ej. si hay suplencias).
-      profesorSel.innerHTML = '';
-      const nombreProfesorActual = `${currentUser.nombre ?? ''} ${currentUser.apellido1 ?? ''}`.trim();
-      profesorSel.add(new Option(nombreProfesorActual || 'Profesor actual', currentUser.id_profesor));
-      profesorSel.value = currentUser.id_profesor;
-      profesorSel.disabled = true;
-    } else {
-      const profesores = detalle.profesores || [];
-      profesores.forEach((p) => {
-        const texto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} (${p.materia || 'General'})`.trim();
-        profesorSel.add(new Option(texto, p.id_profesor));
-      });
-      profesorSel.disabled = profesores.length === 0;
-
-      if (profesores.length === 1) {
-        profesorSel.value = profesores[0].id_profesor;
-      }
-    }
-
-    if (hint) {
-      if (estudiantes.length === 0) {
-        hint.textContent = 'Este grupo no tiene estudiantes matriculados.';
-        hint.classList.add('text-danger');
-      } else {
-        hint.textContent = `Se cargaron ${estudiantes.length} estudiante(s) correctamente.`;
-        hint.classList.remove('text-danger');
-      }
-    }
-  } catch (error) {
-    console.error('Error cargando roster del grupo', error);
-    personaSel.innerHTML = '<option value="" disabled selected>Error al cargar estudiantes</option>';
-    profesorSel.innerHTML = '<option value="" disabled selected>Error al cargar profesor</option>';
+  const groupSelect = document.getElementById('asis-bitacora-grupo');
+  if (groupSelect?.value) {
+    await cargarGrupoSeleccionado();
+  } else {
+    renderMatrizVacia('Selecciona un grupo para comenzar.');
   }
 }
 
-async function poblarFiltroGrupoHistorial() {
-  const sel = document.getElementById('hist-filtro-grupo');
-  if (!sel) return;
+function aplicarPermisosUI() {
+  const save = document.getElementById('asis-guardar-mes');
+  const hint = document.getElementById('asis-bitacora-hint');
 
-  const valorActual = sel.value;
-  sel.innerHTML = '<option value="">Todos los grupos</option>';
+  if (!puedeEditar()) {
+    if (save) {
+      save.hidden = true;
+      save.disabled = true;
+    }
+    if (hint) {
+      hint.textContent = 'Tu rol tiene acceso de consulta. La edición de asistencia está reservada para docentes y administradores.';
+    }
+  }
+}
+
+async function poblarGrupos() {
+  const select = document.getElementById('asis-bitacora-grupo');
+  if (!select) return;
+
+  const anterior = select.value;
+  select.innerHTML = '<option value="">Seleccionar grupo</option>';
 
   try {
     const res = await apiFetch('/api/procesos/grupos');
-    if (!res.ok) return;
-
+    if (!res.ok) throw new Error('No se pudieron cargar los grupos.');
     const grupos = await res.json();
-    grupos.forEach((g) => {
+
+    (Array.isArray(grupos) ? grupos : []).forEach((g) => {
       const id = g.id_grupo ?? g.id;
-      const nombre = g.nombre_grupo ?? `Grupo ${id}`;
-      sel.add(new Option(nombre, id));
+      const nombre = etiquetaGrupo(g);
+      select.add(new Option(nombre, id));
     });
 
-    if (valorActual && Array.from(sel.options).some(o => String(o.value) === String(valorActual))) {
-      sel.value = valorActual;
+    if (anterior && Array.from(select.options).some((o) => String(o.value) === String(anterior))) {
+      select.value = anterior;
     }
   } catch (error) {
-    console.error('Error cargando grupos para filtro de asistencia', error);
+    showToast(error.message || 'No se pudieron cargar los grupos.', 'error');
   }
 }
 
-async function poblarFiltroEstudiantesHistorial(idGrupo) {
-  const sel = document.getElementById('hist-filtro-estudiante');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Todos los estudiantes</option>';
-  
-  if (!idGrupo) {
-    sel.disabled = false;
+function etiquetaGrupo(g) {
+  const nombre = g?.nombre_grupo || `Grupo ${g?.id_grupo ?? ''}`;
+  const seccion = g?.nombre_seccion || g?.nivel || '';
+  return seccion ? `${nombre} · Sección ${seccion}` : nombre;
+}
+
+async function cargarGrupoSeleccionado() {
+  const select = document.getElementById('asis-bitacora-grupo');
+  const idGrupo = Number(select?.value || 0);
+  grupoActual = idGrupo || null;
+  cambiosPendientes.clear();
+  actualizarCambiosPendientes();
+
+  if (!grupoActual) {
+    detalleGrupo = null;
+    renderMatrizVacia('Selecciona un grupo para comenzar.');
     return;
   }
 
-  try {
-    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/detalle`);
-    if (!res.ok) return;
-    const detalle = await res.json();
-    (detalle.estudiantes || []).forEach((e) => {
-      const texto = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
-      sel.add(new Option(texto, e.id_estudiante));
-    });
-  } catch (e) {
-    console.error('Error cargando estudiantes para filtro', e);
-  }
-}
-
-/**
- * NUEVO: Puebla el filtro "Materia/Curso" del historial con las materias
- * distintas registradas actualmente en la tabla profesor.
- */
-async function poblarFiltroMateriaHistorial() {
-  const sel = document.getElementById('hist-filtro-materia');
-  if (!sel) return;
-
-  const valorActual = sel.value;
-  sel.innerHTML = '<option value="">Todas las materias</option>';
+  const hint = document.getElementById('asis-bitacora-hint');
+  if (hint) hint.textContent = 'Cargando estudiantes y profesor asignado...';
 
   try {
-    const res = await apiFetch('/api/procesos/asistencia');
-    if (!res.ok) return;
+    const res = await apiFetch(`/api/procesos/grupos/${grupoActual}/detalle`);
+    if (!res.ok) throw new Error('No se pudo cargar el grupo.');
+    detalleGrupo = await res.json();
+    poblarProfesoresGrupo(detalleGrupo.profesores || []);
+    await cargarBitacora();
 
-    const registros = await res.json();
-    const materias = [...new Set(
-      (Array.isArray(registros) ? registros : [])
-        .map(r => String(r.materia_curso ?? r.materia ?? '').trim())
-        .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, 'es'));
-
-    materias.forEach((materia) => sel.add(new Option(materia, materia)));
-
-    if (valorActual && Array.from(sel.options).some(o => o.value === valorActual)) {
-      sel.value = valorActual;
+    if (hint) {
+      hint.textContent = `${(detalleGrupo.estudiantes || []).length} estudiante(s) cargados. Los días sábado y domingo se omiten de la bitácora.`;
     }
   } catch (error) {
-    console.error('Error cargando materias para filtro', error);
+    detalleGrupo = null;
+    renderMatrizVacia(error.message);
+    showToast(error.message, 'error');
   }
 }
 
-async function cargarHistorialAsistencia() {
-  const tbody = document.getElementById('asistencia-historial-body');
-  if (!tbody) return;
+function poblarProfesoresGrupo(profesores) {
+  const select = document.getElementById('asis-bitacora-profesor');
+  const field = document.getElementById('asis-profesor-field');
+  if (!select) return;
 
-  const idGrupo = document.getElementById('hist-filtro-grupo')?.value || '';
-  const idEstudiante = document.getElementById('hist-filtro-estudiante')?.value || '';
-  const materia = document.getElementById('hist-filtro-materia')?.value || '';
-  const estado = document.getElementById('hist-filtro-estado')?.value || '';
-  const fechaDesde = document.getElementById('hist-filtro-fecha-desde')?.value || '';
-  const fechaHasta = document.getElementById('hist-filtro-fecha-hasta')?.value || '';
-  const busqueda = document.getElementById('hist-filtro-busqueda')?.value.trim().toLowerCase() || '';
+  select.innerHTML = '';
 
-  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Cargando historial...</td></tr>';
-
-  try {
-    // Descargamos el historial base y aplicamos los filtros en el cliente.
-    // Así los filtros siguen funcionando aunque el backend no reciba todavía
-    // todos los parámetros de filtrado.
-    const res = await apiFetch('/api/procesos/asistencia');
-    if (!res.ok) throw new Error('No se pudo cargar el historial');
-
-    const registros = await res.json();
-
-    const filtrados = (Array.isArray(registros) ? registros : []).filter((r) => {
-      const registroGrupo = String(r.id_grupo ?? '');
-      const registroEstudiante = String(r.id_estudiante ?? '');
-      const registroMateria = String(r.materia_curso ?? r.materia ?? '').trim().toLowerCase();
-      const registroEstado = String(r.estado_asistencia ?? '').trim().toLowerCase();
-      const registroFecha = r.fecha ? String(r.fecha).split('T')[0] : '';
-      const textoBusqueda = [
-        r.estudiante_nombre,
-        r.estudiante_apellido1,
-        r.estudiante_apellido2,
-        r.profesor_nombre,
-        r.profesor_apellido1,
-        r.nombre_grupo,
-        r.materia_curso,
-        r.materia,
-        r.observaciones
-      ].filter(Boolean).join(' ').toLowerCase();
-
-      if (idGrupo && registroGrupo !== String(idGrupo)) return false;
-      if (idEstudiante && registroEstudiante !== String(idEstudiante)) return false;
-      if (materia && registroMateria !== materia.toLowerCase()) return false;
-      if (estado && registroEstado !== estado.toLowerCase()) return false;
-      if (fechaDesde && (!registroFecha || registroFecha < fechaDesde)) return false;
-      if (fechaHasta && (!registroFecha || registroFecha > fechaHasta)) return false;
-      if (busqueda && !textoBusqueda.includes(busqueda)) return false;
-
-      return true;
-    });
-
-    renderHistorialAsistencia(filtrados);
-  } catch (error) {
-    console.error('Error cargando historial de asistencia', error);
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error al cargar el historial.</td></tr>';
-    actualizarGraficosAsistencia([]);
-  }
-}
-
-function renderHistorialAsistencia(registros) {
-  const tbody = document.getElementById('asistencia-historial-body');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-
-  if (!registros.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="8" class="text-center py-5">
-          <i class="bi bi-calendar-x display-6 text-muted d-block mb-2"></i>
-          <span class="text-muted">No hay registros de asistencia con estos filtros.</span>
-        </td>
-      </tr>
-    `;
-    actualizarGraficosAsistencia([]);
+  if (rolActual() === 'profesor') {
+    const id = Number(currentUser?.id_profesor || 0);
+    select.add(new Option(`${currentUser?.nombre || ''} ${currentUser?.apellido1 || ''}`.trim() || 'Profesor actual', id));
+    select.value = String(id);
+    select.disabled = true;
+    if (field) field.hidden = true;
     return;
   }
 
-  const etiquetasEstado = {
+  if (field) field.hidden = false;
+
+  if (!profesores.length) {
+    select.add(new Option('Sin profesor asignado', ''));
+    select.disabled = true;
+    return;
+  }
+
+  profesores.forEach((p) => {
+    const nombre = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
+    select.add(new Option(`${nombre}${p.materia ? ` · ${p.materia}` : ''}`, p.id_profesor));
+  });
+
+  select.disabled = !esAdmin();
+  if (profesores.length) select.value = String(profesores[0].id_profesor);
+}
+
+function rangoMes() {
+  const valor = document.getElementById('asis-bitacora-mes')?.value || mesActualISO();
+  const [anio, mes] = valor.split('-').map(Number);
+  const inicio = `${anio}-${String(mes).padStart(2, '0')}-01`;
+  const ultimo = new Date(anio, mes, 0).getDate();
+  const fin = `${anio}-${String(mes).padStart(2, '0')}-${String(ultimo).padStart(2, '0')}`;
+  return { valor, anio, mes, inicio, fin, ultimo };
+}
+
+function diasLectivosMes() {
+  const { anio, mes, ultimo } = rangoMes();
+  const dias = [];
+
+  for (let dia = 1; dia <= ultimo; dia += 1) {
+    const fecha = new Date(anio, mes - 1, dia);
+    const semana = fecha.getDay();
+    if (semana === 0 || semana === 6) continue;
+    dias.push({
+      dia,
+      fecha: `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
+      semana: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][semana]
+    });
+  }
+
+  return dias;
+}
+
+async function cargarBitacora() {
+  cambiosPendientes.clear();
+  actualizarCambiosPendientes();
+
+  if (!grupoActual || !detalleGrupo) {
+    renderMatrizVacia('Selecciona un grupo para comenzar.');
+    return;
+  }
+
+  const profesor = Number(document.getElementById('asis-bitacora-profesor')?.value || 0);
+  const { inicio, fin } = rangoMes();
+  const params = new URLSearchParams({
+    id_grupo: String(grupoActual),
+    fecha_inicio: inicio,
+    fecha_fin: fin
+  });
+  if (profesor) params.set('id_profesor', String(profesor));
+
+  try {
+    const res = await apiFetch(`/api/procesos/asistencia?${params.toString()}`);
+    if (!res.ok) throw new Error('No se pudo cargar la asistencia del mes.');
+    registrosMes = await res.json();
+    renderMatriz();
+  } catch (error) {
+    registrosMes = [];
+    renderMatrizVacia(error.message);
+  }
+}
+
+function renderMatriz() {
+  const head = document.getElementById('asis-matrix-head');
+  const body = document.getElementById('asis-matrix-body');
+  const summary = document.getElementById('asis-matrix-summary');
+  if (!head || !body) return;
+
+  const dias = diasLectivosMes();
+  const estudiantes = detalleGrupo?.estudiantes || [];
+
+  head.innerHTML = `<tr>
+    <th class="student-sticky">Estudiante</th>
+    ${dias.map((d) => `<th class="day-head"><span>${d.semana}</span><strong>${d.dia}</strong></th>`).join('')}
+  </tr>`;
+
+  if (!estudiantes.length) {
+    body.innerHTML = `<tr><td colspan="${dias.length + 1}" class="text-center py-5 text-muted">Este grupo no tiene estudiantes matriculados.</td></tr>`;
+    return;
+  }
+
+  const porClave = new Map();
+  (Array.isArray(registrosMes) ? registrosMes : []).forEach((r) => {
+    const fecha = String(r.fecha || '').split('T')[0];
+    porClave.set(`${r.id_estudiante}-${fecha}`, r);
+  });
+
+  body.innerHTML = estudiantes.map((e) => {
+    const nombre = `${e.nombre ?? ''} ${e.apellido1 ?? ''} ${e.apellido2 ?? ''}`.trim();
+    const cells = dias.map((d) => {
+      const key = `${e.id_estudiante}-${d.fecha}`;
+      const registro = porClave.get(key);
+      const estado = registro?.estado_asistencia || '';
+      return `<td class="attendance-cell">
+        <button
+          type="button"
+          class="attendance-cell-btn ${estado ? `is-${estado}` : 'is-empty'}"
+          data-key="${key}"
+          data-id-estudiante="${e.id_estudiante}"
+          data-fecha="${d.fecha}"
+          data-id-asistencia="${registro?.id_asistencia || ''}"
+          data-estado="${estado}"
+          title="${estado ? nombreEstado(estado) : 'Sin registrar'}"
+          ${puedeEditar() ? '' : 'disabled'}
+        >${ETIQUETAS[estado] || '·'}</button>
+      </td>`;
+    }).join('');
+
+    return `<tr>
+      <th class="student-sticky student-name-cell">
+        <span class="student-name">${escapeHtml(nombre)}</span>
+        <small>#${e.id_estudiante}</small>
+      </th>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  const groupText = document.getElementById('asis-bitacora-grupo')?.selectedOptions?.[0]?.textContent || '';
+  const { valor } = rangoMes();
+  if (summary) summary.textContent = `${groupText} · ${valor} · ${estudiantes.length} estudiantes`;
+}
+
+function manejarCelda(event) {
+  const button = event.target.closest('.attendance-cell-btn');
+  if (!button || !puedeEditar()) return;
+
+  const actual = button.dataset.estado || '';
+  const idx = ESTADOS.indexOf(actual);
+  const siguiente = ESTADOS[(idx + 1) % ESTADOS.length];
+
+  button.dataset.estado = siguiente;
+  button.textContent = ETIQUETAS[siguiente] || '·';
+  button.className = `attendance-cell-btn ${siguiente ? `is-${siguiente}` : 'is-empty'} is-dirty`;
+  button.title = siguiente ? nombreEstado(siguiente) : 'Sin registrar';
+
+  cambiosPendientes.set(button.dataset.key, {
+    id_asistencia: Number(button.dataset.idAsistencia || 0) || null,
+    id_estudiante: Number(button.dataset.idEstudiante),
+    fecha: button.dataset.fecha,
+    estado: siguiente
+  });
+
+  actualizarCambiosPendientes();
+}
+
+function actualizarCambiosPendientes() {
+  const badge = document.getElementById('asis-cambios-pendientes');
+  const save = document.getElementById('asis-guardar-mes');
+  const total = cambiosPendientes.size;
+
+  if (badge) {
+    badge.textContent = total ? `${total} cambio(s) pendiente(s)` : 'Sin cambios';
+    badge.className = total
+      ? 'badge rounded-pill text-bg-warning'
+      : 'badge rounded-pill text-bg-light border';
+  }
+
+  if (save && puedeEditar()) save.disabled = total === 0;
+}
+
+async function guardarCambiosMes() {
+  if (!cambiosPendientes.size || !grupoActual) return;
+
+  const idProfesor = Number(document.getElementById('asis-bitacora-profesor')?.value || currentUser?.id_profesor || 0);
+  if (!idProfesor) {
+    showToast('Selecciona el profesor responsable antes de guardar.', 'error');
+    return;
+  }
+
+  const button = document.getElementById('asis-guardar-mes');
+  const old = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+  }
+
+  let guardados = 0;
+  let errores = 0;
+
+  try {
+    for (const cambio of cambiosPendientes.values()) {
+      try {
+        if (!cambio.estado && cambio.id_asistencia) {
+          if (!esAdmin()) continue;
+          const res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error();
+        } else if (cambio.id_asistencia) {
+          const registro = registrosMes.find((r) => Number(r.id_asistencia) === Number(cambio.id_asistencia));
+          const res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              estado_asistencia: cambio.estado,
+              observaciones: registro?.observaciones || null
+            })
+          });
+          if (!res.ok) throw new Error();
+        } else if (cambio.estado) {
+          const res = await apiFetch('/api/procesos/asistencia', {
+            method: 'POST',
+            body: JSON.stringify({
+              fecha: cambio.fecha,
+              estado_asistencia: cambio.estado,
+              observaciones: null,
+              id_estudiante: cambio.id_estudiante,
+              id_grupo: grupoActual,
+              id_profesor: idProfesor
+            })
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.mensaje || 'No se pudo guardar un registro.');
+          }
+        }
+        guardados += 1;
+      } catch (error) {
+        console.error('Error guardando celda de asistencia', cambio, error);
+        errores += 1;
+      }
+    }
+
+    await cargarBitacora();
+    await cargarHistorial();
+
+    if (errores) {
+      showResultModal('Guardado parcial', `${guardados} cambios guardados y ${errores} con error.`, false);
+    } else {
+      showToast('Bitácora de asistencia guardada.', 'success');
+    }
+  } finally {
+    if (button) button.innerHTML = old;
+    actualizarCambiosPendientes();
+  }
+}
+
+async function cargarHistorial() {
+  const body = document.getElementById('asis-historial-body');
+  if (!body) return;
+
+  body.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Cargando...</td></tr>';
+
+  try {
+    const res = await apiFetch('/api/procesos/asistencia');
+    if (!res.ok) throw new Error('No se pudo cargar el historial.');
+    historialCompleto = await res.json();
+    renderHistorialFiltrado();
+  } catch (error) {
+    body.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">${escapeHtml(error.message)}</td></tr>`;
+  }
+}
+
+function renderHistorialFiltrado() {
+  const body = document.getElementById('asis-historial-body');
+  if (!body) return;
+
+  const search = String(document.getElementById('asis-historial-busqueda')?.value || '').toLowerCase().trim();
+  const estado = document.getElementById('asis-historial-estado')?.value || '';
+
+  const rows = (Array.isArray(historialCompleto) ? historialCompleto : []).filter((r) => {
+    const texto = [
+      r.estudiante_nombre, r.estudiante_apellido1, r.estudiante_apellido2,
+      r.profesor_nombre, r.profesor_apellido1, r.nombre_grupo, r.nombre_seccion,
+      r.materia_curso, r.observaciones
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (estado && String(r.estado_asistencia).toLowerCase() !== estado) return false;
+    if (search && !texto.includes(search)) return false;
+    return true;
+  });
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No hay registros con esos filtros.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.slice(0, 500).map((r) => {
+    const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
+    const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
+    const grupo = r.nombre_seccion ? `${r.nombre_grupo ?? '-'} · ${r.nombre_seccion}` : (r.nombre_grupo ?? '-');
+
+    return `<tr>
+      <td>${formatearFecha(r.fecha)}</td>
+      <td>${escapeHtml(estudiante)}</td>
+      <td>${escapeHtml(grupo)}</td>
+      <td>${escapeHtml(profesor)}</td>
+      <td>${escapeHtml(r.materia_curso || '-')}</td>
+      <td><span class="attendance-badge attendance-${String(r.estado_asistencia || '').toLowerCase()}">${nombreEstado(r.estado_asistencia)}</span></td>
+      <td class="observaciones-cell" title="${escapeHtml(r.observaciones || '')}">${escapeHtml(r.observaciones || '—')}</td>
+      <td class="text-end">
+        ${puedeEditar() ? `<button class="btn btn-sm btn-outline-primary asis-edit-btn" data-id="${r.id_asistencia}"><i class="bi bi-pencil"></i></button>` : ''}
+        ${esAdmin() ? `<button class="btn btn-sm btn-outline-danger asis-delete-btn ms-1" data-id="${r.id_asistencia}"><i class="bi bi-trash"></i></button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function manejarAccionHistorial(event) {
+  const edit = event.target.closest('.asis-edit-btn');
+  const del = event.target.closest('.asis-delete-btn');
+
+  if (edit) {
+    const registro = historialCompleto.find((r) => Number(r.id_asistencia) === Number(edit.dataset.id));
+    if (!registro) return;
+
+    document.getElementById('asis-editar-id').value = registro.id_asistencia;
+    document.getElementById('asis-editar-estudiante').value =
+      `${registro.estudiante_nombre ?? ''} ${registro.estudiante_apellido1 ?? ''} ${registro.estudiante_apellido2 ?? ''}`.trim();
+    document.getElementById('asis-editar-estado').value = String(registro.estado_asistencia || '').toLowerCase();
+    document.getElementById('asis-editar-observaciones').value = registro.observaciones || '';
+
+    const modalEl = document.getElementById('modalEditarAsistencia');
+    if (modalEl && window.bootstrap?.Modal) {
+      (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+    }
+  }
+
+  if (del && esAdmin()) {
+    eliminarAsistencia(Number(del.dataset.id));
+  }
+}
+
+async function guardarEdicionHistorial(event) {
+  event.preventDefault();
+
+  const id = Number(document.getElementById('asis-editar-id')?.value || 0);
+  const estado = document.getElementById('asis-editar-estado')?.value || '';
+  const observaciones = document.getElementById('asis-editar-observaciones')?.value.trim() || null;
+  if (!id || !estado) return;
+
+  try {
+    const res = await apiFetch(`/api/procesos/asistencia/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ estado_asistencia: estado, observaciones })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.mensaje || 'No se pudo actualizar.');
+
+    window.bootstrap?.Modal.getInstance(document.getElementById('modalEditarAsistencia'))?.hide();
+    showToast('Asistencia actualizada.', 'success');
+    await cargarHistorial();
+    await cargarBitacora();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function eliminarAsistencia(id) {
+  if (!window.confirm('¿Eliminar permanentemente este registro de asistencia? Esta acción quedará registrada en auditoría.')) return;
+
+  try {
+    const res = await apiFetch(`/api/procesos/asistencia/${id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.mensaje || 'No se pudo eliminar.');
+
+    showToast('Registro de asistencia eliminado.', 'success');
+    await cargarHistorial();
+    await cargarBitacora();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+function renderMatrizVacia(mensaje) {
+  const head = document.getElementById('asis-matrix-head');
+  const body = document.getElementById('asis-matrix-body');
+  const summary = document.getElementById('asis-matrix-summary');
+
+  if (head) head.innerHTML = '<tr><th class="student-sticky">Estudiante</th></tr>';
+  if (body) body.innerHTML = `<tr><td class="text-center py-5 text-muted">${escapeHtml(mensaje)}</td></tr>`;
+  if (summary) summary.textContent = mensaje;
+}
+
+function nombreEstado(estado) {
+  const map = {
     presente: 'Presente',
     ausente: 'Ausente',
     tardia: 'Tardía',
     justificada: 'Justificada'
   };
-
-  registros.forEach((r) => {
-    const idAsis = r.id_asistencia ?? r.id;
-    const estudiante = `${r.estudiante_nombre ?? ''} ${r.estudiante_apellido1 ?? ''} ${r.estudiante_apellido2 ?? ''}`.trim();
-    const profesor = `${r.profesor_nombre ?? ''} ${r.profesor_apellido1 ?? ''}`.trim();
-    const materiaCurso = r.materia_curso ?? '-';
-    const fecha = r.fecha ? String(r.fecha).split('T')[0] : '-';
-    const estado = (r.estado_asistencia || '').toLowerCase();
-    const etiqueta = etiquetasEstado[estado] || r.estado_asistencia || '-';
-    const observaciones = r.observaciones ? r.observaciones : '—';
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${fecha}</td>
-      <td class="fw-semibold">${estudiante || '-'}</td>
-      <td>${r.nombre_grupo ?? '-'}</td>
-      <td>${profesor || '-'}</td>
-      <td>${materiaCurso}</td>
-      <td><span class="attendance-badge attendance-${estado}">${etiqueta}</span></td>
-      <td class="observaciones-cell" title="${observaciones}">${observaciones}</td>
-      <td class="text-end">
-        <button type="button" class="btn btn-outline-primary btn-sm px-2 py-1 btn-modificar-asistencia" title="Modificar estado">
-          <i class="bi bi-pencil-square"></i> Modificar
-        </button>
-      </td>
-    `;
-    
-    const btnMod = tr.querySelector('.btn-modificar-asistencia');
-    btnMod.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      abrirModalModificarAsistencia(idAsis, estudiante, estado, r.observaciones || '');
-    });
-
-    tbody.appendChild(tr);
-  });
-
-  actualizarGraficosAsistencia(registros);
+  return map[String(estado || '').toLowerCase()] || 'Sin registrar';
 }
 
-function abrirModalModificarAsistencia(idAsistencia, estudianteNombre, estadoActual, observacionesActuales) {
-  document.getElementById('mod-id-asistencia').value = idAsistencia;
-  document.getElementById('mod-estudiante-nombre').value = estudianteNombre;
-  document.getElementById('mod-estado').value = estadoActual;
-  document.getElementById('mod-observaciones').value = observacionesActuales !== '—' ? observacionesActuales : '';
-  
-  const modalEl = document.getElementById('modalModificarAsistencia');
-  if (modalEl) {
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
-  }
+function formatearFecha(value) {
+  if (!value) return '—';
+  const base = String(value).split('T')[0];
+  const [y, m, d] = base.split('-');
+  return y && m && d ? `${d}/${m}/${y}` : base;
 }
 
-async function handleModificarAsistenciaSubmit(e) {
-  e.preventDefault();
-  const idAsistencia = document.getElementById('mod-id-asistencia').value;
-  const payload = {
-    estado_asistencia: document.getElementById('mod-estado').value,
-    observaciones: document.getElementById('mod-observaciones').value.trim() || null
-  };
-
-  const btn = document.getElementById('mod-submit');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
-
-  try {
-    const res = await apiFetch(`/api/procesos/asistencia/${idAsistencia}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      showToast('Registro de asistencia actualizado correctamente');
-      const modalEl = document.getElementById('modalModificarAsistencia');
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-      await cargarHistorialAsistencia();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      showToast(err.mensaje || err.error || 'No se pudo actualizar el registro', 'error');
-    }
-  } catch (e) {
-    showToast('Error de conexión al actualizar asistencia', 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Actualizar Registro'; }
-  }
-}
-
-function actualizarGraficosAsistencia(registros) {
-  const total = registros.length;
-  const presentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'presente').length;
-  const ausentes = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'ausente').length;
-  const tardias = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'tardia').length;
-  const justificadas = registros.filter((r) => (r.estado_asistencia || '').toLowerCase() === 'justificada').length;
-
-  const elTotal = document.getElementById('graf-total');
-  const elEfectiva = document.getElementById('graf-efectiva');
-  const elAusentismo = document.getElementById('graf-ausentismo');
-
-  if (elTotal) elTotal.textContent = total;
-  const ef = total > 0 ? ((presentes / total) * 100).toFixed(1) : 0;
-  const aus = total > 0 ? ((ausentes / total) * 100).toFixed(1) : 0;
-  if (elEfectiva) elEfectiva.textContent = `${ef}%`;
-  if (elAusentismo) elAusentismo.textContent = `${aus}%`;
-
-  const ctx = document.getElementById('chartAsistenciaEstados');
-  if (!ctx) return;
-
-  if (asistenciaChartInstance) {
-    asistenciaChartInstance.destroy();
-  }
-
-  if (typeof Chart !== 'undefined') {
-    asistenciaChartInstance = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Presentes', 'Ausentes', 'Tardías', 'Justificadas'],
-        datasets: [{
-          data: [presentes, ausentes, tardias, justificadas],
-          backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { boxWidth: 12, font: { size: 11 } }
-          }
-        }
-      }
-    });
-  }
-}
-
-async function handleAsistenciaSubmit(e) {
-  e.preventDefault();
-  const grupoSel = document.getElementById('asis-id-grupo');
-  const personaSel = document.getElementById('asis-persona');
-  const profesorSel = document.getElementById('asis-id-profesor');
-
-  if (!grupoSel.value || !personaSel.value || !profesorSel.value) {
-    showToast('Selecciona grupo, estudiante y profesor.', 'error');
-    return;
-  }
-
-  const payload = {
-    fecha: document.getElementById('asis-fecha').value,
-    estado_asistencia: document.getElementById('asis-estado').value,
-    observaciones: document.getElementById('asis-observaciones').value.trim() || null,
-    id_estudiante: parseInt(personaSel.value, 10),
-    id_grupo: parseInt(grupoSel.value, 10),
-    id_profesor: parseInt(profesorSel.value, 10)
-  };
-
-  const submitBtn = document.getElementById('asis-submit');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...'; }
-
-  try {
-    const res = await apiFetch('/api/procesos/asistencia', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(payload) 
-    });
-    
-    if (res.ok) {
-      showToast('Asistencia guardada correctamente');
-      document.getElementById('asis-observaciones').value = '';
-      personaSel.value = '';
-      await cargarHistorialAsistencia();
-    } else {
-      const json = await res.json().catch(() => ({}));
-      showToast(json.error || json.mensaje || 'Error guardando asistencia', 'error');
-    }
-  } catch {
-    showToast('Error guardando asistencia', 'error');
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar Registro de Asistencia'; }
-  }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }

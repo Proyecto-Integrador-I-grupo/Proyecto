@@ -5,6 +5,29 @@ const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
 const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]);
 const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
+const MODOS_POR_ROL = {
+    administrador: new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]),
+    asistente: new Set(["matricula", "estudiantes", "grupos", "pre_matricula"]),
+    profesor: new Set(["estudiantes", "grupos"])
+};
+
+function aplicarAlcanceUsuario(filtros = {}, usuarioActual = null) {
+    const rol = String(usuarioActual?.nom_rol || usuarioActual?.rol || "").toLowerCase().trim();
+    const modo = normalizarModo(filtros.modo);
+    const permitidos = MODOS_POR_ROL[rol] || new Set();
+
+    if (!permitidos.has(modo)) {
+        throw new Error("No tienes permiso para consultar este tipo de reporte.");
+    }
+
+    return {
+        ...filtros,
+        modo,
+        scope_profesor_id: rol === "profesor" ? Number(usuarioActual?.id_profesor || 0) : undefined,
+        scope_rol: rol
+    };
+}
+
 function normalizarEstado(estado) {
     return String(estado || "").toLowerCase().trim();
 }
@@ -94,6 +117,8 @@ function validarFiltrosReporte(filtros = {}) {
     }
 
     const busqueda = normalizarBusqueda(filtros.busqueda);
+    const scope_profesor_id = parsePositiveInt(filtros.scope_profesor_id, "scope_profesor_id");
+    const scope_rol = String(filtros.scope_rol || "").toLowerCase().trim();
 
     return {
         modo,
@@ -104,7 +129,9 @@ function validarFiltrosReporte(filtros = {}) {
         fecha_fin,
         estado_asistencia,
         estado_estudiante,
-        busqueda
+        busqueda,
+        scope_profesor_id,
+        scope_rol
     };
 }
 
@@ -144,6 +171,11 @@ function construirCondicionesAsistencia(filtros = {}) {
     const { modo, id_grupo, id_estudiante, fecha_inicio, fecha_fin, estado_asistencia, estado_estudiante, busqueda } = filtros;
     const condiciones = ["a.estado = TRUE"];
     const valores = [];
+
+    if (filtros.scope_profesor_id) {
+        condiciones.push("a.id_profesor = ?");
+        valores.push(filtros.scope_profesor_id);
+    }
 
     if (id_grupo) {
         condiciones.push("a.id_grupo = ?");
@@ -290,10 +322,10 @@ function construirDetallePorProfesor(detalle = []) {
         .sort((a, b) => `${a.profesor_nombre} ${a.profesor_apellido1}`.localeCompare(`${b.profesor_nombre} ${b.profesor_apellido1}`));
 }
 
-export async function generarReporteCaso(filtros = {}) {
-    const filtrosNormalizados = validarFiltrosReporte(filtros);
-    const resumen = await generarReporteResumen(filtrosNormalizados);
-    const detalleResultado = await generarReporteDetalle(filtrosNormalizados);
+export async function generarReporteCaso(filtros = {}, usuarioActual = null) {
+    const filtrosNormalizados = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
+    const resumen = await generarReporteResumen(filtrosNormalizados, usuarioActual);
+    const detalleResultado = await generarReporteDetalle(filtrosNormalizados, usuarioActual);
     const detalle = Array.isArray(detalleResultado?.detalle) ? detalleResultado.detalle : [];
 
     let detalle_por_grupo = resumen?.detalle_por_grupo || [];
@@ -309,8 +341,8 @@ export async function generarReporteCaso(filtros = {}) {
     };
 }
 
-export async function generarReporteResumen(filtros = {}) {
-    const f = validarFiltrosReporte(filtros);
+export async function generarReporteResumen(filtros = {}, usuarioActual = null) {
+    const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
 
     if (f.modo === "pre_matricula") {
         const condiciones = [];
@@ -397,6 +429,17 @@ export async function generarReporteResumen(filtros = {}) {
 
     const grupoCondiciones = ["g.estado = TRUE"];
     const grupoValores = [];
+
+    if (f.scope_profesor_id) {
+        grupoCondiciones.push(`EXISTS (
+            SELECT 1
+            FROM grupo_profesor gp_scope
+            WHERE gp_scope.id_grupo = g.id_grupo
+              AND gp_scope.id_profesor = ?
+              AND gp_scope.estado = TRUE
+        )`);
+        grupoValores.push(f.scope_profesor_id);
+    }
     if (f.id_grupo) {
         grupoCondiciones.push("g.id_grupo = ?");
         grupoValores.push(f.id_grupo);
@@ -471,7 +514,22 @@ export async function generarReporteResumen(filtros = {}) {
         grupoValores
     );
 
-    const base = sistema[0] || {};
+    let base = sistema[0] || {};
+
+    if (f.scope_profesor_id) {
+        const [scopeRows] = await pool.query(
+            `SELECT
+                COUNT(DISTINCT a.id_estudiante) AS total_estudiantes,
+                1 AS total_profesores,
+                COUNT(DISTINCT a.id_grupo) AS total_grupos,
+                0 AS total_matriculas
+             FROM asistencia a
+             WHERE a.estado = TRUE AND a.id_profesor = ?`,
+            [f.scope_profesor_id]
+        );
+        base = scopeRows[0] || base;
+    }
+
     const metricas = totales[0] || {};
     const total = Number(metricas.total_asistencias || 0);
     const presentes = Number(metricas.presentes || 0);
@@ -494,8 +552,8 @@ export async function generarReporteResumen(filtros = {}) {
     };
 }
 
-export async function generarReporteDetalle(filtros = {}) {
-    const f = validarFiltrosReporte(filtros);
+export async function generarReporteDetalle(filtros = {}, usuarioActual = null) {
+    const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
 
     if (f.modo === "pre_matricula") {
         const condiciones = [];

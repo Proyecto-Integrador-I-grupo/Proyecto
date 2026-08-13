@@ -100,7 +100,7 @@ export async function procesarMatricula(datos) {
    GRUPOS
    ========================================== */
 export async function obtenerGruposService(usuarioActual = null) {
-  const rol = (usuarioActual?.rol || "").toLowerCase();
+  const rol = (usuarioActual?.nom_rol || usuarioActual?.rol || "").toLowerCase();
 
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
@@ -121,10 +121,14 @@ export async function obtenerGruposService(usuarioActual = null) {
           fn_estudiantes_grupo(g.id_grupo) AS ocupados
        FROM grupo g
        INNER JOIN seccion s ON g.id_seccion = s.id_seccion
-       LEFT JOIN suplencia su ON su.id_grupo = g.id_grupo AND su.id_profesor_suplente = ? AND su.activo = 1
-       WHERE g.estado = TRUE AND (g.id_profesor = ? OR su.id_profesor_suplente = ?)
+       LEFT JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo
+         AND gp.id_profesor = ? AND gp.estado = TRUE
+       LEFT JOIN suplencia su ON su.id_grupo = g.id_grupo
+         AND su.id_profesor_suplente = ? AND su.activo = 1
+       WHERE g.estado = TRUE
+         AND (gp.id_profesor = ? OR su.id_profesor_suplente = ?)
        ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`,
-      [idProfesor, idProfesor, idProfesor]
+      [idProfesor, idProfesor, idProfesor, idProfesor]
     );
     return rows;
   }

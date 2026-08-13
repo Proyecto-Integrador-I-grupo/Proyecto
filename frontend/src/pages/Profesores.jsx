@@ -27,8 +27,23 @@ export default function Profesores() {
           </button>
         </div>
       </div>
-      <div className="row g-3 mb-4">
-        {[['prof-cnt-total','Total Registrados','stat-card-primary'],['prof-cnt-activos','Activos','stat-card-success'],['prof-cnt-inactivos','Inactivos / Destituidos','stat-card-danger'],['prof-cnt-pendientes','Grupos por Restaurar','stat-card-gold']].map(([id,label,cls]) => <div className="col-6 col-lg-3" key={id}><div className={`card stat-card stat-card-sm ${cls} shadow-sm h-100`}><div className="card-body py-3"><span className="stat-label">{label}</span><div id={id} className="stat-value stat-value-sm">–</div></div></div></div>)}
+      <div className="faculty-summary mb-4">
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon"><i className="bi bi-people"></i></span>
+          <div><small>Total registrados</small><strong id="prof-cnt-total">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-success"><i className="bi bi-person-check"></i></span>
+          <div><small>Activos</small><strong id="prof-cnt-activos">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-muted"><i className="bi bi-person-dash"></i></span>
+          <div><small>Inactivos</small><strong id="prof-cnt-inactivos">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-warning"><i className="bi bi-arrow-repeat"></i></span>
+          <div><small>Grupos por restaurar</small><strong id="prof-cnt-pendientes">–</strong></div>
+        </div>
       </div>
       <div className="card border-0 shadow-sm"><div className="card-body"><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap"><div className="input-group input-group-sm search-box"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="prof-search" type="text" className="form-control" placeholder="Buscar por nombre o materia..." /></div><select id="prof-filtro-estado" className="form-select form-select-sm" style={{width:'auto'}}><option value="todos">Todos los profesores</option><option value="activos">Solo activos</option><option value="inactivos">Solo inactivos / destituidos</option></select></div><div className="table-responsive"><table id="profesores-table" className="table table-hover align-middle mb-0"><thead><tr><th>ID</th><th>Nombre Completo</th><th>Materia</th><th>Ingreso</th><th>Grupos</th><th>Estado</th><th className="text-end">Acciones</th></tr></thead><tbody></tbody></table></div></div></div>
 

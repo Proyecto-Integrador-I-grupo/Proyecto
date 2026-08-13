@@ -1,10 +1,15 @@
 import db from '../config/database.js';
 import * as auditoriaModel from '../models/auditoriaModel.js';
-import { registrarAsistenciaProceso, listarAsistencias } from '../services/asistenciaServiceP.js';
+import { registrarAsistenciaProceso, listarAsistencias, eliminarAsistenciaProceso } from '../services/asistenciaServiceP.js';
 
 export async function crearAsistencia(req, res) {
   try {
     const { fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor } = req.body;
+
+    const rol = String(req.usuarioActual?.nom_rol || "").toLowerCase();
+    if (rol === "profesor" && Number(req.usuarioActual?.id_profesor) !== Number(id_profesor)) {
+      return res.status(403).json({ mensaje: "Un profesor solo puede registrar asistencia bajo su propio usuario." });
+    }
 
     const resultado = await registrarAsistenciaProceso({
       fecha,
@@ -37,49 +42,7 @@ export async function crearAsistencia(req, res) {
 
 export async function obtenerAsistencias(req, res) {
   try {
-    const usuario = req.usuarioActual;
-    const rol = (usuario?.nom_rol || "").toLowerCase();
-
-    if (rol === "profesor") {
-      const idProfesor = usuario.id_profesor;
-      if (!idProfesor) {
-        return res.status(200).json([]);
-      }
-
-      // CORRECCIÓN: Filtrar directamente por el id_profesor registrado en la asistencia (a.id_profesor)
-      // para que cada docente vea ÚNICAMENTE las asistencias tomadas en sus respectivas materias.
-      // NUEVO: se incluye prof.materia AS materia_curso para mostrar el curso/materia en la tabla.
-      const queryProfesorAsistencias = `
-        SELECT DISTINCT
-            a.id_asistencia,
-            a.fecha,
-            a.estado_asistencia,
-            a.observaciones,
-            a.id_estudiante,
-            a.id_grupo,
-            a.id_profesor,
-            pe.nombre        AS estudiante_nombre,
-            pe.apellido1      AS estudiante_apellido1,
-            pe.apellido2      AS estudiante_apellido2,
-            g.nombre_grupo,
-            pr.nombre         AS profesor_nombre,
-            pr.apellido1      AS profesor_apellido1,
-            prof.materia      AS materia_curso
-        FROM asistencia a
-        INNER JOIN estudiante e   ON a.id_estudiante = e.id_estudiante
-        INNER JOIN persona pe     ON e.id_persona = pe.id_persona
-        INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
-        INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
-        INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
-        WHERE a.id_profesor = ? AND a.estado = TRUE
-        ORDER BY a.fecha DESC, a.id_asistencia DESC
-        LIMIT 500
-      `;
-      const [filasProfesor] = await db.query(queryProfesorAsistencias, [idProfesor]);
-      return res.status(200).json(filasProfesor);
-    }
-
-    const filas = await listarAsistencias(req.query, usuario);
+    const filas = await listarAsistencias(req.query, req.usuarioActual);
     return res.status(200).json(filas);
   } catch (error) {
     console.error("Error al obtener asistencias:", error);
@@ -97,6 +60,11 @@ export async function actualizarAsistencia(req, res) {
       return res.status(404).json({ mensaje: 'Registro de asistencia no encontrado.' });
     }
     const datosAnteriores = JSON.stringify(rowsAntes[0]);
+
+    const rol = String(req.usuarioActual?.nom_rol || "").toLowerCase();
+    if (rol === "profesor" && Number(rowsAntes[0].id_profesor) !== Number(req.usuarioActual?.id_profesor)) {
+      return res.status(403).json({ mensaje: "Solo puedes modificar asistencias registradas por tu usuario." });
+    }
 
     const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ?';
     const [result] = await db.query(query, [estado_asistencia, observaciones || null, id]);
@@ -122,6 +90,33 @@ export async function actualizarAsistencia(req, res) {
   } catch (error) {
     console.error("Error al actualizar asistencia:", error);
     return res.status(400).json({ mensaje: error.message });
+  }
+}
+
+
+export async function eliminarAsistencia(req, res) {
+  try {
+    const { id } = req.params;
+
+    const resultado = await eliminarAsistenciaProceso(id, req.usuarioActual);
+    const datosAnteriores = JSON.stringify(resultado.registro || null);
+
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "asistencia",
+        accion_usuario: "DELETE",
+        datos_anteriores: datosAnteriores,
+        datos_nuevos: null
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría de eliminación:", e);
+    }
+
+    return res.status(200).json({ mensaje: resultado.mensaje });
+  } catch (error) {
+    console.error("Error al eliminar asistencia:", error);
+    const status = String(error.message || "").includes("Solo un administrador") ? 403 : 400;
+    return res.status(status).json({ mensaje: error.message });
   }
 }
 

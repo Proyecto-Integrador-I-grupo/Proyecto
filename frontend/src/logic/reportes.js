@@ -1,4 +1,4 @@
-import { apiFetch, showToast } from './ui.js';
+import { apiFetch, showToast, currentUser } from './ui.js';
 import { populateGruposSelects, allGrupos } from './matricula.js';
 
 const MODOS = {
@@ -13,11 +13,44 @@ const MODOS = {
 const ESTADOS_ASISTENCIA = ['presente', 'ausente', 'tardia', 'justificada'];
 const ESTADOS_ACTIVO = ['activo', 'inactivo'];
 const TIPOS_REPORTE = ['resumen', 'detalle', 'individual', 'grupo'];
-const REPORTE_LOGO_SRC = '/images/logo.jpg';
+const REPORTE_LOGO_SRC = '/images/logo1.jpg';
 let consultaAplicada = false;
 let reporteActual = null;
 let reporteLogoDataUrlPromise = null;
 let reporteCargando = false;
+
+const MODOS_POR_ROL = {
+  administrador: ['matricula', 'estudiantes', 'grupos', 'profesores', 'pre_matricula', 'auditoria'],
+  asistente: ['matricula', 'estudiantes', 'grupos', 'pre_matricula'],
+  profesor: ['estudiantes', 'grupos']
+};
+
+function obtenerRolActual() {
+  return String(currentUser?.rol || '').toLowerCase().trim();
+}
+
+function modosPermitidosActuales() {
+  return MODOS_POR_ROL[obtenerRolActual()] || [];
+}
+
+function aplicarPermisosReportes() {
+  const permitidos = modosPermitidosActuales();
+
+  document.querySelectorAll('[data-report-mode]').forEach((button) => {
+    const permitido = permitidos.includes(button.dataset.reportMode);
+    button.hidden = !permitido;
+    button.disabled = !permitido;
+  });
+
+  const actual = obtenerModoReporteActivo();
+  if (!permitidos.includes(actual)) {
+    const inicial = permitidos[0] || 'estudiantes';
+    cambiarModoReporte(inicial);
+    return inicial;
+  }
+
+  return actual;
+}
 
 (function registerModule() {
   const moduleName = 'reportes';
@@ -29,10 +62,23 @@ let reporteCargando = false;
 })();
 
 async function loadReportesData() {
-  try { await populateGruposSelects(); } catch (error) { console.warn('No se pudieron cargar los grupos para reportes:', error); }
+  aplicarPermisosReportes();
+
+  try {
+    await populateGruposSelects();
+  } catch (error) {
+    console.warn('No se pudieron cargar los grupos para reportes:', error);
+  }
+
   poblarFiltroGrupoReportes();
-  limpiarFiltrosReporte('matricula');
-  cambiarModoReporte('matricula');
+
+  const permitidos = modosPermitidosActuales();
+  const inicial = permitidos.includes(obtenerModoReporteActivo())
+    ? obtenerModoReporteActivo()
+    : (permitidos[0] || 'estudiantes');
+
+  limpiarFiltrosReporte(inicial);
+  cambiarModoReporte(inicial);
   resetearDatosReporte();
   actualizarEstadoBotonAplicar();
 }
@@ -48,6 +94,10 @@ function wireReportesEvents() {
     button.dataset.wired = '1';
     button.addEventListener('click', () => {
       const modo = button.dataset.reportMode || 'matricula';
+      if (!modosPermitidosActuales().includes(modo)) {
+        showToast('No tienes permiso para este tipo de reporte.', 'error');
+        return;
+      }
       limpiarFiltrosReporte(modo);
       cambiarModoReporte(modo);
       resetearDatosReporte();
@@ -105,7 +155,9 @@ function wireClick(id, handler) {
 }
 
 function cambiarModoReporte(modo = 'matricula') {
-  const actual = MODOS[modo] ? modo : 'matricula';
+  const permitidos = modosPermitidosActuales();
+  const solicitado = MODOS[modo] ? modo : (permitidos[0] || 'estudiantes');
+  const actual = permitidos.includes(solicitado) ? solicitado : (permitidos[0] || 'estudiantes');
   const config = MODOS[actual];
 
   document.querySelectorAll('[data-report-mode]').forEach((button) => {

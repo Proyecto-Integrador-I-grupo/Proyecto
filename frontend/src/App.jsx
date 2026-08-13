@@ -117,7 +117,7 @@ export default function App() {
           <div className="login-card">
             <div className="text-center mb-4">
               <img
-                src="/images/logo.jpg"
+                src="/images/logo1.jpg"
                 alt="EduControl"
                 className="login-logo mb-3"
               />
@@ -270,7 +270,7 @@ export default function App() {
                 </button>
               </li>
 
-              <li className="nav-item admin-only">
+              <li className="nav-item">
                 <button
                   type="button"
                   data-view="reportes"

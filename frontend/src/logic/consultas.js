@@ -1,6 +1,7 @@
 import {
   apiFetch,
-  showResultModal
+  showResultModal,
+  currentUser
 } from './ui.js';
 
 (function () {
@@ -15,6 +16,51 @@ let asistencias = [];
 // Registro que se está mostrando en la vista previa
 let documentoActual = null;
 let tipoDocumentoActual = null;
+
+const CONSULTAS_POR_ROL = {
+  administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia'],
+  asistente: ['prematriculados', 'matriculados', 'matriculas'],
+  profesor: ['asistencia']
+};
+
+function rolActual() {
+  return String(currentUser?.rol || '').toLowerCase().trim();
+}
+
+function tiposConsultaPermitidos() {
+  return CONSULTAS_POR_ROL[rolActual()] || [];
+}
+
+function aplicarPermisosConsultaUI() {
+  const permitidos = tiposConsultaPermitidos();
+  const select = document.getElementById('consulta-tipo');
+
+  if (select) {
+    Array.from(select.options).forEach((option) => {
+      option.hidden = !permitidos.includes(option.value);
+      option.disabled = !permitidos.includes(option.value);
+    });
+
+    if (!permitidos.includes(select.value)) {
+      select.value = permitidos[0] || 'asistencia';
+    }
+  }
+
+  const statMap = {
+    'consulta-total-estudiantes': 'prematriculados',
+    'consulta-total-matriculados': 'matriculados',
+    'consulta-total-profesores': 'profesores',
+    'consulta-total-matriculas': 'matriculas',
+    'consulta-total-asistencias': 'asistencia'
+  };
+
+  Object.entries(statMap).forEach(([id, tipo]) => {
+    const el = document.getElementById(id);
+    const col = el?.closest('.col-6');
+    if (col) col.hidden = !permitidos.includes(tipo);
+  });
+}
+
   window.EduControlModules = window.EduControlModules || {};
 
   window.EduControlModules[moduleName] = {
@@ -26,6 +72,7 @@ let tipoDocumentoActual = null;
 
       section.dataset.wired = '1';
 
+      aplicarPermisosConsultaUI();
       conectarEventos();
       cargarConsultas();
     }
@@ -79,60 +126,25 @@ let tipoDocumentoActual = null;
 
   async function cargarConsultas() {
     mostrarCargando();
+    aplicarPermisosConsultaUI();
 
     try {
-      const [
-        resEstudiantes,
-        resEstudiantesMatriculados,
-        resProfesores,
-        resMatriculas,
-        resAsistencias
-      ] = await Promise.all([
-        apiFetch('/api/estudiantes'),
-        apiFetch('/api/estudiantes/matriculados'),
-        apiFetch('/api/profesores'),
-        apiFetch('/api/procesos/matricula'),
-        apiFetch('/api/procesos/asistencia')
+      const permitidos = tiposConsultaPermitidos();
+
+      const pedir = async (tipo, url) => {
+        if (!permitidos.includes(tipo)) return [];
+        const response = await apiFetch(url);
+        if (!response.ok) return [];
+        return await response.json();
+      };
+
+      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias] = await Promise.all([
+        pedir('prematriculados', '/api/estudiantes'),
+        pedir('matriculados', '/api/estudiantes/matriculados'),
+        pedir('profesores', '/api/profesores'),
+        pedir('matriculas', '/api/procesos/matricula'),
+        pedir('asistencia', '/api/procesos/asistencia')
       ]);
-
-      estudiantes = resEstudiantes.ok
-        ? await resEstudiantes.json()
-        : [];
-
-      estudiantesMatriculados =
-        resEstudiantesMatriculados.ok
-          ? await resEstudiantesMatriculados.json()
-          : [];
-
-      profesores = resProfesores.ok
-        ? await resProfesores.json()
-        : [];
-
-      matriculas = resMatriculas.ok
-        ? await resMatriculas.json()
-        : [];
-
-      asistencias = resAsistencias.ok
-        ? await resAsistencias.json()
-        : [];
-
-      if (!resEstudiantesMatriculados.ok) {
-        console.warn(
-          'No se pudieron cargar los estudiantes matriculados.'
-        );
-      }
-
-      if (!resMatriculas.ok) {
-        console.warn(
-          'No se pudieron cargar las matrículas.'
-        );
-      }
-
-      if (!resAsistencias.ok) {
-        console.warn(
-          'No se pudieron cargar los registros de asistencia.'
-        );
-      }
 
       actualizarResumen();
       cargarFiltroGrupos();
@@ -200,9 +212,17 @@ let tipoDocumentoActual = null;
      ========================================== */
 
   function actualizarConsulta() {
-    const tipo =
+    let tipo =
       document.getElementById('consulta-tipo')?.value ||
-      'prematriculados';
+      tiposConsultaPermitidos()[0] ||
+      'asistencia';
+
+    const permitidos = tiposConsultaPermitidos();
+    if (!permitidos.includes(tipo)) {
+      tipo = permitidos[0] || 'asistencia';
+      const selector = document.getElementById('consulta-tipo');
+      if (selector) selector.value = tipo;
+    }
 
     actualizarFiltroEstado(tipo);
     actualizarTextoBusqueda(tipo);

@@ -535,7 +535,7 @@ function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
   lista.innerHTML = suplencias.map((s) => `
     <div class="border rounded-3 p-3 d-flex align-items-center justify-content-between gap-3 flex-wrap" data-suplencia-row="${s.id_suplencia}">
       <div>
-        <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}</div>
+        <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}${s.nombre_seccion ? ` · Sección ${s.nombre_seccion}` : ''}</div>
         <div class="small text-muted">
           ${s.id_profesor_suplente
             ? `Cubierto provisionalmente por: <strong>${s.suplente_nombre}</strong>`

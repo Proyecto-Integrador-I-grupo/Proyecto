@@ -63,7 +63,7 @@ export async function procesarMatricula(datos) {
       throw new Error("El estudiante ya está matriculado en este grupo.");
     }
 
-    const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 20) : null;
+    const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 150) : null;
     const observacionesDetalle = observaciones ? observaciones.trim().slice(0, 150) : null;
 
     await connection.query(

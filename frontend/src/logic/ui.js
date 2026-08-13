@@ -4,6 +4,7 @@ const baseUrl = import.meta.env.VITE_API_URL || ((window.location.hostname === "
   : "https://proyecto-vcz6.onrender.com");
 
 const SESSION_KEY = "educontrol_usuario";
+const ACTIVE_VIEW_KEY = 'educontrol_active_view';
 
 let currentUser = null;
 let views = [];
@@ -164,6 +165,7 @@ async function handleLogin(e) {
 
 function logout() {
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(ACTIVE_VIEW_KEY);
 
   currentUser = null;
   window.EduControlCurrentUser = null;
@@ -440,6 +442,7 @@ function initApp() {
 
     setActiveView(
       activeButton?.dataset.view ||
+      sessionStorage.getItem(ACTIVE_VIEW_KEY) ||
       'dashboard'
     );
 
@@ -476,7 +479,8 @@ function initApp() {
    * aquí porque esa lógica pertenece al
    * módulo dashboard.js.
    */
-  setActiveView('dashboard');
+  const vistaGuardada = sessionStorage.getItem(ACTIVE_VIEW_KEY) || 'dashboard';
+  setActiveView(vistaGuardada);
 }
 
 function wireSidebarToggle() {
@@ -604,6 +608,8 @@ function setActiveView(viewName) {
 
     return;
   }
+
+  sessionStorage.setItem(ACTIVE_VIEW_KEY, viewName);
 
   const modulo =
     window.EduControlModules?.[viewName];

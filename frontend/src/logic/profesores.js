@@ -448,12 +448,12 @@ async function eliminarProfesor(idProf) {
     const json = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      showResultModal('success', 'Profesor eliminado', 'El registro del profesor fue eliminado permanentemente del sistema.');
+      showResultModal('success', 'Profesor eliminado', 'El profesor, su acceso y los registros asociados fueron eliminados permanentemente del sistema.');
       await loadProfesores();
       await populateProfesoresSelects();
       await refreshDashboardCounts();
     } else {
-      showResultModal('error', 'No se pudo eliminar', json.error || 'Ocurrió un error al eliminar el profesor.');
+      showResultModal('error', 'No se pudo eliminar', json.error || json.mensaje || 'Ocurrió un error al eliminar el profesor.');
     }
   } catch {
     showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');

@@ -1,5 +1,23 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
+
+const normalizarGeneroProfesor = (genero) => {
+  const valor = String(genero ?? "").trim().toLowerCase();
+  const mapa = {
+    m: "M",
+    masculino: "M",
+    f: "F",
+    femenino: "F",
+    o: "O",
+    otro: "O",
+    otra: "O"
+  };
+  const normalizado = mapa[valor];
+  if (!normalizado) {
+    throw new Error("El género debe ser Masculino, Femenino u Otro.");
+  }
+  return normalizado;
+};
 export const obtenerProfesoresService = async () => {
   const query = `
     SELECT 
@@ -48,6 +66,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     throw new Error("La contraseña de acceso debe tener al menos 6 caracteres.");
   }
 
+  const generoNormalizado = normalizarGeneroProfesor(genero);
   const nombreLimpio = nombre.trim();
   const apellido1Limpio = apellido1.trim();
   const apellido2Limpio = apellido2 ? apellido2.trim() : null;
@@ -109,7 +128,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       apellido1Limpio,
       apellido2Limpio,
       fecha_nacimiento,
-      genero
+      generoNormalizado
     ]);
 
     const id_persona = resPersona.insertId;
@@ -366,7 +385,11 @@ export const eliminarProfesorService = async (id_profesor) => {
     await connection.beginTransaction();
 
     const [rows] = await connection.query(
-      `SELECT id_profesor FROM profesor WHERE id_profesor = ?`,
+      `SELECT pr.id_profesor, pr.id_persona, p.nombre, p.apellido1, p.apellido2
+       FROM profesor pr
+       INNER JOIN persona p ON p.id_persona = pr.id_persona
+       WHERE pr.id_profesor = ?
+       LIMIT 1`,
       [id_profesor]
     );
 
@@ -374,27 +397,140 @@ export const eliminarProfesorService = async (id_profesor) => {
       throw new Error("El profesor no existe.");
     }
 
+    const profesor = rows[0];
+    const idPersona = profesor.id_persona;
+
+    const [usuarios] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE id_persona = ?`,
+      [idPersona]
+    );
+    const idsUsuario = usuarios.map((u) => Number(u.id_usuario)).filter(Number.isInteger);
+
     await connection.query(`SET @DISABLE_TRIGGERS = 1`);
 
-    await connection.query(`DELETE FROM profesor WHERE id_profesor = ?`, [id_profesor]);
+    // El borrado solicitado es permanente. Primero se eliminan las referencias
+    // que impiden borrar la fila principal del profesor.
+    await connection.query(
+      `DELETE FROM profesor_suplencia
+       WHERE id_profesor_titular = ? OR id_profesor_suplente = ?`,
+      [id_profesor, id_profesor]
+    );
 
-    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
+    await connection.query(
+      `DELETE FROM grupo_profesor WHERE id_profesor = ?`,
+      [id_profesor]
+    );
 
-    await connection.commit();
-    return { id_profesor, mensaje: "Profesor eliminado permanentemente" };
-  } catch (error) {
-    await connection.rollback();
-    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
+    await connection.query(
+      `DELETE FROM asistencia WHERE id_profesor = ?`,
+      [id_profesor]
+    );
 
-    // Error típico de MySQL cuando hay registros hijos (grupo_profesor, asistencia,
-    // profesor_suplencia, etc.)
-    if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
-      throw new Error(
-        "No se puede eliminar: este profesor tiene grupos, asistencias o coberturas de suplencia asociadas. " +
-        "Usa la opción 'Destituir' para inactivarlo en su lugar."
+    // Compatibilidad con instalaciones anteriores que todavía conservan
+    // id_profesor directamente en grupo o la tabla suplencia antigua.
+    const [grupoProfesorColumn] = await connection.query(
+      `SELECT 1
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'grupo'
+         AND COLUMN_NAME = 'id_profesor'
+       LIMIT 1`
+    );
+    if (grupoProfesorColumn.length) {
+      await connection.query(
+        `UPDATE grupo SET id_profesor = NULL WHERE id_profesor = ?`,
+        [id_profesor]
       );
     }
 
+    const [suplenciaTable] = await connection.query(
+      `SELECT 1
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'suplencia'
+       LIMIT 1`
+    );
+    if (suplenciaTable.length) {
+      const [suplenciaCols] = await connection.query(
+        `SELECT COLUMN_NAME
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'suplencia'
+           AND COLUMN_NAME IN ('id_profesor', 'id_profesor_titular', 'id_profesor_suplente')`
+      );
+      const columnas = new Set(suplenciaCols.map((c) => c.COLUMN_NAME));
+      const condiciones = [];
+      const valores = [];
+      ['id_profesor', 'id_profesor_titular', 'id_profesor_suplente'].forEach((columna) => {
+        if (columnas.has(columna)) {
+          condiciones.push(`${columna} = ?`);
+          valores.push(id_profesor);
+        }
+      });
+      if (condiciones.length) {
+        await connection.query(
+          `DELETE FROM suplencia WHERE ${condiciones.join(' OR ')}`,
+          valores
+        );
+      }
+    }
+
+    // Conservamos la auditoría cuando la FK permite NULL. Si una instalación
+    // antigua no lo permite, se eliminan únicamente las auditorías del usuario
+    // que está siendo borrado para que la operación pueda completarse.
+    for (const idUsuarioProfesor of idsUsuario) {
+      try {
+        await connection.query(
+          `UPDATE auditoria SET id_usuario = NULL WHERE id_usuario = ?`,
+          [idUsuarioProfesor]
+        );
+      } catch (auditError) {
+        await connection.query(
+          `DELETE FROM auditoria WHERE id_usuario = ?`,
+          [idUsuarioProfesor]
+        );
+      }
+    }
+
+    await connection.query(
+      `DELETE FROM usuario WHERE id_persona = ?`,
+      [idPersona]
+    );
+
+    await connection.query(
+      `DELETE FROM profesor WHERE id_profesor = ?`,
+      [id_profesor]
+    );
+
+    const [estudianteRelacionado] = await connection.query(
+      `SELECT id_estudiante FROM estudiante WHERE id_persona = ? LIMIT 1`,
+      [idPersona]
+    );
+    const [usuarioRelacionado] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE id_persona = ? LIMIT 1`,
+      [idPersona]
+    );
+
+    if (estudianteRelacionado.length === 0 && usuarioRelacionado.length === 0) {
+      await connection.query(
+        `DELETE FROM persona WHERE id_persona = ?`,
+        [idPersona]
+      );
+    }
+
+    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
+    await connection.commit();
+
+    return {
+      id_profesor: Number(id_profesor),
+      id_persona: idPersona,
+      nombre: `${profesor.nombre ?? ""} ${profesor.apellido1 ?? ""} ${profesor.apellido2 ?? ""}`.trim(),
+      eliminacion_permanente: true,
+      mensaje: "Profesor y datos asociados eliminados permanentemente"
+    };
+  } catch (error) {
+    await connection.rollback();
+    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
     throw new Error(error.message || "Error interno al eliminar el profesor.");
   } finally {
     connection.release();

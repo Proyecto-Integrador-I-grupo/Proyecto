@@ -12,7 +12,17 @@
 .report-filter-panel .form-control-sm,
 .report-filter-panel .form-select-sm { min-height:31px; }
 .report-filter-panel input[type="date"].form-control-sm { line-height:1.25; }
-.report-filter-field[data-filter="fecha-desde"] input,.report-filter-field[data-filter="fecha-hasta"] input { min-width:138px; font-variant-numeric:tabular-nums; }
+.report-filter-field[data-filter="fecha-desde"],
+.report-filter-field[data-filter="fecha-hasta"] { flex:0 0 auto; }
+.report-filter-field[data-filter="fecha-desde"] input,
+.report-filter-field[data-filter="fecha-hasta"] input {
+  width:100%;
+  min-width:116px;
+  max-width:142px;
+  font-size:.82rem;
+  padding-inline:.45rem;
+  font-variant-numeric:tabular-nums;
+}
 .report-filter-error { border:1px solid #fecaca; background:#fef2f2; color:#b91c1c; border-radius:.65rem; padding:.55rem .75rem; font-size:.82rem; }
 .report-actions .btn { border-radius:.65rem; }
 .report-table-wrap,.preview-table-wrap { border:1px solid #e2e8f0; border-radius:.8rem; }
@@ -43,6 +53,8 @@
   .report-toolbar { align-items:stretch !important; }
   .report-actions { width:100%; display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .report-actions .btn { width:100%; }
+  .report-filter-field[data-filter="fecha-desde"] input,
+  .report-filter-field[data-filter="fecha-hasta"] input { max-width:none; }
   .preview-reporte-logo { width:42px; height:42px; border-radius:10px; }
   .modal-xl { --bs-modal-width: calc(100vw - 1rem); }
 }

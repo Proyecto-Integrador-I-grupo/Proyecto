@@ -45,8 +45,7 @@ export default function Reportes() {
                 <div className="col-12 col-sm-6 col-lg-2 report-filter-field" data-filter="estado">
                   <label id="report-estado-label" className="form-label" htmlFor="report-filtro-estado">Estado del estudiante</label>
                   <select id="report-filtro-estado" className="form-select form-select-sm">
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
+                    <option value="">--Seleccionar--</option>
                   </select>
                 </div>
 
@@ -112,8 +111,8 @@ export default function Reportes() {
               </div>
               <div className="table-responsive preview-table-wrap">
                 <table id="preview-reporte-tabla" className="table table-hover align-middle mb-0">
-                  <thead><tr><th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado</th><th>Observaciones</th></tr></thead>
-                  <tbody id="preview-reporte-detalle-body"><tr><td colSpan="6" className="text-center py-4 text-muted">No hay registros para previsualizar.</td></tr></tbody>
+                  <thead><tr><th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th></tr></thead>
+                  <tbody id="preview-reporte-detalle-body"><tr><td colSpan="5" className="text-center py-4 text-muted">No hay registros para previsualizar.</td></tr></tbody>
                 </table>
               </div>
             </div>

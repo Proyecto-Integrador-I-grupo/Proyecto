@@ -38,6 +38,21 @@ export const usuarioCreateRules = [
 ];
 
 export const usuarioUpdateRules = [
+    body("nombre")
+        .optional({ nullable: true })
+        .isString().withMessage("El nombre debe ser texto.")
+        .trim()
+        .isLength({ min: 1, max: 80 }).withMessage("El nombre debe contener entre 1 y 80 caracteres."),
+    body("primer_apellido")
+        .optional({ nullable: true })
+        .isString().withMessage("El primer apellido debe ser texto.")
+        .trim()
+        .isLength({ min: 1, max: 80 }).withMessage("El primer apellido debe contener entre 1 y 80 caracteres."),
+    body("apellido1")
+        .optional({ nullable: true })
+        .isString().withMessage("El primer apellido debe ser texto.")
+        .trim()
+        .isLength({ min: 1, max: 80 }).withMessage("El primer apellido debe contener entre 1 y 80 caracteres."),
     body("correo")
         .optional({ nullable: true })
         .isString().withMessage("El correo debe ser texto.")

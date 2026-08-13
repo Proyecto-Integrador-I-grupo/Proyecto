@@ -444,6 +444,8 @@ function initApp() {
   if (!appInitialized) {
     wireUsuariosForm();
     wireUsuariosDelete();
+    wireUsuariosEdit();
+    wireUsuariosRefresh();
     wireSidebarToggle();
     initAccessibilityWidget();
     appInitialized = true;
@@ -700,150 +702,90 @@ function setActiveView(viewName) {
    ========================================== */
 
 function wireUsuariosForm() {
-  const form =
-    document.getElementById(
-      'usuario-form'
-    );
+  const form = document.getElementById('usuario-form');
+  if (!form || form.dataset.wired === 'true') return;
 
-  if (
-    !form ||
-    form.dataset.wired === "true"
-  ) {
-    return;
-  }
+  form.dataset.wired = 'true';
 
-  form.dataset.wired = "true";
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-  form.addEventListener(
-    'submit',
-    async (e) => {
-      e.preventDefault();
+    const submitBtn = document.getElementById('btn-guardar-usuario');
+    const nombre = document.getElementById('usuario-nombre')?.value.trim() || '';
+    const apellido1 = document.getElementById('usuario-apellido1')?.value.trim() || '';
+    const correo = document.getElementById('usuario-correo')?.value.trim().toLowerCase() || '';
+    const rolTexto = document.getElementById('usuario-rol')?.value || 'Asistente';
+    const contrasena = document.getElementById('usuario-clave')?.value || '';
 
-      const submitBtn =
-        document.getElementById(
-          'btn-guardar-usuario'
-        );
+    if (!nombre || !apellido1 || !correo || !contrasena) {
+      showToast('Por favor completa todos los campos.', 'error');
+      return;
+    }
 
-      const nombre =
-        document
-          .getElementById(
-            'usuario-nombre'
-          )
-          ?.value
-          .trim();
+    if (contrasena.length < 6) {
+      showToast('La contraseña temporal debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
 
-      const apellido1 =
-        document
-          .getElementById(
-            'usuario-apellido1'
-          )
-          ?.value
-          .trim();
+    const payload = {
+      nombre,
+      primer_apellido: apellido1,
+      correo,
+      contrasena,
+      id_rol: rolTexto === 'Administrador' ? 1 : 2
+    };
 
-      const correo =
-        document
-          .getElementById(
-            'usuario-correo'
-          )
-          ?.value
-          .trim()
-          .toLowerCase();
+    const textoOriginal = submitBtn?.innerHTML;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    }
 
-      const rolTexto =
-        document.getElementById(
-          'usuario-rol'
-        )?.value;
+    try {
+      const res = await apiFetch('/api/usuarios', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
 
-      const contrasena =
-        document.getElementById(
-          'usuario-clave'
-        )?.value;
-
-      if (
-        !nombre ||
-        !apellido1 ||
-        !correo ||
-        !contrasena
-      ) {
-        showToast(
-          'Por favor completa todos los campos.',
-          'error'
-        );
-
-        return;
+      if (!res.ok) {
+        throw new Error(data.mensaje || data.error || 'Error al guardar el usuario.');
       }
 
-      const payload = {
-        nombre,
-        primer_apellido: apellido1,
-        correo,
-        contrasena,
-        id_rol:
-          rolTexto === 'Administrador'
-            ? 1
-            : 2
-      };
+      form.reset();
+      const rolSelect = document.getElementById('usuario-rol');
+      if (rolSelect) rolSelect.value = 'Asistente';
 
+      await loadUsuariosData();
+      showToast('Usuario guardado y cargado en la lista.', 'success');
+    } catch (error) {
+      showToast(error.message || 'No se pudo registrar el usuario.', 'error');
+    } finally {
       if (submitBtn) {
-        submitBtn.disabled = true;
-
-        submitBtn.innerHTML =
-          '<span class="spinner-border spinner-border-sm"></span> Guardando...';
-      }
-
-      try {
-        const res = await apiFetch(
-          '/api/usuarios',
-          {
-            method: 'POST',
-
-            headers: {
-              'Content-Type':
-                'application/json'
-            },
-
-            body:
-              JSON.stringify(payload)
-          }
-        );
-
-        const data =
-          await res
-            .json()
-            .catch(() => ({}));
-
-        if (!res.ok) {
-          throw new Error(
-            data.mensaje ||
-            'Error al guardar el usuario.'
-          );
-        }
-
-        showToast(
-          'Usuario guardado con éxito.',
-          'success'
-        );
-
-        form.reset();
-
-        await loadUsuariosData();
-
-      } catch (err) {
-        showToast(
-          err.message,
-          'error'
-        );
-
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-
-          submitBtn.innerHTML =
-            '<i class="bi bi-download me-1"></i> Guardar Usuario';
-        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = textoOriginal || '<i class="bi bi-person-check me-1"></i> Guardar Usuario';
       }
     }
-  );
+  });
+}
+
+function wireUsuariosRefresh() {
+  const button = document.getElementById('btn-refrescar-usuarios');
+  if (!button || button.dataset.wired === 'true') return;
+
+  button.dataset.wired = 'true';
+  button.addEventListener('click', async () => {
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Actualizando';
+    try {
+      await loadUsuariosData();
+      showToast('Lista de usuarios actualizada.', 'success', 2000);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  });
 }
 
 function wireUsuariosDelete() {
@@ -855,10 +797,10 @@ function wireUsuariosDelete() {
     const button = event.target.closest('.btn-eliminar-usuario');
     if (!button) return;
 
-    const id = button.dataset.id;
+    const id = Number(button.dataset.id);
     if (!id) return;
 
-    if (Number(id) === Number(currentUser?.id_usuario)) {
+    if (id === Number(currentUser?.id_usuario)) {
       showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
       return;
     }
@@ -870,8 +812,9 @@ function wireUsuariosDelete() {
       const res = await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
-      showToast('Usuario eliminado correctamente.', 'success');
+
       await loadUsuariosData();
+      showToast('Usuario eliminado correctamente.', 'success');
     } catch (error) {
       showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
       button.disabled = false;
@@ -879,121 +822,207 @@ function wireUsuariosDelete() {
   });
 }
 
-async function loadUsuariosData() {
-  try {
-    const res =
-      await apiFetch(
-        '/api/usuarios'
-      );
+function wireUsuariosEdit() {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  const form = document.getElementById('usuario-editar-form');
 
-    if (!res.ok) {
+  if (tbody && tbody.dataset.editWired !== 'true') {
+    tbody.dataset.editWired = 'true';
+    tbody.addEventListener('click', async (event) => {
+      const button = event.target.closest('.btn-editar-usuario');
+      if (!button) return;
+
+      const id = Number(button.dataset.id);
+      if (!id) return;
+
+      button.disabled = true;
+      try {
+        const res = await apiFetch(`/api/usuarios/${id}`, { cache: 'no-store' });
+        const usuario = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(usuario.mensaje || 'No se pudo cargar el usuario.');
+
+        document.getElementById('usuario-editar-id').value = usuario.id_usuario || id;
+        document.getElementById('usuario-editar-id-persona').value = usuario.id_persona || '';
+        document.getElementById('usuario-editar-nombre').value = usuario.nombre || '';
+        document.getElementById('usuario-editar-apellido1').value = usuario.apellido1 || '';
+        document.getElementById('usuario-editar-correo').value = usuario.correo || '';
+        document.getElementById('usuario-editar-clave').value = '';
+
+        const rolSelect = document.getElementById('usuario-editar-rol');
+        const esSesionActual = Number(usuario.id_usuario) === Number(currentUser?.id_usuario);
+        if (rolSelect) {
+          rolSelect.value = String(Number(usuario.id_rol) || 2);
+          rolSelect.disabled = esSesionActual;
+        }
+        document.getElementById('usuario-editar-rol-ayuda')?.classList.toggle('d-none', !esSesionActual);
+
+        const modalEl = document.getElementById('modalEditarUsuario');
+        if (modalEl && window.bootstrap?.Modal) {
+          (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+        }
+      } catch (error) {
+        showToast(error.message || 'No se pudo cargar el usuario.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
+  if (!form || form.dataset.wired === 'true') return;
+  form.dataset.wired = 'true';
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const id = Number(document.getElementById('usuario-editar-id')?.value);
+    const idPersona = Number(document.getElementById('usuario-editar-id-persona')?.value);
+    const nombre = document.getElementById('usuario-editar-nombre')?.value.trim() || '';
+    const apellido1 = document.getElementById('usuario-editar-apellido1')?.value.trim() || '';
+    const correo = document.getElementById('usuario-editar-correo')?.value.trim().toLowerCase() || '';
+    const rolSelect = document.getElementById('usuario-editar-rol');
+    const contrasena = document.getElementById('usuario-editar-clave')?.value || '';
+    const button = document.getElementById('btn-actualizar-usuario');
+
+    if (!id || !nombre || !apellido1 || !correo) {
+      showToast('Completa nombre, apellido y correo.', 'error');
       return;
     }
 
-    const usuarios =
-      await res.json();
+    if (contrasena && contrasena.length < 6) {
+      showToast('La nueva contraseña debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
 
-    renderTablaUsuarios(
-      usuarios
-    );
+    const payload = {
+      nombre,
+      primer_apellido: apellido1,
+      correo,
+      id_persona: idPersona
+    };
 
+    if (!rolSelect?.disabled) payload.id_rol = Number(rolSelect?.value || 2);
+    if (contrasena) payload.contrasena = contrasena;
+
+    const original = button?.innerHTML;
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    }
+
+    try {
+      const res = await apiFetch(`/api/usuarios/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo actualizar el usuario.');
+
+      if (Number(currentUser?.id_usuario) === id && data.usuario) {
+        currentUser = {
+          ...currentUser,
+          nombre: data.usuario.nombre,
+          apellido1: data.usuario.apellido1,
+          correo: data.usuario.correo,
+          rol: data.usuario.nom_rol || currentUser.rol
+        };
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+        window.EduControlCurrentUser = currentUser;
+        renderUserInfo();
+      }
+
+      window.bootstrap?.Modal.getInstance(document.getElementById('modalEditarUsuario'))?.hide();
+      await loadUsuariosData();
+      showToast('Datos del usuario actualizados correctamente.', 'success');
+    } catch (error) {
+      showToast(error.message || 'No se pudo actualizar el usuario.', 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = original || '<i class="bi bi-save me-1"></i> Guardar cambios';
+      }
+    }
+  });
+}
+
+async function loadUsuariosData() {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando usuarios...</td></tr>';
+  }
+
+  try {
+    const res = await apiFetch(`/api/usuarios?_=${Date.now()}`, { cache: 'no-store' });
+    const data = await res.json().catch(() => ([]));
+
+    if (!res.ok) {
+      throw new Error(data.mensaje || data.error || 'No se pudo cargar la lista de usuarios.');
+    }
+
+    renderTablaUsuarios(data);
+    return data;
   } catch (error) {
-    console.error(
-      'Error al cargar usuarios:',
-      error
-    );
+    console.error('Error al cargar usuarios:', error);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${error.message || 'No se pudieron cargar los usuarios.'}</td></tr>`;
+    }
+    throw error;
   }
 }
 
 function renderTablaUsuarios(usuarios) {
-  const tbody =
-    document.getElementById(
-      'tabla-usuarios-body'
-    );
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (!tbody) return;
 
-  if (!tbody) {
+  const usuariosPermisos = Array.isArray(usuarios)
+    ? usuarios.filter((u) => [1, 2].includes(Number(u.id_rol)))
+    : [];
+
+  if (!usuariosPermisos.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay administradores o asistentes registrados.</td></tr>';
     return;
   }
 
-  if (
-    !Array.isArray(usuarios) ||
-    usuarios.length === 0
-  ) {
-    tbody.innerHTML =
-      `<tr><td colspan="4" class="text-center text-muted py-3">No hay usuarios registrados.</td></tr>`;
+  tbody.innerHTML = usuariosPermisos.map((u) => {
+    const idUsuario = Number(u.id_usuario);
+    const esElMismo = idUsuario === Number(currentUser?.id_usuario);
+    const esAdmin = Number(u.id_rol) === 1;
+    const nombre = `${u.nombre || 'Usuario'} ${u.apellido1 || ''}`.trim();
 
-    return;
-  }
+    return `
+      <tr data-usuario-id="${idUsuario}">
+        <td><strong>${escapeHtml(nombre)}</strong>${esElMismo ? '<div class="small text-muted">Sesión actual</div>' : ''}</td>
+        <td>${escapeHtml(u.correo || '—')}</td>
+        <td>
+          <span class="badge ${esAdmin ? 'bg-dark' : 'bg-info'} text-white px-2 py-1">
+            ${esAdmin ? 'Administrador' : 'Asistente'}
+          </span>
+        </td>
+        <td class="text-end">
+          <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-usuario" data-id="${idUsuario}">
+              <i class="bi bi-pencil-square"></i> Modificar
+            </button>
+            ${esElMismo ? `
+              <span class="badge bg-light text-dark border align-self-center">Sesión Actual</span>
+            ` : `
+              <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-usuario" data-id="${idUsuario}">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
 
-  // Filtrar docentes (id_rol === 3)
-  const usuariosPermisos =
-    usuarios.filter(
-      (u) =>
-        u.id_rol === 1 ||
-        u.id_rol === 2
-    );
-
-  tbody.innerHTML =
-    usuariosPermisos
-      .map((u) => {
-        const esElMismo =
-          currentUser?.id_usuario ===
-          u.id_usuario;
-
-        const esAdmin =
-          u.id_rol === 1;
-
-        return `
-          <tr>
-            <td>
-              <strong>
-                ${u.nombre || 'Usuario'}
-                ${u.apellido1 || ''}
-              </strong>
-            </td>
-
-            <td>
-              ${u.correo || '—'}
-            </td>
-
-            <td>
-              <span class="badge ${
-                esAdmin
-                  ? 'bg-dark'
-                  : 'bg-info'
-              } text-white px-2 py-1">
-                ${
-                  esAdmin
-                    ? 'Administrador'
-                    : 'Asistente'
-                }
-              </span>
-            </td>
-
-            <td class="text-end">
-              ${
-                esElMismo
-                  ? `
-                    <span class="badge bg-light text-dark border">
-                      Sesión Actual
-                    </span>
-                  `
-                  : `
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-danger btn-eliminar-usuario"
-                      data-id="${u.id_usuario}"
-                    >
-                      <i class="bi bi-trash"></i>
-                      Eliminar
-                    </button>
-                  `
-              }
-            </td>
-          </tr>
-        `;
-      })
-      .join('');
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 window.eliminarUsuario =

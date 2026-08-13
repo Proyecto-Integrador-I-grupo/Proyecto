@@ -23,6 +23,15 @@
   padding-inline:.45rem;
   font-variant-numeric:tabular-nums;
 }
+
+@media (min-width:576px) {
+  .report-filter-field[data-filter="fecha-desde"],
+  .report-filter-field[data-filter="fecha-hasta"] {
+    width:auto;
+    max-width:none;
+  }
+}
+
 .report-filter-error { border:1px solid #fecaca; background:#fef2f2; color:#b91c1c; border-radius:.65rem; padding:.55rem .75rem; font-size:.82rem; }
 .report-actions .btn { border-radius:.65rem; }
 .report-table-wrap,.preview-table-wrap { border:1px solid #e2e8f0; border-radius:.8rem; }

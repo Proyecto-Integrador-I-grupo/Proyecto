@@ -261,29 +261,29 @@ function renderProfesoresTable(profesores) {
       <td>${celdaGrupos}</td>
       <td>${badgeEstado}</td>
       <td class="text-end">
-        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-1 flex-wrap">
+        <div class="profesor-actions-grid">
           ${activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-primary asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
+            <button type="button" class="btn btn-sm btn-outline-primary profesor-action-btn asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
               <i class="bi bi-diagram-3 me-1"></i>Grupos
             </button>
           ` : ''}
           ${activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-warning profesor-action-btn destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-slash me-1"></i>Destituir
             </button>
           ` : ''}
           ${!activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-success reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-success profesor-action-btn reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-check-fill me-1"></i>Reintegrar
             </button>
           ` : ''}
           ${!activo && esAdmin && grupoPendientes > 0 ? `
-            <button type="button" class="btn btn-sm btn-outline-primary sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-primary profesor-action-btn sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-lines-fill me-1"></i>Sustituto
             </button>
           ` : ''}
           ${esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-danger eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-danger profesor-action-btn eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-trash me-1"></i>Eliminar
             </button>
           ` : ''}

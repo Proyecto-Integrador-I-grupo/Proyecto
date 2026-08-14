@@ -43,11 +43,11 @@ export default function Pagos() {
       <div className="finance-summary mb-4">
         <div className="finance-summary-card">
           <span className="finance-summary-icon"><i className="bi bi-wallet2"></i></span>
-          <div><small>Cobrado</small><strong id="fin-total-cobrado">₡0</strong></div>
+          <div><small>Cobrado</small><strong id="fin-total-cobrado">CRC 0</strong></div>
         </div>
         <div className="finance-summary-card">
           <span className="finance-summary-icon warning"><i className="bi bi-hourglass-split"></i></span>
-          <div><small>Pendiente</small><strong id="fin-total-pendiente">₡0</strong></div>
+          <div><small>Pendiente</small><strong id="fin-total-pendiente">CRC 0</strong></div>
         </div>
         <div className="finance-summary-card">
           <span className="finance-summary-icon danger"><i className="bi bi-exclamation-circle"></i></span>
@@ -61,6 +61,8 @@ export default function Pagos() {
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
+          <div className="finance-note mb-3"><i className="bi bi-info-circle"></i><span>Los estudiantes pre-registrados reciben un cargo de matrícula automáticamente. Desde aquí puedes registrar el abono inicial antes de asignarles un grupo.</span></div>
+
           <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
             <div className="d-flex gap-2 flex-wrap flex-grow-1">
               <div className="input-group input-group-sm finance-search">
@@ -130,11 +132,11 @@ export default function Pagos() {
               </div>
               <div className="col-md-4">
                 <label className="form-label">Monto base</label>
-                <div className="input-group"><span className="input-group-text">₡</span><input id="fin-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div>
+                <div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Descuento</label>
-                <div className="input-group"><span className="input-group-text">₡</span><input id="fin-cargo-descuento" type="number" min="0" step="0.01" className="form-control" defaultValue="0" /></div>
+                <div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-cargo-descuento" type="number" min="0" step="0.01" className="form-control" defaultValue="0" /></div>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Vencimiento</label>
@@ -163,8 +165,8 @@ export default function Pagos() {
             <input id="fin-edit-cargo-id" type="hidden" />
             <div id="fin-edit-cargo-contexto" className="finance-payment-context mb-3"></div>
             <div className="row g-3">
-              <div className="col-md-4"><label className="form-label">Monto base</label><div className="input-group"><span className="input-group-text">₡</span><input id="fin-edit-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div></div>
-              <div className="col-md-4"><label className="form-label">Descuento</label><div className="input-group"><span className="input-group-text">₡</span><input id="fin-edit-cargo-descuento" type="number" min="0" step="0.01" className="form-control" required /></div></div>
+              <div className="col-md-4"><label className="form-label">Monto base</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-edit-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div></div>
+              <div className="col-md-4"><label className="form-label">Descuento</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-edit-cargo-descuento" type="number" min="0" step="0.01" className="form-control" required /></div></div>
               <div className="col-md-4"><label className="form-label">Vencimiento</label><input id="fin-edit-cargo-vencimiento" type="date" className="form-control" /></div>
               <div className="col-md-4"><label className="form-label">Periodo</label><input id="fin-edit-cargo-periodo" className="form-control" maxLength="30" /></div>
               <div className="col-md-8"><label className="form-label">Descripción</label><input id="fin-edit-cargo-descripcion" className="form-control" maxLength="200" required /></div>
@@ -181,7 +183,7 @@ export default function Pagos() {
             <input id="fin-pago-cargo-id" type="hidden" />
             <div className="finance-payment-context mb-3" id="fin-pago-contexto"></div>
             <div className="row g-3">
-              <div className="col-md-4"><label className="form-label">Monto</label><div className="input-group"><span className="input-group-text">₡</span><input id="fin-pago-monto" type="number" min="0.01" step="0.01" className="form-control" required /></div></div>
+              <div className="col-md-4"><label className="form-label">Monto</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-pago-monto" type="number" min="0.01" step="0.01" className="form-control" required /></div></div>
               <div className="col-md-4"><label className="form-label">Método</label><select id="fin-pago-metodo" className="form-select" required><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select></div>
               <div className="col-md-4"><label className="form-label">Referencia</label><input id="fin-pago-referencia" className="form-control" maxLength="100" /></div>
             </div>

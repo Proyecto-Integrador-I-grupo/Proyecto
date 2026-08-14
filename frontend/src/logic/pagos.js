@@ -33,11 +33,12 @@ async function requestJson(path, options = {}) {
 
 export async function loadPagosData() {
   aplicarPermisos();
+  // Cargos primero: el backend completa los cargos de matrícula faltantes de pre-registros.
+  await cargarCargos();
   await Promise.all([
     cargarResumen(),
     cargarConceptos(),
     cargarEstudiantes(),
-    cargarCargos(),
     cargarPagos(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
@@ -384,7 +385,7 @@ function badgeEstado(estado, vencimiento) {
 }
 
 function nombreEstudiante(e) { return `${e.nombre || ''} ${e.apellido1 || ''} ${e.apellido2 || ''}`.replace(/\s+/g,' ').trim(); }
-function moneda(v) { return new Intl.NumberFormat('es-CR',{style:'currency',currency:'CRC',maximumFractionDigits:2}).format(Number(v||0)); }
+function moneda(v) { return `CRC ${new Intl.NumberFormat('es-CR',{minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(v||0))}`; }
 function fechaHora(v) { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString('es-CR'); }
 function etiquetaMetodo(v) { return ({efectivo:'Efectivo',tarjeta:'Tarjeta',sinpe:'SINPE',transferencia:'Transferencia',otro:'Otro'})[v] || cap(v); }
 function cap(v) { const s=String(v||''); return s ? s[0].toUpperCase()+s.slice(1) : '—'; }

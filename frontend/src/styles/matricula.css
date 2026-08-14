@@ -131,3 +131,6 @@
   .profesor-picker { padding: .55rem; }
   .profesor-select { height: 44px; min-height: 44px !important; font-size: .95rem; }
 }
+
+
+.mat-financial-status{border:1px solid #dbe3ef;border-radius:14px;padding:.85rem 1rem;background:#f8fafc;color:#475569}.mat-financial-status.ok{border-color:#a7f3d0;background:#ecfdf5;color:#065f46}.mat-financial-status.blocked{border-color:#fecaca;background:#fff7f7;color:#991b1b}.mat-debt-title{font-weight:700;margin:.55rem 0 .25rem}.mat-debt-row{display:flex;justify-content:space-between;gap:1rem;padding:.2rem 0;border-top:1px dashed rgba(100,116,139,.25)}

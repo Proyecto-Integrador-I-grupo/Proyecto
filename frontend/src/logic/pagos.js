@@ -49,7 +49,10 @@ function wirePagosEvents() {
   wire('fin-filtro-estado', 'change', cargarCargos);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
+  wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
+  wire('fin-editar-pago-form', 'submit', guardarEdicionPago);
   wire('fin-concepto-form', 'submit', guardarConcepto);
+  wire('fin-concepto-existente', 'change', seleccionarConceptoExistente);
   wire('fin-config-form', 'submit', guardarConfiguracion);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
 
@@ -59,8 +62,19 @@ function wirePagosEvents() {
     body.addEventListener('click', async (event) => {
       const pagar = event.target.closest('[data-fin-pagar]');
       const facturar = event.target.closest('[data-fin-facturar]');
+      const editar = event.target.closest('[data-fin-editar-cargo]');
+      if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
       if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
       if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar));
+    });
+  }
+
+  const pagosBody = document.getElementById('fin-pagos-body');
+  if (pagosBody && !pagosBody.dataset.wired) {
+    pagosBody.dataset.wired = '1';
+    pagosBody.addEventListener('click', (event) => {
+      const editar = event.target.closest('[data-fin-editar-pago]');
+      if (editar) abrirEdicionPago(Number(editar.dataset.finEditarPago));
     });
   }
 }
@@ -93,10 +107,17 @@ async function cargarConceptos() {
     const op = new Option(`${c.nombre} · ${moneda(c.monto_base)}`, c.id_concepto);
     select.add(op);
   });
+  const existente = document.getElementById('fin-concepto-existente');
+  if (existente) {
+    const actual = existente.value;
+    existente.innerHTML = '<option value="">Nuevo concepto</option>';
+    conceptos.forEach(c => existente.add(new Option(`${c.nombre} · ${Number(c.estado) === 1 ? 'Activo' : 'Inactivo'}`, c.id_concepto)));
+    if ([...existente.options].some(o => o.value === actual)) existente.value = actual;
+  }
 }
 
 async function cargarEstudiantes() {
-  estudiantes = await requestJson('/api/estudiantes/matriculados');
+  estudiantes = await requestJson('/api/estudiantes');
   const select = document.getElementById('fin-cargo-estudiante');
   if (!select) return;
   select.innerHTML = '<option value="">Seleccionar estudiante</option>';
@@ -105,7 +126,7 @@ async function cargarEstudiantes() {
     if (!únicos.has(e.id_estudiante)) únicos.set(e.id_estudiante, e);
   });
   [...únicos.values()].sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b))).forEach((e) => {
-    select.add(new Option(`${nombreEstudiante(e)} · ${e.nombre_grupo || 'Sin grupo'} · Sección ${e.nombre_seccion || '-'}`, e.id_estudiante));
+    select.add(new Option(`${nombreEstudiante(e)}${e.nombre_grupo ? ` · ${e.nombre_grupo} · Sección ${e.nombre_seccion || '-'}` : ' · Pre-registro / sin grupo'}`, e.id_estudiante));
   });
 }
 
@@ -125,12 +146,12 @@ async function cargarPagos() {
   if (!body) return;
   body.innerHTML = '';
   if (!pagos.length) {
-    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Aún no hay pagos registrados.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Aún no hay pagos registrados.</td></tr>';
     return;
   }
   pagos.slice(0, 30).forEach((p) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${esc(fechaHora(p.fecha_pago))}</td><td>${esc(p.estudiante_nombre)}</td><td>${esc(p.descripcion)}</td><td>${esc(etiquetaMetodo(p.metodo_pago))}</td><td class="fw-semibold">${moneda(p.monto)}</td><td>${renderFactura(p)}</td>`;
+    tr.innerHTML = `<td>${esc(fechaHora(p.fecha_pago))}</td><td>${esc(p.estudiante_nombre)}</td><td>${esc(p.descripcion)}</td><td>${esc(etiquetaMetodo(p.metodo_pago))}</td><td class="fw-semibold">${moneda(p.monto)}</td><td>${renderFactura(p)}</td><td class="text-end">${p.id_factura_externa ? '<span class="text-muted small">Bloqueado</span>' : `<button class="btn btn-sm btn-outline-secondary" data-fin-editar-pago="${p.id_pago}"><i class="bi bi-pencil"></i></button>`}</td>`;
     body.appendChild(tr);
   });
 }
@@ -157,11 +178,40 @@ function renderCargos() {
       <td>${badgeEstado(c.estado, c.fecha_vencimiento)}</td>
       <td>${renderFactura(c)}</td>
       <td class="text-end"><div class="d-inline-flex gap-1 flex-wrap justify-content-end">
+        <button class="btn btn-sm btn-outline-secondary" data-fin-editar-cargo="${c.id_cargo}"><i class="bi bi-pencil"></i> Modificar</button>
         ${puedePagar ? `<button class="btn btn-sm btn-success" data-fin-pagar="${c.id_cargo}"><i class="bi bi-cash"></i> Pagar</button>` : ''}
         ${requiereFactura ? `<button class="btn btn-sm btn-outline-primary" data-fin-facturar="${c.id_cargo}"><i class="bi bi-receipt"></i> Facturar</button>` : ''}
       </div></td>`;
     body.appendChild(tr);
   });
+}
+
+function abrirEdicionCargo(idCargo) {
+  const c = cargos.find(x => Number(x.id_cargo) === Number(idCargo));
+  if (!c) return;
+  setValue('fin-edit-cargo-id', c.id_cargo);
+  setValue('fin-edit-cargo-monto', Number(c.monto_base || 0));
+  setValue('fin-edit-cargo-descuento', Number(c.descuento || 0));
+  setValue('fin-edit-cargo-vencimiento', c.fecha_vencimiento ? String(c.fecha_vencimiento).slice(0,10) : '');
+  setValue('fin-edit-cargo-periodo', c.periodo || '');
+  setValue('fin-edit-cargo-descripcion', c.descripcion || '');
+  const ctx = document.getElementById('fin-edit-cargo-contexto');
+  if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
+  showModal('modalEditarCargo');
+}
+
+async function guardarEdicionCargo(event) {
+  event.preventDefault();
+  const id = Number(value('fin-edit-cargo-id'));
+  try {
+    await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify({
+      monto_base:value('fin-edit-cargo-monto'), descuento:value('fin-edit-cargo-descuento') || 0,
+      fecha_vencimiento:value('fin-edit-cargo-vencimiento') || null, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion')
+    })});
+    hideModal('modalEditarCargo');
+    showToast('Cargo actualizado correctamente.', 'success');
+    await loadPagosData();
+  } catch(e) { showToast(e.message,'error'); }
 }
 
 async function guardarCargo(event) {
@@ -250,19 +300,50 @@ async function reintentarFactura(idCargo) {
   } catch (e) { showToast(e.message, 'error'); }
 }
 
+function seleccionarConceptoExistente() {
+  const id = Number(value('fin-concepto-existente') || 0);
+  const c = conceptos.find(x => Number(x.id_concepto) === id);
+  setValue('fin-concepto-id', c?.id_concepto || '');
+  setValue('fin-concepto-codigo', c?.codigo || '');
+  setValue('fin-concepto-tipo', c?.tipo || 'servicio');
+  setValue('fin-concepto-nombre', c?.nombre || '');
+  setValue('fin-concepto-monto', c ? Number(c.monto_base || 0) : '');
+  setValue('fin-concepto-impuesto', c ? Number(c.impuesto_tarifa || 0) : 0);
+  setValue('fin-concepto-descripcion', c?.descripcion || '');
+  const estado = document.getElementById('fin-concepto-estado'); if (estado) estado.checked = c ? Number(c.estado) === 1 : true;
+  const codigo = document.getElementById('fin-concepto-codigo'); if (codigo) codigo.readOnly = !!c;
+  const tipo = document.getElementById('fin-concepto-tipo'); if (tipo) tipo.disabled = !!c;
+}
+
 async function guardarConcepto(event) {
   event.preventDefault();
   try {
-    await requestJson('/api/finanzas/conceptos', { method: 'POST', body: JSON.stringify({
-      codigo: value('fin-concepto-codigo'), nombre: value('fin-concepto-nombre'), tipo: value('fin-concepto-tipo'),
-      monto_base: value('fin-concepto-monto'), impuesto_tarifa: value('fin-concepto-impuesto') || 0,
-      descripcion: value('fin-concepto-descripcion')
-    }) });
-    hideModal('modalConceptoCobro');
-    event.currentTarget.reset();
-    showToast('Concepto creado correctamente.', 'success');
+    const id = Number(value('fin-concepto-id') || 0);
+    const payload = { codigo:value('fin-concepto-codigo'), nombre:value('fin-concepto-nombre'), tipo:value('fin-concepto-tipo'),
+      monto_base:value('fin-concepto-monto'), impuesto_tarifa:value('fin-concepto-impuesto') || 0, descripcion:value('fin-concepto-descripcion'),
+      estado:document.getElementById('fin-concepto-estado')?.checked !== false };
+    await requestJson(id ? `/api/finanzas/conceptos/${id}` : '/api/finanzas/conceptos', { method:id ? 'PUT' : 'POST', body:JSON.stringify(payload) });
+    showToast(id ? 'Concepto actualizado correctamente.' : 'Concepto creado correctamente.', 'success');
     await cargarConceptos();
+    if (!id) { event.currentTarget.reset(); setValue('fin-concepto-id',''); }
+    seleccionarConceptoExistente();
   } catch (e) { showToast(e.message, 'error'); }
+}
+
+function abrirEdicionPago(idPago) {
+  const p = pagos.find(x => Number(x.id_pago) === Number(idPago));
+  if (!p || p.id_factura_externa) return;
+  setValue('fin-edit-pago-id', p.id_pago); setValue('fin-edit-pago-metodo', p.metodo_pago || 'otro'); setValue('fin-edit-pago-referencia', p.referencia || '');
+  const ctx=document.getElementById('fin-edit-pago-contexto'); if(ctx) ctx.innerHTML=`<strong>${esc(p.estudiante_nombre)}</strong><span>${esc(p.descripcion)}</span><span>${moneda(p.monto)}</span>`;
+  showModal('modalEditarPago');
+}
+
+async function guardarEdicionPago(event) {
+  event.preventDefault(); const id=Number(value('fin-edit-pago-id'));
+  try {
+    await requestJson(`/api/finanzas/pagos/${id}`, {method:'PUT',body:JSON.stringify({metodo_pago:value('fin-edit-pago-metodo'),referencia:value('fin-edit-pago-referencia')})});
+    hideModal('modalEditarPago'); showToast('Datos del pago actualizados.', 'success'); await cargarPagos();
+  } catch(e){ showToast(e.message,'error'); }
 }
 
 async function cargarConfiguracion() {

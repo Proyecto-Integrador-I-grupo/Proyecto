@@ -192,6 +192,20 @@ export async function crearCargoMatriculaSiCorresponde({ id_matricula, id_estudi
   );
   if (existe) return existe;
 
+  // Si el cargo se creó antes de la matrícula para permitir el abono mínimo,
+  // reutilizarlo y vincularlo a la matrícula definitiva en lugar de duplicarlo.
+  const [[preCargo]] = await pool.query(
+    `SELECT id_cargo FROM cargo_estudiante
+     WHERE id_estudiante = ? AND id_concepto = ? AND id_matricula IS NULL
+       AND estado <> 'anulado' AND (periodo = ? OR periodo IS NULL OR periodo = '')
+     ORDER BY id_cargo DESC LIMIT 1`,
+    [id_estudiante, concepto.id_concepto, String(anio || new Date().getFullYear())]
+  );
+  if (preCargo) {
+    await pool.query(`UPDATE cargo_estudiante SET id_matricula = ? WHERE id_cargo = ?`, [id_matricula, preCargo.id_cargo]);
+    return { id_cargo: preCargo.id_cargo, reutilizado: true };
+  }
+
   return crearCargo({
     id_estudiante,
     id_concepto: concepto.id_concepto,
@@ -200,6 +214,84 @@ export async function crearCargoMatriculaSiCorresponde({ id_matricula, id_estudi
     descripcion: `Matrícula ciclo lectivo ${anio || new Date().getFullYear()}`,
     fecha_emision: new Date().toISOString().slice(0, 10)
   }, id_usuario);
+}
+
+export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null) {
+  const id = positiveInt(idEstudiante, "El estudiante");
+  const periodo = String(anio || new Date().getFullYear());
+  const [deudas] = await pool.query(
+    `SELECT c.id_cargo, c.descripcion, c.periodo, c.total, c.saldo, c.estado, cc.codigo, cc.nombre AS concepto_nombre,
+            COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS pagado
+     FROM cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+     WHERE c.id_estudiante = ? AND c.estado IN ('pendiente','parcial')
+     ORDER BY (cc.codigo = 'MATRICULA') DESC, c.fecha_emision ASC`, [id]
+  );
+  const [matRows] = await pool.query(
+    `SELECT c.id_cargo, c.total, c.saldo, c.estado,
+            COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS pagado
+     FROM cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+     WHERE c.id_estudiante = ? AND cc.codigo = 'MATRICULA'
+       AND (c.periodo = ? OR c.periodo IS NULL OR c.periodo = '')
+       AND c.estado <> 'anulado'
+     ORDER BY c.id_cargo DESC LIMIT 1`, [id, periodo]
+  );
+  const cargoMatricula = matRows[0] || null;
+  const abonado = Number(cargoMatricula?.pagado || 0);
+  const minimo = 10000;
+  const habilitado = !!cargoMatricula && (cargoMatricula.estado === 'pagado' || abonado >= minimo);
+  return {
+    id_estudiante: id, anio: Number(anio || new Date().getFullYear()), minimo_abono: minimo,
+    habilitado, abono_matricula: abonado, cargo_matricula: cargoMatricula, deudas,
+    mensaje: habilitado
+      ? (deudas.length ? 'Cumple el abono mínimo. Tiene saldos pendientes visibles antes de continuar.' : 'Situación financiera habilitada para matrícula.')
+      : (!cargoMatricula ? 'Debe registrar el cargo de matrícula y abonar al menos ₡10.000 antes de matricular.' : `Debe abonar al menos ₡${minimo.toLocaleString('es-CR')} a la matrícula. Abonado: ₡${abonado.toLocaleString('es-CR')}.`)
+  };
+}
+
+export async function actualizarCargo(idCargo, datos) {
+  const id = positiveInt(idCargo, 'El cargo');
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(
+      `SELECT c.*, cc.impuesto_tarifa FROM cargo_estudiante c INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto WHERE c.id_cargo = ? FOR UPDATE`, [id]
+    );
+    if (!rows.length) throw new Error('Cargo no encontrado.');
+    const cargo = rows[0];
+    if (cargo.estado === 'anulado') throw new Error('No se puede modificar un cargo anulado.');
+    const [[pagosRow]] = await connection.query(`SELECT COALESCE(SUM(monto),0) AS pagado FROM pago WHERE id_cargo = ? AND estado = 'aplicado'`, [id]);
+    const pagado = Number(pagosRow?.pagado || 0);
+    const base = datos.monto_base === undefined ? Number(cargo.monto_base) : money(datos.monto_base, 'El monto base', true);
+    const descuento = datos.descuento === undefined ? Number(cargo.descuento) : money(datos.descuento, 'El descuento', true);
+    if (descuento > base) throw new Error('El descuento no puede ser mayor al monto base.');
+    const subtotal = base - descuento;
+    const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
+    const total = Math.round((subtotal + impuesto) * 100) / 100;
+    if (total < pagado) throw new Error(`El total no puede ser menor a lo ya pagado (₡${pagado.toFixed(2)}).`);
+    const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
+    const estado = saldo <= 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
+    await connection.query(
+      `UPDATE cargo_estudiante SET descripcion = ?, periodo = ?, fecha_vencimiento = ?, monto_base = ?, descuento = ?, impuesto = ?, total = ?, saldo = ?, estado = ? WHERE id_cargo = ?`,
+      [String(datos.descripcion ?? cargo.descripcion ?? '').trim().slice(0,200), String(datos.periodo ?? cargo.periodo ?? '').trim().slice(0,30) || null, datos.fecha_vencimiento || null, base, descuento, impuesto, total, saldo, estado, id]
+    );
+    await connection.commit();
+    return { id_cargo:id, total, saldo, estado, pagado };
+  } catch (e) { await connection.rollback(); throw e; } finally { connection.release(); }
+}
+
+export async function actualizarPago(idPago, datos) {
+  const id = positiveInt(idPago, 'El pago');
+  const metodo = String(datos.metodo_pago || '').trim().toLowerCase();
+  if (!['efectivo','tarjeta','transferencia','sinpe','otro'].includes(metodo)) throw new Error('Método de pago no válido.');
+  const [rows] = await pool.query(
+    `SELECT pg.id_pago, pg.id_cargo, fc.id_factura_externa FROM pago pg LEFT JOIN factura_cargo fc ON fc.id_cargo = pg.id_cargo WHERE pg.id_pago = ? AND pg.estado = 'aplicado' LIMIT 1`, [id]
+  );
+  if (!rows.length) throw new Error('Pago no encontrado.');
+  if (rows[0].id_factura_externa) throw new Error('No se puede modificar un pago que ya generó una factura externa.');
+  await pool.query(`UPDATE pago SET metodo_pago = ?, referencia = ? WHERE id_pago = ?`, [metodo, String(datos.referencia || '').trim().slice(0,100) || null, id]);
+  return { id_pago:id, metodo_pago:metodo, referencia:String(datos.referencia || '').trim().slice(0,100) || null };
 }
 
 export async function listarPagos(filtros = {}) {

@@ -32,6 +32,28 @@ export async function procesarMatricula(datos) {
       throw new Error("No se puede matricular a un estudiante inactivo.");
     }
 
+    if (!datos.omitir_validacion_financiera) {
+    const [finRows] = await connection.query(
+      `SELECT c.id_cargo, c.estado, c.total, c.saldo,
+              COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS pagado
+       FROM cargo_estudiante c
+       INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+       WHERE c.id_estudiante = ? AND cc.codigo = 'MATRICULA' AND c.estado <> 'anulado'
+         AND (c.periodo = ? OR c.periodo IS NULL OR c.periodo = '')
+       ORDER BY c.id_cargo DESC LIMIT 1 FOR UPDATE`,
+      [id_estudiante, String(anio || new Date().getFullYear())]
+    );
+    const cargoMatricula = finRows[0];
+    const abonadoMatricula = Number(cargoMatricula?.pagado || 0);
+    if (!cargoMatricula || (cargoMatricula.estado !== 'pagado' && abonadoMatricula < 10000)) {
+      throw new Error(
+        !cargoMatricula
+          ? 'No se puede procesar la matrícula: primero registra el cargo de matrícula y abona al menos ₡10.000.'
+          : `No se puede procesar la matrícula: el abono mínimo es ₡10.000 y actualmente se han abonado ₡${abonadoMatricula.toLocaleString('es-CR')}.`
+      );
+    }
+    }
+
     const [usuarioRows] = await connection.query(
       "SELECT estado FROM usuario WHERE id_usuario = ?",
       [id_usuario]
@@ -578,7 +600,7 @@ export async function transferirEstudianteGrupoService(datos) {
   }
 
   try {
-    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo });
+    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo, omitir_validacion_financiera: true });
   } catch (error) {
     throw new Error(
       `El estudiante se retiró del grupo anterior, pero no se pudo matricular en el grupo nuevo: ${error.message}`

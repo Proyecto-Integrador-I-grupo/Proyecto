@@ -24,7 +24,7 @@ export default function Pagos() {
             <i className="bi bi-cash-coin me-2"></i>Pagos y facturación
           </h2>
           <p className="text-muted small mb-0">
-            Controla cargos, pagos, responsables de pago y facturas de los servicios educativos.
+            Controla cargos, pagos, responsables de pago y facturas de los servicios educativos. La facturación se envía al servicio externo configurado en el backend.
           </p>
         </div>
         <div className="d-flex gap-2 flex-wrap">
@@ -75,7 +75,7 @@ export default function Pagos() {
               </select>
             </div>
             <button id="fin-nuevo-concepto" type="button" className="btn btn-sm btn-outline-secondary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConceptoCobro">
-              <i className="bi bi-tags"></i> Nuevo concepto
+              <i className="bi bi-tags"></i> Gestionar conceptos
             </button>
           </div>
 
@@ -109,7 +109,7 @@ export default function Pagos() {
           </div>
           <div className="table-responsive">
             <table className="table table-sm align-middle mb-0">
-              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
               <tbody id="fin-pagos-body"></tbody>
             </table>
           </div>
@@ -157,6 +157,24 @@ export default function Pagos() {
         </form>
       </Modal>
 
+      <Modal id="modalEditarCargo" title={<><i className="bi bi-pencil-square"></i> Modificar cargo</>} lg>
+        <form id="fin-editar-cargo-form">
+          <div className="modal-body p-4">
+            <input id="fin-edit-cargo-id" type="hidden" />
+            <div id="fin-edit-cargo-contexto" className="finance-payment-context mb-3"></div>
+            <div className="row g-3">
+              <div className="col-md-4"><label className="form-label">Monto base</label><div className="input-group"><span className="input-group-text">₡</span><input id="fin-edit-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div></div>
+              <div className="col-md-4"><label className="form-label">Descuento</label><div className="input-group"><span className="input-group-text">₡</span><input id="fin-edit-cargo-descuento" type="number" min="0" step="0.01" className="form-control" required /></div></div>
+              <div className="col-md-4"><label className="form-label">Vencimiento</label><input id="fin-edit-cargo-vencimiento" type="date" className="form-control" /></div>
+              <div className="col-md-4"><label className="form-label">Periodo</label><input id="fin-edit-cargo-periodo" className="form-control" maxLength="30" /></div>
+              <div className="col-md-8"><label className="form-label">Descripción</label><input id="fin-edit-cargo-descripcion" className="form-control" maxLength="200" required /></div>
+              <div className="col-12"><div className="alert alert-light border small mb-0">El sistema no permite bajar el total por debajo de lo que ya fue pagado.</div></div>
+            </div>
+          </div>
+          <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar cambios</button></div>
+        </form>
+      </Modal>
+
       <Modal id="modalRegistrarPago" title={<><i className="bi bi-cash-stack"></i> Registrar pago</>} lg>
         <form id="fin-pago-form">
           <div className="modal-body p-4">
@@ -182,15 +200,32 @@ export default function Pagos() {
         </form>
       </Modal>
 
-      <Modal id="modalConceptoCobro" title={<><i className="bi bi-tags"></i> Nuevo concepto de cobro</>}>
+      <Modal id="modalEditarPago" title={<><i className="bi bi-pencil"></i> Modificar datos del pago</>}>
+        <form id="fin-editar-pago-form">
+          <div className="modal-body p-4">
+            <input id="fin-edit-pago-id" type="hidden" />
+            <div id="fin-edit-pago-contexto" className="finance-payment-context mb-3"></div>
+            <div className="row g-3">
+              <div className="col-md-6"><label className="form-label">Método</label><select id="fin-edit-pago-metodo" className="form-select" required><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select></div>
+              <div className="col-md-6"><label className="form-label">Referencia</label><input id="fin-edit-pago-referencia" className="form-control" maxLength="100" /></div>
+            </div>
+            <div className="form-text mt-3">Por integridad contable, el monto no se modifica desde aquí. Los pagos con factura externa generada quedan bloqueados.</div>
+          </div>
+          <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar cambios</button></div>
+        </form>
+      </Modal>
+
+      <Modal id="modalConceptoCobro" title={<><i className="bi bi-tags"></i> Gestionar conceptos de cobro</>}>
         <form id="fin-concepto-form">
           <div className="modal-body p-4"><div className="row g-3">
+            <input id="fin-concepto-id" type="hidden" />
+            <div className="col-12"><label className="form-label">Crear nuevo o editar existente</label><select id="fin-concepto-existente" className="form-select"><option value="">Nuevo concepto</option></select><div className="form-text">Selecciona un concepto para modificar su monto, nombre, descripción o estado.</div></div>
             <div className="col-md-6"><label className="form-label">Código</label><input id="fin-concepto-codigo" className="form-control" required placeholder="Ej. UNIFORME" /></div>
             <div className="col-md-6"><label className="form-label">Tipo</label><select id="fin-concepto-tipo" className="form-select"><option value="servicio">Servicio</option><option value="matricula">Matrícula</option><option value="mensualidad">Mensualidad</option><option value="otro">Otro</option></select></div>
             <div className="col-12"><label className="form-label">Nombre</label><input id="fin-concepto-nombre" className="form-control" required /></div>
             <div className="col-md-6"><label className="form-label">Monto base</label><input id="fin-concepto-monto" type="number" min="0" step="0.01" className="form-control" required /></div>
             <div className="col-md-6"><label className="form-label">Impuesto %</label><input id="fin-concepto-impuesto" type="number" min="0" max="100" step="0.01" className="form-control" defaultValue="0" /></div>
-            <div className="col-12"><label className="form-label">Descripción</label><textarea id="fin-concepto-descripcion" className="form-control" rows="2" maxLength="250"></textarea></div>
+            <div className="col-12"><label className="form-label">Descripción</label><textarea id="fin-concepto-descripcion" className="form-control" rows="2" maxLength="250"></textarea></div><div className="col-12"><div className="form-check form-switch"><input id="fin-concepto-estado" className="form-check-input" type="checkbox" defaultChecked /><label className="form-check-label" htmlFor="fin-concepto-estado">Concepto activo</label></div></div>
           </div></div>
           <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar concepto</button></div>
         </form>
@@ -205,7 +240,7 @@ export default function Pagos() {
               <div className="col-md-2"><label className="form-label">Tipo ID</label><select id="fin-config-tipo-id" className="form-select"><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
               <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-config-numero-id" className="form-control" required /></div>
               <div className="col-md-6"><label className="form-label">Correo de facturación</label><input id="fin-config-correo" type="email" className="form-control" required /></div>
-              <div className="col-md-6"><label className="form-label">Servicio de facturación</label><input className="form-control" value="Configurado en el backend mediante FACTURACION_API_URL" readOnly /></div>
+              <div className="col-md-6"><label className="form-label">Servicio de facturación</label><input className="form-control" value="FACTURACION_API_URL" readOnly /></div><div className="col-12"><div className="integration-slots"><span>PDF/Documentos: <code>DOCUMENTOS_API_URL</code></span><span>XML: <code>XML_API_URL</code></span><span>Firma: <code>FIRMA_API_URL</code></span><span>Tributación: <code>TRIBUTACION_API_URL</code></span></div><div className="form-text">Estos endpoints quedan en el backend. Cuando los demás equipos publiquen sus servicios, solo se configuran las URLs en Render.</div></div>
             </div>
           </div>
           <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar configuración</button></div>

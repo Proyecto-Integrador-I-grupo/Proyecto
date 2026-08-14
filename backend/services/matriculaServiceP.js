@@ -48,8 +48,8 @@ export async function procesarMatricula(datos) {
     if (!cargoMatricula || (cargoMatricula.estado !== 'pagado' && abonadoMatricula < 10000)) {
       throw new Error(
         !cargoMatricula
-          ? 'No se puede procesar la matrícula: primero registra el cargo de matrícula y abona al menos ₡10.000.'
-          : `No se puede procesar la matrícula: el abono mínimo es ₡10.000 y actualmente se han abonado ₡${abonadoMatricula.toLocaleString('es-CR')}.`
+          ? 'No se puede procesar la matrícula todavía. Se requiere un abono mínimo de CRC 10.000.'
+          : `No se puede procesar la matrícula todavía. Abonado: CRC ${abonadoMatricula.toLocaleString('es-CR')}. Mínimo requerido: CRC 10.000.`
       );
     }
     }

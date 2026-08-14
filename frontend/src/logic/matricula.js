@@ -835,12 +835,25 @@ async function validarEstadoFinancieroMatricula() {
     if (!res.ok) throw new Error(data.mensaje || 'No se pudo validar el estado financiero.');
     estadoFinancieroMatriculaActual = data;
     if (panel) panel.className = `mat-financial-status ${data.habilitado ? 'ok' : 'blocked'}`;
-    if (texto) texto.innerHTML = `${data.habilitado ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-exclamation-triangle-fill"></i>'} ${escapeHtmlMat(data.mensaje || '')}<br><strong>Abono matrícula:</strong> ${monedaMat(data.abono_matricula)} · <strong>Mínimo requerido:</strong> ${monedaMat(data.minimo_abono)}`;
+    if (texto) {
+      const faltante = Math.max(0, Number(data.faltante_minimo ?? (Number(data.minimo_abono || 0) - Number(data.abono_matricula || 0))));
+      texto.innerHTML = `
+        <div class="mat-financial-heading">
+          <i class="bi ${data.habilitado ? 'bi-check-circle' : 'bi-wallet2'}"></i>
+          <strong>${escapeHtmlMat(data.titulo || (data.habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'))}</strong>
+        </div>
+        <div class="mat-financial-copy">${escapeHtmlMat(data.mensaje || '')}</div>
+        <div class="mat-financial-metrics">
+          <span>Abonado <strong>${monedaMat(data.abono_matricula)}</strong></span>
+          <span>Mínimo <strong>${monedaMat(data.minimo_abono)}</strong></span>
+          ${!data.habilitado ? `<span>Falta <strong>${monedaMat(faltante)}</strong></span>` : ''}
+        </div>`;
+    }
     const deudas = Array.isArray(data.deudas) ? data.deudas : [];
     if (deudasEl) {
       deudasEl.innerHTML = deudas.length
-        ? `<div class="mat-debt-title">Saldos pendientes (${deudas.length})</div>${deudas.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}`
-        : '<span class="text-success"><i class="bi bi-check2"></i> No registra otras deudas pendientes.</span>';
+        ? `<div class="mat-debt-title"><i class="bi bi-list-check"></i> Saldos registrados (${deudas.length})</div>${deudas.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}`
+        : '<span class="mat-no-debt"><i class="bi bi-check2-circle"></i> Sin otros saldos pendientes.</span>';
     }
     if (submit) submit.disabled = !data.habilitado;
   } catch (error) {
@@ -851,7 +864,7 @@ async function validarEstadoFinancieroMatricula() {
   }
 }
 
-function monedaMat(valor) { return new Intl.NumberFormat('es-CR', { style:'currency', currency:'CRC', maximumFractionDigits:0 }).format(Number(valor || 0)); }
+function monedaMat(valor) { return `CRC ${new Intl.NumberFormat('es-CR', { maximumFractionDigits:0 }).format(Number(valor || 0))}`; }
 function escapeHtmlMat(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function handleMatriculaSubmit(e) {
@@ -866,7 +879,7 @@ async function handleMatriculaSubmit(e) {
 
   await validarEstadoFinancieroMatricula();
   if (!estadoFinancieroMatriculaActual?.habilitado) {
-    showToast(estadoFinancieroMatriculaActual?.mensaje || 'El estudiante debe pagar o abonar al menos ₡10.000 de matrícula antes de continuar.', 'error');
+    showToast(estadoFinancieroMatriculaActual?.mensaje || 'Se requiere un abono mínimo de CRC 10.000 antes de continuar con la matrícula.', 'error');
     return;
   }
 

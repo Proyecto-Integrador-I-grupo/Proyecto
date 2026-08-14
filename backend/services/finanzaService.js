@@ -41,6 +41,85 @@ export async function listarConceptos() {
   return rows;
 }
 
+
+export async function asegurarCargoMatriculaPreRegistro(idEstudiante, idUsuario = null, anio = null) {
+  const estudianteId = positiveInt(idEstudiante, "El estudiante");
+  const periodo = String(anio || new Date().getFullYear());
+
+  const [[estudiante]] = await pool.query(
+    `SELECT e.id_estudiante
+     FROM estudiante e
+     WHERE e.id_estudiante = ?
+       AND e.estado = TRUE
+       AND NOT EXISTS (
+         SELECT 1 FROM grupo_estudiante ge
+         WHERE ge.id_estudiante = e.id_estudiante AND ge.estado = TRUE
+       )
+     LIMIT 1`,
+    [estudianteId]
+  );
+  if (!estudiante) return null;
+
+  const [[concepto]] = await pool.query(
+    `SELECT id_concepto
+     FROM concepto_cobro
+     WHERE codigo = 'MATRICULA' AND estado = TRUE
+     LIMIT 1`
+  );
+  if (!concepto) return null;
+
+  const [[existente]] = await pool.query(
+    `SELECT id_cargo, total, saldo, estado
+     FROM cargo_estudiante
+     WHERE id_estudiante = ?
+       AND id_concepto = ?
+       AND estado <> 'anulado'
+       AND (periodo = ? OR periodo IS NULL OR periodo = '')
+     ORDER BY id_cargo DESC
+     LIMIT 1`,
+    [estudianteId, concepto.id_concepto, periodo]
+  );
+  if (existente) return existente;
+
+  return crearCargo({
+    id_estudiante: estudianteId,
+    id_concepto: concepto.id_concepto,
+    periodo,
+    descripcion: `Matrícula ciclo lectivo ${periodo}`,
+    fecha_emision: new Date().toISOString().slice(0, 10)
+  }, idUsuario);
+}
+
+export async function asegurarCargosMatriculaPreRegistro() {
+  const [rows] = await pool.query(
+    `SELECT e.id_estudiante
+     FROM estudiante e
+     WHERE e.estado = TRUE
+       AND NOT EXISTS (
+         SELECT 1 FROM grupo_estudiante ge
+         WHERE ge.id_estudiante = e.id_estudiante AND ge.estado = TRUE
+       )
+     ORDER BY e.id_estudiante`
+  );
+
+  let creados = 0;
+  for (const row of rows) {
+    const antes = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM cargo_estudiante c
+       INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+       WHERE c.id_estudiante = ? AND cc.codigo = 'MATRICULA'
+         AND c.estado <> 'anulado'
+         AND (c.periodo = ? OR c.periodo IS NULL OR c.periodo = '')`,
+      [row.id_estudiante, String(new Date().getFullYear())]
+    );
+    const tenia = Number(antes[0]?.[0]?.total || 0) > 0;
+    await asegurarCargoMatriculaPreRegistro(row.id_estudiante, null);
+    if (!tenia) creados += 1;
+  }
+  return { creados };
+}
+
 export async function crearConcepto(datos) {
   const codigo = String(datos.codigo || "").trim().toUpperCase().replace(/\s+/g, "_");
   const nombre = String(datos.nombre || "").trim();
@@ -85,6 +164,7 @@ export async function actualizarConcepto(id, datos) {
 }
 
 export async function listarCargos(filtros = {}) {
+  await asegurarCargosMatriculaPreRegistro();
   const conditions = ["c.estado <> 'anulado'"];
   const values = [];
 
@@ -240,13 +320,25 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
   const cargoMatricula = matRows[0] || null;
   const abonado = Number(cargoMatricula?.pagado || 0);
   const minimo = 10000;
+  const faltante = Math.max(0, minimo - abonado);
   const habilitado = !!cargoMatricula && (cargoMatricula.estado === 'pagado' || abonado >= minimo);
   return {
-    id_estudiante: id, anio: Number(anio || new Date().getFullYear()), minimo_abono: minimo,
-    habilitado, abono_matricula: abonado, cargo_matricula: cargoMatricula, deudas,
+    id_estudiante: id,
+    anio: Number(anio || new Date().getFullYear()),
+    minimo_abono: minimo,
+    faltante_minimo: faltante,
+    habilitado,
+    abono_matricula: abonado,
+    cargo_matricula: cargoMatricula,
+    deudas,
+    titulo: habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente',
     mensaje: habilitado
-      ? (deudas.length ? 'Cumple el abono mínimo. Tiene saldos pendientes visibles antes de continuar.' : 'Situación financiera habilitada para matrícula.')
-      : (!cargoMatricula ? 'Debe registrar el cargo de matrícula y abonar al menos ₡10.000 antes de matricular.' : `Debe abonar al menos ₡${minimo.toLocaleString('es-CR')} a la matrícula. Abonado: ₡${abonado.toLocaleString('es-CR')}.`)
+      ? (deudas.length
+          ? 'El abono mínimo ya está registrado. Puedes continuar; los saldos pendientes seguirán visibles en Pagos.'
+          : 'El requisito de pago está al día y puedes continuar con la matrícula.')
+      : (!cargoMatricula
+          ? 'Aún no hay un cargo de matrícula disponible para este estudiante.'
+          : `Para continuar faltan CRC ${faltante.toLocaleString('es-CR')} del abono mínimo.`)
   };
 }
 
@@ -269,7 +361,7 @@ export async function actualizarCargo(idCargo, datos) {
     const subtotal = base - descuento;
     const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
     const total = Math.round((subtotal + impuesto) * 100) / 100;
-    if (total < pagado) throw new Error(`El total no puede ser menor a lo ya pagado (₡${pagado.toFixed(2)}).`);
+    if (total < pagado) throw new Error(`El total no puede ser menor a lo ya pagado (CRC ${pagado.toLocaleString('es-CR')}).`);
     const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
     const estado = saldo <= 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
     await connection.query(
@@ -344,7 +436,7 @@ export async function registrarPago(idCargo, datos, idUsuario) {
     if (cargo.estado === 'anulado') throw new Error("El cargo está anulado.");
     if (cargo.estado === 'pagado' || Number(cargo.saldo) <= 0) throw new Error("El cargo ya está pagado.");
     if (montoPago > Number(cargo.saldo) + 0.001) {
-      throw new Error(`El pago no puede superar el saldo pendiente de ₡${Number(cargo.saldo).toFixed(2)}.`);
+      throw new Error(`El pago no puede superar el saldo pendiente de CRC ${Number(cargo.saldo).toLocaleString('es-CR')}.`);
     }
 
     if (datos.responsable) {

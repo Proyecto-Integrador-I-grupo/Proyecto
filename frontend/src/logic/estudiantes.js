@@ -184,7 +184,7 @@ async function handlePersonaSubmit(e) {
       showResultModal(
         'success',
         id ? 'Estudiante actualizado' : 'Estudiante registrado',
-        id ? 'Los datos del estudiante se actualizaron correctamente.' : 'El estudiante quedó pre-registrado. Recuerda procesar su matrícula cuando corresponda.'
+        id ? 'Los datos del estudiante se actualizaron correctamente.' : 'El estudiante quedó pre-registrado y su cargo de matrícula ya está disponible en Pagos.'
       );
     } else {
       const json = await res.json().catch(() => ({}));

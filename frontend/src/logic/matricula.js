@@ -48,6 +48,25 @@ function wireMatriculaEvents() {
     matForm.addEventListener('submit', handleMatriculaSubmit);
   }
 
+  const estudianteMatricula = document.getElementById('mat-persona');
+  if (estudianteMatricula && !estudianteMatricula.dataset.finWired) {
+    estudianteMatricula.dataset.finWired = '1';
+    estudianteMatricula.addEventListener('change', validarEstadoFinancieroMatricula);
+  }
+
+
+  const grupoMatricula = document.getElementById('mat-id-grupo');
+  if (grupoMatricula && !grupoMatricula.dataset.finWired) {
+    grupoMatricula.dataset.finWired = '1';
+    grupoMatricula.addEventListener('change', validarEstadoFinancieroMatricula);
+  }
+
+  const modalMatricula = document.getElementById('modalMatricula');
+  if (modalMatricula && !modalMatricula.dataset.finWired) {
+    modalMatricula.dataset.finWired = '1';
+    modalMatricula.addEventListener('shown.bs.modal', validarEstadoFinancieroMatricula);
+  }
+
   const grupoForm = document.getElementById('grupo-form');
   if (grupoForm && !grupoForm.dataset.wired) {
     grupoForm.dataset.wired = '1';
@@ -786,6 +805,55 @@ async function handleGestionGrupoSubmit(e) {
   }
 }
 
+let estadoFinancieroMatriculaActual = null;
+
+async function validarEstadoFinancieroMatricula() {
+  const idEstudiante = Number(document.getElementById('mat-persona')?.value || 0);
+  const panel = document.getElementById('mat-estado-financiero');
+  const texto = document.getElementById('mat-estado-financiero-texto');
+  const deudasEl = document.getElementById('mat-deudas-pendientes');
+  const submit = document.getElementById('mat-submit');
+  estadoFinancieroMatriculaActual = null;
+
+  if (!idEstudiante) {
+    if (panel) panel.className = 'mat-financial-status neutral';
+    if (texto) texto.textContent = 'Selecciona un estudiante para verificar el abono mínimo de matrícula.';
+    if (deudasEl) deudasEl.innerHTML = '';
+    if (submit) submit.disabled = true;
+    return;
+  }
+
+  const grupoId = Number(document.getElementById('mat-id-grupo')?.value || 0);
+  const grupo = allGrupos.find(g => Number(g.id_grupo ?? g.id) === grupoId);
+  const anio = grupo?.periodo_lectivo || new Date().getFullYear();
+  if (texto) texto.textContent = 'Consultando pagos y saldos pendientes...';
+  if (submit) submit.disabled = true;
+
+  try {
+    const res = await apiFetch(`/api/finanzas/estudiantes/${idEstudiante}/estado-matricula?anio=${encodeURIComponent(anio)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.mensaje || 'No se pudo validar el estado financiero.');
+    estadoFinancieroMatriculaActual = data;
+    if (panel) panel.className = `mat-financial-status ${data.habilitado ? 'ok' : 'blocked'}`;
+    if (texto) texto.innerHTML = `${data.habilitado ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-exclamation-triangle-fill"></i>'} ${escapeHtmlMat(data.mensaje || '')}<br><strong>Abono matrícula:</strong> ${monedaMat(data.abono_matricula)} · <strong>Mínimo requerido:</strong> ${monedaMat(data.minimo_abono)}`;
+    const deudas = Array.isArray(data.deudas) ? data.deudas : [];
+    if (deudasEl) {
+      deudasEl.innerHTML = deudas.length
+        ? `<div class="mat-debt-title">Saldos pendientes (${deudas.length})</div>${deudas.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}`
+        : '<span class="text-success"><i class="bi bi-check2"></i> No registra otras deudas pendientes.</span>';
+    }
+    if (submit) submit.disabled = !data.habilitado;
+  } catch (error) {
+    if (panel) panel.className = 'mat-financial-status blocked';
+    if (texto) texto.textContent = error.message;
+    if (deudasEl) deudasEl.innerHTML = '';
+    if (submit) submit.disabled = true;
+  }
+}
+
+function monedaMat(valor) { return new Intl.NumberFormat('es-CR', { style:'currency', currency:'CRC', maximumFractionDigits:0 }).format(Number(valor || 0)); }
+function escapeHtmlMat(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
 async function handleMatriculaSubmit(e) {
   e.preventDefault();
   const personaSelect = document.getElementById('mat-persona');
@@ -793,6 +861,12 @@ async function handleMatriculaSubmit(e) {
 
   if (!personaSelect.value || !grupoSelect.value) {
     showToast('Selecciona un estudiante y un grupo destino.', 'error');
+    return;
+  }
+
+  await validarEstadoFinancieroMatricula();
+  if (!estadoFinancieroMatriculaActual?.habilitado) {
+    showToast(estadoFinancieroMatriculaActual?.mensaje || 'El estudiante debe pagar o abonar al menos ₡10.000 de matrícula antes de continuar.', 'error');
     return;
   }
 
@@ -844,7 +918,7 @@ async function handleMatriculaSubmit(e) {
   } catch {
     showToast('Error de conexión al matricular', 'error');
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Completar Matrícula'; }
+    if (submitBtn) { submitBtn.disabled = !estadoFinancieroMatriculaActual?.habilitado; submitBtn.innerHTML = 'Completar Matrícula'; }
   }
 }
 
@@ -872,6 +946,7 @@ function configurarSelectoresProfesores() {
 
 async function handleGrupoSubmit(e) {
   e.preventDefault();
+  sessionStorage.setItem('educontrol_active_view', 'matricula');
 
   const nombre = document.getElementById('grupo-nombre').value.trim();
   const capacidad = parseInt(document.getElementById('grupo-capacidad').value, 10);
@@ -922,6 +997,7 @@ async function handleGrupoSubmit(e) {
           showToast('El grupo se creó, pero no se pudo guardar la asignación docente.', 'error');
         }
       }
+      sessionStorage.setItem('educontrol_active_view', 'matricula');
       showToast('Grupo creado correctamente');
       const modalEl = document.getElementById('modalGrupo');
       if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();

@@ -58,6 +58,22 @@ export async function postPago(req, res) {
   } catch (e) { responderError(res, e); }
 }
 
+
+export async function getEstadoMatricula(req, res) {
+  try { res.json(await finanzaService.obtenerEstadoFinancieroMatricula(req.params.id, req.query?.anio)); }
+  catch (e) { responderError(res, e, 500); }
+}
+
+export async function putCargo(req, res) {
+  try { res.json(await finanzaService.actualizarCargo(req.params.id, req.body)); }
+  catch (e) { responderError(res, e); }
+}
+
+export async function putPago(req, res) {
+  try { res.json(await finanzaService.actualizarPago(req.params.id, req.body)); }
+  catch (e) { responderError(res, e); }
+}
+
 export async function postFacturar(req, res) {
   try {
     res.json(await finanzaService.reintentarFactura(req.params.id, req.body?.metodo_pago || 'otro'));

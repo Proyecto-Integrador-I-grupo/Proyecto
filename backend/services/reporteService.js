@@ -476,6 +476,52 @@ export async function generarReporteCaso(filtros = {}, usuarioActual = null) {
 export async function generarReporteResumen(filtros = {}, usuarioActual = null) {
     const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
 
+    // Matrícula debe salir de las matrículas reales, no depender de que ya exista asistencia.
+    if (f.modo === "matricula") {
+        const condiciones = ["m.estado_matricula = 'activa'", "dm.estado = TRUE", "g.estado = TRUE"];
+        const valores = [];
+        if (f.id_grupo) { condiciones.push("g.id_grupo = ?"); valores.push(f.id_grupo); }
+        if (f.id_estudiante) { condiciones.push("m.id_estudiante = ?"); valores.push(f.id_estudiante); }
+        if (f.fecha_inicio) { condiciones.push("DATE(m.fecha_matricula) >= ?"); valores.push(f.fecha_inicio); }
+        if (f.fecha_fin) { condiciones.push("DATE(m.fecha_matricula) <= ?"); valores.push(f.fecha_fin); }
+        if (f.estado_estudiante) { condiciones.push("e.estado = ?"); valores.push(f.estado_estudiante === 'activo'); }
+        if (f.busqueda) {
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(${sqlTextoNormalizado("pe.nombre")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
+            valores.push(texto, texto, texto, texto, texto);
+        }
+        const where = condiciones.join(" AND ");
+        const [totalesRows] = await pool.query(
+            `SELECT COUNT(DISTINCT m.id_matricula) AS total_matriculas, COUNT(DISTINCT m.id_estudiante) AS total_estudiantes
+             FROM matricula m
+             INNER JOIN detalle_matricula dm ON dm.id_matricula = m.id_matricula
+             INNER JOIN grupo g ON g.id_grupo = dm.id_grupo
+             INNER JOIN estudiante e ON e.id_estudiante = m.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             WHERE ${where}`, valores
+        );
+        const [detallePorGrupo] = await pool.query(
+            `SELECT g.id_grupo, g.nombre_grupo, s.nombre_seccion, s.nivel, g.capacidad,
+                    COUNT(DISTINCT m.id_estudiante) AS ocupados, COUNT(DISTINCT m.id_matricula) AS matriculas_registradas,
+                    0 AS asistencias_registradas, 0 AS presentes, 0 AS ausentes
+             FROM matricula m
+             INNER JOIN detalle_matricula dm ON dm.id_matricula = m.id_matricula
+             INNER JOIN grupo g ON g.id_grupo = dm.id_grupo
+             INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+             INNER JOIN estudiante e ON e.id_estudiante = m.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             WHERE ${where}
+             GROUP BY g.id_grupo, g.nombre_grupo, s.nombre_seccion, s.nivel, g.capacidad
+             ORDER BY s.nivel, s.nombre_seccion, g.nombre_grupo`, valores
+        );
+        const totalMatriculas = Number(totalesRows[0]?.total_matriculas || 0);
+        return { modo: f.modo, resumen: {
+            total_estudiantes: Number(totalesRows[0]?.total_estudiantes || 0), total_profesores: 0,
+            total_grupos: detallePorGrupo.length, total_matriculas: totalMatriculas, total_asistencias: 0,
+            presentes: 0, ausentes: 0, tardias: 0, justificadas: 0, tasa_presentismo: 0
+        }, detalle_por_grupo: detallePorGrupo };
+    }
+
     if (f.modo === "pre_matricula") {
         const condiciones = [];
         const valores = [];
@@ -690,6 +736,40 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
 
 export async function generarReporteDetalle(filtros = {}, usuarioActual = null) {
     const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
+
+    if (f.modo === "matricula") {
+        const condiciones = ["m.estado_matricula = 'activa'", "dm.estado = TRUE", "g.estado = TRUE"];
+        const valores = [];
+        if (f.id_grupo) { condiciones.push("g.id_grupo = ?"); valores.push(f.id_grupo); }
+        if (f.id_estudiante) { condiciones.push("m.id_estudiante = ?"); valores.push(f.id_estudiante); }
+        if (f.fecha_inicio) { condiciones.push("DATE(m.fecha_matricula) >= ?"); valores.push(f.fecha_inicio); }
+        if (f.fecha_fin) { condiciones.push("DATE(m.fecha_matricula) <= ?"); valores.push(f.fecha_fin); }
+        if (f.estado_estudiante) { condiciones.push("e.estado = ?"); valores.push(f.estado_estudiante === 'activo'); }
+        if (f.busqueda) {
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(${sqlTextoNormalizado("pe.nombre")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido1")} LIKE ? OR ${sqlTextoNormalizado("pe.apellido2")} LIKE ? OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2))")} LIKE ? OR CAST(e.id_estudiante AS CHAR) LIKE ?)`);
+            valores.push(texto, texto, texto, texto, texto);
+        }
+        const [rows] = await pool.query(
+            `SELECT m.id_matricula, m.fecha_matricula AS fecha, m.id_estudiante, m.estado_matricula,
+                    pe.nombre AS estudiante_nombre, pe.apellido1 AS estudiante_apellido1, pe.apellido2 AS estudiante_apellido2,
+                    e.estado AS estudiante_estado, g.id_grupo, g.nombre_grupo, s.nombre_seccion, s.nivel,
+                    COALESCE(GROUP_CONCAT(DISTINCT CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2) ORDER BY pp.nombre SEPARATOR ', '), 'Sin profesor') AS profesor_nombre
+             FROM matricula m
+             INNER JOIN detalle_matricula dm ON dm.id_matricula = m.id_matricula
+             INNER JOIN grupo g ON g.id_grupo = dm.id_grupo
+             INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+             INNER JOIN estudiante e ON e.id_estudiante = m.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             LEFT JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo AND gp.estado = TRUE
+             LEFT JOIN profesor pf ON pf.id_profesor = gp.id_profesor
+             LEFT JOIN persona pp ON pp.id_persona = pf.id_persona
+             WHERE ${condiciones.join(" AND ")}
+             GROUP BY m.id_matricula, m.fecha_matricula, m.id_estudiante, m.estado_matricula, pe.nombre, pe.apellido1, pe.apellido2, e.estado, g.id_grupo, g.nombre_grupo, s.nombre_seccion, s.nivel
+             ORDER BY m.fecha_matricula DESC, m.id_matricula DESC LIMIT 500`, valores
+        );
+        return { modo: f.modo, detalle: rows };
+    }
 
     if (f.modo === "estudiantes") {
         const rows = await generarDetalleEstudiantesAsignados(f);

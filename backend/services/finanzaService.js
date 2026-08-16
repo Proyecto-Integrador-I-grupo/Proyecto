@@ -16,6 +16,7 @@ function money(value, field, allowZero = false) {
 }
 
 export async function obtenerResumenFinanciero() {
+  await prepararDatosFinancieros();
   const [[row]] = await pool.query(
     `SELECT
        COUNT(*) AS total_cargos,
@@ -268,7 +269,35 @@ async function asegurarCargosMatriculaActivos(idUsuario = null) {
   return { creados };
 }
 
+
+async function anularCargosPendientesDeEstudiantesInactivos() {
+  await pool.query(
+    `UPDATE cargo_estudiante c
+     INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+     SET c.estado = 'anulado', c.saldo = 0
+     WHERE e.estado = FALSE
+       AND c.estado IN ('pendiente', 'parcial')`
+  );
+}
+
+async function prepararDatosFinancieros() {
+  const tareas = [
+    anularCargosPendientesDeEstudiantesInactivos,
+    normalizarCargosMatriculaDuplicados,
+    asegurarCargosMatriculaActivos,
+    normalizarCargosMatriculaDuplicados
+  ];
+  for (const tarea of tareas) {
+    try {
+      await tarea();
+    } catch (error) {
+      console.error(`Finanzas: mantenimiento no bloqueante (${tarea.name}):`, error.message);
+    }
+  }
+}
+
 export async function listarEstudiantesFinanzas() {
+  await prepararDatosFinancieros();
   // Este catálogo es propio del módulo financiero: no depende de que el
   // estudiante siga en pre-registro o de que tenga un grupo activo.
   // Incluye alumnos activos y también alumnos con movimientos históricos.
@@ -338,8 +367,6 @@ export async function listarEstudiantesFinanzas() {
        GROUP BY c.id_estudiante
      ) fin ON fin.id_estudiante = e.id_estudiante
      WHERE e.estado = TRUE
-        OR fin.total_cargos > 0
-        OR fin.total_pagado > 0
      ORDER BY p.apellido1, p.apellido2, p.nombre, e.id_estudiante`
   );
 
@@ -352,9 +379,7 @@ export async function listarEstudiantesFinanzas() {
 }
 
 export async function listarEstadoCuentas() {
-  await normalizarCargosMatriculaDuplicados();
-  await asegurarCargosMatriculaActivos();
-  await normalizarCargosMatriculaDuplicados();
+  await prepararDatosFinancieros();
 
   const [rows] = await pool.query(
     `SELECT
@@ -414,8 +439,6 @@ export async function listarEstadoCuentas() {
        GROUP BY c.id_estudiante
      ) pa ON pa.id_estudiante = e.id_estudiante
      WHERE e.estado = TRUE
-        OR COALESCE(ca.total_cargos, 0) > 0
-        OR COALESCE(pa.total_pagado, 0) > 0
      ORDER BY
        COALESCE(ca.cargos_vencidos, 0) DESC,
        COALESCE(ca.saldo_vencido, 0) DESC,
@@ -438,10 +461,9 @@ export async function listarEstadoCuentas() {
 }
 
 export async function listarCargos(filtros = {}) {
-  await normalizarCargosMatriculaDuplicados();
-  await asegurarCargosMatriculaActivos();
-  await normalizarCargosMatriculaDuplicados();
-  const conditions = ["c.estado <> 'anulado'"];
+  await prepararDatosFinancieros();
+  const conditions = ["c.estado <> 'anulado'", "e.estado = TRUE"];
+
   const values = [];
 
   if (filtros.estado && ['pendiente','parcial','pagado','anulado'].includes(String(filtros.estado))) {
@@ -1013,6 +1035,12 @@ export async function registrarClaseExtra(datos, idUsuario) {
   const idEstudiante = positiveInt(datos.id_estudiante, "El estudiante");
   const idProfesor = positiveInt(datos.id_profesor, "El profesor");
   const fecha = String(datos.fecha || '').trim();
+
+  const estudiantesProfesor = await listarEstudiantesProfesorExtra(idProfesor);
+  if (!estudiantesProfesor.some((row) => Number(row.id_estudiante) === idEstudiante)) {
+    throw new Error("El estudiante seleccionado no pertenece a un grupo asignado a este profesor.");
+  }
+
   const disponibilidad = await obtenerDisponibilidadProfesorExtra(idProfesor, fecha);
   if (!disponibilidad.disponible) {
     throw new Error(disponibilidad.motivo);

@@ -43,6 +43,24 @@ const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || '
 const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
 function wireProfesoresEvents() {
+  const modalProfesor = document.getElementById('modalProfesor');
+  if (modalProfesor && !modalProfesor.dataset.cleanWired) {
+    modalProfesor.dataset.cleanWired = '1';
+    modalProfesor.addEventListener('show.bs.modal', () => {
+      const correo = document.getElementById('prof-correo');
+      const clave = document.getElementById('prof-contrasena');
+      if (correo) correo.value = '';
+      if (clave) {
+        clave.value = '';
+        clave.type = 'password';
+      }
+      const toggle = document.getElementById('toggle-prof-password');
+      const icon = toggle?.querySelector('i');
+      icon?.classList.add('bi-eye');
+      icon?.classList.remove('bi-eye-slash');
+    });
+  }
+
   const profForm = document.getElementById('profesor-form');
   if (profForm && !profForm.dataset.wired) {
     profForm.dataset.wired = '1';

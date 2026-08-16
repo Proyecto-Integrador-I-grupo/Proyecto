@@ -10,9 +10,18 @@ const conexion = mysql.createPool({
     ssl: {
         rejectUnauthorized: false
     },
+    charset: "utf8mb4_bin",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
+});
+
+// Mantener una misma collation de sesión. Algunas tablas históricas del proyecto
+// fueron creadas con utf8mb4_bin y otras con utf8mb4_unicode_ci.
+conexion.on("connection", (connection) => {
+    connection.query("SET NAMES utf8mb4 COLLATE utf8mb4_bin", (error) => {
+        if (error) console.log("No se pudo establecer la collation de la sesión", error.message);
+    });
 });
 
 // Probar la conexión

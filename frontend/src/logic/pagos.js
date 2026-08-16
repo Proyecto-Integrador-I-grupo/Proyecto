@@ -6,6 +6,7 @@ let cargos = [];
 let pagos = [];
 let profesores = [];
 let clasesExtra = [];
+let estadoCuentas = [];
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -42,6 +43,7 @@ export async function loadPagosData() {
     cargarConceptos(),
     cargarEstudiantes(),
     cargarPagos(),
+    cargarEstadoCuentas(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
   await Promise.all([
@@ -151,6 +153,36 @@ async function cargarEstudiantes() {
   });
 }
 
+
+
+async function cargarEstadoCuentas() {
+  estadoCuentas = await requestJson('/api/finanzas/estado-cuentas');
+  const body = document.getElementById('fin-estado-cuentas-body');
+  if (!body) return;
+
+  if (!estadoCuentas.length) {
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay estudiantes con información financiera registrada.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = estadoCuentas.map((e) => {
+    const pendiente = Number(e.saldo_pendiente || 0);
+    const pagado = Number(e.total_pagado || 0);
+    let situacion = '<span class="badge rounded-pill account-status neutral">Sin movimientos</span>';
+    if (pendiente > 0 && pagado > 0) situacion = '<span class="badge rounded-pill account-status partial">Pago parcial</span>';
+    else if (pendiente > 0) situacion = '<span class="badge rounded-pill account-status pending">Pendiente</span>';
+    else if (Number(e.total_cargos || 0) > 0) situacion = '<span class="badge rounded-pill account-status paid">Al día</span>';
+
+    return `<tr>
+      <td><strong>${esc(e.estudiante_nombre)}</strong><div class="small text-muted">ID ${e.id_estudiante}</div></td>
+      <td>${situacion}</td>
+      <td>${Number(e.total_cargos || 0)}</td>
+      <td class="fw-semibold text-success-emphasis">${moneda(e.total_pagado)}</td>
+      <td class="fw-semibold ${pendiente > 0 ? 'text-danger-emphasis' : 'text-muted'}">${moneda(pendiente)}</td>
+      <td>${e.ultimo_pago ? esc(fechaHora(e.ultimo_pago)) : '<span class="text-muted">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
 
 async function cargarProfesoresExtra() {
   profesores = await requestJson('/api/profesores');

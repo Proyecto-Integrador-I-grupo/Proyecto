@@ -15,6 +15,7 @@ import './styles/perfil.css';
 import './styles/pagos.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
+import './styles/theme.css';
 import { bootLegacyRuntime } from './logic/runtime.js';
 
 window.bootstrap = bootstrap;

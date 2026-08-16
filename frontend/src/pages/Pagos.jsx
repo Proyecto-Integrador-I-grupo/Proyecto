@@ -62,6 +62,24 @@ export default function Pagos() {
         </div>
       </div>
 
+
+      <div className="card border-0 shadow-sm mb-4 finance-account-card">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+            <div>
+              <h3 className="h6 mb-1"><i className="bi bi-people me-2"></i>Estado de cuenta por estudiante</h3>
+              <p className="small text-muted mb-0">Muestra estudiantes con saldo pendiente, abonos y cargos ya cancelados.</p>
+            </div>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0 finance-account-table">
+              <thead><tr><th>Estudiante</th><th>Situación</th><th>Cargos</th><th>Pagado</th><th>Pendiente</th><th>Último pago</th></tr></thead>
+              <tbody id="fin-estado-cuentas-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="finance-note mb-3"><i className="bi bi-info-circle"></i><span>Los estudiantes pre-registrados reciben un cargo de matrícula automáticamente. Desde aquí puedes registrar el abono inicial antes de asignarles un grupo.</span></div>

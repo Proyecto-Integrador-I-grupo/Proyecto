@@ -726,7 +726,7 @@ function wireUsuariosForm() {
     }
 
     if (!isSchoolEmail(correo)) {
-      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
+      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error', 5000);
       return;
     }
 
@@ -897,7 +897,7 @@ function wireUsuariosEdit() {
     }
 
     if (!isSchoolEmail(correo)) {
-      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
+      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error', 5000);
       return;
     }
 

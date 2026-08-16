@@ -176,9 +176,10 @@ export default function Pagos() {
             <div className="row g-3">
               <div className="col-md-6">
                 <label className="form-label">Estudiante</label>
-                <select id="fin-extra-estudiante" className="form-select" required>
-                  <option value="">Seleccionar estudiante</option>
+                <select id="fin-extra-estudiante" className="form-select" required disabled>
+                  <option value="">Selecciona un profesor primero</option>
                 </select>
+                <div className="form-text">La lista muestra únicamente estudiantes de los grupos asignados al profesor seleccionado.</div>
               </div>
               <div className="col-md-6">
                 <label className="form-label">Profesor</label>

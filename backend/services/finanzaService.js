@@ -360,35 +360,67 @@ export async function listarEstadoCuentas() {
     `SELECT
        e.id_estudiante,
        CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
-       COUNT(DISTINCT CASE WHEN c.estado <> 'anulado' THEN c.id_cargo END) AS total_cargos,
-       COALESCE(SUM(CASE WHEN c.estado <> 'anulado' THEN c.total ELSE 0 END), 0) AS total_facturado,
-       COALESCE(SUM(CASE WHEN c.estado <> 'anulado' THEN c.saldo ELSE 0 END), 0) AS saldo_pendiente,
-       COALESCE(SUM(CASE WHEN c.estado = 'pagado' THEN 1 ELSE 0 END), 0) AS cargos_pagados,
-       COALESCE(SUM(CASE WHEN c.estado = 'parcial' THEN 1 ELSE 0 END), 0) AS cargos_parciales,
-       COALESCE(SUM(CASE WHEN c.estado = 'pendiente' THEN 1 ELSE 0 END), 0) AS cargos_pendientes,
-       COALESCE(SUM(CASE WHEN c.estado IN ('pendiente','parcial') AND c.saldo > 0 AND c.fecha_vencimiento IS NOT NULL AND c.fecha_vencimiento < CURDATE() THEN 1 ELSE 0 END), 0) AS cargos_vencidos,
-       COALESCE(SUM(CASE WHEN c.estado IN ('pendiente','parcial') AND c.saldo > 0 AND c.fecha_vencimiento IS NOT NULL AND c.fecha_vencimiento < CURDATE() THEN c.saldo ELSE 0 END), 0) AS saldo_vencido,
-       COALESCE((
-         SELECT SUM(pg.monto)
-         FROM pago pg
-         INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
-         WHERE cp.id_estudiante = e.id_estudiante
-           AND pg.estado = 'aplicado'
-       ), 0) AS total_pagado,
-       (
-         SELECT MAX(pg.fecha_pago)
-         FROM pago pg
-         INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
-         WHERE cp.id_estudiante = e.id_estudiante
-           AND pg.estado = 'aplicado'
-       ) AS ultimo_pago
+       COALESCE(ca.total_cargos, 0) AS total_cargos,
+       COALESCE(ca.total_facturado, 0) AS total_facturado,
+       COALESCE(ca.saldo_pendiente, 0) AS saldo_pendiente,
+       COALESCE(ca.cargos_pagados, 0) AS cargos_pagados,
+       COALESCE(ca.cargos_parciales, 0) AS cargos_parciales,
+       COALESCE(ca.cargos_pendientes, 0) AS cargos_pendientes,
+       COALESCE(ca.cargos_vencidos, 0) AS cargos_vencidos,
+       COALESCE(ca.saldo_vencido, 0) AS saldo_vencido,
+       COALESCE(pa.total_pagado, 0) AS total_pagado,
+       pa.ultimo_pago
      FROM estudiante e
      INNER JOIN persona p ON p.id_persona = e.id_persona
-     LEFT JOIN cargo_estudiante c ON c.id_estudiante = e.id_estudiante
+     LEFT JOIN (
+       SELECT
+         c.id_estudiante,
+         COUNT(*) AS total_cargos,
+         COALESCE(SUM(c.total), 0) AS total_facturado,
+         COALESCE(SUM(c.saldo), 0) AS saldo_pendiente,
+         COALESCE(SUM(CASE WHEN c.estado = 'pagado' THEN 1 ELSE 0 END), 0) AS cargos_pagados,
+         COALESCE(SUM(CASE WHEN c.estado = 'parcial' THEN 1 ELSE 0 END), 0) AS cargos_parciales,
+         COALESCE(SUM(CASE WHEN c.estado = 'pendiente' THEN 1 ELSE 0 END), 0) AS cargos_pendientes,
+         COALESCE(SUM(
+           CASE
+             WHEN c.estado IN ('pendiente','parcial')
+              AND c.saldo > 0
+              AND c.fecha_vencimiento IS NOT NULL
+              AND c.fecha_vencimiento < CURDATE()
+             THEN 1 ELSE 0
+           END
+         ), 0) AS cargos_vencidos,
+         COALESCE(SUM(
+           CASE
+             WHEN c.estado IN ('pendiente','parcial')
+              AND c.saldo > 0
+              AND c.fecha_vencimiento IS NOT NULL
+              AND c.fecha_vencimiento < CURDATE()
+             THEN c.saldo ELSE 0
+           END
+         ), 0) AS saldo_vencido
+       FROM cargo_estudiante c
+       WHERE c.estado <> 'anulado'
+       GROUP BY c.id_estudiante
+     ) ca ON ca.id_estudiante = e.id_estudiante
+     LEFT JOIN (
+       SELECT
+         c.id_estudiante,
+         COALESCE(SUM(pg.monto), 0) AS total_pagado,
+         MAX(pg.fecha_pago) AS ultimo_pago
+       FROM pago pg
+       INNER JOIN cargo_estudiante c ON c.id_cargo = pg.id_cargo
+       WHERE pg.estado = 'aplicado'
+       GROUP BY c.id_estudiante
+     ) pa ON pa.id_estudiante = e.id_estudiante
      WHERE e.estado = TRUE
-        OR EXISTS (SELECT 1 FROM cargo_estudiante ch WHERE ch.id_estudiante = e.id_estudiante)
-     GROUP BY e.id_estudiante, p.nombre, p.apellido1, p.apellido2
-     ORDER BY cargos_vencidos DESC, saldo_vencido DESC, saldo_pendiente DESC, estudiante_nombre ASC`
+        OR COALESCE(ca.total_cargos, 0) > 0
+        OR COALESCE(pa.total_pagado, 0) > 0
+     ORDER BY
+       COALESCE(ca.cargos_vencidos, 0) DESC,
+       COALESCE(ca.saldo_vencido, 0) DESC,
+       COALESCE(ca.saldo_pendiente, 0) DESC,
+       estudiante_nombre ASC`
   );
 
   return rows.map((row) => ({
@@ -867,6 +899,55 @@ function profesorOcupaDiaPorNombreGrupo(nombreGrupo, fecha) {
     sabado: ['sabado']
   };
   return variantes[dia]?.some((d) => texto.includes(d)) || false;
+}
+
+export async function listarEstudiantesProfesorExtra(idProfesor) {
+  const profesorId = positiveInt(idProfesor, "El profesor");
+
+  const [[profesor]] = await pool.query(
+    `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ? LIMIT 1`,
+    [profesorId]
+  );
+  if (!profesor || !(profesor.estado == 1 || profesor.estado === true)) {
+    throw new Error("El profesor no existe o está inactivo.");
+  }
+
+  const [rows] = await pool.query(
+    `SELECT DISTINCT
+       e.id_estudiante,
+       e.id_persona,
+       p.nombre,
+       p.apellido1,
+       p.apellido2,
+       g.id_grupo,
+       g.nombre_grupo,
+       s.id_seccion,
+       s.nombre_seccion,
+       s.nivel
+     FROM estudiante e
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     INNER JOIN grupo_estudiante ge
+       ON ge.id_estudiante = e.id_estudiante
+      AND ge.estado = TRUE
+     INNER JOIN grupo g
+       ON g.id_grupo = ge.id_grupo
+      AND g.estado = TRUE
+     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+     LEFT JOIN grupo_profesor gp
+       ON gp.id_grupo = g.id_grupo
+      AND gp.id_profesor = ?
+      AND gp.estado = TRUE
+     LEFT JOIN profesor_suplencia ps
+       ON ps.id_grupo = g.id_grupo
+      AND ps.id_profesor_suplente = ?
+      AND ps.estado = TRUE
+     WHERE e.estado = TRUE
+       AND (gp.id_grupo_profesor IS NOT NULL OR ps.id_suplencia IS NOT NULL)
+     ORDER BY p.apellido1, p.apellido2, p.nombre, g.nombre_grupo`,
+    [profesorId, profesorId]
+  );
+
+  return rows;
 }
 
 export async function obtenerDisponibilidadProfesorExtra(idProfesor, fecha) {

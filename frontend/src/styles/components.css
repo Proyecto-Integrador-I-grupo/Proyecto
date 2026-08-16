@@ -784,7 +784,7 @@ body.high-contrast .accessibility-toggle {
 #profesores-view { --module-accent: #6B5B95; }
 #asistencia-view { --module-accent: #2F855A; }
 #consultas-view { --module-accent: #3B7C8D; }
-#pagos-view { --module-accent: #A66A2C; }
+#pagos-view { --module-accent: #246FA8; }
 #reportes-view { --module-accent: #415A77; }
 #usuarios-view { --module-accent: #8A5A67; }
 #perfil-view { --module-accent: #52616B; }
@@ -858,10 +858,10 @@ body.high-contrast .accessibility-toggle {
    ============================================================ */
 #dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
 #estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
-#matricula-view { --module-accent:#A66A2C; --module-soft:#FCF5EC; --module-border:#EAD8C1; }
+#matricula-view { --module-accent:#5E63B6; --module-soft:#F3F3FC; --module-border:#D9DCF2; }
 #profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
 #asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
-#pagos-view { --module-accent:#9A5B43; --module-soft:#FBF2EE; --module-border:#E8D2C9; }
+#pagos-view { --module-accent:#246FA8; --module-soft:#EFF7FB; --module-border:#CDE3EE; }
 #reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
 #consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
 #usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }

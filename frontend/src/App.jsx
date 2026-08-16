@@ -12,6 +12,15 @@ import Pagos from './pages/Pagos';
 import { getCurrentUser, login, logout } from './services/auth';
 import { syncReactSession, legacyLogout } from './logic/runtime';
 
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim()
+  .toLowerCase()
+  .replace(/^@+/, '');
+
+function isSchoolEmail(email) {
+  return String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
+}
+
 export default function App() {
   const [user, setUser] = useState(() => getCurrentUser());
   const [loginLoading, setLoginLoading] = useState(false);
@@ -65,6 +74,11 @@ export default function App() {
 
     if (!correo || !contrasena) {
       setLoginError('Ingresa correo y contraseña.');
+      return;
+    }
+
+    if (!isSchoolEmail(correo)) {
+      setLoginError(`Utiliza tu correo institucional @${SCHOOL_EMAIL_DOMAIN}.`);
       return;
     }
 
@@ -142,7 +156,7 @@ export default function App() {
                     name="correo"
                     type="email"
                     className="form-control"
-                    placeholder="usuario@educontrol.com"
+                    placeholder={`usuario@${SCHOOL_EMAIL_DOMAIN}`}
                     required
                     autoComplete="username"
                     disabled={loginLoading}

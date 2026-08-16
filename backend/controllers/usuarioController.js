@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import * as usuarioModel from "../models/usuarioModel.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
 import { queryConSesion } from "../config/database.js";
+import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 
 export const listarUsuarios = async (req, res) => {
     try {
@@ -32,7 +33,7 @@ export const obtenerUsuario = async (req, res) => {
 export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
-        const correoNormalizado = String(correo || "").trim().toLowerCase();
+        const correoNormalizado = validarCorreoInstitucional(correo);
         const nombreNormalizado = String(nombre || "").trim();
         const apellidoFinal = String(primer_apellido || apellido1 || "").trim();
 
@@ -92,8 +93,9 @@ export const crearUsuario = async (req, res) => {
         });
     } catch (error) {
         console.error("Error crítico en crearUsuario:", error);
-        return res.status(500).json({
-            mensaje: "Error interno en el servidor al crear el usuario.",
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        return res.status(esDominio ? 400 : 500).json({
+            mensaje: esDominio ? error.message : "Error interno en el servidor al crear el usuario.",
             detalle: error.message
         });
     }
@@ -119,7 +121,7 @@ export const actualizarUsuario = async (req, res) => {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        const correoFinal = correo ? String(correo).trim().toLowerCase() : usuario.correo;
+        const correoFinal = correo ? validarCorreoInstitucional(correo) : usuario.correo;
 
         if (correoFinal !== usuario.correo) {
             const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoFinal);
@@ -199,8 +201,9 @@ export const actualizarUsuario = async (req, res) => {
         });
     } catch (error) {
         console.error("Error al actualizar usuario:", error);
-        res.status(500).json({
-            mensaje: "Error al actualizar el usuario.",
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        res.status(esDominio ? 400 : 500).json({
+            mensaje: esDominio ? error.message : "Error al actualizar el usuario.",
             detalle: error.message
         });
     }
@@ -285,8 +288,10 @@ export const actualizarMiPerfil = async (req, res) => {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        if (correo.trim() !== usuarioActual.correo) {
-            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo.trim());
+        const correoInstitucional = validarCorreoInstitucional(correo);
+
+        if (correoInstitucional !== usuarioActual.correo) {
+            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoInstitucional);
             if (existente && Number(existente.id_usuario) !== Number(idUsuario)) {
                 return res.status(409).json({ mensaje: "Ya existe otro usuario con ese correo." });
             }
@@ -296,7 +301,7 @@ export const actualizarMiPerfil = async (req, res) => {
             nombre: nombre.trim(),
             apellido1: apellido1.trim(),
             apellido2: apellido2?.trim() || "",
-            correo: correo.trim()
+            correo: correoInstitucional
         };
 
         await usuarioModel.actualizarDatosPerfil(idUsuario, datosNuevos);
@@ -333,7 +338,8 @@ export const actualizarMiPerfil = async (req, res) => {
         });
     } catch (error) {
         console.error("Error al actualizar el perfil:", error);
-        res.status(500).json({ mensaje: "Error al actualizar el perfil." });
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        res.status(esDominio ? 400 : 500).json({ mensaje: esDominio ? error.message : "Error al actualizar el perfil." });
     }
 };
 

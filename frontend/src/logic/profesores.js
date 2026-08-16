@@ -38,6 +38,9 @@ let profesorPendienteId = null;
 let profesorReintegrarId = null;
 let profesorFiltroEstado = 'todos';
 let profesorBusqueda = '';
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim().toLowerCase().replace(/^@+/, '');
+const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
 function wireProfesoresEvents() {
   const profForm = document.getElementById('profesor-form');
@@ -314,6 +317,11 @@ async function handleProfesorSubmit(e) {
     return;
   }
 
+  if (!isSchoolEmail(correo)) {
+    showToast(`El profesor debe utilizar un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
+    return;
+  }
+
   if (contrasena.length < 6) {
     showToast('La contraseña de acceso debe tener al menos 6 caracteres.', 'error');
     return;
@@ -509,17 +517,22 @@ async function abrirModalAsignarSustituto(idProfTitular, nombreTitular) {
       (s) => String(s.id_profesor_titular) === String(idProfTitular)
     );
     const profesores = resProfesores.ok ? await resProfesores.json() : [];
+    const titular = profesores.find((p) => String(p.id_profesor ?? p.id) === String(idProfTitular));
+    const materiaTitular = String(titular?.materia || suplencias[0]?.titular_materia || '').trim().toLowerCase();
     const profesoresActivos = profesores.filter(
-      (p) => (p.estado == 1 || p.estado === true) && String(p.id_profesor ?? p.id) !== String(idProfTitular)
+      (p) =>
+        (p.estado == 1 || p.estado === true) &&
+        String(p.id_profesor ?? p.id) !== String(idProfTitular) &&
+        String(p.materia || '').trim().toLowerCase() === materiaTitular
     );
 
-    renderListaSuplencias(suplencias, profesoresActivos, idProfTitular);
+    renderListaSuplencias(suplencias, profesoresActivos, idProfTitular, titular?.materia || suplencias[0]?.titular_materia || '');
   } catch (error) {
     if (lista) lista.innerHTML = `<p class="text-danger text-center py-3 mb-0">${error.message || 'Error al cargar los grupos pendientes.'}</p>`;
   }
 }
 
-function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
+function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular, materiaTitular = "") {
   const lista = document.getElementById('sustituto-lista');
   if (!lista) return;
 
@@ -532,7 +545,12 @@ function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
     .map((p) => `<option value="${p.id_profesor ?? p.id}">${p.nombre} ${p.apellido1} (${p.materia || 'General'})</option>`)
     .join('');
 
-  lista.innerHTML = suplencias.map((s) => `
+  const avisoMateria = `<div class="alert alert-light border py-2 px-3 small mb-3"><i class="bi bi-journal-bookmark me-2"></i>Solo se muestran profesores activos de <strong>${materiaTitular || 'la misma materia'}</strong>.</div>`;
+  const sinOpciones = profesoresActivos.length === 0
+    ? '<div class="alert alert-warning py-2 px-3 small">No hay otro profesor activo disponible que imparta esta materia.</div>'
+    : '';
+
+  lista.innerHTML = avisoMateria + sinOpciones + suplencias.map((s) => `
     <div class="border rounded-3 p-3 d-flex align-items-center justify-content-between gap-3 flex-wrap" data-suplencia-row="${s.id_suplencia}">
       <div>
         <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}${s.nombre_seccion ? ` · Sección ${s.nombre_seccion}` : ''}</div>

@@ -745,3 +745,86 @@ body.high-contrast .accessibility-toggle {
     border-radius: 16px;
   }
 }
+
+
+/* ============================================================
+   Acabado visual institucional
+   ============================================================ */
+.login-screen {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background:
+    linear-gradient(115deg, rgba(15, 23, 42, .88), rgba(25, 61, 78, .68)),
+    url('/images/imagen-fondo.jpg') center / cover no-repeat fixed;
+}
+
+.login-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,.13), transparent 34%),
+    linear-gradient(180deg, rgba(15,23,42,.08), rgba(15,23,42,.3));
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(255,255,255,.52);
+  box-shadow: 0 28px 70px rgba(8, 20, 32, .32);
+  backdrop-filter: blur(10px);
+}
+
+#dashboard-view { --module-accent: #2E6F95; }
+#estudiantes-view { --module-accent: #4F6D7A; }
+#matricula-view { --module-accent: #B7791F; }
+#profesores-view { --module-accent: #6B5B95; }
+#asistencia-view { --module-accent: #2F855A; }
+#consultas-view { --module-accent: #3B7C8D; }
+#pagos-view { --module-accent: #A66A2C; }
+#reportes-view { --module-accent: #415A77; }
+#usuarios-view { --module-accent: #8A5A67; }
+#perfil-view { --module-accent: #52616B; }
+
+.view {
+  color: #243447;
+}
+
+.view .page-header .card-title-serif i,
+.view .eyebrow {
+  color: var(--module-accent, var(--accent));
+}
+
+.view > .card,
+.view .container-fluid > .row > [class*="col-"] > .card {
+  border-color: rgba(93, 111, 128, .14) !important;
+}
+
+.extra-availability {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-height: 44px;
+  padding: .72rem .9rem;
+  border-radius: .75rem;
+  border: 1px solid #D9E2E8;
+  background: #F8FAFB;
+  color: #5E6D78;
+  font-size: .88rem;
+}
+.extra-availability.ok {
+  border-color: #B7D8C5;
+  background: #F0F8F3;
+  color: #276749;
+}
+.extra-availability.blocked {
+  border-color: #E8C5C9;
+  background: #FFF6F6;
+  color: #9B3742;
+}
+.finance-extra-card {
+  border-top: 3px solid #3B7C8D !important;
+}

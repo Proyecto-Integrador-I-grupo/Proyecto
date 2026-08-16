@@ -5,6 +5,9 @@ const baseUrl = import.meta.env.VITE_API_URL || ((window.location.hostname === "
 
 const SESSION_KEY = "educontrol_usuario";
 const ACTIVE_VIEW_KEY = 'educontrol_active_view';
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim().toLowerCase().replace(/^@+/, '');
+const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
 let currentUser = null;
 let views = [];
@@ -722,6 +725,11 @@ function wireUsuariosForm() {
       return;
     }
 
+    if (!isSchoolEmail(correo)) {
+      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
+      return;
+    }
+
     if (contrasena.length < 6) {
       showToast('La contraseña temporal debe tener al menos 6 caracteres.', 'error');
       return;
@@ -885,6 +893,11 @@ function wireUsuariosEdit() {
 
     if (!id || !nombre || !apellido1 || !correo) {
       showToast('Completa nombre, apellido y correo.', 'error');
+      return;
+    }
+
+    if (!isSchoolEmail(correo)) {
+      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
       return;
     }
 

@@ -1,5 +1,6 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
+import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 
 const MATERIAS_BASICAS = new Map([
   ["español", "Español"],
@@ -110,7 +111,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
   const nombreLimpio = nombre.trim();
   const apellido1Limpio = apellido1.trim();
   const apellido2Limpio = apellido2 ? apellido2.trim() : null;
-  const correoLimpio = correo.trim().toLowerCase();
+  const correoLimpio = validarCorreoInstitucional(correo);
 
   const connection = await conexionPromise.getConnection();
 
@@ -584,7 +585,7 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     await connection.beginTransaction();
 
     const [nuevoProf] = await connection.query(
-      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      `SELECT id_profesor, estado, materia FROM profesor WHERE id_profesor = ?`,
       [id_nuevo_profesor]
     );
     if (nuevoProf.length === 0) {
@@ -592,6 +593,24 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     }
     if (nuevoProf[0].estado == 0 || nuevoProf[0].estado === false) {
       throw new Error("No se puede asignar un profesor inactivo al grupo.");
+    }
+
+    if (id_profesor_anterior) {
+      const [titularRows] = await connection.query(
+        `SELECT id_profesor, materia FROM profesor WHERE id_profesor = ? LIMIT 1`,
+        [id_profesor_anterior]
+      );
+      if (!titularRows.length) {
+        throw new Error("No se encontró el profesor titular.");
+      }
+
+      const materiaTitular = String(titularRows[0].materia || "").trim().toLowerCase();
+      const materiaSustituto = String(nuevoProf[0].materia || "").trim().toLowerCase();
+      if (!materiaTitular || !materiaSustituto || materiaTitular !== materiaSustituto) {
+        throw new Error(
+          `El sustituto debe impartir la misma materia del profesor titular (${titularRows[0].materia || "sin materia definida"}).`
+        );
+      }
     }
 
     if (id_profesor_anterior) {
@@ -739,6 +758,7 @@ export const obtenerSuplenciasPendientesService = async () => {
       s.nombre_seccion,
       ps.id_profesor_titular,
       CONCAT(pt.nombre, ' ', pt.apellido1) AS titular_nombre,
+      prt.materia AS titular_materia,
       ps.id_profesor_suplente,
       CASE WHEN ps.id_profesor_suplente IS NOT NULL 
            THEN CONCAT(psup.nombre, ' ', psup.apellido1) ELSE NULL END AS suplente_nombre,

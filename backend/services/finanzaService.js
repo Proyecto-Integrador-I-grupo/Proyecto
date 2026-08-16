@@ -69,15 +69,22 @@ export async function asegurarCargoMatriculaPreRegistro(idEstudiante, idUsuario 
   if (!concepto) return null;
 
   const [[existente]] = await pool.query(
-    `SELECT id_cargo, total, saldo, estado
-     FROM cargo_estudiante
-     WHERE id_estudiante = ?
-       AND id_concepto = ?
-       AND estado <> 'anulado'
-       AND (periodo = ? OR periodo IS NULL OR periodo = '')
-     ORDER BY id_cargo DESC
+    `SELECT c.id_cargo, c.total, c.saldo, c.estado
+     FROM cargo_estudiante c
+     LEFT JOIN matricula m ON m.id_matricula = c.id_matricula
+     WHERE c.id_estudiante = ?
+       AND c.id_concepto = ?
+       AND c.estado <> 'anulado'
+       AND (
+         c.periodo = ?
+         OR c.periodo IS NULL
+         OR c.periodo = ''
+         OR CAST(m.anio AS CHAR) = ?
+         OR (c.estado = 'pagado' AND YEAR(c.fecha_emision) = ?)
+       )
+     ORDER BY (c.estado = 'pagado') DESC, c.id_cargo DESC
      LIMIT 1`,
-    [estudianteId, concepto.id_concepto, periodo]
+    [estudianteId, concepto.id_concepto, periodo, periodo, Number(periodo)]
   );
   if (existente) return existente;
 
@@ -163,8 +170,46 @@ export async function actualizarConcepto(id, datos) {
   return { id_concepto: idConcepto };
 }
 
+
+async function normalizarCargosMatriculaDuplicados() {
+  const [pagados] = await pool.query(
+    `SELECT c.id_estudiante,
+            COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR)) AS periodo_ref,
+            MAX(c.id_cargo) AS id_cargo_pagado
+     FROM cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto AND cc.codigo = 'MATRICULA'
+     LEFT JOIN matricula m ON m.id_matricula = c.id_matricula
+     WHERE c.estado = 'pagado'
+     GROUP BY c.id_estudiante,
+              COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR))`
+  );
+
+  for (const row of pagados) {
+    const periodo = String(row.periodo_ref || '').trim();
+    if (!periodo) continue;
+    await pool.query(
+      `UPDATE cargo_estudiante c
+       INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto AND cc.codigo = 'MATRICULA'
+       LEFT JOIN matricula m ON m.id_matricula = c.id_matricula
+       SET c.estado = 'anulado', c.saldo = 0
+       WHERE c.id_estudiante = ?
+         AND c.id_cargo <> ?
+         AND c.estado = 'pendiente'
+         AND COALESCE((
+           SELECT SUM(pg.monto)
+           FROM pago pg
+           WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'
+         ), 0) = 0
+         AND COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR)) = ?`,
+      [row.id_estudiante, row.id_cargo_pagado, periodo]
+    );
+  }
+}
+
 export async function listarCargos(filtros = {}) {
+  await normalizarCargosMatriculaDuplicados();
   await asegurarCargosMatriculaPreRegistro();
+  await normalizarCargosMatriculaDuplicados();
   const conditions = ["c.estado <> 'anulado'"];
   const values = [];
 
@@ -548,6 +593,241 @@ export async function obtenerResponsablePrincipal(idEstudiante) {
     [id]
   );
   return rows[0] || null;
+}
+
+
+async function asegurarEsquemaClasesExtra() {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS clase_extra (
+      id_clase_extra BIGINT AUTO_INCREMENT PRIMARY KEY,
+      id_estudiante INT NOT NULL,
+      id_profesor INT NOT NULL,
+      id_cargo BIGINT NULL,
+      fecha DATE NOT NULL,
+      hora_inicio TIME NULL,
+      hora_fin TIME NULL,
+      observaciones VARCHAR(250) NULL,
+      estado VARCHAR(20) NOT NULL DEFAULT 'programada',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_clase_extra_profesor_fecha (id_profesor, fecha),
+      INDEX idx_clase_extra_estudiante (id_estudiante),
+      INDEX idx_clase_extra_cargo (id_cargo)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
+async function asegurarConceptoHorasExtra() {
+  const [[existente]] = await pool.query(
+    `SELECT id_concepto, monto_base, estado
+     FROM concepto_cobro
+     WHERE codigo = 'HORAS_EXTRA'
+     LIMIT 1`
+  );
+  if (existente) {
+    if (Number(existente.estado) === 0) {
+      await pool.query(`UPDATE concepto_cobro SET estado = TRUE WHERE id_concepto = ?`, [existente.id_concepto]);
+    }
+    return existente;
+  }
+
+  const [result] = await pool.query(
+    `INSERT INTO concepto_cobro
+      (codigo, nombre, descripcion, tipo, monto_base, impuesto_tarifa, moneda, estado)
+     VALUES ('HORAS_EXTRA', 'Horas extra de clase',
+             'Clase adicional programada fuera del horario regular del profesor.',
+             'servicio', 10000, 0, 'CRC', TRUE)`
+  );
+  return { id_concepto: result.insertId, monto_base: 10000 };
+}
+
+const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+function normalizarTextoDia(valor) {
+  return String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function profesorOcupaDiaPorNombreGrupo(nombreGrupo, fecha) {
+  const texto = normalizarTextoDia(nombreGrupo);
+  const dia = normalizarTextoDia(DIAS[new Date(`${fecha}T12:00:00`).getDay()]);
+
+  if ((texto.includes('lunes-viernes') || texto.includes('lunes a viernes') || texto.includes('lunes - viernes')) &&
+      ['lunes','martes','miercoles','jueves','viernes'].includes(dia)) {
+    return true;
+  }
+
+  const variantes = {
+    domingo: ['domingo'],
+    lunes: ['lunes'],
+    martes: ['martes'],
+    miercoles: ['miercoles'],
+    jueves: ['jueves'],
+    viernes: ['viernes'],
+    sabado: ['sabado']
+  };
+  return variantes[dia]?.some((d) => texto.includes(d)) || false;
+}
+
+export async function obtenerDisponibilidadProfesorExtra(idProfesor, fecha) {
+  await asegurarEsquemaClasesExtra();
+
+  const profesorId = positiveInt(idProfesor, "El profesor");
+  const fechaTexto = String(fecha || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaTexto)) {
+    throw new Error("Selecciona una fecha válida para la clase extra.");
+  }
+
+  const [[profesor]] = await pool.query(
+    `SELECT pr.id_profesor, pr.materia, pr.estado,
+            CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS profesor_nombre
+     FROM profesor pr
+     INNER JOIN persona p ON p.id_persona = pr.id_persona
+     WHERE pr.id_profesor = ? LIMIT 1`,
+    [profesorId]
+  );
+  if (!profesor || !(profesor.estado == 1 || profesor.estado === true)) {
+    throw new Error("El profesor no existe o está inactivo.");
+  }
+
+  const [grupos] = await pool.query(
+    `SELECT g.id_grupo, g.nombre_grupo, s.nombre_seccion
+     FROM grupo_profesor gp
+     INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
+     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+     WHERE gp.id_profesor = ?
+       AND gp.estado = TRUE
+       AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= ?)`,
+    [profesorId, fechaTexto]
+  );
+
+  const gruposQueOcupan = grupos.filter((g) => profesorOcupaDiaPorNombreGrupo(g.nombre_grupo, fechaTexto));
+
+  const [extras] = await pool.query(
+    `SELECT id_clase_extra, fecha, hora_inicio, hora_fin
+     FROM clase_extra
+     WHERE id_profesor = ? AND fecha = ? AND estado IN ('programada','realizada')`,
+    [profesorId, fechaTexto]
+  );
+
+  const disponible = gruposQueOcupan.length === 0 && extras.length === 0;
+  return {
+    disponible,
+    fecha: fechaTexto,
+    profesor,
+    motivo: disponible
+      ? "El profesor está disponible ese día."
+      : (gruposQueOcupan.length
+          ? `El profesor tiene asignación regular ese día (${gruposQueOcupan.map(g => g.nombre_grupo).join(', ')}).`
+          : "El profesor ya tiene una clase extra programada ese día."),
+    grupos_ocupados: gruposQueOcupan,
+    clases_extra: extras
+  };
+}
+
+export async function registrarClaseExtra(datos, idUsuario) {
+  await asegurarEsquemaClasesExtra();
+  const concepto = await asegurarConceptoHorasExtra();
+
+  const idEstudiante = positiveInt(datos.id_estudiante, "El estudiante");
+  const idProfesor = positiveInt(datos.id_profesor, "El profesor");
+  const fecha = String(datos.fecha || '').trim();
+  const disponibilidad = await obtenerDisponibilidadProfesorExtra(idProfesor, fecha);
+  if (!disponibilidad.disponible) {
+    throw new Error(disponibilidad.motivo);
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const fechaClase = new Date(`${fecha}T12:00:00`);
+  if (Number.isNaN(fechaClase.getTime()) || fechaClase < hoy) {
+    throw new Error("La clase extra debe programarse para hoy o una fecha futura.");
+  }
+
+  const horaInicio = String(datos.hora_inicio || '').trim() || null;
+  const horaFin = String(datos.hora_fin || '').trim() || null;
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+    throw new Error("Indica tanto la hora de inicio como la hora de finalización.");
+  }
+  if (horaInicio && horaFin && horaFin <= horaInicio) {
+    throw new Error("La hora de finalización debe ser posterior a la hora de inicio.");
+  }
+
+  const [[estudiante]] = await pool.query(
+    `SELECT e.id_estudiante, CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre
+     FROM estudiante e
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     WHERE e.id_estudiante = ? AND e.estado = TRUE LIMIT 1`,
+    [idEstudiante]
+  );
+  if (!estudiante) throw new Error("El estudiante no existe o está inactivo.");
+
+  const montoBase = datos.monto_base === undefined || datos.monto_base === ''
+    ? Number(concepto.monto_base || 10000)
+    : money(datos.monto_base, "El monto de la clase extra");
+
+  const cargo = await crearCargo({
+    id_estudiante: idEstudiante,
+    id_concepto: concepto.id_concepto,
+    monto_base: montoBase,
+    descuento: 0,
+    periodo: fecha,
+    fecha_emision: new Date().toISOString().slice(0, 10),
+    fecha_vencimiento: fecha,
+    descripcion: `Clase extra de ${disponibilidad.profesor.materia} · ${fecha}`
+  }, idUsuario);
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO clase_extra
+        (id_estudiante, id_profesor, id_cargo, fecha, hora_inicio, hora_fin, observaciones, estado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'programada')`,
+      [
+        idEstudiante,
+        idProfesor,
+        cargo.id_cargo,
+        fecha,
+        horaInicio,
+        horaFin,
+        String(datos.observaciones || '').trim().slice(0,250) || null
+      ]
+    );
+
+    return {
+      id_clase_extra: result.insertId,
+      id_cargo: cargo.id_cargo,
+      total: cargo.total,
+      profesor: disponibilidad.profesor.profesor_nombre,
+      materia: disponibilidad.profesor.materia,
+      estudiante: estudiante.estudiante_nombre,
+      fecha
+    };
+  } catch (error) {
+    await pool.query(`UPDATE cargo_estudiante SET estado = 'anulado', saldo = 0 WHERE id_cargo = ?`, [cargo.id_cargo]);
+    throw error;
+  }
+}
+
+export async function listarClasesExtra() {
+  await asegurarEsquemaClasesExtra();
+  const [rows] = await pool.query(
+    `SELECT ce.id_clase_extra, ce.fecha, ce.hora_inicio, ce.hora_fin, ce.observaciones, ce.estado,
+            ce.id_cargo, ce.id_estudiante, ce.id_profesor,
+            CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) AS estudiante_nombre,
+            CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2) AS profesor_nombre,
+            pr.materia,
+            c.total, c.saldo, c.estado AS estado_cargo
+     FROM clase_extra ce
+     INNER JOIN estudiante e ON e.id_estudiante = ce.id_estudiante
+     INNER JOIN persona pe ON pe.id_persona = e.id_persona
+     INNER JOIN profesor pr ON pr.id_profesor = ce.id_profesor
+     INNER JOIN persona pp ON pp.id_persona = pr.id_persona
+     LEFT JOIN cargo_estudiante c ON c.id_cargo = ce.id_cargo
+     ORDER BY ce.fecha DESC, ce.id_clase_extra DESC
+     LIMIT 300`
+  );
+  return rows;
 }
 
 export async function reintentarFactura(idCargo, metodoPago = 'otro') {

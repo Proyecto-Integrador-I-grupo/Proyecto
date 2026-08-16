@@ -1,6 +1,7 @@
 import React from 'react';
 
 export default function Usuarios() {
+  const schoolDomain = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com').replace(/^@+/, '');
   return (
     <>
       <section id="usuarios-view" className="view hidden">
@@ -33,11 +34,12 @@ export default function Usuarios() {
                         type="email"
                         id="usuario-correo"
                         className="form-control"
-                        placeholder="usuario@educontrol.com"
+                        placeholder={`usuario@${schoolDomain}`}
                         autoComplete="new-email"
                         maxLength="150"
                         required
                       />
+                      <div className="form-text">Solo se permiten cuentas @{schoolDomain}.</div>
                     </div>
 
                     <div className="mb-3">

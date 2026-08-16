@@ -80,6 +80,23 @@ export async function postFacturar(req, res) {
   } catch (e) { responderError(res, e); }
 }
 
+
+export async function getClasesExtra(req, res) {
+  try { res.json(await finanzaService.listarClasesExtra()); }
+  catch (e) { responderError(res, e, 500); }
+}
+
+export async function getDisponibilidadClaseExtra(req, res) {
+  try { res.json(await finanzaService.obtenerDisponibilidadProfesorExtra(req.params.id, req.query?.fecha)); }
+  catch (e) { responderError(res, e); }
+}
+
+export async function postClaseExtra(req, res) {
+  try {
+    res.status(201).json(await finanzaService.registrarClaseExtra(req.body, req.usuarioActual?.id_usuario));
+  } catch (e) { responderError(res, e); }
+}
+
 export async function getConfiguracion(req, res) {
   try { res.json((await obtenerConfiguracionFacturacion()) || {}); }
   catch (e) { responderError(res, e, 500); }

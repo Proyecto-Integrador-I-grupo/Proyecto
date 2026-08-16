@@ -4,6 +4,8 @@ let conceptos = [];
 let estudiantes = [];
 let cargos = [];
 let pagos = [];
+let profesores = [];
+let clasesExtra = [];
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -42,6 +44,10 @@ export async function loadPagosData() {
     cargarPagos(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
+  await Promise.all([
+    cargarProfesoresExtra(),
+    cargarClasesExtra()
+  ]);
 }
 
 function wirePagosEvents() {
@@ -56,6 +62,9 @@ function wirePagosEvents() {
   wire('fin-concepto-existente', 'change', seleccionarConceptoExistente);
   wire('fin-config-form', 'submit', guardarConfiguracion);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
+  wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
+  wire('fin-extra-profesor', 'change', comprobarDisponibilidadExtra);
+  wire('fin-extra-fecha', 'change', comprobarDisponibilidadExtra);
 
   const body = document.getElementById('fin-cargos-body');
   if (body && !body.dataset.wired) {
@@ -129,6 +138,117 @@ async function cargarEstudiantes() {
   [...únicos.values()].sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b))).forEach((e) => {
     select.add(new Option(`${nombreEstudiante(e)}${e.nombre_grupo ? ` · ${e.nombre_grupo} · Sección ${e.nombre_seccion || '-'}` : ' · Pre-registro / sin grupo'}`, e.id_estudiante));
   });
+}
+
+
+async function cargarProfesoresExtra() {
+  profesores = await requestJson('/api/profesores');
+  const select = document.getElementById('fin-extra-profesor');
+  if (!select) return;
+  select.innerHTML = '<option value="">Seleccionar profesor</option>';
+  profesores
+    .filter((p) => p.estado == 1 || p.estado === true)
+    .sort((a,b) => `${a.nombre} ${a.apellido1}`.localeCompare(`${b.nombre} ${b.apellido1}`))
+    .forEach((p) => {
+      select.add(new Option(`${p.nombre} ${p.apellido1} · ${p.materia || 'Sin materia'}`, p.id_profesor ?? p.id));
+    });
+
+  const estSelect = document.getElementById('fin-extra-estudiante');
+  if (estSelect) {
+    estSelect.innerHTML = '<option value="">Seleccionar estudiante</option>';
+    const unicos = new Map();
+    estudiantes.forEach((e) => { if (!unicos.has(e.id_estudiante)) unicos.set(e.id_estudiante, e); });
+    [...unicos.values()]
+      .sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b)))
+      .forEach((e) => estSelect.add(new Option(nombreEstudiante(e), e.id_estudiante)));
+  }
+}
+
+async function cargarClasesExtra() {
+  clasesExtra = await requestJson('/api/finanzas/clases-extra');
+  const body = document.getElementById('fin-clases-extra-body');
+  if (!body) return;
+  if (!clasesExtra.length) {
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay clases extra programadas.</td></tr>';
+    return;
+  }
+  body.innerHTML = clasesExtra.slice(0,40).map((c) => {
+    const horario = c.hora_inicio && c.hora_fin
+      ? `${String(c.hora_inicio).slice(0,5)} - ${String(c.hora_fin).slice(0,5)}`
+      : 'Horario por coordinar';
+    return `<tr>
+      <td>${esc(String(c.fecha || '').slice(0,10))}</td>
+      <td>${esc(c.estudiante_nombre)}</td>
+      <td>${esc(c.profesor_nombre)}</td>
+      <td>${esc(c.materia || '—')}</td>
+      <td>${esc(horario)}</td>
+      <td><span class="badge rounded-pill text-bg-${c.estado_cargo === 'pagado' ? 'success' : 'warning'}">${moneda(c.total || 0)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+async function comprobarDisponibilidadExtra() {
+  const idProfesor = Number(value('fin-extra-profesor') || 0);
+  const fecha = value('fin-extra-fecha');
+  const box = document.getElementById('fin-extra-disponibilidad');
+  const guardar = document.getElementById('fin-extra-guardar');
+
+  if (!idProfesor || !fecha) {
+    if (box) {
+      box.className = 'extra-availability neutral';
+      box.textContent = 'Selecciona profesor y fecha para comprobar disponibilidad.';
+    }
+    if (guardar) guardar.disabled = false;
+    return;
+  }
+
+  try {
+    const r = await requestJson(`/api/finanzas/profesores/${idProfesor}/disponibilidad-extra?fecha=${encodeURIComponent(fecha)}`);
+    if (box) {
+      box.className = `extra-availability ${r.disponible ? 'ok' : 'blocked'}`;
+      box.innerHTML = `<i class="bi ${r.disponible ? 'bi-calendar-check' : 'bi-calendar-x'}"></i><span>${esc(r.motivo)}</span>`;
+    }
+    if (guardar) guardar.disabled = !r.disponible;
+  } catch (e) {
+    if (box) {
+      box.className = 'extra-availability blocked';
+      box.textContent = e.message;
+    }
+    if (guardar) guardar.disabled = true;
+  }
+}
+
+async function guardarClaseExtra(event) {
+  event.preventDefault();
+  try {
+    const payload = {
+      id_estudiante: value('fin-extra-estudiante'),
+      id_profesor: value('fin-extra-profesor'),
+      fecha: value('fin-extra-fecha'),
+      hora_inicio: value('fin-extra-inicio') || null,
+      hora_fin: value('fin-extra-fin') || null,
+      monto_base: value('fin-extra-monto'),
+      observaciones: value('fin-extra-observaciones')
+    };
+
+    const r = await requestJson('/api/finanzas/clases-extra', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    hideModal('modalClaseExtra');
+    event.currentTarget.reset();
+    setValue('fin-extra-monto', 10000);
+    const box = document.getElementById('fin-extra-disponibilidad');
+    if (box) {
+      box.className = 'extra-availability neutral';
+      box.textContent = 'Selecciona profesor y fecha para comprobar disponibilidad.';
+    }
+    showToast(`Clase extra programada. Se generó el cargo ${moneda(r.total || 0)}.`, 'success');
+    await loadPagosData();
+  } catch (e) {
+    showToast(e.message || 'No se pudo programar la clase extra.', 'error');
+  }
 }
 
 async function cargarCargos() {

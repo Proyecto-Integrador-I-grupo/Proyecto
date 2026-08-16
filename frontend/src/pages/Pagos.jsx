@@ -34,6 +34,9 @@ export default function Pagos() {
           <button id="fin-nuevo-cargo" type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoCargo">
             <i className="bi bi-plus-circle"></i> Nuevo cargo
           </button>
+          <button id="fin-nueva-clase-extra" type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalClaseExtra">
+            <i className="bi bi-calendar2-plus"></i> Hora extra
+          </button>
           <button id="fin-configuracion" type="button" className="btn btn-outline-primary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConfigFacturacion">
             <i className="bi bi-gear"></i> Configuración
           </button>
@@ -101,6 +104,23 @@ export default function Pagos() {
         </div>
       </div>
 
+      <div className="card border-0 shadow-sm mb-4 finance-extra-card">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+            <div>
+              <h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra programadas</h3>
+              <p className="small text-muted mb-0">Cada clase extra genera su cargo en Pagos. Solo se permite programarla en un día disponible para el profesor.</p>
+            </div>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0">
+              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
+              <tbody id="fin-clases-extra-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div className="card border-0 shadow-sm">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
@@ -117,6 +137,65 @@ export default function Pagos() {
           </div>
         </div>
       </div>
+
+      <Modal id="modalClaseExtra" title={<><i className="bi bi-calendar2-plus"></i> Programar hora extra</>} lg>
+        <form id="fin-clase-extra-form">
+          <div className="modal-body p-4">
+            <div className="finance-note mb-3">
+              <i className="bi bi-info-circle"></i>
+              <span>Selecciona una fecha en la que el profesor no tenga una asignación regular ni otra clase extra programada.</span>
+            </div>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label">Estudiante</label>
+                <select id="fin-extra-estudiante" className="form-select" required>
+                  <option value="">Seleccionar estudiante</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Profesor</label>
+                <select id="fin-extra-profesor" className="form-select" required>
+                  <option value="">Seleccionar profesor</option>
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Fecha</label>
+                <input id="fin-extra-fecha" type="date" className="form-control" required />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Inicio</label>
+                <input id="fin-extra-inicio" type="time" className="form-control" />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Fin</label>
+                <input id="fin-extra-fin" type="time" className="form-control" />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Monto</label>
+                <div className="input-group">
+                  <span className="input-group-text"><i className="bi bi-cash-coin"></i></span>
+                  <input id="fin-extra-monto" type="number" min="1" step="0.01" className="form-control" defaultValue="10000" required />
+                </div>
+              </div>
+              <div className="col-md-8">
+                <label className="form-label">Observaciones</label>
+                <input id="fin-extra-observaciones" className="form-control" maxLength="250" placeholder="Tema, refuerzo o detalle de la clase" />
+              </div>
+              <div className="col-12">
+                <div id="fin-extra-disponibilidad" className="extra-availability neutral">
+                  Selecciona profesor y fecha para comprobar disponibilidad.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button id="fin-extra-guardar" type="submit" className="btn btn-success">
+              <i className="bi bi-calendar-check"></i> Programar y generar cargo
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal id="modalNuevoCargo" title={<><i className="bi bi-plus-circle"></i> Registrar cargo</>} lg>
         <form id="fin-cargo-form">

@@ -185,3 +185,35 @@
 .profesor-actions-grid .profesor-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:32px;padding:.35rem .55rem;border-radius:8px;font-size:.75rem;font-weight:650;white-space:nowrap}
 .profesor-actions-grid .profesor-action-btn i{font-size:.82rem}
 @media(max-width:767.98px){.profesor-actions-grid{max-width:none;margin-left:0;grid-template-columns:repeat(2,minmax(105px,1fr))}}
+
+
+/* Acciones docentes: tamaño uniforme, lectura clara y sin amontonarse */
+#profesores-table th:nth-child(7) {
+  min-width: 250px;
+}
+.profesor-actions-grid {
+  width: 248px;
+  max-width: 100%;
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: .45rem;
+}
+.profesor-actions-grid .profesor-action-btn {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  padding: .38rem .58rem;
+  border-radius: .55rem;
+  font-size: .75rem;
+  font-weight: 650;
+}
+.profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 767.98px) {
+  .profesor-actions-grid {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}

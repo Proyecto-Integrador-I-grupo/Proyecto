@@ -851,3 +851,79 @@ body.high-contrast .accessibility-toggle {
 .btn-outline-danger:hover { background:#c2414b; border-color:#c2414b; color:#fff; }
 .btn-outline-secondary { color:#536579; border-color:#cbd5e1; background:#fff; }
 .btn-outline-secondary:hover { background:#eef2f6; border-color:#b8c4d1; color:#26384a; }
+
+/* ============================================================
+   Ajuste final de paleta por módulo
+   Mantiene el nav sin cambios y da identidad visual a cada área.
+   ============================================================ */
+#dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
+#estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
+#matricula-view { --module-accent:#A66A2C; --module-soft:#FCF5EC; --module-border:#EAD8C1; }
+#profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
+#asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
+#pagos-view { --module-accent:#9A5B43; --module-soft:#FBF2EE; --module-border:#E8D2C9; }
+#reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
+#consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
+#usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }
+#perfil-view { --module-accent:#596A73; --module-soft:#F2F5F6; --module-border:#D8E0E3; }
+
+.view .card:not(.hero-card) {
+  border-color: var(--module-border, #e2e8f0) !important;
+}
+
+.view .card:not(.hero-card) > .card-header,
+.view .section-header-soft {
+  background: linear-gradient(135deg, var(--module-soft, #f8fafc), #fff);
+  border-color: var(--module-border, #e2e8f0);
+}
+
+.view .btn-primary {
+  background-color: var(--module-accent, var(--accent));
+  border-color: var(--module-accent, var(--accent));
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--module-accent, var(--accent)) 18%, transparent);
+}
+
+.view .btn-primary:hover,
+.view .btn-primary:focus {
+  filter: brightness(.92);
+  background-color: var(--module-accent, var(--accent));
+  border-color: var(--module-accent, var(--accent));
+}
+
+.view .btn-outline-primary {
+  color: var(--module-accent, var(--accent));
+  border-color: color-mix(in srgb, var(--module-accent, var(--accent)) 52%, white);
+  background: color-mix(in srgb, var(--module-soft, #f8fafc) 70%, white);
+}
+
+.view .btn-outline-primary:hover,
+.view .btn-outline-primary:focus {
+  color:#fff;
+  background:var(--module-accent, var(--accent));
+  border-color:var(--module-accent, var(--accent));
+}
+
+.view .eyebrow,
+.view .page-header .card-title-serif i {
+  color: var(--module-accent, var(--accent));
+}
+
+/* Fondo de login: admite un archivo nuevo fondo-login.jpg y conserva
+   imagen-fondo.jpg como respaldo para no romper despliegues existentes. */
+.login-screen {
+  background-color:#0f172a;
+  background-image:
+    linear-gradient(115deg, rgba(15,23,42,.84), rgba(25,61,78,.58)),
+    url('/images/fondo-login.jpg'),
+    url('/images/imagen-fondo.jpg');
+  background-position:center, center, center;
+  background-size:cover, cover, cover;
+  background-repeat:no-repeat, no-repeat, no-repeat;
+  background-attachment:fixed, fixed, fixed;
+}
+
+.login-screen::before {
+  background:
+    linear-gradient(180deg, rgba(4,15,25,.06), rgba(4,15,25,.28)),
+    radial-gradient(circle at 16% 18%, rgba(255,255,255,.12), transparent 35%);
+}

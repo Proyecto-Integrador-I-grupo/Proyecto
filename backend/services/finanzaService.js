@@ -79,7 +79,7 @@ export async function asegurarCargoMatriculaPreRegistro(idEstudiante, idUsuario 
          c.periodo = ?
          OR c.periodo IS NULL
          OR c.periodo = ''
-         OR CAST(m.anio AS CHAR) = ?
+         OR CAST(m.anio_lectivo AS CHAR) = ?
          OR (c.estado = 'pagado' AND YEAR(c.fecha_emision) = ?)
        )
      ORDER BY (c.estado = 'pagado') DESC, c.id_cargo DESC
@@ -174,14 +174,14 @@ export async function actualizarConcepto(id, datos) {
 async function normalizarCargosMatriculaDuplicados() {
   const [pagados] = await pool.query(
     `SELECT c.id_estudiante,
-            COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR)) AS periodo_ref,
+            COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio_lectivo, YEAR(c.fecha_emision)) AS CHAR)) AS periodo_ref,
             MAX(c.id_cargo) AS id_cargo_pagado
      FROM cargo_estudiante c
      INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto AND cc.codigo = 'MATRICULA'
      LEFT JOIN matricula m ON m.id_matricula = c.id_matricula
      WHERE c.estado = 'pagado'
      GROUP BY c.id_estudiante,
-              COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR))`
+              COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio_lectivo, YEAR(c.fecha_emision)) AS CHAR))`
   );
 
   for (const row of pagados) {
@@ -200,15 +200,127 @@ async function normalizarCargosMatriculaDuplicados() {
            FROM pago pg
            WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'
          ), 0) = 0
-         AND COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio, YEAR(c.fecha_emision)) AS CHAR)) = ?`,
+         AND COALESCE(NULLIF(c.periodo,''), CAST(COALESCE(m.anio_lectivo, YEAR(c.fecha_emision)) AS CHAR)) = ?`,
       [row.id_estudiante, row.id_cargo_pagado, periodo]
     );
   }
 }
 
+
+async function asegurarCargosMatriculaActivos(idUsuario = null) {
+  const periodo = String(new Date().getFullYear());
+
+  const [[concepto]] = await pool.query(
+    `SELECT id_concepto, monto_base
+     FROM concepto_cobro
+     WHERE codigo = 'MATRICULA' AND estado = TRUE
+     LIMIT 1`
+  );
+  if (!concepto) return { creados: 0 };
+
+  const [estudiantesActivos] = await pool.query(
+    `SELECT
+       e.id_estudiante,
+       m.id_matricula,
+       m.anio_lectivo
+     FROM estudiante e
+     LEFT JOIN matricula m ON m.id_estudiante = e.id_estudiante
+       AND m.anio_lectivo = ?
+       AND m.estado_matricula IN ('activa','pendiente')
+     WHERE e.estado = TRUE
+     ORDER BY e.id_estudiante`,
+    [Number(periodo)]
+  );
+
+  let creados = 0;
+  for (const estudiante of estudiantesActivos) {
+    const [[existente]] = await pool.query(
+      `SELECT c.id_cargo, c.estado, c.saldo, c.total
+       FROM cargo_estudiante c
+       LEFT JOIN matricula cm ON cm.id_matricula = c.id_matricula
+       WHERE c.id_estudiante = ?
+         AND c.id_concepto = ?
+         AND c.estado <> 'anulado'
+         AND (
+           c.periodo = ?
+           OR (c.periodo IS NULL AND YEAR(c.fecha_emision) = ?)
+           OR (c.periodo = '' AND YEAR(c.fecha_emision) = ?)
+           OR CAST(cm.anio_lectivo AS CHAR) = ?
+         )
+       ORDER BY (c.estado = 'pagado') DESC, c.id_cargo DESC
+       LIMIT 1`,
+      [estudiante.id_estudiante, concepto.id_concepto, periodo, Number(periodo), Number(periodo), periodo]
+    );
+
+    if (existente) continue;
+
+    await crearCargo({
+      id_estudiante: estudiante.id_estudiante,
+      id_concepto: concepto.id_concepto,
+      id_matricula: estudiante.id_matricula || null,
+      periodo,
+      descripcion: `Matrícula ciclo lectivo ${periodo}`,
+      fecha_emision: new Date().toISOString().slice(0, 10)
+    }, idUsuario);
+    creados += 1;
+  }
+
+  return { creados };
+}
+
+export async function listarEstadoCuentas() {
+  await normalizarCargosMatriculaDuplicados();
+  await asegurarCargosMatriculaActivos();
+  await normalizarCargosMatriculaDuplicados();
+
+  const [rows] = await pool.query(
+    `SELECT
+       e.id_estudiante,
+       CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
+       COUNT(DISTINCT CASE WHEN c.estado <> 'anulado' THEN c.id_cargo END) AS total_cargos,
+       COALESCE(SUM(CASE WHEN c.estado <> 'anulado' THEN c.total ELSE 0 END), 0) AS total_facturado,
+       COALESCE(SUM(CASE WHEN c.estado <> 'anulado' THEN c.saldo ELSE 0 END), 0) AS saldo_pendiente,
+       COALESCE(SUM(CASE WHEN c.estado = 'pagado' THEN 1 ELSE 0 END), 0) AS cargos_pagados,
+       COALESCE(SUM(CASE WHEN c.estado = 'parcial' THEN 1 ELSE 0 END), 0) AS cargos_parciales,
+       COALESCE(SUM(CASE WHEN c.estado = 'pendiente' THEN 1 ELSE 0 END), 0) AS cargos_pendientes,
+       COALESCE((
+         SELECT SUM(pg.monto)
+         FROM pago pg
+         INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
+         WHERE cp.id_estudiante = e.id_estudiante
+           AND pg.estado = 'aplicado'
+       ), 0) AS total_pagado,
+       (
+         SELECT MAX(pg.fecha_pago)
+         FROM pago pg
+         INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
+         WHERE cp.id_estudiante = e.id_estudiante
+           AND pg.estado = 'aplicado'
+       ) AS ultimo_pago
+     FROM estudiante e
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN cargo_estudiante c ON c.id_estudiante = e.id_estudiante
+     WHERE e.estado = TRUE
+        OR EXISTS (SELECT 1 FROM cargo_estudiante ch WHERE ch.id_estudiante = e.id_estudiante)
+     GROUP BY e.id_estudiante, p.nombre, p.apellido1, p.apellido2
+     ORDER BY saldo_pendiente DESC, estudiante_nombre ASC`
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    total_cargos: Number(row.total_cargos || 0),
+    total_facturado: Number(row.total_facturado || 0),
+    saldo_pendiente: Number(row.saldo_pendiente || 0),
+    total_pagado: Number(row.total_pagado || 0),
+    cargos_pagados: Number(row.cargos_pagados || 0),
+    cargos_parciales: Number(row.cargos_parciales || 0),
+    cargos_pendientes: Number(row.cargos_pendientes || 0)
+  }));
+}
+
 export async function listarCargos(filtros = {}) {
   await normalizarCargosMatriculaDuplicados();
-  await asegurarCargosMatriculaPreRegistro();
+  await asegurarCargosMatriculaActivos();
   await normalizarCargosMatriculaDuplicados();
   const conditions = ["c.estado <> 'anulado'"];
   const values = [];

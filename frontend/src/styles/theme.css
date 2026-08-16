@@ -1,0 +1,45 @@
+/* Identidad visual final por módulo. El nav mantiene su estilo original. */
+#dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
+#estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
+#matricula-view { --module-accent:#A66A2C; --module-soft:#FCF5EC; --module-border:#EAD8C1; }
+#profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
+#asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
+#pagos-view { --module-accent:#9A5B43; --module-soft:#FBF2EE; --module-border:#E8D2C9; }
+#reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
+#consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
+#usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }
+#perfil-view { --module-accent:#596A73; --module-soft:#F2F5F6; --module-border:#D8E0E3; }
+
+.view .page-header .card-title-serif i,
+.view .eyebrow { color:var(--module-accent,var(--accent)); }
+
+.view .card:not(.hero-card) { border-color:var(--module-border,#e2e8f0)!important; }
+.view .card:not(.hero-card) > .card-header { background:linear-gradient(135deg,var(--module-soft,#f8fafc),#fff); border-color:var(--module-border,#e2e8f0); }
+
+.view .btn-primary { background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); box-shadow:0 5px 14px rgba(15,23,42,.08); }
+.view .btn-primary:hover,.view .btn-primary:focus { background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); filter:brightness(.91); }
+.view .btn-outline-primary { color:var(--module-accent,var(--accent)); border-color:var(--module-border,#cbd5e1); background:var(--module-soft,#fff); }
+.view .btn-outline-primary:hover,.view .btn-outline-primary:focus { color:#fff; background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); }
+
+/* Profesores: acciones diferenciadas sin usar los azules/amarillos saturados de Bootstrap. */
+#profesores-view .profesor-actions-grid .btn-outline-primary { color:#5B4A86; border-color:#C9BDE0; background:#F7F3FA; }
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover { color:#fff; border-color:#6B5B95; background:#6B5B95; }
+#profesores-view .profesor-actions-grid .btn-outline-warning { color:#8B6534; border-color:#DCC8A7; background:#FCF7EE; }
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover { color:#fff; border-color:#9A713B; background:#9A713B; }
+#profesores-view .profesor-actions-grid .btn-outline-success { color:#32705B; border-color:#B8D9CD; background:#F0F8F5; }
+#profesores-view .profesor-actions-grid .btn-outline-success:hover { color:#fff; border-color:#32705B; background:#32705B; }
+#profesores-view .profesor-actions-grid .btn-outline-danger { color:#9E4C58; border-color:#E5C6CB; background:#FBF2F3; }
+#profesores-view .profesor-actions-grid .btn-outline-danger:hover { color:#fff; border-color:#A7505C; background:#A7505C; }
+
+/* Login: usa fondo-login.jpg si el usuario lo agrega; imagen-fondo.jpg queda como respaldo. */
+.login-screen {
+  background-color:#0f172a;
+  background-image:linear-gradient(115deg,rgba(15,23,42,.80),rgba(25,61,78,.50)),url('/images/fondo-login.jpg'),url('/images/imagen-fondo.jpg');
+  background-position:center,center,center;
+  background-size:cover,cover,cover;
+  background-repeat:no-repeat,no-repeat,no-repeat;
+  background-attachment:fixed,fixed,fixed;
+}
+.login-screen::before { background:linear-gradient(180deg,rgba(4,15,25,.04),rgba(4,15,25,.24)),radial-gradient(circle at 16% 18%,rgba(255,255,255,.10),transparent 35%); }
+
+@media(max-width:767.98px){.login-screen{background-attachment:scroll,scroll,scroll}}

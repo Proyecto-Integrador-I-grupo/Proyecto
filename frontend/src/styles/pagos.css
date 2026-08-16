@@ -19,3 +19,28 @@
 .integration-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem .8rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:.75rem}.integration-slots span{font-size:.82rem;color:#475569}.integration-slots code{color:#1d4ed8}.finance-table .btn{white-space:nowrap}@media(max-width:700px){.integration-slots{grid-template-columns:1fr}}
 
 .finance-note{display:flex;align-items:flex-start;gap:.55rem;padding:.7rem .85rem;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;color:#475569;font-size:.84rem;line-height:1.4}.finance-note i{color:#2563eb;margin-top:.08rem}.input-group-text .bi-cash-coin{font-size:.95rem;color:#475569}
+
+/* Estado de cuenta */
+.finance-account-card {
+  border-top: 3px solid var(--module-accent, #9A5B43) !important;
+  background: linear-gradient(180deg, #fff 0%, #fffdfc 100%);
+}
+.finance-account-table thead th {
+  color:#536273;
+  font-size:.76rem;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+  background:#faf7f5;
+  border-bottom-color:#eadfd9;
+}
+.finance-account-table tbody tr:hover { background:#fdf8f5; }
+.account-status { font-weight:700; padding:.36rem .62rem; }
+.account-status.paid { background:#e8f5ee; color:#236a49; }
+.account-status.pending { background:#fff0eb; color:#a24b32; }
+.account-status.partial { background:#fff7df; color:#8a681d; }
+.account-status.neutral { background:#eef2f5; color:#5e6d78; }
+
+#pagos-view .finance-summary-card:nth-child(1) .finance-summary-icon { background:#eaf4ef; color:#2f7354; }
+#pagos-view .finance-summary-card:nth-child(2) .finance-summary-icon { background:#fff2df; color:#9a681d; }
+#pagos-view .finance-summary-card:nth-child(3) .finance-summary-icon { background:#fbeaec; color:#a7434d; }
+#pagos-view .finance-summary-card:nth-child(4) .finance-summary-icon { background:#edf1f8; color:#4d6285; }

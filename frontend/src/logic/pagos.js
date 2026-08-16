@@ -127,7 +127,18 @@ async function cargarConceptos() {
 }
 
 async function cargarEstudiantes() {
-  estudiantes = await requestJson('/api/estudiantes');
+  const [pre, matriculados] = await Promise.all([
+    requestJson('/api/estudiantes'),
+    requestJson('/api/estudiantes/matriculados')
+  ]);
+  const todos = new Map();
+  [...pre, ...matriculados].forEach((e) => {
+    const id = Number(e.id_estudiante);
+    if (!id) return;
+    const anterior = todos.get(id) || {};
+    todos.set(id, { ...anterior, ...e });
+  });
+  estudiantes = [...todos.values()];
   const select = document.getElementById('fin-cargo-estudiante');
   if (!select) return;
   select.innerHTML = '<option value="">Seleccionar estudiante</option>';

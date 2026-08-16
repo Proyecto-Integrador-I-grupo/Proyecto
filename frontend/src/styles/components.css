@@ -828,3 +828,26 @@ body.high-contrast .accessibility-toggle {
 .finance-extra-card {
   border-top: 3px solid #3B7C8D !important;
 }
+
+/* Lenguaje visual uniforme para acciones del sistema. */
+.btn {
+  border-radius: .62rem;
+  font-weight: 600;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease;
+}
+.btn:not(:disabled):hover { transform: translateY(-1px); }
+.btn-primary { background: var(--accent); border-color: var(--accent); box-shadow: 0 5px 14px rgba(46,111,149,.14); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-success { background: #2f855a; border-color: #2f855a; }
+.btn-danger { background: #c2414b; border-color: #c2414b; }
+.btn-warning { background: #b7791f; border-color: #b7791f; color: #fff; }
+.btn-outline-primary { color: var(--accent); border-color: rgba(46,111,149,.45); background: rgba(46,111,149,.035); }
+.btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); color:#fff; }
+.btn-outline-success { color:#2f855a; border-color:rgba(47,133,90,.42); background:rgba(47,133,90,.035); }
+.btn-outline-success:hover { background:#2f855a; border-color:#2f855a; color:#fff; }
+.btn-outline-warning { color:#9a651b; border-color:rgba(183,121,31,.45); background:rgba(183,121,31,.04); }
+.btn-outline-warning:hover { background:#b7791f; border-color:#b7791f; color:#fff; }
+.btn-outline-danger { color:#b23a45; border-color:rgba(194,65,75,.42); background:rgba(194,65,75,.035); }
+.btn-outline-danger:hover { background:#c2414b; border-color:#c2414b; color:#fff; }
+.btn-outline-secondary { color:#536579; border-color:#cbd5e1; background:#fff; }
+.btn-outline-secondary:hover { background:#eef2f6; border-color:#b8c4d1; color:#26384a; }

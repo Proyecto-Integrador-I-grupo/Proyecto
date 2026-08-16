@@ -2,11 +2,11 @@ import { apiFetch, showToast, currentUser } from './ui.js';
 import { populateGruposSelects, allGrupos } from './matricula.js';
 
 const MODOS = {
-  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula', titulo: 'Reporte de matrícula' },
-  estudiantes: { tipo: 'individual', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del estudiante', titulo: 'Reporte de estudiantes' },
+  matricula: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / ID', placeholder: 'Nombre, apellido o ID', titulo: 'Reporte de matrícula' },
+  estudiantes: { tipo: 'individual', filtros: ['grupo', 'busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / ID', placeholder: 'Nombre, apellido o ID del estudiante', titulo: 'Reporte de estudiantes' },
   grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', titulo: 'Reporte de grupos' },
-  profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / Cédula', placeholder: 'Nombre, apellido o cédula del profesor', titulo: 'Reporte de profesores' },
-  pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / Cédula', placeholder: 'Nombre, apellido o cédula del pre-registro', titulo: 'Reporte de pre-matrículas' },
+  profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / ID', placeholder: 'Nombre, apellido o ID del profesor', titulo: 'Reporte de profesores' },
+  pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / ID', placeholder: 'Nombre, apellido o ID del pre-registro', titulo: 'Reporte de pre-matrículas' },
   auditoria: { tipo: 'detalle', filtros: ['busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Auditoría / Acción', placeholder: 'Tabla, usuario, acción o contenido del cambio', titulo: 'Reporte de auditoría' }
 };
 
@@ -18,6 +18,7 @@ let consultaAplicada = false;
 let reporteActual = null;
 let reporteLogoDataUrlPromise = null;
 let reporteCargando = false;
+let timerCargaAutomatica = null;
 
 const MODOS_POR_ROL = {
   administrador: ['matricula', 'estudiantes', 'grupos', 'profesores', 'pre_matricula', 'auditoria'],
@@ -104,10 +105,11 @@ async function loadReportesData() {
 }
 
 function wireReportesEvents() {
-  wireClick('report-aplicar', cargarReporte);
   wireClick('report-limpiar', limpiarReporte);
   wireClick('report-vista-previa', abrirVistaPreviaReporte);
   wireClick('report-imprimir-pdf', imprimirReportePdf);
+
+  activarCargaAutomaticaReportes();
 
   document.querySelectorAll('[data-report-mode]').forEach((button) => {
     if (button.dataset.wired) return;
@@ -172,6 +174,34 @@ function wireClick(id, handler) {
   if (!el || el.dataset.wired) return;
   el.dataset.wired = '1';
   el.addEventListener('click', handler);
+}
+
+function activarCargaAutomaticaReportes() {
+  const ids = ['report-filtro-grupo', 'report-filtro-busqueda', 'report-filtro-tipo', 'report-filtro-estado', 'report-filtro-fecha-desde', 'report-filtro-fecha-hasta'];
+
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.autoWire === '1') return;
+    el.dataset.autoWire = '1';
+
+    const manejarCambio = () => {
+      if (id === 'report-filtro-busqueda' && el.value.length > 120) {
+        el.value = el.value.slice(0, 120);
+      }
+
+      limpiarError();
+      if (timerCargaAutomatica) window.clearTimeout(timerCargaAutomatica);
+      timerCargaAutomatica = window.setTimeout(() => {
+        if (reporteCargando) return;
+        cargarReporte();
+      }, 350);
+    };
+
+    if (el.tagName === 'INPUT') {
+      el.addEventListener('input', manejarCambio);
+    }
+    el.addEventListener('change', manejarCambio);
+  });
 }
 
 function cambiarModoReporte(modo = 'matricula') {
@@ -387,7 +417,7 @@ function actualizarResumenTexto(data = reporteActual, error = '') {
   const el = document.getElementById('report-result-summary');
   if (!el) return;
   if (error) { el.textContent = error; return; }
-  if (!consultaAplicada || !data) { el.textContent = 'Selecciona los filtros y presiona Aplicar filtros.'; return; }
+  if (!consultaAplicada || !data) { el.textContent = 'Selecciona los filtros para una búsqueda más precisa.'; return; }
   const modo = obtenerModoReporteActivo();
   const count = ['estudiantes', 'profesores', 'grupos'].includes(modo)
     ? (Array.isArray(data.detalle_por_grupo) ? data.detalle_por_grupo.length : 0)
@@ -398,26 +428,34 @@ function actualizarResumenTexto(data = reporteActual, error = '') {
 function renderEmptyState(data, errorMessage = '') {
   const box = document.getElementById('report-empty-state');
   const message = document.getElementById('report-empty-message');
-  if (!box || !message) return;
+  if (box) box.hidden = true;
+  if (message) message.textContent = '';
   const modo = obtenerModoReporteActivo();
   const rows = ['profesores', 'estudiantes', 'grupos'].includes(modo)
     ? (Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [])
     : (Array.isArray(data?.detalle) ? data.detalle : []);
-  if (!consultaAplicada && !errorMessage) { box.hidden = true; return; }
-  if (errorMessage) { message.textContent = errorMessage; box.hidden = false; return; }
-  if (!rows.length) { message.textContent = obtenerMensajeSinDatos(); box.hidden = false; } else { box.hidden = true; }
+  if (!consultaAplicada && !errorMessage) return;
+  if (errorMessage) {
+    const el = document.getElementById('report-result-summary');
+    if (el) el.textContent = errorMessage;
+    return;
+  }
+  if (!rows.length) {
+    const el = document.getElementById('report-result-summary');
+    if (el) el.textContent = obtenerMensajeSinDatos();
+  }
 }
 
 function obtenerMensajeSinDatos() {
   const modo = obtenerModoReporteActivo();
   const busqueda = document.getElementById('report-filtro-busqueda')?.value.trim() || '';
-  if (!consultaAplicada) return 'Aún no hay consulta. Presiona Aplicar filtros.';
+  if (!consultaAplicada) return 'Aún no hay consulta.';
   if (modo === 'pre_matricula' && !busqueda) return 'No hay estudiantes pendientes de matrícula.';
   if (modo === 'auditoria' && !busqueda) return 'No hay registros de auditoría disponibles.';
   if (modo === 'matricula' && busqueda) return 'No se encontraron estudiantes matriculados con ese criterio.';
   if (modo === 'estudiantes' && busqueda) return 'No se encontraron estudiantes ni relaciones con profesores para ese criterio.';
   if (modo === 'profesores' && busqueda) return 'No se encontraron profesores con ese criterio.';
-  return busqueda ? 'No se encontraron registros con el criterio de búsqueda.' : 'No hay registros con los filtros aplicados.';
+  return busqueda ? 'No se encontraron registros con el criterio de búsqueda.' : 'No se encontraron resultados con esos filtros.';
 }
 
 function renderTablaPrincipal(data = {}) {
@@ -630,8 +668,8 @@ function renderPreviewTable(data) {
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
-  if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0]); return; }
-  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
+  if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Matriculados</th><th>Capacidad</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0]); return; }
+  header.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Estado estudiante</th>';
   renderPreviewRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)]);
 }
 
@@ -735,8 +773,8 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
     filas: agrupado.map(r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', r.estudiantes_asociados ?? 0, normalizarEstadoActivo(r.estado ?? r.profesor_estado)])
   };
   if (modo === 'grupos') return {
-    columnas: [{ label: 'Grupo', width: 35 }, { label: 'Sección', width: 35 }, { label: 'Ocupados', width: 28 }, { label: 'Capacidad', width: 28 }, { label: 'Asistencias', width: 30 }, { label: 'Presentes', width: 30 }, { label: 'Ausentes', width: usable - 186 }],
-    filas: agrupado.map(r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0])
+    columnas: [{ label: 'Grupo', width: 45 }, { label: 'Sección', width: 35 }, { label: 'Matriculados', width: 32 }, { label: 'Capacidad', width: 32 }, { label: '', width: usable - 144 }],
+    filas: agrupado.map(r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, ''])
   };
   return {
     columnas: [{ label: 'Fecha', width: 26 }, { label: 'Estudiante', width: 56 }, { label: 'Grupo', width: 26 }, { label: 'Profesor', width: 50 }, { label: 'Estado estudiante', width: usable - 158 }],

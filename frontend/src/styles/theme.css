@@ -43,3 +43,105 @@
 .login-screen::before { background:linear-gradient(180deg,rgba(4,15,25,.04),rgba(4,15,25,.24)),radial-gradient(circle at 16% 18%,rgba(255,255,255,.10),transparent 35%); }
 
 @media(max-width:767.98px){.login-screen{background-attachment:scroll,scroll,scroll}}
+
+
+/* ===== AJUSTE FINAL SOLICITADO: botones + login + profesores ===== */
+#dashboard-view   { --module-accent:#2563EB; --module-accent-2:#0F9F8F; --module-action:#A56A2C; --module-action-soft:#FFF8EF; }
+#estudiantes-view { --module-accent:#2563EB; --module-accent-2:#0F8B8D; --module-action:#A96E2D; --module-action-soft:#FFF7ED; }
+#matricula-view   { --module-accent:#B36B26; --module-accent-2:#D19A3B; --module-action:#A9601E; --module-action-soft:#FFF7ED; }
+#profesores-view  { --module-accent:#3B67C8; --module-accent-2:#6D55B3; --module-action:#A56B2F; --module-action-soft:#FFF8EF; }
+#asistencia-view  { --module-accent:#16866B; --module-accent-2:#3478A8; --module-action:#A56C35; --module-action-soft:#FFF8EF; }
+#pagos-view       { --module-accent:#AD5B32; --module-accent-2:#D39134; --module-action:#9F632F; --module-action-soft:#FFF8F0; }
+#reportes-view    { --module-accent:#365A86; --module-accent-2:#6B5EA8; --module-action:#A36C38; --module-action-soft:#FFF8F0; }
+#consultas-view   { --module-accent:#277B8D; --module-accent-2:#3B67B2; --module-action:#9D6938; --module-action-soft:#FFF8F0; }
+#usuarios-view    { --module-accent:#7A4C76; --module-accent-2:#B35E66; --module-action:#A36B36; --module-action-soft:#FFF8EF; }
+#perfil-view      { --module-accent:#466B78; --module-accent-2:#3A7B6C; --module-action:#9D6938; --module-action-soft:#FFF8F0; }
+
+.view .btn-primary,
+.view .btn-success {
+  color:#fff!important;
+  border-color:transparent!important;
+  background-image:linear-gradient(120deg,var(--module-accent,#2563eb) 0%,var(--module-accent-2,#0f8b8d) 52%,var(--module-accent,#2563eb) 100%)!important;
+  background-size:180% 100%!important;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--module-accent,#2563eb) 22%,transparent)!important;
+  transition:background-position .25s ease,transform .16s ease,box-shadow .16s ease!important;
+}
+.view .btn-primary:hover,.view .btn-primary:focus,
+.view .btn-success:hover,.view .btn-success:focus {
+  color:#fff!important;
+  border-color:transparent!important;
+  background-position:100% 0!important;
+  filter:none!important;
+}
+
+.view .btn-outline-primary,
+.view .btn-outline-warning {
+  color:var(--module-action,#a56a2c)!important;
+  border-color:color-mix(in srgb,var(--module-action,#a56a2c) 34%,white)!important;
+  background:var(--module-action-soft,#fff8ef)!important;
+  box-shadow:none!important;
+}
+.view .btn-outline-primary:hover,.view .btn-outline-primary:focus,
+.view .btn-outline-warning:hover,.view .btn-outline-warning:focus {
+  color:#fff!important;
+  border-color:var(--module-action,#a56a2c)!important;
+  background:linear-gradient(120deg,var(--module-action,#a56a2c),color-mix(in srgb,var(--module-action,#a56a2c) 72%,#D7A157))!important;
+}
+
+.view .btn-outline-secondary,
+.view .btn-secondary {
+  color:#52667B!important;
+  border-color:#C9D4E0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.view .btn-outline-secondary:hover,.view .btn-outline-secondary:focus,
+.view .btn-secondary:hover,.view .btn-secondary:focus {
+  color:#304255!important;
+  border-color:#B7C5D3!important;
+  background:#F4F7FA!important;
+}
+
+.view .btn-danger { background:#B84B55!important;border-color:#B84B55!important; }
+.view .btn-outline-danger { color:#A74651!important;border-color:#E6C0C5!important;background:#FFF7F7!important; }
+.view .btn-outline-danger:hover { color:#fff!important;background:#A74651!important;border-color:#A74651!important; }
+
+/* Usa la imagen que realmente viene dentro de frontend/public/images. */
+.login-screen {
+  background-color:#0f172a!important;
+  background-image:linear-gradient(115deg,rgba(15,23,42,.74),rgba(19,58,77,.40)),url('/images/fondo-login.jpeg')!important;
+  background-position:center,center!important;
+  background-size:cover,cover!important;
+  background-repeat:no-repeat,no-repeat!important;
+  background-attachment:fixed,fixed!important;
+}
+@media(max-width:767.98px){.login-screen{background-attachment:scroll,scroll!important}}
+
+/* Profesores: botones con las proporciones anteriores, legibles y alineados. */
+#profesores-view .profesor-actions-grid {
+  width:100%!important;
+  max-width:330px!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(128px,1fr))!important;
+  gap:.48rem!important;
+  margin-left:auto!important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width:100%!important;
+  min-height:38px!important;
+  padding:.48rem .72rem!important;
+  border-radius:.58rem!important;
+  font-size:.82rem!important;
+  font-weight:650!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd){grid-column:1/-1!important}
+#profesores-view .profesor-actions-grid .btn-outline-success {color:#33725C!important;border-color:#B7D7CB!important;background:#F3FAF7!important}
+#profesores-view .profesor-actions-grid .btn-outline-success:hover {color:#fff!important;background:#33725C!important;border-color:#33725C!important}
+#profesores-view .profesor-actions-grid .btn-outline-danger {color:#A74651!important;border-color:#E6C0C5!important;background:#FFF7F7!important}
+#profesores-view .profesor-actions-grid .btn-outline-danger:hover {color:#fff!important;background:#A74651!important;border-color:#A74651!important}
+#profesores-view .profesor-actions-grid .btn-outline-primary,
+#profesores-view .profesor-actions-grid .btn-outline-warning {color:#9A612D!important;border-color:#E2C7A9!important;background:#FFF8EF!important}
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover,
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover {color:#fff!important;background:linear-gradient(120deg,#9A612D,#C38B4B)!important;border-color:#9A612D!important}

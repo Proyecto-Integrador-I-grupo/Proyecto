@@ -27,8 +27,8 @@ export default function Reportes() {
                 </div>
 
                 <div className="report-filter-field" data-filter="busqueda">
-                  <label id="report-busqueda-label" className="form-label" htmlFor="report-filtro-busqueda">Estudiante / Cédula</label>
-                  <input id="report-filtro-busqueda" type="text" maxLength="120" className="form-control form-control-sm" placeholder="Nombre, apellido o cédula" autoComplete="off" />
+                  <label id="report-busqueda-label" className="form-label" htmlFor="report-filtro-busqueda">Estudiante / ID</label>
+                  <input id="report-filtro-busqueda" type="text" maxLength="120" className="form-control form-control-sm" placeholder="Nombre, apellido o ID" autoComplete="off" />
                 </div>
 
                 <div className="report-filter-field" data-filter="tipo">
@@ -65,10 +65,9 @@ export default function Reportes() {
             <div className="report-toolbar d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
               <div>
                 <h3 className="card-title-serif h5 mb-1"><i className="bi bi-bar-chart" /> Reporte de matrícula</h3>
-                <p id="report-result-summary" className="text-muted small mb-0">Selecciona los filtros y presiona Aplicar filtros.</p>
+                <p id="report-result-summary" className="text-muted small mb-0">Selecciona los filtros para una búsqueda más precisa.</p>
               </div>
               <div className="report-actions d-flex gap-2 flex-wrap">
-                <button type="button" id="report-aplicar" className="btn btn-primary btn-sm"><i className="bi bi-funnel" /> Aplicar filtros</button>
                 <button type="button" id="report-limpiar" className="btn btn-outline-secondary btn-sm"><i className="bi bi-arrow-counterclockwise" /> Limpiar</button>
                 <button type="button" id="report-vista-previa" className="btn btn-outline-info btn-sm"><i className="bi bi-eye" /> Vista previa</button>
                 <button type="button" id="report-imprimir-pdf" className="btn btn-success btn-sm"><i className="bi bi-file-earmark-pdf" /> Generar PDF</button>
@@ -82,10 +81,6 @@ export default function Reportes() {
               </table>
             </div>
 
-            <div id="report-empty-state" className="report-empty-state mt-3" hidden>
-              <i className="bi bi-inbox" />
-              <span id="report-empty-message">No hay registros con los filtros aplicados.</span>
-            </div>
           </div>
         </div>
       </div>

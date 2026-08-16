@@ -46,18 +46,56 @@ function wireProfesoresEvents() {
   const modalProfesor = document.getElementById('modalProfesor');
   if (modalProfesor && !modalProfesor.dataset.cleanWired) {
     modalProfesor.dataset.cleanWired = '1';
-    modalProfesor.addEventListener('show.bs.modal', () => {
+
+    const limpiarCredencialesProfesor = () => {
       const correo = document.getElementById('prof-correo');
       const clave = document.getElementById('prof-contrasena');
-      if (correo) correo.value = '';
+      if (correo) {
+        correo.value = '';
+        correo.setAttribute('readonly', 'readonly');
+      }
       if (clave) {
         clave.value = '';
         clave.type = 'password';
+        clave.setAttribute('readonly', 'readonly');
       }
       const toggle = document.getElementById('toggle-prof-password');
       const icon = toggle?.querySelector('i');
       icon?.classList.add('bi-eye');
       icon?.classList.remove('bi-eye-slash');
+    };
+
+    const habilitarCredencialesProfesor = () => {
+      const correo = document.getElementById('prof-correo');
+      const clave = document.getElementById('prof-contrasena');
+      if (correo) {
+        correo.value = '';
+        correo.removeAttribute('readonly');
+      }
+      if (clave) {
+        clave.value = '';
+        clave.removeAttribute('readonly');
+      }
+    };
+
+    modalProfesor.addEventListener('show.bs.modal', () => {
+      document.getElementById('profesor-form')?.reset();
+      limpiarCredencialesProfesor();
+    });
+
+    modalProfesor.addEventListener('shown.bs.modal', () => {
+      window.setTimeout(habilitarCredencialesProfesor, 80);
+      window.setTimeout(() => {
+        const correo = document.getElementById('prof-correo');
+        const clave = document.getElementById('prof-contrasena');
+        if (correo && !correo.matches(':focus')) correo.value = '';
+        if (clave && !clave.matches(':focus')) clave.value = '';
+      }, 350);
+    });
+
+    modalProfesor.addEventListener('hidden.bs.modal', () => {
+      document.getElementById('profesor-form')?.reset();
+      limpiarCredencialesProfesor();
     });
   }
 

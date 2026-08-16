@@ -251,3 +251,14 @@
   .profesores-table-wrap { overflow-x: auto; }
   #profesores-table { min-width: 900px; table-layout: auto; }
 }
+
+.prof-autofill-trap {
+  position: fixed;
+  left: -10000px;
+  top: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}

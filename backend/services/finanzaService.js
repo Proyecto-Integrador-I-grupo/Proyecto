@@ -366,6 +366,8 @@ export async function listarEstadoCuentas() {
        COALESCE(SUM(CASE WHEN c.estado = 'pagado' THEN 1 ELSE 0 END), 0) AS cargos_pagados,
        COALESCE(SUM(CASE WHEN c.estado = 'parcial' THEN 1 ELSE 0 END), 0) AS cargos_parciales,
        COALESCE(SUM(CASE WHEN c.estado = 'pendiente' THEN 1 ELSE 0 END), 0) AS cargos_pendientes,
+       COALESCE(SUM(CASE WHEN c.estado IN ('pendiente','parcial') AND c.saldo > 0 AND c.fecha_vencimiento IS NOT NULL AND c.fecha_vencimiento < CURDATE() THEN 1 ELSE 0 END), 0) AS cargos_vencidos,
+       COALESCE(SUM(CASE WHEN c.estado IN ('pendiente','parcial') AND c.saldo > 0 AND c.fecha_vencimiento IS NOT NULL AND c.fecha_vencimiento < CURDATE() THEN c.saldo ELSE 0 END), 0) AS saldo_vencido,
        COALESCE((
          SELECT SUM(pg.monto)
          FROM pago pg
@@ -386,7 +388,7 @@ export async function listarEstadoCuentas() {
      WHERE e.estado = TRUE
         OR EXISTS (SELECT 1 FROM cargo_estudiante ch WHERE ch.id_estudiante = e.id_estudiante)
      GROUP BY e.id_estudiante, p.nombre, p.apellido1, p.apellido2
-     ORDER BY saldo_pendiente DESC, estudiante_nombre ASC`
+     ORDER BY cargos_vencidos DESC, saldo_vencido DESC, saldo_pendiente DESC, estudiante_nombre ASC`
   );
 
   return rows.map((row) => ({
@@ -397,7 +399,9 @@ export async function listarEstadoCuentas() {
     total_pagado: Number(row.total_pagado || 0),
     cargos_pagados: Number(row.cargos_pagados || 0),
     cargos_parciales: Number(row.cargos_parciales || 0),
-    cargos_pendientes: Number(row.cargos_pendientes || 0)
+    cargos_pendientes: Number(row.cargos_pendientes || 0),
+    cargos_vencidos: Number(row.cargos_vencidos || 0),
+    saldo_vencido: Number(row.saldo_vencido || 0)
   }));
 }
 

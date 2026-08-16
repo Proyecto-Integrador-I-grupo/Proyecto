@@ -103,13 +103,34 @@ function wireProfesoresEvents() {
     });
   }
 
+  const cerrarModalYEsperar = (modalId) => new Promise((resolve) => {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl || !window.bootstrap?.Modal) { resolve(); return; }
+    const instance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    if (!modalEl.classList.contains('show')) { resolve(); return; }
+    const terminar = () => {
+      modalEl.removeEventListener('hidden.bs.modal', terminar);
+      document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
+      if (!document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+      }
+      resolve();
+    };
+    modalEl.addEventListener('hidden.bs.modal', terminar, { once: true });
+    instance.hide();
+    setTimeout(terminar, 400);
+  });
+
   const confirmarDestituirBtn = document.getElementById('confirmar-destituir-btn');
   if (confirmarDestituirBtn && !confirmarDestituirBtn.dataset.wired) {
     confirmarDestituirBtn.dataset.wired = '1';
     confirmarDestituirBtn.addEventListener('click', async () => {
       const motivo = document.getElementById('destituir-motivo')?.value.trim() || '';
-      bootstrap.Modal.getInstance(document.getElementById('modalDestituir'))?.hide();
-      await destituirProfesor(profesorPendienteId, motivo);
+      const idProfesor = profesorPendienteId;
+      await cerrarModalYEsperar('modalDestituir');
+      await destituirProfesor(idProfesor, motivo);
     });
   }
 
@@ -117,8 +138,9 @@ function wireProfesoresEvents() {
   if (confirmarEliminarBtn && !confirmarEliminarBtn.dataset.wired) {
     confirmarEliminarBtn.dataset.wired = '1';
     confirmarEliminarBtn.addEventListener('click', async () => {
-      bootstrap.Modal.getInstance(document.getElementById('modalEliminarProfesor'))?.hide();
-      await eliminarProfesor(profesorPendienteId);
+      const idProfesor = profesorPendienteId;
+      await cerrarModalYEsperar('modalEliminarProfesor');
+      await eliminarProfesor(idProfesor);
     });
   }
 
@@ -126,8 +148,9 @@ function wireProfesoresEvents() {
   if (confirmarReintegrarBtn && !confirmarReintegrarBtn.dataset.wired) {
     confirmarReintegrarBtn.dataset.wired = '1';
     confirmarReintegrarBtn.addEventListener('click', async () => {
-      bootstrap.Modal.getInstance(document.getElementById('modalReintegrar'))?.hide();
-      await reintegrarProfesor(profesorReintegrarId);
+      const idProfesor = profesorReintegrarId;
+      await cerrarModalYEsperar('modalReintegrar');
+      await reintegrarProfesor(idProfesor);
     });
   }
 

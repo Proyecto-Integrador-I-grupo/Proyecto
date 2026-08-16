@@ -21,10 +21,27 @@ function isSchoolEmail(email) {
   return String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 }
 
+const LOGIN_BACKGROUNDS = [
+  '/images/fondo-login.jpeg',
+  '/images/imagen-2.jpg',
+  '/images/imagen-3.jpeg'
+];
+
 export default function App() {
   const [user, setUser] = useState(() => getCurrentUser());
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loginBackgroundIndex, setLoginBackgroundIndex] = useState(0);
+
+  useEffect(() => {
+    if (user) return undefined;
+
+    const timer = window.setInterval(() => {
+      setLoginBackgroundIndex((current) => (current + 1) % LOGIN_BACKGROUNDS.length);
+    }, 6500);
+
+    return () => window.clearInterval(timer);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -128,6 +145,7 @@ export default function App() {
         <div
           id="login-screen"
           className="login-screen d-flex align-items-center justify-content-center"
+          style={{ '--login-bg': `url("${LOGIN_BACKGROUNDS[loginBackgroundIndex]}")` }}
         >
           <div className="login-card">
             <div className="text-center mb-4">

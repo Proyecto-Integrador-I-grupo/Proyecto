@@ -269,12 +269,12 @@ function renderProfesoresTable(profesores) {
 
     const badgeEstado = activo 
       ? '<span class="badge bg-success">Activo</span>' 
-      : '<span class="badge bg-danger">Incapacitado/Inactivo</span>';
+      : '<span class="badge bg-danger" title="Profesor incapacitado o inactivo">Inactivo</span>';
 
     const celdaGrupos = activo
       ? (p.grupos_asignados ? `<span class="small">${p.grupos_asignados}</span>` : '<span class="text-muted small">Sin grupos</span>')
       : (grupoPendientes > 0
-          ? `<span class="badge bg-warning text-dark">${grupoPendientes} grupo(s) por cubrir/restaurar</span>`
+          ? `<span class="badge bg-warning text-dark" title="Grupos pendientes por cubrir o restaurar">${grupoPendientes} grupo(s) pendiente(s)</span>`
           : '<span class="text-muted small">Sin grupos pendientes</span>');
 
     const tr = document.createElement('tr');

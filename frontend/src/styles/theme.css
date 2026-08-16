@@ -1,10 +1,10 @@
 /* Identidad visual final por módulo. El nav mantiene su estilo original. */
 #dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
 #estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
-#matricula-view { --module-accent:#A66A2C; --module-soft:#FCF5EC; --module-border:#EAD8C1; }
+#matricula-view { --module-accent:#5E63B6; --module-soft:#F3F3FC; --module-border:#D9DCF2; }
 #profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
 #asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
-#pagos-view { --module-accent:#9A5B43; --module-soft:#FBF2EE; --module-border:#E8D2C9; }
+#pagos-view { --module-accent:#246FA8; --module-soft:#EFF7FB; --module-border:#CDE3EE; }
 #reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
 #consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
 #usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }
@@ -25,7 +25,7 @@
 #profesores-view .profesor-actions-grid .btn-outline-primary { color:#5B4A86; border-color:#C9BDE0; background:#F7F3FA; }
 #profesores-view .profesor-actions-grid .btn-outline-primary:hover { color:#fff; border-color:#6B5B95; background:#6B5B95; }
 #profesores-view .profesor-actions-grid .btn-outline-warning { color:#8B6534; border-color:#DCC8A7; background:#FCF7EE; }
-#profesores-view .profesor-actions-grid .btn-outline-warning:hover { color:#fff; border-color:#9A713B; background:#9A713B; }
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover { color:#fff; border-color:#2F8DA0; background:#2F8DA0; }
 #profesores-view .profesor-actions-grid .btn-outline-success { color:#32705B; border-color:#B8D9CD; background:#F0F8F5; }
 #profesores-view .profesor-actions-grid .btn-outline-success:hover { color:#fff; border-color:#32705B; background:#32705B; }
 #profesores-view .profesor-actions-grid .btn-outline-danger { color:#9E4C58; border-color:#E5C6CB; background:#FBF2F3; }
@@ -142,9 +142,9 @@
 #profesores-view .profesor-actions-grid .btn-outline-danger {color:#A74651!important;border-color:#E6C0C5!important;background:#FFF7F7!important}
 #profesores-view .profesor-actions-grid .btn-outline-danger:hover {color:#fff!important;background:#A74651!important;border-color:#A74651!important}
 #profesores-view .profesor-actions-grid .btn-outline-primary,
-#profesores-view .profesor-actions-grid .btn-outline-warning {color:#9A612D!important;border-color:#E2C7A9!important;background:#FFF8EF!important}
+#profesores-view .profesor-actions-grid .btn-outline-warning {color:#176f91!important;border-color:#9fd8df!important;background:linear-gradient(118deg,#f4f9ff 0%,#eefbfb 100%)!important}
 #profesores-view .profesor-actions-grid .btn-outline-primary:hover,
-#profesores-view .profesor-actions-grid .btn-outline-warning:hover {color:#fff!important;background:linear-gradient(120deg,#9A612D,#C38B4B)!important;border-color:#9A612D!important}
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover {color:#fff!important;background:linear-gradient(118deg,#276de8 0%,#1b9aaa 100%)!important;border-color:transparent!important}
 
 
 /* ===== CIERRE VISUAL FINAL: jerarquía uniforme de acciones ===== */
@@ -255,3 +255,59 @@
 
 /* Evita backdrops residuales cuando una acción de profesor abre un resultado. */
 body:not(.modal-open) .modal-backdrop { display: none !important; }
+
+
+/* ===== AJUSTE FINAL DE IDENTIDAD =====
+   Sin tonos café: matrícula y finanzas usan familias frías profesionales.
+   El nav conserva su identidad original. */
+#matricula-view {
+  --module-accent:#5E63B6 !important;
+  --module-soft:#F3F3FC !important;
+  --module-border:#D9DCF2 !important;
+}
+#pagos-view {
+  --module-accent:#246FA8 !important;
+  --module-soft:#EFF7FB !important;
+  --module-border:#CDE3EE !important;
+}
+
+/* Login con las tres imágenes disponibles en public/images.
+   App.jsx actualiza --login-bg automáticamente. */
+.login-screen {
+  background-image:
+    linear-gradient(115deg, rgba(15,23,42,.76), rgba(18,63,83,.42)),
+    var(--login-bg, url('/images/fondo-login.jpeg')) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  transition: background-image .7s ease-in-out;
+}
+
+/* Profesores: evita que estados y grupos pendientes invadan la columna de acciones. */
+#profesores-table td:nth-child(5) .badge,
+#profesores-table td:nth-child(6) .badge {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+}
+#profesores-table td:nth-child(5),
+#profesores-table td:nth-child(6),
+#profesores-table td:nth-child(7) {
+  position: relative;
+  overflow: hidden;
+}
+#profesores-table th:nth-child(5) { width: 17% !important; }
+#profesores-table th:nth-child(6) { width: 10% !important; }
+#profesores-table th:nth-child(7) { width: 31% !important; }
+
+/* Notificación de validaciones: visible como pestaña flotante y desaparece sola. */
+.toast {
+  top: 22px;
+  right: 24px;
+  bottom: auto;
+  max-width: min(430px, calc(100vw - 32px));
+  border-radius: 14px;
+  padding: .85rem 1rem;
+  z-index: 3000;
+}

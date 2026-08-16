@@ -96,6 +96,12 @@ export async function getClasesExtra(req, res) {
   catch (e) { responderError(res, e, 500); }
 }
 
+
+export async function getEstudiantesProfesorExtra(req, res) {
+  try { res.json(await finanzaService.listarEstudiantesProfesorExtra(req.params.id)); }
+  catch (e) { responderError(res, e, 500); }
+}
+
 export async function getDisponibilidadClaseExtra(req, res) {
   try { res.json(await finanzaService.obtenerDisponibilidadProfesorExtra(req.params.id, req.query?.fecha)); }
   catch (e) { responderError(res, e); }

@@ -37,21 +37,24 @@ async function requestJson(path, options = {}) {
 export async function loadPagosData() {
   aplicarPermisos();
 
-  const resultados = await Promise.allSettled([
+  const resultadosBase = await Promise.allSettled([
     cargarEstudiantes(),
     cargarResumen(),
     cargarConceptos(),
     cargarCargos(),
     cargarPagos(),
-    cargarEstadoCuentas(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
 
-  const fallos = resultados.filter((r) => r.status === 'rejected');
+  const fallos = resultadosBase.filter((r) => r.status === 'rejected');
   if (fallos.length) {
     console.error('EduControl Finanzas: algunas secciones no pudieron cargar:', fallos.map(f => f.reason));
     showToast('Se cargó la información financiera disponible. Usa Refrescar si algún bloque tarda en aparecer.', 'warning');
   }
+
+  // El estado de cuenta se construye después de cargos y pagos para contar con
+  // una alternativa local si el endpoint tarda o no devuelve registros.
+  await cargarEstadoCuentas();
 
   await Promise.allSettled([
     cargarProfesoresExtra(),
@@ -72,7 +75,7 @@ function wirePagosEvents() {
   wire('fin-config-form', 'submit', guardarConfiguracion);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
-  wire('fin-extra-profesor', 'change', comprobarDisponibilidadExtra);
+  wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
   wire('fin-extra-fecha', 'change', comprobarDisponibilidadExtra);
 
   const body = document.getElementById('fin-cargos-body');
@@ -175,42 +178,141 @@ async function cargarEstudiantes() {
     });
     if ([...select.options].some(o => o.value === actual)) select.value = actual;
   }
-
-  const extra = document.getElementById('fin-extra-estudiante');
-  if (extra) {
-    const actual = extra.value;
-    extra.innerHTML = '<option value="">Seleccionar estudiante</option>';
-    ordenar(estudiantes).forEach((e) => {
-      const contexto = e.nombre_grupo ? ` · ${e.nombre_grupo}` : ' · Pre-registro';
-      extra.add(new Option(`${nombreEstudiante(e)}${contexto}`, e.id_estudiante));
-    });
-    if ([...extra.options].some(o => o.value === actual)) extra.value = actual;
-  }
 }
 
 
+function construirEstadoCuentasLocal() {
+  const mapa = new Map();
+
+  estudiantes.forEach((e) => {
+    mapa.set(Number(e.id_estudiante), {
+      id_estudiante: Number(e.id_estudiante),
+      estudiante_nombre: nombreEstudiante(e),
+      total_cargos: 0,
+      total_facturado: 0,
+      saldo_pendiente: 0,
+      total_pagado: 0,
+      cargos_pagados: 0,
+      cargos_parciales: 0,
+      cargos_pendientes: 0,
+      cargos_vencidos: 0,
+      saldo_vencido: 0,
+      ultimo_pago: e.ultimo_pago || null
+    });
+  });
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  cargos
+    .filter((c) => String(c.estado || '').toLowerCase() !== 'anulado')
+    .forEach((c) => {
+      const id = Number(c.id_estudiante);
+      const item = mapa.get(id) || {
+        id_estudiante: id,
+        estudiante_nombre: c.estudiante_nombre || `Estudiante ${id}`,
+        total_cargos: 0,
+        total_facturado: 0,
+        saldo_pendiente: 0,
+        total_pagado: 0,
+        cargos_pagados: 0,
+        cargos_parciales: 0,
+        cargos_pendientes: 0,
+        cargos_vencidos: 0,
+        saldo_vencido: 0,
+        ultimo_pago: null
+      };
+
+      item.total_cargos += 1;
+      item.total_facturado += Number(c.total || 0);
+      item.saldo_pendiente += Number(c.saldo || 0);
+
+      const estado = String(c.estado || '').toLowerCase();
+      if (estado === 'pagado') item.cargos_pagados += 1;
+      if (estado === 'parcial') item.cargos_parciales += 1;
+      if (estado === 'pendiente') item.cargos_pendientes += 1;
+
+      if (['pendiente', 'parcial'].includes(estado) && Number(c.saldo || 0) > 0 && c.fecha_vencimiento) {
+        const vencimiento = new Date(`${String(c.fecha_vencimiento).slice(0, 10)}T00:00:00`);
+        if (!Number.isNaN(vencimiento.getTime()) && vencimiento < hoy) {
+          item.cargos_vencidos += 1;
+          item.saldo_vencido += Number(c.saldo || 0);
+        }
+      }
+
+      mapa.set(id, item);
+    });
+
+  const cargoPorId = new Map(cargos.map((c) => [Number(c.id_cargo), c]));
+  pagos.forEach((pg) => {
+    const cargo = cargoPorId.get(Number(pg.id_cargo));
+    const id = Number(pg.id_estudiante || cargo?.id_estudiante || 0);
+    if (!id) return;
+
+    const item = mapa.get(id) || {
+      id_estudiante: id,
+      estudiante_nombre: pg.estudiante_nombre || cargo?.estudiante_nombre || `Estudiante ${id}`,
+      total_cargos: 0,
+      total_facturado: 0,
+      saldo_pendiente: 0,
+      total_pagado: 0,
+      cargos_pagados: 0,
+      cargos_parciales: 0,
+      cargos_pendientes: 0,
+      cargos_vencidos: 0,
+      saldo_vencido: 0,
+      ultimo_pago: null
+    };
+
+    item.total_pagado += Number(pg.monto || 0);
+    if (!item.ultimo_pago || new Date(pg.fecha_pago) > new Date(item.ultimo_pago)) {
+      item.ultimo_pago = pg.fecha_pago;
+    }
+    mapa.set(id, item);
+  });
+
+  return [...mapa.values()];
+}
+
 async function cargarEstadoCuentas() {
-  estadoCuentas = await requestJson('/api/finanzas/estado-cuentas');
   const body = document.getElementById('fin-estado-cuentas-body');
   if (!body) return;
 
+  try {
+    const respuesta = await requestJson('/api/finanzas/estado-cuentas');
+    estadoCuentas = Array.isArray(respuesta) ? respuesta : [];
+  } catch (error) {
+    console.error('EduControl Finanzas: no se pudo obtener estado-cuentas, se usará cálculo local.', error);
+    estadoCuentas = [];
+  }
+
+  if (!estadoCuentas.length && (estudiantes.length || cargos.length || pagos.length)) {
+    estadoCuentas = construirEstadoCuentasLocal();
+  }
+
   if (!estadoCuentas.length) {
     body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay estudiantes con información financiera registrada.</td></tr>';
+    const resumenMorosos = document.getElementById('fin-morosos-resumen');
+    if (resumenMorosos) resumenMorosos.innerHTML = '';
     return;
   }
 
-  const morosos = estadoCuentas.filter((e) => Number(e.cargos_vencidos || 0) > 0 && Number(e.saldo_vencido || 0) > 0);
+  const conSaldo = estadoCuentas.filter((e) => Number(e.saldo_pendiente || 0) > 0);
+  const vencidos = estadoCuentas.filter((e) => Number(e.cargos_vencidos || 0) > 0 && Number(e.saldo_vencido || 0) > 0);
   const resumenMorosos = document.getElementById('fin-morosos-resumen');
   if (resumenMorosos) {
-    resumenMorosos.innerHTML = morosos.length
-      ? `<span class="badge rounded-pill overdue-count"><i class="bi bi-exclamation-triangle me-1"></i>${morosos.length} estudiante${morosos.length === 1 ? '' : 's'} moroso${morosos.length === 1 ? '' : 's'}</span>`
-      : '<span class="badge rounded-pill account-status paid">Sin morosidad vencida</span>';
+    if (conSaldo.length) {
+      const textoVencidos = vencidos.length ? ` · ${vencidos.length} vencido${vencidos.length === 1 ? '' : 's'}` : '';
+      resumenMorosos.innerHTML = `<span class="badge rounded-pill overdue-count"><i class="bi bi-wallet2 me-1"></i>${conSaldo.length} con saldo pendiente${textoVencidos}</span>`;
+    } else {
+      resumenMorosos.innerHTML = '<span class="badge rounded-pill account-status paid">Todos al día</span>';
+    }
   }
 
   const ordenados = estadoCuentas.slice().sort((a, b) => {
-    const ma = Number(a.cargos_vencidos || 0) > 0 ? 1 : 0;
-    const mb = Number(b.cargos_vencidos || 0) > 0 ? 1 : 0;
-    if (ma !== mb) return mb - ma;
+    const va = Number(a.cargos_vencidos || 0) > 0 ? 1 : 0;
+    const vb = Number(b.cargos_vencidos || 0) > 0 ? 1 : 0;
+    if (va !== vb) return vb - va;
     const sa = Number(a.saldo_pendiente || 0);
     const sb = Number(b.saldo_pendiente || 0);
     if (sa !== sb) return sb - sa;
@@ -220,15 +322,21 @@ async function cargarEstadoCuentas() {
   body.innerHTML = ordenados.map((e) => {
     const pendiente = Number(e.saldo_pendiente || 0);
     const pagado = Number(e.total_pagado || 0);
-    const vencidos = Number(e.cargos_vencidos || 0);
+    const vencidosCantidad = Number(e.cargos_vencidos || 0);
     const saldoVencido = Number(e.saldo_vencido || 0);
-    let situacion = '<span class="badge rounded-pill account-status neutral">Sin movimientos</span>';
-    if (vencidos > 0 && saldoVencido > 0) situacion = `<span class="badge rounded-pill account-status overdue"><i class="bi bi-exclamation-triangle me-1"></i>Moroso</span><div class="small text-danger-emphasis mt-1">Vencido: ${moneda(saldoVencido)}</div>`;
-    else if (pendiente > 0 && pagado > 0) situacion = '<span class="badge rounded-pill account-status partial">Pago parcial</span>';
-    else if (pendiente > 0) situacion = '<span class="badge rounded-pill account-status pending">Pendiente</span>';
-    else if (Number(e.total_cargos || 0) > 0) situacion = '<span class="badge rounded-pill account-status paid">Al día</span>';
 
-    return `<tr class="${vencidos > 0 ? 'finance-row-overdue' : ''}">
+    let situacion = '<span class="badge rounded-pill account-status neutral">Sin movimientos</span>';
+    if (vencidosCantidad > 0 && saldoVencido > 0) {
+      situacion = `<span class="badge rounded-pill account-status overdue"><i class="bi bi-exclamation-triangle me-1"></i>Moroso</span><div class="small text-danger-emphasis mt-1">Vencido: ${moneda(saldoVencido)}</div>`;
+    } else if (pendiente > 0 && pagado > 0) {
+      situacion = '<span class="badge rounded-pill account-status partial">Pago parcial</span>';
+    } else if (pendiente > 0) {
+      situacion = '<span class="badge rounded-pill account-status pending">Pendiente</span>';
+    } else if (Number(e.total_cargos || 0) > 0 || pagado > 0) {
+      situacion = '<span class="badge rounded-pill account-status paid">Al día</span>';
+    }
+
+    return `<tr class="${vencidosCantidad > 0 ? 'finance-row-overdue' : ''}">
       <td><strong>${esc(e.estudiante_nombre)}</strong><div class="small text-muted">ID ${e.id_estudiante}</div></td>
       <td>${situacion}</td>
       <td>${Number(e.total_cargos || 0)}</td>
@@ -242,7 +350,10 @@ async function cargarEstadoCuentas() {
 async function cargarProfesoresExtra() {
   profesores = await requestJson('/api/profesores');
   const select = document.getElementById('fin-extra-profesor');
+  const estudianteSelect = document.getElementById('fin-extra-estudiante');
   if (!select) return;
+
+  const actual = select.value;
   select.innerHTML = '<option value="">Seleccionar profesor</option>';
   profesores
     .filter((p) => p.estado == 1 || p.estado === true)
@@ -251,6 +362,63 @@ async function cargarProfesoresExtra() {
       select.add(new Option(`${p.nombre} ${p.apellido1} · ${p.materia || 'Sin materia'}`, p.id_profesor ?? p.id));
     });
 
+  if ([...select.options].some((o) => o.value === actual)) {
+    select.value = actual;
+  }
+
+  if (estudianteSelect && !select.value) {
+    estudianteSelect.innerHTML = '<option value="">Selecciona un profesor primero</option>';
+    estudianteSelect.disabled = true;
+  }
+
+  if (select.value) {
+    await cargarEstudiantesProfesorExtra(Number(select.value));
+  }
+}
+
+async function cargarEstudiantesProfesorExtra(idProfesor) {
+  const select = document.getElementById('fin-extra-estudiante');
+  if (!select) return;
+
+  if (!idProfesor) {
+    select.innerHTML = '<option value="">Selecciona un profesor primero</option>';
+    select.disabled = true;
+    return;
+  }
+
+  const anterior = select.value;
+  select.disabled = true;
+  select.innerHTML = '<option value="">Cargando estudiantes del profesor...</option>';
+
+  try {
+    const lista = await requestJson(`/api/finanzas/profesores/${idProfesor}/estudiantes-extra`);
+    select.innerHTML = '<option value="">Seleccionar estudiante</option>';
+
+    if (!Array.isArray(lista) || !lista.length) {
+      select.innerHTML = '<option value="">El profesor no tiene estudiantes asignados</option>';
+      select.disabled = true;
+      return;
+    }
+
+    lista.forEach((e) => {
+      const seccion = e.nombre_seccion ? ` · Sección ${e.nombre_seccion}` : '';
+      const grupo = e.nombre_grupo ? ` · ${e.nombre_grupo}` : '';
+      select.add(new Option(`${nombreEstudiante(e)}${grupo}${seccion}`, e.id_estudiante));
+    });
+
+    select.disabled = false;
+    if ([...select.options].some((o) => o.value === anterior)) select.value = anterior;
+  } catch (error) {
+    console.error('EduControl Finanzas: no se pudieron cargar estudiantes del profesor.', error);
+    select.innerHTML = '<option value="">No se pudo cargar la lista</option>';
+    select.disabled = true;
+  }
+}
+
+async function handleProfesorExtraChange() {
+  const idProfesor = Number(value('fin-extra-profesor') || 0);
+  await cargarEstudiantesProfesorExtra(idProfesor);
+  await comprobarDisponibilidadExtra();
 }
 
 async function cargarClasesExtra() {
@@ -327,6 +495,11 @@ async function guardarClaseExtra(event) {
 
     hideModal('modalClaseExtra');
     event.currentTarget.reset();
+    const estudianteExtra = document.getElementById('fin-extra-estudiante');
+    if (estudianteExtra) {
+      estudianteExtra.innerHTML = '<option value="">Selecciona un profesor primero</option>';
+      estudianteExtra.disabled = true;
+    }
     setValue('fin-extra-monto', 10000);
     const box = document.getElementById('fin-extra-disponibilidad');
     if (box) {

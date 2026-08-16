@@ -22,7 +22,7 @@
 
 /* Estado de cuenta */
 .finance-account-card {
-  border-top: 3px solid var(--module-accent, #9A5B43) !important;
+  border-top: 3px solid var(--module-accent, #246FA8) !important;
   background: linear-gradient(180deg, #fff 0%, #fffdfc 100%);
 }
 .finance-account-table thead th {
@@ -30,10 +30,10 @@
   font-size:.76rem;
   letter-spacing:.035em;
   text-transform:uppercase;
-  background:#faf7f5;
-  border-bottom-color:#eadfd9;
+  background:#f4f8fb;
+  border-bottom-color:#d7e5ee;
 }
-.finance-account-table tbody tr:hover { background:#fdf8f5; }
+.finance-account-table tbody tr:hover { background:#f7fbfd; }
 .account-status { font-weight:700; padding:.36rem .62rem; }
 .account-status.paid { background:#e8f5ee; color:#236a49; }
 .account-status.pending { background:#fff0eb; color:#a24b32; }
@@ -41,7 +41,7 @@
 .account-status.neutral { background:#eef2f5; color:#5e6d78; }
 
 #pagos-view .finance-summary-card:nth-child(1) .finance-summary-icon { background:#eaf4ef; color:#2f7354; }
-#pagos-view .finance-summary-card:nth-child(2) .finance-summary-icon { background:#fff2df; color:#9a681d; }
+#pagos-view .finance-summary-card:nth-child(2) .finance-summary-icon { background:#f0edff; color:#6857b6; }
 #pagos-view .finance-summary-card:nth-child(3) .finance-summary-icon { background:#fbeaec; color:#a7434d; }
 #pagos-view .finance-summary-card:nth-child(4) .finance-summary-icon { background:#edf1f8; color:#4d6285; }
 
@@ -65,3 +65,5 @@
 }
 .finance-row-overdue td { background: linear-gradient(90deg, rgba(255,244,245,.78), rgba(255,255,255,0)); }
 .finance-row-overdue td:first-child { border-left: 3px solid #b84b55; }
+
+#pagos-view .finance-account-card{background:linear-gradient(180deg,#fff 0%,#f8fcff 100%)}

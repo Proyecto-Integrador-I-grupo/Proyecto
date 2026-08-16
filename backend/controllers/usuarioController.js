@@ -6,6 +6,9 @@ import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 
 export const listarUsuarios = async (req, res) => {
     try {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.set("Pragma", "no-cache");
+        res.set("Expires", "0");
         const usuarios = await usuarioModel.obtenerUsuarios();
         res.status(200).json(usuarios);
     } catch (error) {

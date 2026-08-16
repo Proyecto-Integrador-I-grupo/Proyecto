@@ -126,3 +126,141 @@
 @media (max-width: 430px) {
   .finance-summary-compact { grid-template-columns:1fr; }
 }
+
+
+/* Flujo principal: pagar primero, facturar después */
+.finance-flow-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .9rem;
+}
+.finance-flow-card {
+  border: 1px solid #e6edf5 !important;
+  border-radius: 17px;
+  overflow: hidden;
+}
+.finance-flow-card-primary {
+  border-top: 3px solid #4f67df !important;
+}
+.finance-flow-card-invoice {
+  border-top: 3px solid #1b9aa6 !important;
+}
+.finance-flow-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .9rem;
+  flex-wrap: wrap;
+}
+.finance-flow-heading > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+.finance-flow-heading h3 {
+  color: #17243b;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.finance-step {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  background: linear-gradient(135deg, #306fe9, #7654c9);
+  color: #fff;
+  font-weight: 800;
+}
+.finance-step-done {
+  background: linear-gradient(135deg, #267cb4, #13a0a5);
+}
+.finance-count-badge {
+  background: #eef1ff;
+  color: #4b52a8;
+  border: 1px solid #dce1ff;
+  padding: .42rem .7rem;
+}
+.finance-count-badge.invoice {
+  background: #eaf8f8;
+  color: #19727b;
+  border-color: #cdebec;
+}
+.finance-count-badge.is-empty {
+  background: #f4f6f8;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+.finance-flow-table thead th {
+  background: #f7f9fc;
+  color: #536273;
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  border-bottom: 1px solid #e1e8f0;
+  white-space: nowrap;
+}
+.finance-flow-table tbody td {
+  padding-top: .8rem;
+  padding-bottom: .8rem;
+}
+.finance-pay-btn {
+  min-width: 94px;
+}
+.finance-empty-state {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  color: #64748b;
+}
+.finance-empty-state i {
+  font-size: 1.35rem;
+  color: #2a8b78;
+}
+.finance-empty-state strong {
+  color: #334155;
+}
+.finance-empty-state span {
+  font-size: .82rem;
+}
+.finance-empty-state.compact i {
+  color: #5370b5;
+}
+.finance-tools {
+  display: grid;
+  gap: .9rem;
+}
+.finance-tools-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .9rem;
+}
+.finance-tool-card {
+  border: 1px solid #e8edf3 !important;
+  border-radius: 15px;
+  min-width: 0;
+}
+.finance-tool-card .card-body {
+  padding: 1rem 1.1rem;
+}
+.finance-tool-card .finance-card-heading h3 {
+  color: #26384f;
+}
+.finance-tool-card .finance-section-toggle {
+  min-width: 105px;
+}
+
+@media (max-width: 900px) {
+  .finance-tools-row {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .finance-flow-card .card-body {
+    padding: .9rem;
+  }
+  .finance-flow-table {
+    min-width: 760px;
+  }
+}

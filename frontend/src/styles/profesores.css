@@ -217,3 +217,37 @@
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
+
+/* Tabla de profesores sin scroll horizontal en escritorio. */
+.profesores-table-wrap {
+  width: 100%;
+  overflow-x: visible;
+}
+#profesores-table {
+  width: 100%;
+  table-layout: fixed;
+}
+#profesores-table th,
+#profesores-table td {
+  overflow-wrap: anywhere;
+}
+#profesores-table th:nth-child(1) { width: 4%; }
+#profesores-table th:nth-child(2) { width: 16%; }
+#profesores-table th:nth-child(3) { width: 12%; }
+#profesores-table th:nth-child(4) { width: 9%; }
+#profesores-table th:nth-child(5) { width: 18%; }
+#profesores-table th:nth-child(6) { width: 13%; }
+#profesores-table th:nth-child(7) { width: 28%; min-width: 0; }
+.profesor-actions-grid {
+  width: 100%;
+  max-width: 300px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.profesor-actions-grid .profesor-action-btn {
+  min-width: 0;
+  justify-content: center;
+}
+@media (max-width: 991.98px) {
+  .profesores-table-wrap { overflow-x: auto; }
+  #profesores-table { min-width: 900px; table-layout: auto; }
+}

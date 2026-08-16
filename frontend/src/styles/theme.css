@@ -145,3 +145,113 @@
 #profesores-view .profesor-actions-grid .btn-outline-warning {color:#9A612D!important;border-color:#E2C7A9!important;background:#FFF8EF!important}
 #profesores-view .profesor-actions-grid .btn-outline-primary:hover,
 #profesores-view .profesor-actions-grid .btn-outline-warning:hover {color:#fff!important;background:linear-gradient(120deg,#9A612D,#C38B4B)!important;border-color:#9A612D!important}
+
+
+/* ===== CIERRE VISUAL FINAL: jerarquía uniforme de acciones ===== */
+/* Acciones principales: mismo contraste del botón Agregar Profesor. */
+.view .btn-primary,
+.view .btn-success,
+.view .btn-warning {
+  color: #fff !important;
+  border: 1px solid transparent !important;
+  background: linear-gradient(118deg, #2f68df 0%, #4f62ce 48%, #7656ba 100%) !important;
+  box-shadow: 0 8px 18px rgba(73, 88, 191, .20) !important;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+}
+.view .btn-primary:hover,
+.view .btn-primary:focus,
+.view .btn-success:hover,
+.view .btn-success:focus,
+.view .btn-warning:hover,
+.view .btn-warning:focus {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #285bc8 0%, #4657bd 48%, #684aa9 100%) !important;
+  box-shadow: 0 10px 22px rgba(73, 88, 191, .25) !important;
+  transform: translateY(-1px);
+  filter: none !important;
+}
+
+/* Acciones externas/secundarias: familia azul-turquesa de Agregar Estudiante. */
+.view .btn-outline-primary,
+.view .btn-outline-success,
+.view .btn-outline-warning,
+.view .btn-info,
+.view .btn-outline-info {
+  color: #176f91 !important;
+  border-color: #9fd8df !important;
+  background: linear-gradient(118deg, #f4f9ff 0%, #eefbfb 100%) !important;
+  box-shadow: 0 4px 12px rgba(28, 133, 155, .08) !important;
+}
+.view .btn-outline-primary:hover,
+.view .btn-outline-primary:focus,
+.view .btn-outline-success:hover,
+.view .btn-outline-success:focus,
+.view .btn-outline-warning:hover,
+.view .btn-outline-warning:focus,
+.view .btn-info:hover,
+.view .btn-info:focus,
+.view .btn-outline-info:hover,
+.view .btn-outline-info:focus {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #276de8 0%, #1b9aaa 100%) !important;
+  box-shadow: 0 8px 18px rgba(27, 134, 170, .18) !important;
+  transform: translateY(-1px);
+}
+
+/* Acciones neutras. */
+.view .btn-outline-secondary,
+.view .btn-secondary,
+.view .btn-light {
+  color: #52667b !important;
+  border-color: #c9d4e0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.view .btn-outline-secondary:hover,
+.view .btn-outline-secondary:focus,
+.view .btn-secondary:hover,
+.view .btn-secondary:focus,
+.view .btn-light:hover,
+.view .btn-light:focus {
+  color: #304255 !important;
+  border-color: #b7c5d3 !important;
+  background: #f4f7fa !important;
+}
+
+/* Acciones destructivas conservan semántica roja, sin apariencia Bootstrap antigua. */
+.view .btn-danger,
+.view .btn-outline-danger {
+  color: #a74651 !important;
+  border-color: #e3b9c0 !important;
+  background: linear-gradient(118deg, #fff8f8 0%, #fff1f3 100%) !important;
+  box-shadow: none !important;
+}
+.view .btn-danger:hover,
+.view .btn-danger:focus,
+.view .btn-outline-danger:hover,
+.view .btn-outline-danger:focus {
+  color: #fff !important;
+  border-color: #a74651 !important;
+  background: linear-gradient(118deg, #b84b55 0%, #99414b 100%) !important;
+}
+
+/* Las acciones de la tabla de profesores mantienen sus dimensiones actuales; solo heredan la nueva paleta. */
+#profesores-view .profesor-actions-grid .btn-outline-primary,
+#profesores-view .profesor-actions-grid .btn-outline-success,
+#profesores-view .profesor-actions-grid .btn-outline-warning {
+  color: #176f91 !important;
+  border-color: #9fd8df !important;
+  background: linear-gradient(118deg, #f4f9ff 0%, #eefbfb 100%) !important;
+}
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover,
+#profesores-view .profesor-actions-grid .btn-outline-success:hover,
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #276de8 0%, #1b9aaa 100%) !important;
+}
+
+/* Evita backdrops residuales cuando una acción de profesor abre un resultado. */
+body:not(.modal-open) .modal-backdrop { display: none !important; }

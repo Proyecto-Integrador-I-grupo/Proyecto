@@ -68,7 +68,7 @@ export default function Pagos() {
           <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
             <div>
               <h3 className="h6 mb-1"><i className="bi bi-people me-2"></i>Estado de cuenta por estudiante</h3>
-              <p className="small text-muted mb-0">Muestra estudiantes con saldo pendiente, abonos y cargos ya cancelados.</p>
+              <p className="small text-muted mb-0">Muestra estudiantes con saldo pendiente, abonos y cargos ya cancelados. <span id="fin-morosos-resumen" className="finance-overdue-summary"></span></p>
             </div>
           </div>
           <div className="table-responsive">
@@ -124,34 +124,44 @@ export default function Pagos() {
 
       <div className="card border-0 shadow-sm mb-4 finance-extra-card">
         <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
             <div>
               <h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra programadas</h3>
               <p className="small text-muted mb-0">Cada clase extra genera su cargo en Pagos. Solo se permite programarla en un día disponible para el profesor.</p>
             </div>
+            <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-clases-extra-collapse" aria-expanded="false" aria-controls="fin-clases-extra-collapse">
+              <i className="bi bi-chevron-down me-1"></i> Mostrar clases extra
+            </button>
           </div>
-          <div className="table-responsive">
-            <table className="table table-sm align-middle mb-0">
-              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
-              <tbody id="fin-clases-extra-body"></tbody>
-            </table>
+          <div className="collapse mt-3" id="fin-clases-extra-collapse">
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
+                <tbody id="fin-clases-extra-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="card border-0 shadow-sm">
         <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
             <div>
               <h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3>
               <p className="small text-muted mb-0">Últimos pagos registrados en el sistema.</p>
             </div>
+            <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-historial-collapse" aria-expanded="false" aria-controls="fin-historial-collapse">
+              <i className="bi bi-chevron-down me-1"></i> Mostrar historial
+            </button>
           </div>
-          <div className="table-responsive">
-            <table className="table table-sm align-middle mb-0">
-              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
-              <tbody id="fin-pagos-body"></tbody>
-            </table>
+          <div className="collapse mt-3" id="fin-historial-collapse">
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
+                <tbody id="fin-pagos-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

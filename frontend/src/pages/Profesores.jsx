@@ -1,0 +1,69 @@
+import React from 'react';
+
+const Modal = ({id,title,children,footer}) => (
+  <div className="modal fade" id={id} tabIndex="-1" aria-hidden="true">
+    <div className="modal-dialog modal-dialog-centered modal-lg"><div className="modal-content border-0 shadow-lg">
+      <div className="modal-header bg-navy text-white"><h5 className="modal-title font-serif">{title}</h5><button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+      {children}
+      {footer && <div className="modal-footer">{footer}</div>}
+    </div></div>
+  </div>
+);
+
+export default function Profesores() {
+  const schoolDomain = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com').replace(/^@+/, '');
+  return (
+    <section id="profesores-view" className="view hidden">
+      <div className="page-header d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+        <div className="flex-grow-1">
+          <h2 className="card-title-serif h4 mb-1"><i className="bi bi-person-badge"></i> Cuerpo Docente</h2>
+          <p className="text-muted small mb-0">Gestiona el registro, la disponibilidad y la asignación de grupos del personal docente.</p>
+        </div>
+        <div className="d-flex gap-2 flex-wrap w-mobile-100">
+          <button type="button" id="prof-refrescar" className="btn btn-outline-secondary">
+            <i className="bi bi-arrow-clockwise"></i> Refrescar
+          </button>
+          <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProfesor">
+            <i className="bi bi-plus-lg"></i> Agregar Profesor
+          </button>
+        </div>
+      </div>
+      <div className="faculty-summary mb-4">
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon"><i className="bi bi-people"></i></span>
+          <div><small>Total registrados</small><strong id="prof-cnt-total">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-success"><i className="bi bi-person-check"></i></span>
+          <div><small>Activos</small><strong id="prof-cnt-activos">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-muted"><i className="bi bi-person-dash"></i></span>
+          <div><small>Inactivos</small><strong id="prof-cnt-inactivos">–</strong></div>
+        </div>
+        <div className="faculty-summary-item">
+          <span className="faculty-summary-icon faculty-summary-warning"><i className="bi bi-arrow-repeat"></i></span>
+          <div><small>Grupos por restaurar</small><strong id="prof-cnt-pendientes">–</strong></div>
+        </div>
+      </div>
+      <div className="card border-0 shadow-sm"><div className="card-body"><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap"><div className="input-group input-group-sm search-box"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="prof-search" type="text" className="form-control" placeholder="Buscar por nombre o materia..." /></div><select id="prof-filtro-estado" className="form-select form-select-sm" style={{width:'auto'}}><option value="todos">Todos los profesores</option><option value="activos">Solo activos</option><option value="inactivos">Solo inactivos / destituidos</option></select></div><div className="profesores-table-wrap"><table id="profesores-table" className="table table-hover align-middle mb-0"><thead><tr><th>ID</th><th>Nombre Completo</th><th>Materia</th><th>Ingreso</th><th>Grupos</th><th>Estado</th><th className="text-end">Acciones</th></tr></thead><tbody></tbody></table></div></div></div>
+
+      <Modal id="modalProfesor" title={<><i className="bi bi-person-plus"></i> Registrar Profesor</>}>
+        <form id="profesor-form" autoComplete="off"><div className="modal-body p-4">
+          <div className="prof-autofill-trap" aria-hidden="true">
+            <input type="text" name="username" autoComplete="username" tabIndex="-1" />
+            <input type="password" name="password" autoComplete="current-password" tabIndex="-1" />
+          </div>
+          <div className="row g-3">
+          <div className="col-md-6"><label className="form-label">Nombre</label><input id="prof-nombre" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Primer apellido</label><input id="prof-apellido1" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Segundo apellido</label><input id="prof-apellido2" className="form-control" /></div><div className="col-md-6"><label className="form-label">Materia</label><select id="prof-materia" className="form-select" defaultValue="" required><option value="" disabled>Seleccionar materia</option><option value="Español">Español</option><option value="Matemáticas">Matemáticas</option><option value="Ciencias">Ciencias</option><option value="Estudios Sociales">Estudios Sociales</option><option value="Inglés">Inglés</option><option value="Educación Física">Educación Física</option><option value="Informática">Informática</option><option value="Artes">Artes</option></select></div><div className="col-md-6"><label className="form-label">Correo</label><input id="prof-correo" name="profesor_correo_nuevo" type="email" className="form-control" placeholder={`ejemplo.profesor@${schoolDomain}`} autoComplete="off" readOnly required /></div><div className="col-md-6"><label className="form-label">Contraseña</label><div className="input-group"><input id="prof-contrasena" name="profesor_clave_nueva" type="password" className="form-control" placeholder="Profesor2026!" autoComplete="new-password" readOnly minLength="6" required /><button type="button" id="toggle-prof-password" className="btn btn-outline-secondary"><i className="bi bi-eye"></i></button></div></div><div className="col-md-6"><label className="form-label">Fecha de nacimiento</label><input id="prof-fecha-nac" type="date" className="form-control" /></div><div className="col-md-6"><label className="form-label">Fecha de ingreso</label><input id="prof-fecha-ingreso" type="date" className="form-control" /></div><div className="col-md-6"><label className="form-label">Género</label><select id="prof-genero" className="form-select"><option value="">Seleccionar</option><option value="M">Masculino</option><option value="F">Femenino</option><option value="O">Otro</option></select></div>
+        </div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar Profesor</button></div></form>
+      </Modal>
+
+      <Modal id="modalDestituir" title={<><i className="bi bi-person-slash"></i> Destituir / Incapacitar Profesor</>}><div className="modal-body p-4"><p>Profesor: <strong id="destituir-nombre-profesor"></strong></p><label className="form-label">Motivo</label><textarea id="destituir-motivo" className="form-control" rows="3"></textarea></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-destituir-btn" className="btn btn-warning">Confirmar</button></div></Modal>
+      <Modal id="modalEliminarProfesor" title={<><i className="bi bi-trash"></i> Eliminar Profesor</>}><div className="modal-body p-4"><p>¿Deseas eliminar permanentemente a <strong id="eliminar-nombre-profesor"></strong>?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-eliminar-btn" className="btn btn-danger">Eliminar</button></div></Modal>
+      <Modal id="modalReintegrar" title={<><i className="bi bi-person-check"></i> Reintegrar Profesor</>}><div className="modal-body p-4"><p>¿Deseas reintegrar a <strong id="reintegrar-nombre-profesor"></strong>?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-reintegrar-btn" className="btn btn-success">Reintegrar</button></div></Modal>
+      <Modal id="modalAsignarSustituto" title={<><i className="bi bi-person-lines-fill"></i> Asignar Sustituto</>}><div className="modal-body p-4"><p>Profesor titular: <strong id="sustituto-nombre-profesor"></strong></p><div id="sustituto-lista"></div></div></Modal>
+      <Modal id="modalAsignarGrupos" title={<><i className="bi bi-diagram-3"></i> Asignar Grupos</>}><div className="modal-body p-4"><p>Profesor: <strong id="asignar-grupos-nombre-profesor"></strong></p><p className="text-muted small">Materia: <span id="asignar-grupos-materia"></span></p><input id="asignar-grupos-search" className="form-control form-control-sm mb-3" placeholder="Buscar grupo..." /><div id="asignar-grupos-lista" className="d-grid gap-2"></div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-asignar-grupos-btn" className="btn btn-primary">Guardar asignación</button></div></Modal>
+    </section>
+  );
+}

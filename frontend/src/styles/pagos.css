@@ -67,3 +67,62 @@
 .finance-row-overdue td:first-child { border-left: 3px solid #b84b55; }
 
 #pagos-view .finance-account-card{background:linear-gradient(180deg,#fff 0%,#f8fcff 100%)}
+
+/* Vista financiera simplificada */
+.finance-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: .85rem;
+  border-bottom: 1px solid #e7edf4;
+}
+.finance-toolbar-copy { min-width: min(100%, 360px); }
+.finance-toolbar-actions { display:flex; gap:.55rem; align-items:center; flex-wrap:wrap; }
+.finance-toolbar-actions .btn { min-height: 40px; }
+.finance-toolbar-actions #fin-configuracion { width: 42px; padding-left:0; padding-right:0; }
+.finance-summary-compact { gap: .75rem; }
+.finance-summary-compact .finance-summary-card {
+  min-height: 86px;
+  padding: .8rem .95rem;
+  border-radius: 15px;
+  box-shadow: 0 5px 16px rgba(15,23,42,.045);
+}
+.finance-summary-compact .finance-summary-icon { width: 40px; height:40px; border-radius:12px; font-size:1rem; }
+.finance-summary-compact .finance-summary-card strong { font-size:1.16rem; }
+.finance-card-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.finance-account-card { margin-bottom: .9rem !important; }
+.finance-secondary-grid {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:.9rem;
+}
+.finance-secondary-grid > .finance-collapsible-card:first-child { grid-column: 1 / -1; }
+.finance-collapsible-card { min-width:0; }
+.finance-collapsible-card .card-body { padding:1rem 1.1rem; }
+.finance-collapsible-card h3 { color:#21334a; }
+.finance-section-toggle { min-width: 128px; }
+#fin-cargos-collapse .table-responsive,
+#fin-clases-extra-collapse .table-responsive,
+#fin-historial-collapse .table-responsive { border-top:1px solid #edf1f5; padding-top:.65rem; }
+
+@media (max-width: 900px) {
+  .finance-secondary-grid { grid-template-columns:1fr; }
+  .finance-secondary-grid > .finance-collapsible-card:first-child { grid-column:auto; }
+}
+@media (max-width: 680px) {
+  .finance-toolbar { align-items:stretch; }
+  .finance-toolbar-actions { width:100%; }
+  .finance-toolbar-actions .btn:not(#fin-configuracion) { flex:1 1 auto; }
+  .finance-summary-compact { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 430px) {
+  .finance-summary-compact { grid-template-columns:1fr; }
+}

@@ -22,9 +22,9 @@ function isSchoolEmail(email) {
 }
 
 const LOGIN_BACKGROUNDS = [
-  '/images/fondo-login.jpeg',
-  '/images/imagen-2.jpg',
-  '/images/imagen-3.jpeg'
+  '/images/fondo-login.jpeg?v=20260816',
+  '/images/imagen-2.jpg?v=20260816',
+  '/images/imagen-3.jpeg?v=20260816'
 ];
 
 export default function App() {

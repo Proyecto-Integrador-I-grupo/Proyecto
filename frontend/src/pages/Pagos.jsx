@@ -165,7 +165,7 @@ export default function Pagos() {
       </div>
 
       <Modal id="modalClaseExtra" title={<><i className="bi bi-calendar2-plus"></i> Programar hora extra</>} lg>
-        <form id="fin-clase-extra-form">
+        <form id="fin-clase-extra-form" noValidate>
           <div className="modal-body p-4">
             <div className="finance-note mb-3">
               <i className="bi bi-info-circle"></i>

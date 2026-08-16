@@ -472,6 +472,38 @@ async function guardarClaseExtra(event) {
       observaciones: value('fin-extra-observaciones')
     };
 
+    if (!payload.id_profesor) {
+      showToast('Selecciona el profesor que impartirá la clase extra.', 'warning');
+      document.getElementById('fin-extra-profesor')?.focus();
+      return;
+    }
+    if (!payload.id_estudiante) {
+      showToast('Selecciona un estudiante de los grupos del profesor.', 'warning');
+      document.getElementById('fin-extra-estudiante')?.focus();
+      return;
+    }
+    if (!payload.fecha) {
+      showToast('Selecciona la fecha de la clase extra.', 'warning');
+      document.getElementById('fin-extra-fecha')?.focus();
+      return;
+    }
+    if (!Number(payload.monto_base) || Number(payload.monto_base) <= 0) {
+      showToast('Indica un monto válido para la clase extra.', 'warning');
+      document.getElementById('fin-extra-monto')?.focus();
+      return;
+    }
+    if ((payload.hora_inicio && !payload.hora_fin) || (!payload.hora_inicio && payload.hora_fin)) {
+      showToast('Indica tanto la hora de inicio como la hora de finalización.', 'warning');
+      return;
+    }
+    if (payload.hora_inicio && payload.hora_fin && payload.hora_fin <= payload.hora_inicio) {
+      showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'warning');
+      return;
+    }
+
+    const guardar = document.getElementById('fin-extra-guardar');
+    if (guardar) guardar.disabled = true;
+
     const r = await requestJson('/api/finanzas/clases-extra', {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -494,6 +526,9 @@ async function guardarClaseExtra(event) {
     await loadPagosData();
   } catch (e) {
     showToast(e.message || 'No se pudo programar la clase extra.', 'error');
+  } finally {
+    const guardar = document.getElementById('fin-extra-guardar');
+    if (guardar) guardar.disabled = false;
   }
 }
 

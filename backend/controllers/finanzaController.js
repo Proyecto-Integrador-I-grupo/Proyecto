@@ -50,6 +50,11 @@ export async function getPagos(req, res) {
   catch (e) { responderError(res, e, 500); }
 }
 
+export async function getEstudiantesFinanzas(req, res) {
+  try { res.json(await finanzaService.listarEstudiantesFinanzas()); }
+  catch (e) { responderError(res, e, 500); }
+}
+
 export async function getEstadoCuentas(req, res) {
   try { res.json(await finanzaService.listarEstadoCuentas()); }
   catch (e) { responderError(res, e, 500); }

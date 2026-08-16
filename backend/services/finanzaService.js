@@ -268,6 +268,89 @@ async function asegurarCargosMatriculaActivos(idUsuario = null) {
   return { creados };
 }
 
+export async function listarEstudiantesFinanzas() {
+  // Este catálogo es propio del módulo financiero: no depende de que el
+  // estudiante siga en pre-registro o de que tenga un grupo activo.
+  // Incluye alumnos activos y también alumnos con movimientos históricos.
+  try {
+    await asegurarCargosMatriculaPreRegistro();
+  } catch (error) {
+    console.error('No se pudieron regularizar cargos de pre-registro:', error.message);
+  }
+
+  try {
+    await normalizarCargosMatriculaDuplicados();
+  } catch (error) {
+    console.error('No se pudieron normalizar cargos de matrícula:', error.message);
+  }
+
+  const [rows] = await pool.query(
+    `SELECT
+       e.id_estudiante,
+       e.id_persona,
+       e.estado,
+       p.nombre,
+       p.apellido1,
+       p.apellido2,
+       p.fecha_nacimiento,
+       e.fecha_ingreso,
+       ge.id_grupo,
+       g.nombre_grupo,
+       s.id_seccion,
+       s.nombre_seccion,
+       s.nivel,
+       COALESCE(fin.total_cargos, 0) AS total_cargos,
+       COALESCE(fin.total_pagado, 0) AS total_pagado,
+       COALESCE(fin.saldo_pendiente, 0) AS saldo_pendiente,
+       fin.ultimo_pago
+     FROM estudiante e
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN (
+       SELECT ge1.id_estudiante, ge1.id_grupo
+       FROM grupo_estudiante ge1
+       INNER JOIN (
+         SELECT id_estudiante, MAX(id_grupo_estudiante) AS max_id
+         FROM grupo_estudiante
+         WHERE estado = TRUE
+         GROUP BY id_estudiante
+       ) ult ON ult.max_id = ge1.id_grupo_estudiante
+     ) ge ON ge.id_estudiante = e.id_estudiante
+     LEFT JOIN grupo g ON g.id_grupo = ge.id_grupo
+     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+     LEFT JOIN (
+       SELECT
+         c.id_estudiante,
+         COUNT(DISTINCT CASE WHEN c.estado <> 'anulado' THEN c.id_cargo END) AS total_cargos,
+         COALESCE(SUM(CASE WHEN c.estado <> 'anulado' THEN c.saldo ELSE 0 END), 0) AS saldo_pendiente,
+         COALESCE((
+           SELECT SUM(pg.monto)
+           FROM pago pg
+           INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
+           WHERE cp.id_estudiante = c.id_estudiante AND pg.estado = 'aplicado'
+         ), 0) AS total_pagado,
+         (
+           SELECT MAX(pg.fecha_pago)
+           FROM pago pg
+           INNER JOIN cargo_estudiante cp ON cp.id_cargo = pg.id_cargo
+           WHERE cp.id_estudiante = c.id_estudiante AND pg.estado = 'aplicado'
+         ) AS ultimo_pago
+       FROM cargo_estudiante c
+       GROUP BY c.id_estudiante
+     ) fin ON fin.id_estudiante = e.id_estudiante
+     WHERE e.estado = TRUE
+        OR fin.total_cargos > 0
+        OR fin.total_pagado > 0
+     ORDER BY p.apellido1, p.apellido2, p.nombre, e.id_estudiante`
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    total_cargos: Number(row.total_cargos || 0),
+    total_pagado: Number(row.total_pagado || 0),
+    saldo_pendiente: Number(row.saldo_pendiente || 0)
+  }));
+}
+
 export async function listarEstadoCuentas() {
   await normalizarCargosMatriculaDuplicados();
   await asegurarCargosMatriculaActivos();

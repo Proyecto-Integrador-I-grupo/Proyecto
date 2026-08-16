@@ -36,17 +36,24 @@ async function requestJson(path, options = {}) {
 
 export async function loadPagosData() {
   aplicarPermisos();
-  // Cargos primero: el backend completa los cargos de matrícula faltantes de pre-registros.
-  await cargarCargos();
-  await Promise.all([
+
+  const resultados = await Promise.allSettled([
+    cargarEstudiantes(),
     cargarResumen(),
     cargarConceptos(),
-    cargarEstudiantes(),
+    cargarCargos(),
     cargarPagos(),
     cargarEstadoCuentas(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
-  await Promise.all([
+
+  const fallos = resultados.filter((r) => r.status === 'rejected');
+  if (fallos.length) {
+    console.error('EduControl Finanzas: algunas secciones no pudieron cargar:', fallos.map(f => f.reason));
+    showToast('Se cargó la información financiera disponible. Usa Refrescar si algún bloque tarda en aparecer.', 'warning');
+  }
+
+  await Promise.allSettled([
     cargarProfesoresExtra(),
     cargarClasesExtra()
   ]);
@@ -129,30 +136,39 @@ async function cargarConceptos() {
 }
 
 async function cargarEstudiantes() {
-  const [pre, matriculados] = await Promise.all([
-    requestJson('/api/estudiantes'),
-    requestJson('/api/estudiantes/matriculados')
-  ]);
-  const todos = new Map();
-  [...pre, ...matriculados].forEach((e) => {
-    const id = Number(e.id_estudiante);
-    if (!id) return;
-    const anterior = todos.get(id) || {};
-    todos.set(id, { ...anterior, ...e });
-  });
-  estudiantes = [...todos.values()];
-  const select = document.getElementById('fin-cargo-estudiante');
-  if (!select) return;
-  select.innerHTML = '<option value="">Seleccionar estudiante</option>';
-  const únicos = new Map();
-  estudiantes.forEach((e) => {
-    if (!únicos.has(e.id_estudiante)) únicos.set(e.id_estudiante, e);
-  });
-  [...únicos.values()].sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b))).forEach((e) => {
-    select.add(new Option(`${nombreEstudiante(e)}${e.nombre_grupo ? ` · ${e.nombre_grupo} · Sección ${e.nombre_seccion || '-'}` : ' · Pre-registro / sin grupo'}`, e.id_estudiante));
-  });
-}
+  estudiantes = await requestJson('/api/finanzas/estudiantes');
+  if (!Array.isArray(estudiantes)) estudiantes = [];
 
+  const ordenar = (lista) => lista.slice().sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b)));
+
+  const select = document.getElementById('fin-cargo-estudiante');
+  if (select) {
+    const actual = select.value;
+    select.innerHTML = '<option value="">Seleccionar estudiante</option>';
+    ordenar(estudiantes).forEach((e) => {
+      const contexto = e.nombre_grupo
+        ? ` · ${e.nombre_grupo}${e.nombre_seccion ? ` · Sección ${e.nombre_seccion}` : ''}`
+        : ' · Pre-registro / sin grupo';
+      const saldo = Number(e.saldo_pendiente || 0);
+      const estado = saldo > 0
+        ? ` · Debe ${moneda(saldo)}`
+        : (Number(e.total_pagado || 0) > 0 ? ' · Al día' : '');
+      select.add(new Option(`${nombreEstudiante(e)}${contexto}${estado}`, e.id_estudiante));
+    });
+    if ([...select.options].some(o => o.value === actual)) select.value = actual;
+  }
+
+  const extra = document.getElementById('fin-extra-estudiante');
+  if (extra) {
+    const actual = extra.value;
+    extra.innerHTML = '<option value="">Seleccionar estudiante</option>';
+    ordenar(estudiantes).forEach((e) => {
+      const contexto = e.nombre_grupo ? ` · ${e.nombre_grupo}` : ' · Pre-registro';
+      extra.add(new Option(`${nombreEstudiante(e)}${contexto}`, e.id_estudiante));
+    });
+    if ([...extra.options].some(o => o.value === actual)) extra.value = actual;
+  }
+}
 
 
 async function cargarEstadoCuentas() {
@@ -196,15 +212,6 @@ async function cargarProfesoresExtra() {
       select.add(new Option(`${p.nombre} ${p.apellido1} · ${p.materia || 'Sin materia'}`, p.id_profesor ?? p.id));
     });
 
-  const estSelect = document.getElementById('fin-extra-estudiante');
-  if (estSelect) {
-    estSelect.innerHTML = '<option value="">Seleccionar estudiante</option>';
-    const unicos = new Map();
-    estudiantes.forEach((e) => { if (!unicos.has(e.id_estudiante)) unicos.set(e.id_estudiante, e); });
-    [...unicos.values()]
-      .sort((a,b) => nombreEstudiante(a).localeCompare(nombreEstudiante(b)))
-      .forEach((e) => estSelect.add(new Option(nombreEstudiante(e), e.id_estudiante)));
-  }
 }
 
 async function cargarClasesExtra() {

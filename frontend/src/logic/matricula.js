@@ -224,6 +224,7 @@ function wireMatriculaEvents() {
   if (btnAbrirModalGrupo && !btnAbrirModalGrupo.dataset.wired) {
     btnAbrirModalGrupo.dataset.wired = '1';
     btnAbrirModalGrupo.addEventListener('click', async () => {
+      await populateGruposSelects();
       await populateSeccionesSelect();
       await populateProfesoresSelects(false);
     });
@@ -462,6 +463,7 @@ async function handleGestionMatriculaSubmit(e) {
       const modalEl = document.getElementById('modalGestionMatricula');
       if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
       await populateGruposSelects();
+      await populateSeccionesSelect();
     } else {
       showToast(json.mensaje || json.error || 'No se pudo completar la operación.', 'error');
     }
@@ -476,9 +478,9 @@ async function handleGestionMatriculaSubmit(e) {
 async function loadMatriculaData() {
   await Promise.all([
     populatePersonaSelects(),
-    populateGruposSelects(),
-    populateSeccionesSelect()
+    populateGruposSelects()
   ]);
+  await populateSeccionesSelect();
 }
 
 function setDefaultSeccionPeriodo() {
@@ -628,11 +630,20 @@ async function populateSeccionesSelect() {
     const hint = document.getElementById('grupo-seccion-empty-hint');
 
     if (sel) {
-      sel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
+      sel.innerHTML = '<option value="" disabled selected>Seleccionar sección disponible</option>';
+      const seccionesOcupadas = new Map(
+        allGrupos
+          .filter((g) => Number(g.id_seccion || 0) > 0)
+          .map((g) => [Number(g.id_seccion), g])
+      );
+
       secciones.forEach((s) => {
-        const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const ocupadaPor = seccionesOcupadas.get(Number(s.id_seccion));
+        const etiquetaBase = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const etiqueta = ocupadaPor ? `${etiquetaBase} · Ocupada por ${ocupadaPor.nombre_grupo}` : etiquetaBase;
         const option = new Option(etiqueta, s.id_seccion);
-        option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''}`.toLowerCase();
+        option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''} ${ocupadaPor?.nombre_grupo ?? ''}`.toLowerCase();
+        option.disabled = Boolean(ocupadaPor);
         sel.add(option);
       });
     }
@@ -670,7 +681,7 @@ function filtrarSeccionesGrupo(termino) {
   const seleccionValida = seleccionActual && seleccionActual.value !== '' && !seleccionActual.hidden;
 
   if (!seleccionValida) {
-    const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
+    const primerVisible = Array.from(select.options).find((option) => !option.hidden && !option.disabled && option.value !== '');
     if (primerVisible) {
       select.value = primerVisible.value;
     }

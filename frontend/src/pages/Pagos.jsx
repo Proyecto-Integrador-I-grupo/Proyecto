@@ -70,7 +70,7 @@ export default function Pagos() {
                 <span className="finance-step">1</span>
                 <div>
                   <h3 className="h5 mb-1">Pendientes de pago</h3>
-                  <p className="small text-muted mb-0">Aquí aparecen únicamente los cargos con saldo por cancelar.</p>
+                  <p className="small text-muted mb-0">Registra primero el abono o pago completo del estudiante.</p>
                 </div>
               </div>
               <span id="fin-pendientes-resumen" className="badge rounded-pill finance-count-badge">0 pendientes</span>
@@ -94,160 +94,87 @@ export default function Pagos() {
             </div>
           </div>
         </div>
-
-        <div className="card border-0 shadow-sm finance-flow-card finance-flow-card-invoice">
-          <div className="card-body">
-            <div className="finance-flow-heading mb-3">
-              <div>
-                <span className="finance-step finance-step-done">2</span>
-                <div>
-                  <h3 className="h5 mb-1">Facturación y comprobantes</h3>
-                  <p className="small text-muted mb-0">Los cargos totalmente pagados pasan automáticamente a este apartado.</p>
-                </div>
-              </div>
-              <span id="fin-facturas-resumen" className="badge rounded-pill finance-count-badge invoice">0 pagados</span>
-            </div>
-
-            <div className="table-responsive">
-              <table className="table align-middle mb-0 finance-flow-table">
-                <thead>
-                  <tr>
-                    <th>Estudiante</th>
-                    <th>Concepto</th>
-                    <th>Total pagado</th>
-                    <th>Factura</th>
-                    <th>Estado</th>
-                    <th className="text-end">Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="fin-facturas-body"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div className="finance-tools mt-3">
-        <div className="card border-0 shadow-sm finance-tool-card">
+      <div className="finance-secondary-grid mt-3">
+        <div className="card border-0 shadow-sm finance-collapsible-card finance-invoice-tool">
           <div className="card-body">
             <div className="finance-card-heading">
-              <div>
-                <h3 className="h6 mb-1"><i className="bi bi-sliders me-2"></i>Administrar cargos</h3>
-                <p className="small text-muted mb-0">Búsqueda, modificación y conceptos de cobro.</p>
-              </div>
-              <button
-                className="btn btn-sm btn-outline-secondary finance-section-toggle"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#fin-cargos-collapse"
-                data-label-show="Mostrar"
-                data-label-hide="Ocultar"
-                aria-expanded="false"
-                aria-controls="fin-cargos-collapse"
-              >
-                <i className="bi bi-chevron-down me-1"></i> Mostrar
-              </button>
-            </div>
-            <div className="collapse mt-3" id="fin-cargos-collapse">
-              <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-                <div className="d-flex gap-2 flex-wrap flex-grow-1">
-                  <div className="input-group input-group-sm finance-search">
-                    <span className="input-group-text"><i className="bi bi-search"></i></span>
-                    <input id="fin-busqueda" className="form-control" placeholder="Estudiante, concepto o descripción..." />
-                  </div>
-                  <select id="fin-filtro-estado" className="form-select form-select-sm finance-state-filter">
-                    <option value="">Todos los estados</option>
-                    <option value="pendiente">Pendientes</option>
-                    <option value="parcial">Pagos parciales</option>
-                    <option value="pagado">Pagados</option>
-                  </select>
+              <div className="d-flex align-items-center gap-2">
+                <span className="finance-mini-step">2</span>
+                <div>
+                  <h3 className="h6 mb-1"><i className="bi bi-receipt-cutoff me-2"></i>Facturación y comprobantes</h3>
+                  <p className="small text-muted mb-0">Cargos ya cancelados y listos para facturar.</p>
                 </div>
-                <button id="fin-nuevo-concepto" type="button" className="btn btn-sm btn-outline-secondary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConceptoCobro">
-                  <i className="bi bi-tags"></i> Conceptos
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <span id="fin-facturas-resumen" className="badge rounded-pill finance-count-badge invoice">0 pagados</span>
+                <button
+                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#fin-facturacion-collapse"
+                  data-label-show="Ver facturación"
+                  data-label-hide="Ocultar"
+                  aria-expanded="false"
+                  aria-controls="fin-facturacion-collapse"
+                >
+                  <i className="bi bi-chevron-down me-1"></i> Ver facturación
                 </button>
               </div>
+            </div>
+            <div className="collapse mt-3" id="fin-facturacion-collapse">
               <div className="table-responsive">
-                <table className="table align-middle table-hover mb-0 finance-table">
-                  <thead>
-                    <tr>
-                      <th>Estudiante</th>
-                      <th>Concepto</th>
-                      <th>Periodo</th>
-                      <th>Total</th>
-                      <th>Saldo</th>
-                      <th>Estado</th>
-                      <th>Factura</th>
-                      <th className="text-end">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody id="fin-cargos-body"></tbody>
+                <table className="table align-middle mb-0 finance-flow-table">
+                  <thead><tr><th>Estudiante</th><th>Concepto</th><th>Total pagado</th><th>Factura</th><th>Estado</th><th className="text-end">Acción</th></tr></thead>
+                  <tbody id="fin-facturas-body"></tbody>
                 </table>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="finance-tools-row">
-          <div className="card border-0 shadow-sm finance-tool-card">
-            <div className="card-body">
-              <div className="finance-card-heading">
-                <div>
-                  <h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3>
-                  <p className="small text-muted mb-0">Consulta las clases adicionales programadas.</p>
-                </div>
-                <button
-                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#fin-clases-extra-collapse"
-                  data-label-show="Ver clases"
-                  data-label-hide="Ocultar"
-                  aria-expanded="false"
-                  aria-controls="fin-clases-extra-collapse"
-                >
-                  <i className="bi bi-chevron-down me-1"></i> Ver clases
-                </button>
+        <div className="card border-0 shadow-sm finance-collapsible-card">
+          <div className="card-body">
+            <div className="finance-card-heading">
+              <div>
+                <h3 className="h6 mb-1"><i className="bi bi-sliders me-2"></i>Administrar cargos</h3>
+                <p className="small text-muted mb-0">Consulta y modifica cargos o descuentos.</p>
               </div>
-              <div className="collapse mt-3" id="fin-clases-extra-collapse">
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle mb-0">
-                    <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
-                    <tbody id="fin-clases-extra-body"></tbody>
-                  </table>
+              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-cargos-collapse" data-label-show="Administrar" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-cargos-collapse">
+                <i className="bi bi-chevron-down me-1"></i> Administrar
+              </button>
+            </div>
+            <div className="collapse mt-3" id="fin-cargos-collapse">
+              <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                <div className="d-flex gap-2 flex-wrap flex-grow-1">
+                  <div className="input-group input-group-sm finance-search"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="fin-busqueda" className="form-control" placeholder="Estudiante, concepto o descripción..." /></div>
+                  <select id="fin-filtro-estado" className="form-select form-select-sm finance-state-filter"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="parcial">Pagos parciales</option><option value="pagado">Pagados</option></select>
                 </div>
+                <button id="fin-nuevo-concepto" type="button" className="btn btn-sm btn-outline-secondary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConceptoCobro"><i className="bi bi-tags"></i> Conceptos</button>
               </div>
+              <div className="table-responsive"><table className="table align-middle table-hover mb-0 finance-table"><thead><tr><th>Estudiante</th><th>Concepto</th><th>Periodo</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-cargos-body"></tbody></table></div>
             </div>
           </div>
+        </div>
 
-          <div className="card border-0 shadow-sm finance-tool-card">
-            <div className="card-body">
-              <div className="finance-card-heading">
-                <div>
-                  <h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3>
-                  <p className="small text-muted mb-0">Registro de pagos anteriores.</p>
-                </div>
-                <button
-                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#fin-historial-collapse"
-                  data-label-show="Ver historial"
-                  data-label-hide="Ocultar"
-                  aria-expanded="false"
-                  aria-controls="fin-historial-collapse"
-                >
-                  <i className="bi bi-chevron-down me-1"></i> Ver historial
-                </button>
-              </div>
-              <div className="collapse mt-3" id="fin-historial-collapse">
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle mb-0">
-                    <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
-                    <tbody id="fin-pagos-body"></tbody>
-                  </table>
-                </div>
-              </div>
+        <div className="card border-0 shadow-sm finance-collapsible-card">
+          <div className="card-body">
+            <div className="finance-card-heading">
+              <div><h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3><p className="small text-muted mb-0">Programa o consulta clases adicionales.</p></div>
+              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-clases-extra-collapse" data-label-show="Ver clases" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-clases-extra-collapse"><i className="bi bi-chevron-down me-1"></i> Ver clases</button>
             </div>
+            <div className="collapse mt-3" id="fin-clases-extra-collapse"><div className="table-responsive"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead><tbody id="fin-clases-extra-body"></tbody></table></div></div>
+          </div>
+        </div>
+
+        <div className="card border-0 shadow-sm finance-collapsible-card">
+          <div className="card-body">
+            <div className="finance-card-heading">
+              <div><h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3><p className="small text-muted mb-0">Consulta pagos anteriores cuando lo necesites.</p></div>
+              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-historial-collapse" data-label-show="Ver historial" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-historial-collapse"><i className="bi bi-chevron-down me-1"></i> Ver historial</button>
+            </div>
+            <div className="collapse mt-3" id="fin-historial-collapse"><div className="table-responsive"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-pagos-body"></tbody></table></div></div>
           </div>
         </div>
       </div>
@@ -261,17 +188,21 @@ export default function Pagos() {
             </div>
             <div className="row g-3">
               <div className="col-md-6">
+                <label className="form-label">Profesor</label>
+                <div className="input-group mb-2">
+                  <span className="input-group-text"><i className="bi bi-search"></i></span>
+                  <input id="fin-extra-profesor-search" className="form-control" placeholder="Filtrar por profesor o materia" autoComplete="off" />
+                </div>
+                <select id="fin-extra-profesor" className="form-select" required>
+                  <option value="">Seleccionar profesor</option>
+                </select>
+              </div>
+              <div className="col-md-6">
                 <label className="form-label">Estudiante</label>
                 <select id="fin-extra-estudiante" className="form-select" required disabled>
                   <option value="">Selecciona un profesor primero</option>
                 </select>
-                <div className="form-text">La lista muestra únicamente estudiantes de los grupos asignados al profesor seleccionado.</div>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Profesor</label>
-                <select id="fin-extra-profesor" className="form-select" required>
-                  <option value="">Seleccionar profesor</option>
-                </select>
+                <div className="form-text">Solo se muestran estudiantes de los grupos asignados al profesor.</div>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Fecha</label>

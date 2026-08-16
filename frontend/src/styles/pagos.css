@@ -104,7 +104,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:.9rem;
 }
-.finance-secondary-grid > .finance-collapsible-card:first-child { grid-column: 1 / -1; }
 .finance-collapsible-card { min-width:0; }
 .finance-collapsible-card .card-body { padding:1rem 1.1rem; }
 .finance-collapsible-card h3 { color:#21334a; }
@@ -115,7 +114,6 @@
 
 @media (max-width: 900px) {
   .finance-secondary-grid { grid-template-columns:1fr; }
-  .finance-secondary-grid > .finance-collapsible-card:first-child { grid-column:auto; }
 }
 @media (max-width: 680px) {
   .finance-toolbar { align-items:stretch; }
@@ -263,4 +261,49 @@
   .finance-flow-table {
     min-width: 760px;
   }
+}
+
+/* Panel secundario financiero: cuatro accesos compactos */
+.finance-secondary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.finance-collapsible-card {
+  border: 1px solid #e5ebf3 !important;
+  border-radius: 16px;
+  background: #fff;
+}
+.finance-collapsible-card .finance-card-heading {
+  min-height: 62px;
+}
+.finance-invoice-tool {
+  border-top: 3px solid #1b9aa6 !important;
+}
+.finance-mini-step {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, #267cb4, #13a0a5);
+  color: #fff;
+  font-weight: 800;
+  flex: none;
+}
+.finance-row-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.finance-row-actions .btn { white-space: nowrap; }
+#fin-facturacion-collapse .table-responsive,
+#fin-cargos-collapse .table-responsive,
+#fin-clases-extra-collapse .table-responsive,
+#fin-historial-collapse .table-responsive {
+  border-top: 1px solid #edf1f5;
+  padding-top: .65rem;
+}
+@media (max-width: 900px) {
+  .finance-secondary-grid { grid-template-columns: 1fr; }
 }

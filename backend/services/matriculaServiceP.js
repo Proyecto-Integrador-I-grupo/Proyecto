@@ -203,11 +203,27 @@ export async function crearGrupoService(datos) {
     );
     if (seccionRows.length === 0) throw new Error("La sección seleccionada no existe o está inactiva.");
 
-    const [dupRows] = await connection.query(
-      "SELECT id_grupo FROM grupo WHERE nombre_grupo = ? AND id_seccion = ? AND estado = TRUE",
-      [nombreLimpio, idSeccionNum]
+    const [seccionOcupada] = await connection.query(
+      `SELECT g.id_grupo, g.nombre_grupo, s.nombre_seccion
+       FROM grupo g
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE g.id_seccion = ? AND g.estado = TRUE
+       LIMIT 1
+       FOR UPDATE`,
+      [idSeccionNum]
     );
-    if (dupRows.length > 0) throw new Error("Ya existe un grupo con ese nombre en la sección seleccionada.");
+    if (seccionOcupada.length > 0) {
+      const ocupada = seccionOcupada[0];
+      throw new Error(
+        `La sección ${ocupada.nombre_seccion || idSeccionNum} ya está reservada por el grupo ${ocupada.nombre_grupo}. Selecciona otra sección disponible.`
+      );
+    }
+
+    const [dupRows] = await connection.query(
+      "SELECT id_grupo FROM grupo WHERE nombre_grupo = ? AND estado = TRUE",
+      [nombreLimpio]
+    );
+    if (dupRows.length > 0) throw new Error("Ya existe un grupo activo con ese nombre.");
 
     const [result] = await connection.query(
       "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, id_seccion) VALUES (?, TRUE, ?, ?, ?)",

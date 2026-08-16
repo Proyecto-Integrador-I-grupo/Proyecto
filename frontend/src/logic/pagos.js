@@ -53,7 +53,6 @@ export async function loadPagosData() {
   }
 
   await Promise.allSettled([
-    cargarProfesoresExtra(),
     cargarClasesExtra()
   ]);
 }
@@ -72,17 +71,30 @@ function wirePagosEvents() {
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
+  wire('fin-extra-profesor-search', 'input', (event) => renderProfesoresExtraSelect(event.target.value));
   wire('fin-extra-fecha', 'change', comprobarDisponibilidadExtra);
+
+  const modalClaseExtra = document.getElementById('modalClaseExtra');
+  if (modalClaseExtra && !modalClaseExtra.dataset.profesorLoadWired) {
+    modalClaseExtra.dataset.profesorLoadWired = '1';
+    modalClaseExtra.addEventListener('show.bs.modal', async () => {
+      const search = document.getElementById('fin-extra-profesor-search');
+      if (search) search.value = '';
+      await cargarProfesoresExtra();
+    });
+  }
 
   const pagosView = document.getElementById('pagos-view');
   if (pagosView && !pagosView.dataset.cargoActionsWired) {
     pagosView.dataset.cargoActionsWired = '1';
     pagosView.addEventListener('click', async (event) => {
       const pagar = event.target.closest('[data-fin-pagar]');
+      const descuento = event.target.closest('[data-fin-descuento]');
       const facturar = event.target.closest('[data-fin-facturar]');
       const editar = event.target.closest('[data-fin-editar-cargo]');
 
       if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
+      if (descuento) abrirEdicionCargo(Number(descuento.dataset.finDescuento), true);
       if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
       if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar));
     });
@@ -101,6 +113,7 @@ function wirePagosEvents() {
     target.addEventListener('shown.bs.collapse', () => {
       btn.innerHTML = `<i class="bi bi-chevron-up me-1"></i> ${hideLabel}`;
       btn.setAttribute('aria-expanded', 'true');
+      if (target.id === 'fin-facturacion-collapse') renderFacturacion();
     });
     target.addEventListener('hidden.bs.collapse', () => {
       btn.innerHTML = `<i class="bi bi-chevron-down me-1"></i> ${showLabel}`;
@@ -330,32 +343,68 @@ async function cargarEstadoCuentas() {
   }).join('');
 }
 
+function renderProfesoresExtraSelect(termino = '') {
+  const select = document.getElementById('fin-extra-profesor');
+  if (!select) return;
+
+  const actual = select.value;
+  const busqueda = String(termino || '').trim().toLowerCase();
+  const lista = (Array.isArray(profesores) ? profesores : [])
+    .filter((p) => p.estado == 1 || p.estado === true)
+    .filter((p) => {
+      if (!busqueda) return true;
+      const texto = `${p.nombre || ''} ${p.apellido1 || ''} ${p.apellido2 || ''} ${p.profesor_nombre || ''} ${p.materia || ''}`.toLowerCase();
+      return texto.includes(busqueda);
+    })
+    .sort((a, b) => `${a.apellido1 || ''} ${a.apellido2 || ''} ${a.nombre || ''}`.localeCompare(`${b.apellido1 || ''} ${b.apellido2 || ''} ${b.nombre || ''}`));
+
+  select.innerHTML = '<option value="">Seleccionar profesor</option>';
+  lista.forEach((p) => {
+    const nombre = p.profesor_nombre || `${p.nombre || ''} ${p.apellido1 || ''} ${p.apellido2 || ''}`.trim();
+    const grupos = Number(p.grupos_activos || 0);
+    const contexto = grupos ? ` · ${grupos} grupo${grupos === 1 ? '' : 's'}` : ' · sin grupo activo';
+    select.add(new Option(`${nombre} · ${p.materia || 'Sin materia'}${contexto}`, p.id_profesor ?? p.id));
+  });
+
+  if ([...select.options].some((o) => o.value === actual)) select.value = actual;
+}
+
 async function cargarProfesoresExtra() {
-  profesores = await requestJson('/api/profesores');
   const select = document.getElementById('fin-extra-profesor');
   const estudianteSelect = document.getElementById('fin-extra-estudiante');
   if (!select) return;
 
   const actual = select.value;
-  select.innerHTML = '<option value="">Seleccionar profesor</option>';
-  profesores
-    .filter((p) => p.estado == 1 || p.estado === true)
-    .sort((a,b) => `${a.nombre} ${a.apellido1}`.localeCompare(`${b.nombre} ${b.apellido1}`))
-    .forEach((p) => {
-      select.add(new Option(`${p.nombre} ${p.apellido1} · ${p.materia || 'Sin materia'}`, p.id_profesor ?? p.id));
-    });
+  select.disabled = true;
+  select.innerHTML = '<option value="">Cargando profesores...</option>';
 
-  if ([...select.options].some((o) => o.value === actual)) {
-    select.value = actual;
-  }
+  try {
+    const data = await requestJson('/api/finanzas/profesores-extra');
+    profesores = Array.isArray(data) ? data : [];
+    select.disabled = false;
+    renderProfesoresExtraSelect(document.getElementById('fin-extra-profesor-search')?.value || '');
 
-  if (estudianteSelect && !select.value) {
-    estudianteSelect.innerHTML = '<option value="">Selecciona un profesor primero</option>';
-    estudianteSelect.disabled = true;
-  }
+    if ([...select.options].some((o) => o.value === actual)) {
+      select.value = actual;
+    }
 
-  if (select.value) {
-    await cargarEstudiantesProfesorExtra(Number(select.value));
+    if (!profesores.length) {
+      select.innerHTML = '<option value="">No hay profesores activos</option>';
+      select.disabled = true;
+    }
+
+    if (estudianteSelect && !select.value) {
+      estudianteSelect.innerHTML = '<option value="">Selecciona un profesor primero</option>';
+      estudianteSelect.disabled = true;
+    }
+
+    if (select.value) await cargarEstudiantesProfesorExtra(Number(select.value));
+  } catch (error) {
+    console.error('EduControl Finanzas: no se pudieron cargar profesores para hora extra.', error);
+    profesores = [];
+    select.innerHTML = '<option value="">No se pudo cargar profesores</option>';
+    select.disabled = false;
+    showToast(error.message || 'No se pudo cargar la lista de profesores.', 'error');
   }
 }
 
@@ -542,8 +591,24 @@ async function cargarCargos() {
 
 function renderCargos() {
   renderPendientesPago();
-  renderFacturacion();
+  actualizarResumenFacturacion();
   renderAdministracionCargos();
+  const facturacion = document.getElementById('fin-facturacion-collapse');
+  if (facturacion?.classList.contains('show')) renderFacturacion();
+}
+
+function obtenerCargosPagados() {
+  return cargos
+    .filter((c) => String(c.estado || '').toLowerCase() === 'pagado')
+    .sort((a, b) => Number(b.id_cargo || 0) - Number(a.id_cargo || 0));
+}
+
+function actualizarResumenFacturacion() {
+  const resumen = document.getElementById('fin-facturas-resumen');
+  if (!resumen) return;
+  const cantidad = obtenerCargosPagados().length;
+  resumen.textContent = `${cantidad} pagado${cantidad === 1 ? '' : 's'}`;
+  resumen.classList.toggle('is-empty', cantidad === 0);
 }
 
 function renderPendientesPago() {
@@ -596,9 +661,12 @@ function renderPendientesPago() {
         <td class="fw-bold">${moneda(c.saldo)}</td>
         <td>${badgeEstado(c.estado, c.fecha_vencimiento)}</td>
         <td class="text-end">
-          <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
-            <i class="bi bi-cash-coin"></i> Pagar
-          </button>
+          <div class="finance-row-actions">
+            ${esAdmin() ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Aplicar descuento</button>` : ''}
+            <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
+              <i class="bi bi-cash-coin"></i> Pagar
+            </button>
+          </div>
         </td>
       </tr>`;
   }).join('');
@@ -609,14 +677,8 @@ function renderFacturacion() {
   const resumen = document.getElementById('fin-facturas-resumen');
   if (!body) return;
 
-  const pagados = cargos
-    .filter((c) => String(c.estado || '').toLowerCase() === 'pagado')
-    .sort((a, b) => Number(b.id_cargo || 0) - Number(a.id_cargo || 0));
-
-  if (resumen) {
-    resumen.textContent = `${pagados.length} pagado${pagados.length === 1 ? '' : 's'}`;
-    resumen.classList.toggle('is-empty', pagados.length === 0);
-  }
+  const pagados = obtenerCargosPagados();
+  actualizarResumenFacturacion();
 
   if (!pagados.length) {
     body.innerHTML = `
@@ -712,7 +774,7 @@ function estaVencido(cargo) {
   return !Number.isNaN(fecha.getTime()) && fecha < new Date();
 }
 
-function abrirEdicionCargo(idCargo) {
+function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   const c = cargos.find(x => Number(x.id_cargo) === Number(idCargo));
   if (!c) return;
   setValue('fin-edit-cargo-id', c.id_cargo);
@@ -724,6 +786,13 @@ function abrirEdicionCargo(idCargo) {
   const ctx = document.getElementById('fin-edit-cargo-contexto');
   if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
   showModal('modalEditarCargo');
+  if (enfocarDescuento) {
+    window.setTimeout(() => {
+      const input = document.getElementById('fin-edit-cargo-descuento');
+      input?.focus();
+      input?.select();
+    }, 180);
+  }
 }
 
 async function guardarEdicionCargo(event) {

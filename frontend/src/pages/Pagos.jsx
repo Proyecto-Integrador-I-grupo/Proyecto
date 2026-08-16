@@ -20,8 +20,12 @@ export default function Pagos() {
       <div className="finance-toolbar mb-3">
         <div className="finance-toolbar-copy">
           <p className="eyebrow mb-1">Administración financiera</p>
-          <h2 className="card-title-serif h4 mb-1"><i className="bi bi-cash-coin me-2"></i>Pagos y facturación</h2>
-          <p className="text-muted small mb-0">Administra saldos, pagos y facturas de los servicios educativos.</p>
+          <h2 className="card-title-serif h4 mb-1">
+            <i className="bi bi-cash-coin me-2"></i>Pagos y facturación
+          </h2>
+          <p className="text-muted small mb-0">
+            Primero registra los pagos pendientes. Al cancelar el saldo, el cargo pasa a facturación.
+          </p>
         </div>
         <div className="finance-toolbar-actions">
           <button id="fin-nuevo-cargo" type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoCargo">
@@ -58,33 +62,90 @@ export default function Pagos() {
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm mb-3 finance-account-card">
-        <div className="card-body">
-          <div className="finance-card-heading mb-3">
-            <div>
-              <h3 className="h6 mb-1"><i className="bi bi-wallet2 me-2"></i>Saldos pendientes</h3>
-              <p className="small text-muted mb-0">Estudiantes con montos por cancelar. <span id="fin-morosos-resumen" className="finance-overdue-summary"></span></p>
+      <div className="finance-flow-grid">
+        <div className="card border-0 shadow-sm finance-flow-card finance-flow-card-primary">
+          <div className="card-body">
+            <div className="finance-flow-heading mb-3">
+              <div>
+                <span className="finance-step">1</span>
+                <div>
+                  <h3 className="h5 mb-1">Pendientes de pago</h3>
+                  <p className="small text-muted mb-0">Aquí aparecen únicamente los cargos con saldo por cancelar.</p>
+                </div>
+              </div>
+              <span id="fin-pendientes-resumen" className="badge rounded-pill finance-count-badge">0 pendientes</span>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table align-middle mb-0 finance-flow-table">
+                <thead>
+                  <tr>
+                    <th>Estudiante</th>
+                    <th>Concepto</th>
+                    <th>Total</th>
+                    <th>Abonado</th>
+                    <th>Saldo</th>
+                    <th>Estado</th>
+                    <th className="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="fin-pendientes-body"></tbody>
+              </table>
             </div>
           </div>
-          <div className="table-responsive">
-            <table className="table table-sm align-middle mb-0 finance-account-table">
-              <thead><tr><th>Estudiante</th><th>Estado</th><th>Abonado</th><th>Saldo pendiente</th></tr></thead>
-              <tbody id="fin-estado-cuentas-body"></tbody>
-            </table>
+        </div>
+
+        <div className="card border-0 shadow-sm finance-flow-card finance-flow-card-invoice">
+          <div className="card-body">
+            <div className="finance-flow-heading mb-3">
+              <div>
+                <span className="finance-step finance-step-done">2</span>
+                <div>
+                  <h3 className="h5 mb-1">Facturación y comprobantes</h3>
+                  <p className="small text-muted mb-0">Los cargos totalmente pagados pasan automáticamente a este apartado.</p>
+                </div>
+              </div>
+              <span id="fin-facturas-resumen" className="badge rounded-pill finance-count-badge invoice">0 pagados</span>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table align-middle mb-0 finance-flow-table">
+                <thead>
+                  <tr>
+                    <th>Estudiante</th>
+                    <th>Concepto</th>
+                    <th>Total pagado</th>
+                    <th>Factura</th>
+                    <th>Estado</th>
+                    <th className="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="fin-facturas-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="finance-secondary-grid">
-        <div className="card border-0 shadow-sm finance-collapsible-card">
+      <div className="finance-tools mt-3">
+        <div className="card border-0 shadow-sm finance-tool-card">
           <div className="card-body">
             <div className="finance-card-heading">
               <div>
-                <h3 className="h6 mb-1"><i className="bi bi-receipt-cutoff me-2"></i>Cargos y facturas</h3>
-                <p className="small text-muted mb-0">Consulta o modifica cargos cuando lo necesites.</p>
+                <h3 className="h6 mb-1"><i className="bi bi-sliders me-2"></i>Administrar cargos</h3>
+                <p className="small text-muted mb-0">Búsqueda, modificación y conceptos de cobro.</p>
               </div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-cargos-collapse" aria-expanded="false" aria-controls="fin-cargos-collapse">
-                <i className="bi bi-chevron-down me-1"></i> Ver cargos
+              <button
+                className="btn btn-sm btn-outline-secondary finance-section-toggle"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#fin-cargos-collapse"
+                data-label-show="Mostrar"
+                data-label-hide="Ocultar"
+                aria-expanded="false"
+                aria-controls="fin-cargos-collapse"
+              >
+                <i className="bi bi-chevron-down me-1"></i> Mostrar
               </button>
             </div>
             <div className="collapse mt-3" id="fin-cargos-collapse">
@@ -107,7 +168,18 @@ export default function Pagos() {
               </div>
               <div className="table-responsive">
                 <table className="table align-middle table-hover mb-0 finance-table">
-                  <thead><tr><th>Estudiante</th><th>Concepto</th><th>Periodo</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Factura</th><th className="text-end">Acciones</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Estudiante</th>
+                      <th>Concepto</th>
+                      <th>Periodo</th>
+                      <th>Total</th>
+                      <th>Saldo</th>
+                      <th>Estado</th>
+                      <th>Factura</th>
+                      <th className="text-end">Acción</th>
+                    </tr>
+                  </thead>
                   <tbody id="fin-cargos-body"></tbody>
                 </table>
               </div>
@@ -115,45 +187,65 @@ export default function Pagos() {
           </div>
         </div>
 
-        <div className="card border-0 shadow-sm finance-collapsible-card finance-extra-card">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div>
-                <h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3>
-                <p className="small text-muted mb-0">Revisa las clases extra ya programadas.</p>
+        <div className="finance-tools-row">
+          <div className="card border-0 shadow-sm finance-tool-card">
+            <div className="card-body">
+              <div className="finance-card-heading">
+                <div>
+                  <h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3>
+                  <p className="small text-muted mb-0">Consulta las clases adicionales programadas.</p>
+                </div>
+                <button
+                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#fin-clases-extra-collapse"
+                  data-label-show="Ver clases"
+                  data-label-hide="Ocultar"
+                  aria-expanded="false"
+                  aria-controls="fin-clases-extra-collapse"
+                >
+                  <i className="bi bi-chevron-down me-1"></i> Ver clases
+                </button>
               </div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-clases-extra-collapse" aria-expanded="false" aria-controls="fin-clases-extra-collapse">
-                <i className="bi bi-chevron-down me-1"></i> Ver clases
-              </button>
-            </div>
-            <div className="collapse mt-3" id="fin-clases-extra-collapse">
-              <div className="table-responsive">
-                <table className="table table-sm align-middle mb-0">
-                  <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
-                  <tbody id="fin-clases-extra-body"></tbody>
-                </table>
+              <div className="collapse mt-3" id="fin-clases-extra-collapse">
+                <div className="table-responsive">
+                  <table className="table table-sm align-middle mb-0">
+                    <thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead>
+                    <tbody id="fin-clases-extra-body"></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="card border-0 shadow-sm finance-collapsible-card">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div>
-                <h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3>
-                <p className="small text-muted mb-0">Consulta pagos anteriores cuando sea necesario.</p>
+          <div className="card border-0 shadow-sm finance-tool-card">
+            <div className="card-body">
+              <div className="finance-card-heading">
+                <div>
+                  <h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3>
+                  <p className="small text-muted mb-0">Registro de pagos anteriores.</p>
+                </div>
+                <button
+                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#fin-historial-collapse"
+                  data-label-show="Ver historial"
+                  data-label-hide="Ocultar"
+                  aria-expanded="false"
+                  aria-controls="fin-historial-collapse"
+                >
+                  <i className="bi bi-chevron-down me-1"></i> Ver historial
+                </button>
               </div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-historial-collapse" aria-expanded="false" aria-controls="fin-historial-collapse">
-                <i className="bi bi-chevron-down me-1"></i> Ver historial
-              </button>
-            </div>
-            <div className="collapse mt-3" id="fin-historial-collapse">
-              <div className="table-responsive">
-                <table className="table table-sm align-middle mb-0">
-                  <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
-                  <tbody id="fin-pagos-body"></tbody>
-                </table>
+              <div className="collapse mt-3" id="fin-historial-collapse">
+                <div className="table-responsive">
+                  <table className="table table-sm align-middle mb-0">
+                    <thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead>
+                    <tbody id="fin-pagos-body"></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

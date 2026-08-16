@@ -13,6 +13,7 @@ let currentUser = null;
 let views = [];
 let appViewsReady = false;
 let appInitialized = false;
+let usuariosCargados = [];
 
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 
@@ -760,12 +761,38 @@ function wireUsuariosForm() {
         throw new Error(data.mensaje || data.error || 'Error al guardar el usuario.');
       }
 
+      const usuarioNuevo = data.usuario || {
+        id_usuario: Number(data.id || 0),
+        id_persona: null,
+        id_rol: Number(payload.id_rol),
+        nom_rol: Number(payload.id_rol) === 1 ? 'Administrador' : 'Asistente',
+        nombre: payload.nombre,
+        apellido1: payload.primer_apellido,
+        apellido2: '',
+        correo: payload.correo,
+        estado: 1
+      };
+
+      // La respuesta del POST es la fuente inmediata de verdad para la UI.
+      // Así el usuario aparece una sola vez, sin depender de una segunda
+      // lectura que podría tardar unos milisegundos en reflejar el INSERT.
+      if (Number(usuarioNuevo.id_usuario)) {
+        usuariosCargados = [
+          ...usuariosCargados.filter((u) => Number(u.id_usuario) !== Number(usuarioNuevo.id_usuario)),
+          usuarioNuevo
+        ].sort((a, b) => Number(a.id_usuario) - Number(b.id_usuario));
+        renderTablaUsuarios(usuariosCargados);
+      }
+
       form.reset();
       const rolSelect = document.getElementById('usuario-rol');
       if (rolSelect) rolSelect.value = 'Asistente';
 
-      await loadUsuariosData();
-      showToast('Usuario guardado y cargado en la lista.', 'success');
+      showToast('Usuario guardado correctamente.', 'success');
+
+      // Sincroniza en segundo plano. Si la primera lectura todavía no refleja
+      // el INSERT, conserva la fila recién pintada y reintenta sin molestar al usuario.
+      confirmarUsuarioEnLista(Number(usuarioNuevo.id_usuario));
     } catch (error) {
       showToast(error.message || 'No se pudo registrar el usuario.', 'error');
     } finally {
@@ -971,14 +998,42 @@ async function loadUsuariosData() {
       throw new Error(data.mensaje || data.error || 'No se pudo cargar la lista de usuarios.');
     }
 
-    renderTablaUsuarios(data);
-    return data;
+    usuariosCargados = Array.isArray(data) ? data : [];
+    renderTablaUsuarios(usuariosCargados);
+    return usuariosCargados;
   } catch (error) {
     console.error('Error al cargar usuarios:', error);
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${error.message || 'No se pudieron cargar los usuarios.'}</td></tr>`;
     }
     throw error;
+  }
+}
+
+
+async function confirmarUsuarioEnLista(idUsuario) {
+  if (!idUsuario) return;
+
+  for (let intento = 0; intento < 3; intento += 1) {
+    try {
+      if (intento > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (intento + 1)));
+      }
+
+      const res = await apiFetch(`/api/usuarios?_=${Date.now()}-${intento}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ([]));
+
+      if (!res.ok || !Array.isArray(data)) continue;
+
+      const yaVisible = data.some((u) => Number(u.id_usuario) === Number(idUsuario));
+      if (!yaVisible) continue;
+
+      usuariosCargados = data;
+      renderTablaUsuarios(usuariosCargados);
+      return;
+    } catch (error) {
+      console.warn('EduControl: sincronización diferida de usuarios:', error);
+    }
   }
 }
 

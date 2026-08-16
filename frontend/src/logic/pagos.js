@@ -52,10 +52,6 @@ export async function loadPagosData() {
     showToast('Se cargó la información financiera disponible. Usa Refrescar si algún bloque tarda en aparecer.', 'warning');
   }
 
-  // El estado de cuenta se construye después de cargos y pagos para contar con
-  // una alternativa local si el endpoint tarda o no devuelve registros.
-  await cargarEstadoCuentas();
-
   await Promise.allSettled([
     cargarProfesoresExtra(),
     cargarClasesExtra()
@@ -64,8 +60,8 @@ export async function loadPagosData() {
 
 function wirePagosEvents() {
   wire('fin-refrescar', 'click', loadPagosData);
-  wire('fin-busqueda', 'input', debounce(cargarCargos, 250));
-  wire('fin-filtro-estado', 'change', cargarCargos);
+  wire('fin-busqueda', 'input', debounce(renderCargos, 180));
+  wire('fin-filtro-estado', 'change', renderCargos);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
   wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
@@ -78,13 +74,14 @@ function wirePagosEvents() {
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
   wire('fin-extra-fecha', 'change', comprobarDisponibilidadExtra);
 
-  const body = document.getElementById('fin-cargos-body');
-  if (body && !body.dataset.wired) {
-    body.dataset.wired = '1';
-    body.addEventListener('click', async (event) => {
+  const pagosView = document.getElementById('pagos-view');
+  if (pagosView && !pagosView.dataset.cargoActionsWired) {
+    pagosView.dataset.cargoActionsWired = '1';
+    pagosView.addEventListener('click', async (event) => {
       const pagar = event.target.closest('[data-fin-pagar]');
       const facturar = event.target.closest('[data-fin-facturar]');
       const editar = event.target.closest('[data-fin-editar-cargo]');
+
       if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
       if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
       if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar));
@@ -97,14 +94,16 @@ function wirePagosEvents() {
     const selector = btn.getAttribute('data-bs-target');
     const target = selector ? document.querySelector(selector) : null;
     if (!target) return;
+
+    const showLabel = btn.dataset.labelShow || 'Mostrar';
+    const hideLabel = btn.dataset.labelHide || 'Ocultar';
+
     target.addEventListener('shown.bs.collapse', () => {
-      const historial = selector === '#fin-historial-collapse';
-      btn.innerHTML = `<i class="bi bi-chevron-up me-1"></i> ${historial ? 'Ocultar historial' : 'Ocultar clases extra'}`;
+      btn.innerHTML = `<i class="bi bi-chevron-up me-1"></i> ${hideLabel}`;
       btn.setAttribute('aria-expanded', 'true');
     });
     target.addEventListener('hidden.bs.collapse', () => {
-      const historial = selector === '#fin-historial-collapse';
-      btn.innerHTML = `<i class="bi bi-chevron-down me-1"></i> ${historial ? 'Mostrar historial' : 'Mostrar clases extra'}`;
+      btn.innerHTML = `<i class="bi bi-chevron-down me-1"></i> ${showLabel}`;
       btn.setAttribute('aria-expanded', 'false');
     });
   });
@@ -533,59 +532,184 @@ async function guardarClaseExtra(event) {
 }
 
 async function cargarCargos() {
-  const params = new URLSearchParams();
-  const busqueda = document.getElementById('fin-busqueda')?.value.trim();
-  const estado = document.getElementById('fin-filtro-estado')?.value;
-  if (busqueda) params.set('busqueda', busqueda);
-  if (estado) params.set('estado', estado);
-  cargos = await requestJson(`/api/finanzas/cargos?${params.toString()}`);
+  // Siempre se conserva el catálogo completo en memoria. Los filtros de la
+  // sección administrativa se aplican localmente para no alterar los bloques
+  // principales de Pendientes y Facturación.
+  cargos = await requestJson('/api/finanzas/cargos');
+  if (!Array.isArray(cargos)) cargos = [];
   renderCargos();
 }
 
-async function cargarPagos() {
-  pagos = await requestJson('/api/finanzas/pagos');
-  const body = document.getElementById('fin-pagos-body');
-  if (!body) return;
-  body.innerHTML = '';
-  if (!pagos.length) {
-    body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Aún no hay pagos registrados.</td></tr>';
-    return;
-  }
-  pagos.slice(0, 30).forEach((p) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${esc(fechaHora(p.fecha_pago))}</td><td>${esc(p.estudiante_nombre)}</td><td>${esc(p.descripcion)}</td><td>${esc(etiquetaMetodo(p.metodo_pago))}</td><td class="fw-semibold">${moneda(p.monto)}</td><td>${renderFactura(p)}</td><td class="text-end">${p.id_factura_externa ? '<span class="text-muted small">Bloqueado</span>' : `<button class="btn btn-sm btn-outline-secondary" data-fin-editar-pago="${p.id_pago}"><i class="bi bi-pencil"></i></button>`}</td>`;
-    body.appendChild(tr);
-  });
+function renderCargos() {
+  renderPendientesPago();
+  renderFacturacion();
+  renderAdministracionCargos();
 }
 
-function renderCargos() {
-  const body = document.getElementById('fin-cargos-body');
+function renderPendientesPago() {
+  const body = document.getElementById('fin-pendientes-body');
+  const resumen = document.getElementById('fin-pendientes-resumen');
   if (!body) return;
-  body.innerHTML = '';
-  if (!cargos.length) {
-    body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5">No hay cargos con los filtros aplicados.</td></tr>';
+
+  const pendientes = cargos
+    .filter((c) => ['pendiente', 'parcial'].includes(String(c.estado || '').toLowerCase()) && Number(c.saldo || 0) > 0)
+    .sort((a, b) => {
+      const va = estaVencido(a) ? 1 : 0;
+      const vb = estaVencido(b) ? 1 : 0;
+      if (va !== vb) return vb - va;
+      return Number(b.saldo || 0) - Number(a.saldo || 0);
+    });
+
+  if (resumen) {
+    resumen.textContent = `${pendientes.length} pendiente${pendientes.length === 1 ? '' : 's'}`;
+    resumen.classList.toggle('is-empty', pendientes.length === 0);
+  }
+
+  if (!pendientes.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-4">
+          <div class="finance-empty-state">
+            <i class="bi bi-check-circle"></i>
+            <strong>No hay pagos pendientes</strong>
+            <span>Todos los cargos activos están al día.</span>
+          </div>
+        </td>
+      </tr>`;
     return;
   }
 
-  cargos.forEach((c) => {
-    const puedePagar = ['pendiente','parcial'].includes(c.estado);
-    const requiereFactura = c.estado === 'pagado' && c.estado_factura !== 'generada';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
+  body.innerHTML = pendientes.map((c) => {
+    const abonado = Math.max(0, Number(c.total || 0) - Number(c.saldo || 0));
+    return `
+      <tr class="${estaVencido(c) ? 'finance-row-overdue' : ''}">
+        <td>
+          <strong>${esc(c.estudiante_nombre)}</strong>
+          <div class="small text-muted">ID ${c.id_estudiante}</div>
+        </td>
+        <td>
+          <span class="fw-semibold">${esc(c.concepto_nombre)}</span>
+          <div class="small text-muted">${esc(c.descripcion || '')}</div>
+        </td>
+        <td>${moneda(c.total)}</td>
+        <td>${moneda(abonado)}</td>
+        <td class="fw-bold">${moneda(c.saldo)}</td>
+        <td>${badgeEstado(c.estado, c.fecha_vencimiento)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
+            <i class="bi bi-cash-coin"></i> Pagar
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function renderFacturacion() {
+  const body = document.getElementById('fin-facturas-body');
+  const resumen = document.getElementById('fin-facturas-resumen');
+  if (!body) return;
+
+  const pagados = cargos
+    .filter((c) => String(c.estado || '').toLowerCase() === 'pagado')
+    .sort((a, b) => Number(b.id_cargo || 0) - Number(a.id_cargo || 0));
+
+  if (resumen) {
+    resumen.textContent = `${pagados.length} pagado${pagados.length === 1 ? '' : 's'}`;
+    resumen.classList.toggle('is-empty', pagados.length === 0);
+  }
+
+  if (!pagados.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-4">
+          <div class="finance-empty-state compact">
+            <i class="bi bi-receipt"></i>
+            <strong>Aún no hay cargos pagados</strong>
+            <span>Cuando un saldo llegue a cero aparecerá aquí para facturación.</span>
+          </div>
+        </td>
+      </tr>`;
+    return;
+  }
+
+  body.innerHTML = pagados.map((c) => {
+    const tieneFactura = Boolean(c.id_factura_externa);
+    const requiereFactura = !tieneFactura && c.estado_factura !== 'generada';
+    const estadoFactura = tieneFactura
+      ? '<span class="badge rounded-pill text-bg-success">Factura generada</span>'
+      : (c.estado_factura === 'error'
+          ? '<span class="badge rounded-pill text-bg-danger">Error de facturación</span>'
+          : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>');
+
+    return `
+      <tr>
+        <td><strong>${esc(c.estudiante_nombre)}</strong></td>
+        <td>
+          <span class="fw-semibold">${esc(c.concepto_nombre)}</span>
+          <div class="small text-muted">${esc(c.descripcion || '')}</div>
+        </td>
+        <td class="fw-semibold">${moneda(c.total)}</td>
+        <td>${renderFactura(c)}</td>
+        <td>${estadoFactura}</td>
+        <td class="text-end">
+          ${requiereFactura
+            ? `<button class="btn btn-sm btn-outline-primary" data-fin-facturar="${c.id_cargo}">
+                 <i class="bi bi-receipt-cutoff"></i> Generar factura
+               </button>`
+            : '<span class="text-success small fw-semibold"><i class="bi bi-check2-circle"></i> Lista</span>'}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function renderAdministracionCargos() {
+  const body = document.getElementById('fin-cargos-body');
+  if (!body) return;
+
+  const busqueda = String(document.getElementById('fin-busqueda')?.value || '').trim().toLowerCase();
+  const estado = String(document.getElementById('fin-filtro-estado')?.value || '').trim().toLowerCase();
+
+  const filtrados = cargos.filter((c) => {
+    if (estado && String(c.estado || '').toLowerCase() !== estado) return false;
+    if (!busqueda) return true;
+    const texto = [
+      c.estudiante_nombre,
+      c.concepto_nombre,
+      c.descripcion,
+      c.periodo,
+      c.id_estudiante
+    ].join(' ').toLowerCase();
+    return texto.includes(busqueda);
+  });
+
+  if (!filtrados.length) {
+    body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay cargos con los filtros aplicados.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtrados.map((c) => `
+    <tr>
       <td><strong>${esc(c.estudiante_nombre)}</strong><div class="small text-muted">ID ${c.id_estudiante}</div></td>
-      <td><span class="fw-semibold">${esc(c.concepto_nombre)}</span><div class="small text-muted">${esc(c.descripcion)}</div></td>
+      <td><span class="fw-semibold">${esc(c.concepto_nombre)}</span><div class="small text-muted">${esc(c.descripcion || '')}</div></td>
       <td>${esc(c.periodo || '—')}</td>
       <td>${moneda(c.total)}</td>
       <td class="fw-semibold">${moneda(c.saldo)}</td>
       <td>${badgeEstado(c.estado, c.fecha_vencimiento)}</td>
       <td>${renderFactura(c)}</td>
-      <td class="text-end"><div class="d-inline-flex gap-1 flex-wrap justify-content-end">
-        <button class="btn btn-sm btn-outline-secondary" data-fin-editar-cargo="${c.id_cargo}"><i class="bi bi-pencil"></i> Modificar</button>
-        ${puedePagar ? `<button class="btn btn-sm btn-success" data-fin-pagar="${c.id_cargo}"><i class="bi bi-cash"></i> Pagar</button>` : ''}
-        ${requiereFactura ? `<button class="btn btn-sm btn-outline-primary" data-fin-facturar="${c.id_cargo}"><i class="bi bi-receipt"></i> Facturar</button>` : ''}
-      </div></td>`;
-    body.appendChild(tr);
-  });
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary" data-fin-editar-cargo="${c.id_cargo}">
+          <i class="bi bi-pencil"></i> Modificar
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function estaVencido(cargo) {
+  if (!cargo?.fecha_vencimiento) return false;
+  if (!['pendiente', 'parcial'].includes(String(cargo.estado || '').toLowerCase())) return false;
+  const fecha = new Date(`${String(cargo.fecha_vencimiento).slice(0, 10)}T23:59:59`);
+  return !Number.isNaN(fecha.getTime()) && fecha < new Date();
 }
 
 function abrirEdicionCargo(idCargo) {

@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
-  getConfiguracion, putConfiguracion, getClasesExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra
+  getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -27,6 +27,7 @@ router.post("/cargos/:id/pagar", requireRole("administrador", "asistente"), post
 router.put("/pagos/:id", requireRole("administrador", "asistente"), putPago);
 router.post("/cargos/:id/facturar", requireRole("administrador", "asistente"), postFacturar);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
+router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);
 router.get("/profesores/:id/estudiantes-extra", requireRole("administrador", "asistente"), getEstudiantesProfesorExtra);
 router.get("/profesores/:id/disponibilidad-extra", requireRole("administrador", "asistente"), getDisponibilidadClaseExtra);
 router.post("/clases-extra", requireRole("administrador", "asistente"), postClaseExtra);

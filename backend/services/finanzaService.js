@@ -923,6 +923,31 @@ function profesorOcupaDiaPorNombreGrupo(nombreGrupo, fecha) {
   return variantes[dia]?.some((d) => texto.includes(d)) || false;
 }
 
+export async function listarProfesoresParaClaseExtra() {
+  const [rows] = await pool.query(
+    `SELECT
+       pr.id_profesor,
+       pr.materia,
+       pr.estado,
+       p.nombre,
+       p.apellido1,
+       p.apellido2,
+       CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS profesor_nombre,
+       COUNT(DISTINCT CASE
+         WHEN gp.estado = TRUE AND gp.fecha_fin IS NULL THEN gp.id_grupo
+         ELSE NULL
+       END) AS grupos_activos
+     FROM profesor pr
+     INNER JOIN persona p ON p.id_persona = pr.id_persona
+     LEFT JOIN grupo_profesor gp ON gp.id_profesor = pr.id_profesor
+     WHERE pr.estado = TRUE
+       AND p.estado = TRUE
+     GROUP BY pr.id_profesor, pr.materia, pr.estado, p.nombre, p.apellido1, p.apellido2
+     ORDER BY p.apellido1, p.apellido2, p.nombre`
+  );
+  return rows;
+}
+
 export async function listarEstudiantesProfesorExtra(idProfesor) {
   const profesorId = positiveInt(idProfesor, "El profesor");
 

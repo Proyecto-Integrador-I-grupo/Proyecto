@@ -290,59 +290,43 @@ async function cargarEstadoCuentas() {
     estadoCuentas = construirEstadoCuentasLocal();
   }
 
-  if (!estadoCuentas.length) {
-    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay estudiantes con información financiera registrada.</td></tr>';
-    const resumenMorosos = document.getElementById('fin-morosos-resumen');
-    if (resumenMorosos) resumenMorosos.innerHTML = '';
+  const pendientes = estadoCuentas
+    .filter((e) => Number(e.saldo_pendiente || 0) > 0)
+    .sort((a, b) => {
+      const va = Number(a.cargos_vencidos || 0) > 0 ? 1 : 0;
+      const vb = Number(b.cargos_vencidos || 0) > 0 ? 1 : 0;
+      if (va !== vb) return vb - va;
+      return Number(b.saldo_pendiente || 0) - Number(a.saldo_pendiente || 0);
+    });
+
+  const resumen = document.getElementById('fin-morosos-resumen');
+  if (resumen) {
+    resumen.innerHTML = pendientes.length
+      ? `<span class="badge rounded-pill account-status pending">${pendientes.length} pendiente${pendientes.length === 1 ? '' : 's'}</span>`
+      : '<span class="badge rounded-pill account-status paid">Sin saldos pendientes</span>';
+  }
+
+  if (!pendientes.length) {
+    body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay estudiantes con saldos pendientes.</td></tr>';
     return;
   }
 
-  const conSaldo = estadoCuentas.filter((e) => Number(e.saldo_pendiente || 0) > 0);
-  const vencidos = estadoCuentas.filter((e) => Number(e.cargos_vencidos || 0) > 0 && Number(e.saldo_vencido || 0) > 0);
-  const resumenMorosos = document.getElementById('fin-morosos-resumen');
-  if (resumenMorosos) {
-    if (conSaldo.length) {
-      const textoVencidos = vencidos.length ? ` · ${vencidos.length} vencido${vencidos.length === 1 ? '' : 's'}` : '';
-      resumenMorosos.innerHTML = `<span class="badge rounded-pill overdue-count"><i class="bi bi-wallet2 me-1"></i>${conSaldo.length} con saldo pendiente${textoVencidos}</span>`;
-    } else {
-      resumenMorosos.innerHTML = '<span class="badge rounded-pill account-status paid">Todos al día</span>';
-    }
-  }
-
-  const ordenados = estadoCuentas.slice().sort((a, b) => {
-    const va = Number(a.cargos_vencidos || 0) > 0 ? 1 : 0;
-    const vb = Number(b.cargos_vencidos || 0) > 0 ? 1 : 0;
-    if (va !== vb) return vb - va;
-    const sa = Number(a.saldo_pendiente || 0);
-    const sb = Number(b.saldo_pendiente || 0);
-    if (sa !== sb) return sb - sa;
-    return String(a.estudiante_nombre || '').localeCompare(String(b.estudiante_nombre || ''));
-  });
-
-  body.innerHTML = ordenados.map((e) => {
+  body.innerHTML = pendientes.map((e) => {
     const pendiente = Number(e.saldo_pendiente || 0);
     const pagado = Number(e.total_pagado || 0);
-    const vencidosCantidad = Number(e.cargos_vencidos || 0);
-    const saldoVencido = Number(e.saldo_vencido || 0);
+    const vencido = Number(e.cargos_vencidos || 0) > 0 && Number(e.saldo_vencido || 0) > 0;
 
-    let situacion = '<span class="badge rounded-pill account-status neutral">Sin movimientos</span>';
-    if (vencidosCantidad > 0 && saldoVencido > 0) {
-      situacion = `<span class="badge rounded-pill account-status overdue"><i class="bi bi-exclamation-triangle me-1"></i>Moroso</span><div class="small text-danger-emphasis mt-1">Vencido: ${moneda(saldoVencido)}</div>`;
-    } else if (pendiente > 0 && pagado > 0) {
-      situacion = '<span class="badge rounded-pill account-status partial">Pago parcial</span>';
-    } else if (pendiente > 0) {
-      situacion = '<span class="badge rounded-pill account-status pending">Pendiente</span>';
-    } else if (Number(e.total_cargos || 0) > 0 || pagado > 0) {
-      situacion = '<span class="badge rounded-pill account-status paid">Al día</span>';
-    }
+    const estado = vencido
+      ? '<span class="badge rounded-pill account-status overdue">Vencido</span>'
+      : (pagado > 0
+          ? '<span class="badge rounded-pill account-status partial">Abono registrado</span>'
+          : '<span class="badge rounded-pill account-status pending">Pendiente</span>');
 
-    return `<tr class="${vencidosCantidad > 0 ? 'finance-row-overdue' : ''}">
-      <td><strong>${esc(e.estudiante_nombre)}</strong><div class="small text-muted">ID ${e.id_estudiante}</div></td>
-      <td>${situacion}</td>
-      <td>${Number(e.total_cargos || 0)}</td>
-      <td class="fw-semibold text-success-emphasis">${moneda(e.total_pagado)}</td>
-      <td class="fw-semibold ${pendiente > 0 ? 'text-danger-emphasis' : 'text-muted'}">${moneda(pendiente)}</td>
-      <td>${e.ultimo_pago ? esc(fechaHora(e.ultimo_pago)) : '<span class="text-muted">—</span>'}</td>
+    return `<tr class="${vencido ? 'finance-row-overdue' : ''}">
+      <td><strong>${esc(e.estudiante_nombre)}</strong></td>
+      <td>${estado}</td>
+      <td class="fw-semibold">${moneda(pagado)}</td>
+      <td class="fw-semibold text-danger-emphasis">${moneda(pendiente)}</td>
     </tr>`;
   }).join('');
 }

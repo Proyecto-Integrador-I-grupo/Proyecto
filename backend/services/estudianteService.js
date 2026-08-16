@@ -297,6 +297,21 @@ export const eliminarEstudianteService = async (id_estudiante) => {
       [id_estudiante]
     );
 
+    await connection.query(
+      `UPDATE cargo_estudiante
+       SET estado = 'anulado', saldo = 0
+       WHERE id_estudiante = ?
+         AND estado IN ('pendiente', 'parcial')`,
+      [id_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE responsable_pago
+       SET estado = FALSE, principal = FALSE
+       WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
     await connection.commit();
     return { id_estudiante, mensaje: "Estudiante eliminado correctamente" };
   } catch (error) {

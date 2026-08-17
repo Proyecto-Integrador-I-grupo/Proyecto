@@ -5,28 +5,41 @@ export async function consumirServicio(url, options = {}) {
     throw new Error("El servicio externo no está configurado.");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeout || DEFAULT_TIMEOUT);
+  const timeoutMs = Number(options.timeout || DEFAULT_TIMEOUT);
+  const fetchOptions = { ...options };
+  delete fetchOptions.timeout;
+
+  const controller = options.signal ? null : new AbortController();
+  const timeout = controller
+    ? setTimeout(
+        () => controller.abort(),
+        Number.isFinite(timeoutMs) && timeoutMs >= 1000 ? timeoutMs : DEFAULT_TIMEOUT
+      )
+    : null;
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers: {
         Accept: "application/json",
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...(options.headers || {})
       },
-      signal: options.signal || controller.signal
+      signal: options.signal || controller?.signal
     });
 
-    const data = await response.json().catch(() => ({}));
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json().catch(() => ({}))
+      : await response.text().catch(() => "");
 
     if (!response.ok) {
+      const detalle = typeof data === "object" && data !== null
+        ? (data.detalle || data.error || data.mensaje)
+        : String(data || "").slice(0, 240);
+
       throw new Error(
-        data?.detalle ||
-        data?.error ||
-        data?.mensaje ||
-        `El servicio externo respondió con estado ${response.status}.`
+        detalle || `El servicio externo respondió con estado ${response.status}.`
       );
     }
 
@@ -37,7 +50,7 @@ export async function consumirServicio(url, options = {}) {
     }
     throw error;
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 }
 

@@ -696,10 +696,12 @@ export async function listarPagos(filtros = {}) {
     `SELECT
        pg.id_pago, pg.id_cargo, pg.fecha_pago, pg.monto, pg.metodo_pago, pg.referencia,
        c.descripcion, c.total AS total_cargo, c.saldo, c.estado AS estado_cargo,
+       cc.nombre AS concepto_nombre, cc.codigo AS concepto_codigo,
        CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
        fc.id_factura_externa, fc.estado_factura
      FROM pago pg
      INNER JOIN cargo_estudiante c ON c.id_cargo = pg.id_cargo
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
      INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
      INNER JOIN persona p ON p.id_persona = e.id_persona
      LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
@@ -757,17 +759,13 @@ export async function registrarPago(idCargo, datos, idUsuario) {
 
     await connection.commit();
 
-    let facturacion = {
+    const facturacion = {
       ok: false,
-      estado: cargoPagado ? 'pendiente' : 'pendiente_pago',
+      estado: cargoPagado ? 'lista_para_facturar' : 'pendiente_pago',
       mensaje: cargoPagado
-        ? 'Pago aplicado. La factura puede generarse con el servicio externo.'
-        : 'Pago parcial aplicado. La factura se generará al completar el cargo.'
+        ? 'Pago aplicado. El cargo ya está listo para generar la factura desde Facturación.'
+        : 'Pago parcial aplicado. La factura estará disponible al completar el cargo.'
     };
-
-    if (cargoPagado) {
-      facturacion = await generarFacturaDeCargo(cargoId, metodo);
-    }
 
     return {
       id_pago: pagoResult.insertId,

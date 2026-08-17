@@ -391,14 +391,20 @@ async function apiFetch(path, options = {}) {
   }
 
   const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeoutMs = Number(options.timeout || 20000);
+  const fetchOptions = { ...options };
+  delete fetchOptions.timeout;
+
+  const controller = options.signal ? null : new AbortController();
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 20000)
+    : null;
 
   try {
     const res = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
-      signal: options.signal || controller.signal
+      signal: options.signal || controller?.signal
     });
 
     if (res.status === 401) {
@@ -417,7 +423,7 @@ async function apiFetch(path, options = {}) {
     }
     throw error;
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 }
 

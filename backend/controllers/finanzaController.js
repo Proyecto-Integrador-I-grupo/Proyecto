@@ -132,8 +132,10 @@ export async function putConfiguracion(req, res) {
 
 
 export async function getEstadoIntegraciones(req, res) {
-  try { res.json(await obtenerEstadoServiciosFacturacion()); }
-  catch (e) { responderError(res, e, 500); }
+  try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.json(await obtenerEstadoServiciosFacturacion());
+  } catch (e) { responderError(res, e, 500); }
 }
 
 export async function getDocumentoFactura(req, res) {

@@ -1,22 +1,7 @@
 import pool from "../config/database.js";
 import { consumirServicio } from "./integracionService.js";
 
-
 const DEFAULT_FACTURACION_API_URL = "https://proyecto-kn7p.onrender.com";
-
-function obtenerRaizFacturacion() {
-  return normalizarRaizServicio(
-    process.env.FACTURACION_API_URL || DEFAULT_FACTURACION_API_URL,
-    ["/api/facturas"]
-  );
-}
-
-function obtenerRaizDocumentos() {
-  return normalizarRaizServicio(
-    process.env.DOCUMENTOS_API_URL || process.env.FACTURACION_API_URL || DEFAULT_FACTURACION_API_URL,
-    ["/api/documentos", "/api/facturas"]
-  );
-}
 
 const METODOS_FACTURA = {
   efectivo: "01",
@@ -29,6 +14,65 @@ const METODOS_FACTURA = {
 function numero(valor) {
   const n = Number(valor || 0);
   return Number.isFinite(n) ? n : 0;
+}
+
+function normalizarRaizServicio(valor, sufijos = []) {
+  let base = String(valor || "").trim().replace(/\/+$/, "");
+  for (const sufijo of sufijos) {
+    if (base.toLowerCase().endsWith(sufijo.toLowerCase())) {
+      base = base.slice(0, -sufijo.length).replace(/\/+$/, "");
+      break;
+    }
+  }
+  return base;
+}
+
+function esUrlHttpValida(valor) {
+  try {
+    const url = new URL(String(valor || "").trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function resolverRaizServicio(valorEntorno, fallback, sufijos = []) {
+  const candidato = normalizarRaizServicio(valorEntorno, sufijos);
+  if (candidato && esUrlHttpValida(candidato)) {
+    return { url: candidato, usaFallback: false, configuracionInvalida: false };
+  }
+
+  const raizFallback = normalizarRaizServicio(fallback, sufijos);
+  return {
+    url: raizFallback,
+    usaFallback: true,
+    configuracionInvalida: Boolean(String(valorEntorno || "").trim())
+  };
+}
+
+function obtenerConfiguracionRaizFacturacion() {
+  return resolverRaizServicio(
+    process.env.FACTURACION_API_URL,
+    DEFAULT_FACTURACION_API_URL,
+    ["/api/facturas"]
+  );
+}
+
+function obtenerConfiguracionRaizDocumentos() {
+  const valor = process.env.DOCUMENTOS_API_URL || process.env.FACTURACION_API_URL;
+  return resolverRaizServicio(
+    valor,
+    DEFAULT_FACTURACION_API_URL,
+    ["/api/documentos", "/api/facturas"]
+  );
+}
+
+function obtenerRaizFacturacion() {
+  return obtenerConfiguracionRaizFacturacion().url;
+}
+
+function obtenerRaizDocumentos() {
+  return obtenerConfiguracionRaizDocumentos().url;
 }
 
 export async function obtenerConfiguracionFacturacion() {
@@ -82,7 +126,10 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
      INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
      INNER JOIN persona p ON p.id_persona = e.id_persona
      INNER JOIN concepto_cobro ce ON ce.id_concepto = c.id_concepto
-     LEFT JOIN responsable_pago rp ON rp.id_estudiante = e.id_estudiante AND rp.principal = TRUE AND rp.estado = TRUE
+     LEFT JOIN responsable_pago rp
+       ON rp.id_estudiante = e.id_estudiante
+      AND rp.principal = TRUE
+      AND rp.estado = TRUE
      WHERE c.id_cargo = ?
      LIMIT 1`,
     [idCargo]
@@ -114,7 +161,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   }
 
   if (!cargo.responsable_nombre || !cargo.responsable_correo) {
-    await registrarEstadoFactura(idCargo, null, "pendiente_datos", null, "Faltan datos del responsable de pago.");
+    await registrarEstadoFactura(
+      idCargo,
+      null,
+      "pendiente_datos",
+      null,
+      "Faltan datos del responsable de pago."
+    );
     return {
       ok: false,
       estado: "pendiente_datos",
@@ -124,7 +177,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
 
   const config = await obtenerConfiguracionFacturacion();
   if (!config?.institucion_nombre || !config?.numero_identificacion || !config?.correo) {
-    await registrarEstadoFactura(idCargo, null, "pendiente_configuracion", null, "Falta configuración del emisor.");
+    await registrarEstadoFactura(
+      idCargo,
+      null,
+      "pendiente_configuracion",
+      null,
+      "Falta configuración del emisor."
+    );
     return {
       ok: false,
       estado: "pendiente_configuracion",
@@ -185,12 +244,17 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   try {
     const respuesta = await consumirServicio(apiUrl, {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 90000)
     });
+
+    if (!respuesta?.id) {
+      throw new Error("Factura Bonita respondió, pero no devolvió el identificador de la factura.");
+    }
 
     await registrarEstadoFactura(
       idCargo,
-      respuesta.id || null,
+      respuesta.id,
       "generada",
       respuesta,
       null
@@ -199,70 +263,109 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     return {
       ok: true,
       estado: "generada",
-      id_factura: respuesta.id || null,
-      factura: respuesta
+      id_factura: respuesta.id,
+      factura: respuesta,
+      servicio: apiRoot
     };
   } catch (error) {
     await registrarEstadoFactura(idCargo, null, "error", null, error.message);
     return {
       ok: false,
       estado: "error",
-      mensaje: error.message
+      mensaje: error.message,
+      servicio: apiRoot
     };
   }
 }
 
-
-function normalizarRaizServicio(valor, sufijos = []) {
-  let base = String(valor || "").trim().replace(/\/+$/, "");
-  for (const sufijo of sufijos) {
-    if (base.toLowerCase().endsWith(sufijo.toLowerCase())) {
-      base = base.slice(0, -sufijo.length).replace(/\/+$/, "");
-      break;
-    }
-  }
-  return base;
-}
-
-async function probarServicioHttp(baseUrl) {
-  if (!baseUrl) {
-    return { configurado: false, disponible: false, estado: "no_configurado" };
-  }
-
+async function solicitarEstado(baseUrl, ruta, timeoutMs) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/health`, {
-      headers: { Accept: "application/json" },
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}${ruta}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json, text/plain;q=0.9, */*;q=0.8",
+        "User-Agent": "EduControl-Integration/1.0"
+      },
       signal: controller.signal
     });
 
-    const data = await response.json().catch(() => ({}));
-    return {
-      configurado: true,
-      disponible: response.ok,
-      estado: response.ok ? "disponible" : "error",
-      http_status: response.status,
-      detalle: data?.status || data?.mensaje || null
-    };
-  } catch (error) {
-    return {
-      configurado: true,
-      disponible: false,
-      estado: error.name === "AbortError" ? "timeout" : "error",
-      detalle: error.name === "AbortError"
-        ? "El servicio tardó demasiado en responder."
-        : "No fue posible conectar con el servicio."
-    };
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json().catch(() => ({}))
+      : await response.text().catch(() => "");
+
+    return { response, data };
   } finally {
     clearTimeout(timeout);
   }
 }
 
+async function probarServicioHttp(baseUrl) {
+  if (!baseUrl) {
+    return {
+      configurado: false,
+      disponible: false,
+      estado: "no_configurado",
+      detalle: "No hay URL configurada."
+    };
+  }
+
+  const timeoutConfigurado = Number(process.env.FACTURACION_HEALTH_TIMEOUT_MS || 65000);
+  const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
+    ? timeoutConfigurado
+    : 65000;
+
+  const rutas = ["/health", "/api/factura-ejemplo"];
+  let ultimoDetalle = null;
+
+  for (const ruta of rutas) {
+    try {
+      const { response, data } = await solicitarEstado(baseUrl, ruta, timeoutMs);
+      if (response.ok) {
+        const detalle = typeof data === "object" && data !== null
+          ? (data.status || data.mensaje || data.id || "Respuesta correcta")
+          : "Respuesta correcta";
+
+        return {
+          configurado: true,
+          disponible: true,
+          estado: "disponible",
+          http_status: response.status,
+          detalle,
+          ruta_probada: ruta
+        };
+      }
+
+      ultimoDetalle = `El servicio respondió HTTP ${response.status} en ${ruta}.`;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return {
+          configurado: true,
+          disponible: false,
+          estado: "timeout",
+          detalle: "Factura Bonita tardó demasiado en responder. Puede estar iniciando en Render."
+        };
+      }
+      ultimoDetalle = error?.message || "No fue posible conectar con el servicio.";
+    }
+  }
+
+  return {
+    configurado: true,
+    disponible: false,
+    estado: "error",
+    detalle: ultimoDetalle || "No fue posible conectar con el servicio."
+  };
+}
+
 export async function obtenerEstadoServiciosFacturacion() {
-  const facturacionRoot = obtenerRaizFacturacion();
-  const documentosRoot = obtenerRaizDocumentos();
+  const facturacionConfig = obtenerConfiguracionRaizFacturacion();
+  const documentosConfig = obtenerConfiguracionRaizDocumentos();
+  const facturacionRoot = facturacionConfig.url;
+  const documentosRoot = documentosConfig.url;
 
   const [facturacion, documentos] = await Promise.all([
     probarServicioHttp(facturacionRoot),
@@ -274,7 +377,7 @@ export async function obtenerEstadoServiciosFacturacion() {
   const estadoDocumentos = documentos || {
     ...facturacion,
     detalle: facturacion.disponible
-      ? "HTML/PDF disponible en el mismo servicio de Factura Bonita."
+      ? "HTML y PDF disponibles en el mismo servicio de Factura Bonita."
       : facturacion.detalle
   };
 
@@ -290,13 +393,15 @@ export async function obtenerEstadoServiciosFacturacion() {
   return {
     facturacion: {
       ...facturacion,
-      url: facturacionRoot || null,
-      usa_url_predeterminada: !String(process.env.FACTURACION_API_URL || "").trim()
+      url: facturacionRoot,
+      usa_url_predeterminada: facturacionConfig.usaFallback,
+      configuracion_invalida: facturacionConfig.configuracionInvalida
     },
     documentos: {
       ...estadoDocumentos,
-      url: documentosRoot || null,
-      usa_facturacion_principal: !String(process.env.DOCUMENTOS_API_URL || "").trim()
+      url: documentosRoot,
+      usa_facturacion_principal: !String(process.env.DOCUMENTOS_API_URL || "").trim(),
+      configuracion_invalida: documentosConfig.configuracionInvalida
     },
     xml: servicioSimple("XML_API_URL"),
     firma: servicioSimple("FIRMA_API_URL"),
@@ -332,8 +437,11 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
   const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}`;
   const controller = new AbortController();
-  const timeoutMs = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 90000);
-  const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 90000);
+  const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 90000);
+  const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
+    ? timeoutConfigurado
+    : 90000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -360,7 +468,11 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
     const buffer = Buffer.from(await response.arrayBuffer());
     return {
       buffer,
-      contentType: response.headers.get("content-type") || (formatoNormalizado === "pdf" ? "application/pdf" : "text/html; charset=utf-8"),
+      contentType: response.headers.get("content-type") || (
+        formatoNormalizado === "pdf"
+          ? "application/pdf"
+          : "text/html; charset=utf-8"
+      ),
       filename: `factura-${idFactura}.${formatoNormalizado}`,
       idFactura
     };

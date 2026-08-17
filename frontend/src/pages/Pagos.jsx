@@ -2,7 +2,7 @@ import React from 'react';
 
 const Modal = ({ id, title, children, lg = false }) => (
   <div className="modal fade" id={id} tabIndex="-1" aria-hidden="true">
-    <div className={`modal-dialog modal-dialog-centered ${lg ? 'modal-lg' : ''}`}>
+    <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${lg ? 'modal-lg' : ''}`}>
       <div className="modal-content border-0 shadow-lg">
         <div className="modal-header bg-navy text-white">
           <h5 className="modal-title font-serif">{title}</h5>
@@ -17,33 +17,47 @@ const Modal = ({ id, title, children, lg = false }) => (
 export default function Pagos() {
   return (
     <section id="pagos-view" className="view hidden pagos-shell">
-      <div className="finance-toolbar mb-3">
-        <div className="finance-toolbar-copy">
-          <p className="eyebrow mb-1">Administración financiera</p>
-          <h2 className="card-title-serif h4 mb-1">
-            <i className="bi bi-cash-coin me-2"></i>Pagos y facturación
-          </h2>
-          <p className="text-muted small mb-0">
-            Primero registra los pagos pendientes. Al cancelar el saldo, el cargo pasa a facturación.
-          </p>
+      <header className="finance-page-header">
+        <div className="finance-heading-group">
+          <div>
+            <p className="eyebrow mb-1">Administración financiera</p>
+            <h2 className="card-title-serif mb-1">
+              <i className="bi bi-cash-stack me-2"></i>Pagos y facturación
+            </h2>
+            <p className="finance-page-subtitle mb-0">
+              Cobra primero, factura después. Todo el flujo queda vinculado al estudiante y al servicio de Factura Bonita.
+            </p>
+          </div>
+
+          <div className="finance-api-strip" aria-live="polite">
+            <span id="fin-api-page-dot" className="finance-api-dot checking"></span>
+            <div className="finance-api-copy">
+              <small>Servicio externo</small>
+              <strong id="fin-api-page-status">Comprobando Factura Bonita…</strong>
+            </div>
+            <button id="fin-api-page-test" type="button" className="btn btn-sm btn-outline-primary">
+              <i className="bi bi-wifi"></i> Probar API
+            </button>
+          </div>
         </div>
+
         <div className="finance-toolbar-actions">
           <button id="fin-nuevo-cargo" type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoCargo">
             <i className="bi bi-plus-circle"></i> Nuevo cargo
           </button>
-          <button id="fin-nueva-clase-extra" type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalClaseExtra">
+          <button id="fin-nueva-clase-extra" type="button" className="btn btn-external" data-bs-toggle="modal" data-bs-target="#modalClaseExtra">
             <i className="bi bi-calendar2-plus"></i> Hora extra
           </button>
-          <button id="fin-refrescar" type="button" className="btn btn-outline-secondary">
-            <i className="bi bi-arrow-clockwise"></i> Refrescar
-          </button>
           <button id="fin-configuracion" type="button" className="btn btn-outline-primary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConfigFacturacion" title="Configuración de facturación">
-            <i className="bi bi-gear"></i>
+            <i className="bi bi-gear"></i> Configuración
+          </button>
+          <button id="fin-refrescar" type="button" className="btn btn-outline-secondary" title="Actualizar información">
+            <i className="bi bi-arrow-clockwise"></i>
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="finance-summary finance-summary-compact mb-3">
+      <div className="finance-summary finance-summary-compact">
         <div className="finance-summary-card">
           <span className="finance-summary-icon"><i className="bi bi-wallet2"></i></span>
           <div><small>Cobrado</small><strong id="fin-total-cobrado">CRC 0</strong></div>
@@ -58,125 +72,118 @@ export default function Pagos() {
         </div>
         <div className="finance-summary-card">
           <span className="finance-summary-icon info"><i className="bi bi-receipt"></i></span>
-          <div><small>Cargos</small><strong id="fin-total-cargos">0</strong></div>
+          <div><small>Cargos activos</small><strong id="fin-total-cargos">0</strong></div>
         </div>
       </div>
 
-      <div className="finance-flow-grid">
-        <div className="card border-0 shadow-sm finance-flow-card finance-flow-card-primary">
-          <div className="card-body">
-            <div className="finance-flow-heading mb-3">
+      <div className="finance-workspace">
+        <article className="finance-panel finance-payment-panel">
+          <div className="finance-panel-header">
+            <div className="finance-panel-title">
+              <span className="finance-step">1</span>
               <div>
-                <span className="finance-step">1</span>
+                <h3>Pendientes de pago</h3>
+                <p>Abona o cancela el saldo. Al llegar a cero pasa a facturación.</p>
+              </div>
+            </div>
+            <span id="fin-pendientes-resumen" className="finance-count-badge">0 pendientes</span>
+          </div>
+          <div id="fin-pendientes-body" className="finance-record-list"></div>
+        </article>
+
+        <aside className="finance-side-column">
+          <article className="finance-panel finance-invoice-panel">
+            <div className="finance-panel-header compact">
+              <div className="finance-panel-title">
+                <span className="finance-step finance-step-done">2</span>
                 <div>
-                  <h3 className="h5 mb-1">Pendientes de pago</h3>
-                  <p className="small text-muted mb-0">Registra primero el abono o pago completo del estudiante.</p>
+                  <h3>Facturación</h3>
+                  <p>Comprobantes ya pagados.</p>
                 </div>
               </div>
-              <span id="fin-pendientes-resumen" className="badge rounded-pill finance-count-badge">0 pendientes</span>
+              <span id="fin-facturas-resumen" className="finance-count-badge invoice">0 pagados</span>
             </div>
 
-            <div className="table-responsive">
-              <table className="table align-middle mb-0 finance-flow-table">
-                <thead>
-                  <tr>
-                    <th>Estudiante</th>
-                    <th>Concepto</th>
-                    <th>Total</th>
-                    <th>Abonado</th>
-                    <th>Saldo</th>
-                    <th>Estado</th>
-                    <th className="text-end">Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="fin-pendientes-body"></tbody>
-              </table>
+            <button
+              className="finance-open-section"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#fin-facturacion-collapse"
+              data-label-show="Ver facturación"
+              data-label-hide="Ocultar facturación"
+              aria-expanded="false"
+              aria-controls="fin-facturacion-collapse"
+            >
+              <span><i className="bi bi-receipt-cutoff"></i> Ver facturación y comprobantes</span>
+              <i className="bi bi-chevron-down"></i>
+            </button>
+
+            <div className="collapse" id="fin-facturacion-collapse">
+              <div id="fin-facturas-body" className="finance-record-list finance-invoice-list"></div>
             </div>
-          </div>
-        </div>
+          </article>
+
+          <article className="finance-flow-help">
+            <div className="finance-flow-help-icon"><i className="bi bi-diagram-3"></i></div>
+            <div>
+              <strong>Flujo de facturación</strong>
+              <p>Pago completo → Factura Bonita → factura visual o PDF no editable.</p>
+            </div>
+          </article>
+        </aside>
       </div>
 
-      <div className="finance-secondary-grid mt-3">
-        <div className="card border-0 shadow-sm finance-collapsible-card finance-invoice-tool">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div className="d-flex align-items-center gap-2">
-                <span className="finance-mini-step">2</span>
-                <div>
-                  <h3 className="h6 mb-1"><i className="bi bi-receipt-cutoff me-2"></i>Facturación y comprobantes</h3>
-                  <p className="small text-muted mb-0">Cargos ya cancelados y listos para facturar.</p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center gap-2">
-                <span id="fin-facturas-resumen" className="badge rounded-pill finance-count-badge invoice">0 pagados</span>
-                <button
-                  className="btn btn-sm btn-outline-secondary finance-section-toggle"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#fin-facturacion-collapse"
-                  data-label-show="Ver facturación"
-                  data-label-hide="Ocultar"
-                  aria-expanded="false"
-                  aria-controls="fin-facturacion-collapse"
-                >
-                  <i className="bi bi-chevron-down me-1"></i> Ver facturación
-                </button>
-              </div>
+      <div className="finance-tools-grid">
+        <article className="finance-tool-card">
+          <div className="finance-card-heading">
+            <div>
+              <span className="finance-tool-eyebrow">Administración</span>
+              <h3><i className="bi bi-sliders me-2"></i>Cargos y descuentos</h3>
+              <p>Busca, modifica montos, vencimientos o aplica descuentos.</p>
             </div>
-            <div className="collapse mt-3" id="fin-facturacion-collapse">
-              <div className="table-responsive">
-                <table className="table align-middle mb-0 finance-flow-table">
-                  <thead><tr><th>Estudiante</th><th>Concepto</th><th>Total pagado</th><th>Factura</th><th>Estado</th><th className="text-end">Acción</th></tr></thead>
-                  <tbody id="fin-facturas-body"></tbody>
-                </table>
-              </div>
-            </div>
+            <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-cargos-collapse" data-label-show="Abrir" data-label-hide="Cerrar" aria-expanded="false" aria-controls="fin-cargos-collapse">
+              <i className="bi bi-chevron-down me-1"></i> Abrir
+            </button>
           </div>
-        </div>
-
-        <div className="card border-0 shadow-sm finance-collapsible-card">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div>
-                <h3 className="h6 mb-1"><i className="bi bi-sliders me-2"></i>Administrar cargos</h3>
-                <p className="small text-muted mb-0">Consulta y modifica cargos o descuentos.</p>
-              </div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-cargos-collapse" data-label-show="Administrar" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-cargos-collapse">
-                <i className="bi bi-chevron-down me-1"></i> Administrar
-              </button>
-            </div>
-            <div className="collapse mt-3" id="fin-cargos-collapse">
-              <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-                <div className="d-flex gap-2 flex-wrap flex-grow-1">
-                  <div className="input-group input-group-sm finance-search"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="fin-busqueda" className="form-control" placeholder="Estudiante, concepto o descripción..." /></div>
-                  <select id="fin-filtro-estado" className="form-select form-select-sm finance-state-filter"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="parcial">Pagos parciales</option><option value="pagado">Pagados</option></select>
-                </div>
+          <div className="collapse" id="fin-cargos-collapse">
+            <div className="finance-tool-body">
+              <div className="finance-filter-row">
+                <div className="input-group input-group-sm finance-search"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="fin-busqueda" className="form-control" placeholder="Estudiante, concepto o descripción" /></div>
+                <select id="fin-filtro-estado" className="form-select form-select-sm finance-state-filter"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="parcial">Pagos parciales</option><option value="pagado">Pagados</option></select>
                 <button id="fin-nuevo-concepto" type="button" className="btn btn-sm btn-outline-secondary fin-admin-only" data-bs-toggle="modal" data-bs-target="#modalConceptoCobro"><i className="bi bi-tags"></i> Conceptos</button>
               </div>
-              <div className="table-responsive"><table className="table align-middle table-hover mb-0 finance-table"><thead><tr><th>Estudiante</th><th>Concepto</th><th>Periodo</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-cargos-body"></tbody></table></div>
+              <div className="finance-local-scroll"><table className="table align-middle table-hover mb-0 finance-table"><thead><tr><th>Estudiante</th><th>Concepto</th><th>Periodo</th><th>Total</th><th>Saldo</th><th>Estado</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-cargos-body"></tbody></table></div>
             </div>
           </div>
-        </div>
+        </article>
 
-        <div className="card border-0 shadow-sm finance-collapsible-card">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div><h3 className="h6 mb-1"><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3><p className="small text-muted mb-0">Programa o consulta clases adicionales.</p></div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-clases-extra-collapse" data-label-show="Ver clases" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-clases-extra-collapse"><i className="bi bi-chevron-down me-1"></i> Ver clases</button>
+        <article className="finance-tool-card">
+          <div className="finance-card-heading">
+            <div>
+              <span className="finance-tool-eyebrow">Servicios</span>
+              <h3><i className="bi bi-calendar2-week me-2"></i>Clases extra</h3>
+              <p>Consulta clases adicionales programadas y sus cargos.</p>
             </div>
-            <div className="collapse mt-3" id="fin-clases-extra-collapse"><div className="table-responsive"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead><tbody id="fin-clases-extra-body"></tbody></table></div></div>
+            <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-clases-extra-collapse" data-label-show="Abrir" data-label-hide="Cerrar" aria-expanded="false" aria-controls="fin-clases-extra-collapse"><i className="bi bi-chevron-down me-1"></i> Abrir</button>
           </div>
-        </div>
+          <div className="collapse" id="fin-clases-extra-collapse">
+            <div className="finance-tool-body"><div className="finance-local-scroll"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Profesor</th><th>Materia</th><th>Horario</th><th>Cargo</th></tr></thead><tbody id="fin-clases-extra-body"></tbody></table></div></div>
+          </div>
+        </article>
 
-        <div className="card border-0 shadow-sm finance-collapsible-card">
-          <div className="card-body">
-            <div className="finance-card-heading">
-              <div><h3 className="h6 mb-1"><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3><p className="small text-muted mb-0">Consulta pagos anteriores cuando lo necesites.</p></div>
-              <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-historial-collapse" data-label-show="Ver historial" data-label-hide="Ocultar" aria-expanded="false" aria-controls="fin-historial-collapse"><i className="bi bi-chevron-down me-1"></i> Ver historial</button>
+        <article className="finance-tool-card">
+          <div className="finance-card-heading">
+            <div>
+              <span className="finance-tool-eyebrow">Consulta</span>
+              <h3><i className="bi bi-clock-history me-2"></i>Historial de pagos</h3>
+              <p>Revisa pagos anteriores cuando sea necesario.</p>
             </div>
-            <div className="collapse mt-3" id="fin-historial-collapse"><div className="table-responsive"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-pagos-body"></tbody></table></div></div>
+            <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-historial-collapse" data-label-show="Abrir" data-label-hide="Cerrar" aria-expanded="false" aria-controls="fin-historial-collapse"><i className="bi bi-chevron-down me-1"></i> Abrir</button>
           </div>
-        </div>
+          <div className="collapse" id="fin-historial-collapse">
+            <div className="finance-tool-body"><div className="finance-local-scroll"><table className="table table-sm align-middle mb-0"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th>Método</th><th>Monto</th><th>Factura</th><th className="text-end">Acción</th></tr></thead><tbody id="fin-pagos-body"></tbody></table></div></div>
+          </div>
+        </article>
       </div>
 
       <Modal id="modalClaseExtra" title={<><i className="bi bi-calendar2-plus"></i> Programar hora extra</>} lg>
@@ -358,99 +365,97 @@ export default function Pagos() {
         </form>
       </Modal>
 
-      <Modal id="modalConfigFacturacion" title={<><i className="bi bi-building-gear"></i> Configuración de facturación</>} lg>
+      <Modal id="modalConfigFacturacion" title={<><i className="bi bi-building-gear"></i> Facturación e integración</>} lg>
         <form id="fin-config-form">
           <div className="modal-body billing-config-modal">
-            <div className="billing-config-hero">
-              <div className="billing-config-hero-icon"><i className="bi bi-receipt-cutoff"></i></div>
+            <div className="billing-config-intro">
+              <div className="billing-config-intro-icon"><i className="bi bi-receipt-cutoff"></i></div>
               <div>
-                <span className="billing-config-kicker">Factura Bonita</span>
-                <h4>Datos del emisor e integración</h4>
-                <p>EduControl enviará estos datos cuando un cargo pagado se convierta en factura. Las URLs de los servicios permanecen protegidas en Render.</p>
+                <span>Factura Bonita</span>
+                <strong>Configura el emisor y verifica la conexión REST</strong>
+                <p>Las URLs permanecen en Render. Aquí solo administras los datos visibles de la institución.</p>
+              </div>
+              <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary">
+                <i className="bi bi-wifi"></i> Probar API
+              </button>
+            </div>
+
+            <div className="billing-service-overview">
+              <div className="billing-service-card primary-service">
+                <span className="billing-service-icon"><i className="bi bi-cloud-check"></i></span>
+                <div className="billing-service-copy">
+                  <small>Servicio principal</small>
+                  <strong>Factura Bonita</strong>
+                  <span id="fin-service-factura-detail">Comprobando conexión…</span>
+                </div>
+                <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+              </div>
+
+              <div className="billing-service-card">
+                <span className="billing-service-icon"><i className="bi bi-file-earmark-pdf"></i></span>
+                <div className="billing-service-copy">
+                  <small>Documento</small>
+                  <strong>HTML / PDF</strong>
+                  <span id="fin-service-documentos-detail">Documento visual generado por Factura Bonita.</span>
+                </div>
+                <span id="fin-service-documentos-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
               </div>
             </div>
 
-            <div className="billing-config-grid">
-              <section className="billing-config-panel">
-                <div className="billing-config-section-title">
-                  <span><i className="bi bi-building"></i></span>
-                  <div><strong>Datos de la institución</strong><small>Información que aparecerá como emisor.</small></div>
+            <section className="billing-emitter-card">
+              <div className="billing-emitter-heading">
+                <span><i className="bi bi-building"></i></span>
+                <div>
+                  <strong>Datos del emisor</strong>
+                  <small>Esta información se envía a Factura Bonita cuando se genera el comprobante.</small>
                 </div>
+              </div>
 
-                <div className="row g-3 mt-1">
-                  <div className="col-12">
-                    <label className="form-label">Nombre de la institución</label>
-                    <input id="fin-config-nombre" className="form-control" required placeholder="Ej. Colegio EduControl" />
-                  </div>
-                  <div className="col-md-5">
-                    <label className="form-label">Tipo de identificación</label>
-                    <select id="fin-config-tipo-id" className="form-select">
-                      <option value="02">Jurídica</option>
-                      <option value="01">Física</option>
-                      <option value="03">DIMEX</option>
-                      <option value="04">NITE</option>
-                    </select>
-                  </div>
-                  <div className="col-md-7">
-                    <label className="form-label">Identificación</label>
-                    <input id="fin-config-numero-id" className="form-control" required placeholder="Ej. 3-101-123456" autoComplete="off" />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Correo de facturación</label>
-                    <input id="fin-config-correo" type="email" className="form-control" required placeholder="facturacion@educontrol.com" autoComplete="off" />
-                  </div>
+              <div className="billing-emitter-grid">
+                <div className="billing-field billing-field-wide">
+                  <label className="form-label">Nombre de la institución</label>
+                  <input id="fin-config-nombre" className="form-control" required placeholder="Colegio EduControl" autoComplete="organization" />
                 </div>
-              </section>
-
-              <section className="billing-config-panel billing-services-panel">
-                <div className="billing-config-section-title">
-                  <span><i className="bi bi-diagram-3"></i></span>
-                  <div><strong>Servicios conectados</strong><small>Estado de la integración REST.</small></div>
+                <div className="billing-field">
+                  <label className="form-label">Tipo de identificación</label>
+                  <select id="fin-config-tipo-id" className="form-select">
+                    <option value="02">Jurídica</option>
+                    <option value="01">Física</option>
+                    <option value="03">DIMEX</option>
+                    <option value="04">NITE</option>
+                  </select>
                 </div>
-
-                <div className="billing-service-list mt-3">
-                  <div className="billing-service-row primary-service">
-                    <div className="billing-service-icon"><i className="bi bi-cloud-check"></i></div>
-                    <div className="billing-service-copy">
-                      <strong>Factura Bonita</strong>
-                      <small id="fin-service-factura-detail">Comprobando el servicio principal…</small>
-                    </div>
-                    <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  </div>
-
-                  <div className="billing-service-row">
-                    <div className="billing-service-icon"><i className="bi bi-file-earmark-pdf"></i></div>
-                    <div className="billing-service-copy">
-                      <strong>Factura visual y PDF</strong>
-                      <small id="fin-service-documentos-detail">HTML/PDF generado por Factura Bonita.</small>
-                    </div>
-                    <span id="fin-service-documentos-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  </div>
+                <div className="billing-field">
+                  <label className="form-label">Identificación</label>
+                  <input id="fin-config-numero-id" className="form-control" required placeholder="3-101-123456" autoComplete="off" />
                 </div>
-
-                <div className="billing-future-services">
-                  <p>Próximas integraciones</p>
-                  <div className="billing-future-grid">
-                    <div><span>XML</span><span id="fin-service-xml-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-xml-detail"></small></div>
-                    <div><span>Firma</span><span id="fin-service-firma-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-firma-detail"></small></div>
-                    <div><span>Tributación</span><span id="fin-service-tributacion-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-tributacion-detail"></small></div>
-                  </div>
+                <div className="billing-field billing-field-wide">
+                  <label className="form-label">Correo de facturación</label>
+                  <input id="fin-config-correo" type="email" className="form-control" required placeholder="facturacion@educontrol.com" autoComplete="off" />
                 </div>
+              </div>
+            </section>
 
-                <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary w-100 mt-3">
-                  <i className="bi bi-wifi"></i> Probar conexión
-                </button>
-              </section>
-            </div>
+            <details className="billing-future-details">
+              <summary>
+                <span><i className="bi bi-diagram-3"></i> Integraciones siguientes</span>
+                <small>XML, firma y tributación</small>
+              </summary>
+              <div className="billing-future-grid">
+                <div><span>XML</span><span id="fin-service-xml-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-xml-detail"></small></div>
+                <div><span>Firma</span><span id="fin-service-firma-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-firma-detail"></small></div>
+                <div><span>Tributación</span><span id="fin-service-tributacion-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-tributacion-detail"></small></div>
+              </div>
+            </details>
 
             <div className="billing-config-note">
               <i className="bi bi-shield-check"></i>
-              <span>Los endpoints no se escriben aquí. EduControl los obtiene de las variables de entorno del backend, evitando exponer la configuración al navegador.</span>
+              <span>EduControl no expone endpoints en el navegador: el backend consume Factura Bonita y devuelve únicamente el resultado al módulo financiero.</span>
             </div>
           </div>
           <div className="modal-footer billing-config-footer">
             <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar datos del emisor</button>
+            <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar emisor</button>
           </div>
         </form>
       </Modal>

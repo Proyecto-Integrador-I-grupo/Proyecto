@@ -1,5 +1,22 @@
 import pool from "../config/database.js";
-import { consumirServicio, obtenerUrlServicio } from "./integracionService.js";
+import { consumirServicio } from "./integracionService.js";
+
+
+const DEFAULT_FACTURACION_API_URL = "https://proyecto-kn7p.onrender.com";
+
+function obtenerRaizFacturacion() {
+  return normalizarRaizServicio(
+    process.env.FACTURACION_API_URL || DEFAULT_FACTURACION_API_URL,
+    ["/api/facturas"]
+  );
+}
+
+function obtenerRaizDocumentos() {
+  return normalizarRaizServicio(
+    process.env.DOCUMENTOS_API_URL || process.env.FACTURACION_API_URL || DEFAULT_FACTURACION_API_URL,
+    ["/api/documentos", "/api/facturas"]
+  );
+}
 
 const METODOS_FACTURA = {
   efectivo: "01",
@@ -48,14 +65,8 @@ export async function actualizarConfiguracionFacturacion(datos) {
 }
 
 export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
-  const apiUrl = obtenerUrlServicio("FACTURACION_API_URL", "/api/facturas");
-  if (!apiUrl) {
-    return {
-      ok: false,
-      estado: "pendiente_configuracion",
-      mensaje: "FACTURACION_API_URL no está configurada en el backend de EduControl."
-    };
-  }
+  const apiRoot = obtenerRaizFacturacion();
+  const apiUrl = `${apiRoot}/api/facturas`;
 
   const [cargoRows] = await pool.query(
     `SELECT
@@ -250,14 +261,8 @@ async function probarServicioHttp(baseUrl) {
 }
 
 export async function obtenerEstadoServiciosFacturacion() {
-  const facturacionRoot = normalizarRaizServicio(
-    process.env.FACTURACION_API_URL,
-    ["/api/facturas"]
-  );
-  const documentosRoot = normalizarRaizServicio(
-    process.env.DOCUMENTOS_API_URL || process.env.FACTURACION_API_URL,
-    ["/api/documentos", "/api/facturas"]
-  );
+  const facturacionRoot = obtenerRaizFacturacion();
+  const documentosRoot = obtenerRaizDocumentos();
 
   const [facturacion, documentos] = await Promise.all([
     probarServicioHttp(facturacionRoot),
@@ -285,7 +290,8 @@ export async function obtenerEstadoServiciosFacturacion() {
   return {
     facturacion: {
       ...facturacion,
-      url: facturacionRoot || null
+      url: facturacionRoot || null,
+      usa_url_predeterminada: !String(process.env.FACTURACION_API_URL || "").trim()
     },
     documentos: {
       ...estadoDocumentos,
@@ -318,10 +324,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
   }
 
   const idFactura = String(rows[0].id_factura_externa);
-  const root = normalizarRaizServicio(
-    process.env.DOCUMENTOS_API_URL || process.env.FACTURACION_API_URL,
-    ["/api/documentos", "/api/facturas"]
-  );
+  const root = obtenerRaizDocumentos();
 
   if (!root) {
     throw new Error("El servicio de documentos no está configurado.");

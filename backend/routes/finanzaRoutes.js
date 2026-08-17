@@ -36,6 +36,6 @@ router.post("/clases-extra", requireRole("administrador", "asistente"), postClas
 
 router.get("/configuracion", requireRole("administrador"), getConfiguracion);
 router.put("/configuracion", requireRole("administrador"), putConfiguracion);
-router.get("/integraciones/estado", requireRole("administrador"), getEstadoIntegraciones);
+router.get("/integraciones/estado", requireRole("administrador", "asistente"), getEstadoIntegraciones);
 
 export default router;

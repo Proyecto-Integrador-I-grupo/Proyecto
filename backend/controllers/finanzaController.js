@@ -1,7 +1,9 @@
 import * as finanzaService from "../services/finanzaService.js";
 import {
   obtenerConfiguracionFacturacion,
-  actualizarConfiguracionFacturacion
+  actualizarConfiguracionFacturacion,
+  obtenerEstadoServiciosFacturacion,
+  obtenerDocumentoDeCargo
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -126,4 +128,20 @@ export async function getConfiguracion(req, res) {
 export async function putConfiguracion(req, res) {
   try { res.json(await actualizarConfiguracionFacturacion(req.body)); }
   catch (e) { responderError(res, e); }
+}
+
+
+export async function getEstadoIntegraciones(req, res) {
+  try { res.json(await obtenerEstadoServiciosFacturacion()); }
+  catch (e) { responderError(res, e, 500); }
+}
+
+export async function getDocumentoFactura(req, res) {
+  try {
+    const documento = await obtenerDocumentoDeCargo(req.params.id, req.query?.formato || "pdf");
+    res.setHeader("Content-Type", documento.contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${documento.filename}"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(documento.buffer);
+  } catch (e) { responderError(res, e, 502); }
 }

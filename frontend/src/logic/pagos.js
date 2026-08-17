@@ -37,6 +37,12 @@ async function requestJson(path, options = {}) {
 export async function loadPagosData() {
   aplicarPermisos();
 
+  // La prueba del servicio externo corre aparte para que un cold-start de Render
+  // no bloquee la carga de cargos, pagos y estudiantes.
+  cargarEstadoIntegraciones(false).catch((error) => {
+    console.warn('EduControl Finanzas: Factura Bonita no respondió durante la carga inicial.', error);
+  });
+
   const resultadosBase = await Promise.allSettled([
     cargarEstudiantes(),
     cargarResumen(),
@@ -69,6 +75,7 @@ function wirePagosEvents() {
   wire('fin-concepto-existente', 'change', seleccionarConceptoExistente);
   wire('fin-config-form', 'submit', guardarConfiguracion);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
+  wire('fin-api-page-test', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
@@ -111,7 +118,7 @@ function wirePagosEvents() {
     });
   }
 
-  document.querySelectorAll('.finance-section-toggle').forEach((btn) => {
+  document.querySelectorAll('.finance-section-toggle, .finance-open-section').forEach((btn) => {
     if (btn.dataset.collapseWired) return;
     btn.dataset.collapseWired = '1';
     const selector = btn.getAttribute('data-bs-target');
@@ -121,14 +128,24 @@ function wirePagosEvents() {
     const showLabel = btn.dataset.labelShow || 'Mostrar';
     const hideLabel = btn.dataset.labelHide || 'Ocultar';
 
+    const actualizarEtiqueta = (abierto) => {
+      const label = abierto ? hideLabel : showLabel;
+      if (btn.classList.contains('finance-open-section')) {
+        btn.innerHTML = `<span><i class="bi bi-receipt-cutoff"></i> ${label}</span><i class="bi ${abierto ? 'bi-chevron-up' : 'bi-chevron-down'}"></i>`;
+      } else {
+        btn.innerHTML = `<i class="bi ${abierto ? 'bi-chevron-up' : 'bi-chevron-down'} me-1"></i> ${label}`;
+      }
+      btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    };
+
     target.addEventListener('shown.bs.collapse', () => {
-      btn.innerHTML = `<i class="bi bi-chevron-up me-1"></i> ${hideLabel}`;
-      btn.setAttribute('aria-expanded', 'true');
+      actualizarEtiqueta(true);
+      target.closest('.finance-tool-card')?.classList.add('is-open');
       if (target.id === 'fin-facturacion-collapse') renderFacturacion();
     });
     target.addEventListener('hidden.bs.collapse', () => {
-      btn.innerHTML = `<i class="bi bi-chevron-down me-1"></i> ${showLabel}`;
-      btn.setAttribute('aria-expanded', 'false');
+      actualizarEtiqueta(false);
+      target.closest('.finance-tool-card')?.classList.remove('is-open');
     });
   });
 
@@ -643,43 +660,50 @@ function renderPendientesPago() {
 
   if (!pendientes.length) {
     body.innerHTML = `
-      <tr>
-        <td colspan="7" class="text-center py-4">
-          <div class="finance-empty-state">
-            <i class="bi bi-check-circle"></i>
-            <strong>No hay pagos pendientes</strong>
-            <span>Todos los cargos activos están al día.</span>
-          </div>
-        </td>
-      </tr>`;
+      <div class="finance-empty-state finance-empty-card">
+        <i class="bi bi-check-circle"></i>
+        <strong>No hay pagos pendientes</strong>
+        <span>Todos los cargos activos están al día.</span>
+      </div>`;
     return;
   }
 
   body.innerHTML = pendientes.map((c) => {
     const abonado = Math.max(0, Number(c.total || 0) - Number(c.saldo || 0));
+    const vencido = estaVencido(c);
+    const detalle = c.descripcion && c.descripcion !== c.concepto_nombre
+      ? c.descripcion
+      : `Cargo #${c.id_cargo}`;
+
     return `
-      <tr class="${estaVencido(c) ? 'finance-row-overdue' : ''}">
-        <td>
-          <strong>${esc(c.estudiante_nombre)}</strong>
-          <div class="small text-muted">ID ${c.id_estudiante}</div>
-        </td>
-        <td>
-          <span class="fw-semibold">${esc(c.concepto_nombre)}</span>
-          <div class="small text-muted">${esc(c.descripcion || '')}</div>
-        </td>
-        <td>${moneda(c.total)}</td>
-        <td>${moneda(abonado)}</td>
-        <td class="fw-bold">${moneda(c.saldo)}</td>
-        <td>${badgeEstado(c.estado, c.fecha_vencimiento)}</td>
-        <td class="text-end">
-          <div class="finance-row-actions">
-            ${esAdmin() ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Aplicar descuento</button>` : ''}
-            <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
-              <i class="bi bi-cash-coin"></i> Pagar
-            </button>
+      <article class="finance-record-card ${vencido ? 'is-overdue' : ''}">
+        <div class="finance-record-person">
+          <span class="finance-record-avatar"><i class="bi bi-person"></i></span>
+          <div>
+            <strong>${esc(c.estudiante_nombre)}</strong>
+            <span>${esc(c.concepto_nombre)}</span>
+            <small>${esc(detalle)}</small>
           </div>
-        </td>
-      </tr>`;
+        </div>
+
+        <div class="finance-record-money">
+          <div><span>Total</span><strong>${moneda(c.total)}</strong></div>
+          <div><span>Abonado</span><strong>${moneda(abonado)}</strong></div>
+          <div class="finance-record-balance"><span>Saldo</span><strong>${moneda(c.saldo)}</strong></div>
+        </div>
+
+        <div class="finance-record-state">
+          ${badgeEstado(c.estado, c.fecha_vencimiento)}
+          ${c.fecha_vencimiento ? `<small>Vence: ${esc(String(c.fecha_vencimiento).slice(0, 10))}</small>` : ''}
+        </div>
+
+        <div class="finance-record-actions">
+          ${esAdmin() ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Descuento</button>` : ''}
+          <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
+            <i class="bi bi-cash-coin"></i> Pagar
+          </button>
+        </div>
+      </article>`;
   }).join('');
 }
 
@@ -692,15 +716,11 @@ function renderFacturacion() {
 
   if (!pagados.length) {
     body.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center py-4">
-          <div class="finance-empty-state compact">
-            <i class="bi bi-receipt"></i>
-            <strong>Aún no hay cargos pagados</strong>
-            <span>Cuando un saldo llegue a cero aparecerá aquí para facturación.</span>
-          </div>
-        </td>
-      </tr>`;
+      <div class="finance-empty-state finance-empty-card compact">
+        <i class="bi bi-receipt"></i>
+        <strong>Aún no hay cargos pagados</strong>
+        <span>Cuando un saldo llegue a cero aparecerá aquí para facturación.</span>
+      </div>`;
     return;
   }
 
@@ -708,15 +728,17 @@ function renderFacturacion() {
     const tieneFactura = Boolean(c.id_factura_externa);
     const requiereFactura = !tieneFactura && c.estado_factura !== 'generada';
     const estadoFactura = tieneFactura
-      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>Lista para consultar</span>'
+      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>Factura lista</span>'
       : (c.estado_factura === 'error'
-          ? '<span class="badge rounded-pill text-bg-danger">Error de facturación</span>'
-          : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>');
+          ? '<span class="badge rounded-pill text-bg-danger">Error al facturar</span>'
+          : (c.estado_factura === 'pendiente_configuracion'
+              ? '<span class="badge rounded-pill text-bg-warning">Falta configuración</span>'
+              : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>'));
 
     const acciones = tieneFactura
       ? `<div class="finance-invoice-actions">
            <button class="btn btn-sm btn-outline-primary" data-fin-documento="${c.id_cargo}" data-formato="html" title="Abrir factura visual">
-             <i class="bi bi-eye"></i> Ver factura
+             <i class="bi bi-eye"></i> Visual
            </button>
            <button class="btn btn-sm btn-primary" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir PDF no editable">
              <i class="bi bi-file-earmark-pdf"></i> PDF
@@ -729,17 +751,22 @@ function renderFacturacion() {
           : '<span class="text-muted small">Procesando…</span>');
 
     return `
-      <tr>
-        <td><strong>${esc(c.estudiante_nombre)}</strong></td>
-        <td>
-          <span class="fw-semibold">${esc(c.concepto_nombre)}</span>
-          <div class="small text-muted">${esc(c.descripcion || '')}</div>
-        </td>
-        <td class="fw-semibold">${moneda(c.total)}</td>
-        <td>${renderFactura(c)}</td>
-        <td>${estadoFactura}</td>
-        <td class="text-end">${acciones}</td>
-      </tr>`;
+      <article class="finance-invoice-record">
+        <div class="finance-invoice-record-main">
+          <span class="finance-record-avatar invoice"><i class="bi bi-receipt-cutoff"></i></span>
+          <div>
+            <strong>${esc(c.estudiante_nombre)}</strong>
+            <span>${esc(c.concepto_nombre)}</span>
+            <small>${tieneFactura ? esc(c.id_factura_externa) : 'Sin número de factura'}</small>
+          </div>
+        </div>
+        <div class="finance-invoice-record-total">
+          <span>Total pagado</span>
+          <strong>${moneda(c.total)}</strong>
+        </div>
+        <div class="finance-invoice-record-status">${estadoFactura}</div>
+        <div class="finance-invoice-record-actions">${acciones}</div>
+      </article>`;
   }).join('');
 }
 
@@ -1052,6 +1079,30 @@ function estadoServicioTexto(servicio) {
   return { texto: 'Configurado', clase: 'configured', icono: 'bi-link-45deg' };
 }
 
+function pintarEstadoIntegracionPagina(estado) {
+  const label = document.getElementById('fin-api-page-status');
+  const dot = document.getElementById('fin-api-page-dot');
+  if (!label || !dot) return;
+
+  const facturaOk = estado?.facturacion?.disponible === true;
+  const documentosOk = estado?.documentos?.disponible === true;
+
+  dot.className = 'finance-api-dot';
+  if (facturaOk && documentosOk) {
+    dot.classList.add('online');
+    label.textContent = 'Factura Bonita y PDF conectados';
+  } else if (facturaOk) {
+    dot.classList.add('warning');
+    label.textContent = 'Factura Bonita conectada · PDF pendiente';
+  } else if (estado?.facturacion?.configurado) {
+    dot.classList.add('offline');
+    label.textContent = 'Factura Bonita sin conexión';
+  } else {
+    dot.classList.add('offline');
+    label.textContent = 'Servicio de facturación no configurado';
+  }
+}
+
 function pintarEstadoServicio(prefijo, servicio) {
   const badge = document.getElementById(`fin-service-${prefijo}-status`);
   const detalle = document.getElementById(`fin-service-${prefijo}-detail`);
@@ -1069,12 +1120,16 @@ function pintarEstadoServicio(prefijo, servicio) {
 }
 
 async function cargarEstadoIntegraciones(notificar = false) {
-  const btn = document.getElementById('fin-integracion-probar');
-  const original = btn?.innerHTML || '';
-  if (btn) {
+  const botones = [
+    document.getElementById('fin-integracion-probar'),
+    document.getElementById('fin-api-page-test')
+  ].filter(Boolean);
+  const originales = botones.map((btn) => btn.innerHTML);
+
+  botones.forEach((btn) => {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Probando…';
-  }
+  });
 
   try {
     const estado = await requestJson('/api/finanzas/integraciones/estado');
@@ -1083,24 +1138,30 @@ async function cargarEstadoIntegraciones(notificar = false) {
     pintarEstadoServicio('xml', estado.xml);
     pintarEstadoServicio('firma', estado.firma);
     pintarEstadoServicio('tributacion', estado.tributacion);
+    pintarEstadoIntegracionPagina(estado);
 
     if (notificar) {
+      const conectado = estado.facturacion?.disponible && estado.documentos?.disponible;
       showToast(
-        estado.facturacion?.disponible && estado.documentos?.disponible
-          ? 'Factura Bonita y los documentos HTML/PDF están disponibles.'
-          : 'Revisa el estado de los servicios antes de facturar.',
-        estado.facturacion?.disponible && estado.documentos?.disponible ? 'success' : 'warning'
+        conectado
+          ? 'Conexión confirmada: EduControl está consumiendo Factura Bonita y el generador HTML/PDF.'
+          : 'La prueba respondió, pero algún servicio todavía no está disponible.',
+        conectado ? 'success' : 'warning'
       );
     }
+    return estado;
   } catch (e) {
     if (notificar) showToast(e.message, 'error');
-    pintarEstadoServicio('factura', { configurado: true, disponible: false, detalle: e.message });
-    pintarEstadoServicio('documentos', { configurado: true, disponible: false, detalle: e.message });
+    const errorEstado = { configurado: true, disponible: false, detalle: e.message };
+    pintarEstadoServicio('factura', errorEstado);
+    pintarEstadoServicio('documentos', errorEstado);
+    pintarEstadoIntegracionPagina({ facturacion: errorEstado, documentos: errorEstado });
+    throw e;
   } finally {
-    if (btn) {
+    botones.forEach((btn, index) => {
       btn.disabled = false;
-      btn.innerHTML = original || '<i class="bi bi-wifi"></i> Probar conexión';
-    }
+      btn.innerHTML = originales[index] || '<i class="bi bi-wifi"></i> Probar API';
+    });
   }
 }
 

@@ -3,7 +3,8 @@ import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
-  getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra
+  getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
+  getEstadoIntegraciones, getDocumentoFactura
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -26,6 +27,7 @@ router.get("/estudiantes", requireRole("administrador", "asistente"), getEstudia
 router.post("/cargos/:id/pagar", requireRole("administrador", "asistente"), postPago);
 router.put("/pagos/:id", requireRole("administrador", "asistente"), putPago);
 router.post("/cargos/:id/facturar", requireRole("administrador", "asistente"), postFacturar);
+router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);
 router.get("/profesores/:id/estudiantes-extra", requireRole("administrador", "asistente"), getEstudiantesProfesorExtra);
@@ -34,5 +36,6 @@ router.post("/clases-extra", requireRole("administrador", "asistente"), postClas
 
 router.get("/configuracion", requireRole("administrador"), getConfiguracion);
 router.put("/configuracion", requireRole("administrador"), putConfiguracion);
+router.get("/integraciones/estado", requireRole("administrador"), getEstadoIntegraciones);
 
 export default router;

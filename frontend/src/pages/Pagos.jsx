@@ -360,17 +360,98 @@ export default function Pagos() {
 
       <Modal id="modalConfigFacturacion" title={<><i className="bi bi-building-gear"></i> Configuración de facturación</>} lg>
         <form id="fin-config-form">
-          <div className="modal-body p-4">
-            <div className="alert alert-light border small">Estos datos se envían como emisor cuando EduControl consume la API externa de facturación.</div>
-            <div className="row g-3">
-              <div className="col-md-6"><label className="form-label">Nombre de la institución</label><input id="fin-config-nombre" className="form-control" required /></div>
-              <div className="col-md-2"><label className="form-label">Tipo ID</label><select id="fin-config-tipo-id" className="form-select"><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
-              <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-config-numero-id" className="form-control" required /></div>
-              <div className="col-md-6"><label className="form-label">Correo de facturación</label><input id="fin-config-correo" type="email" className="form-control" required /></div>
-              <div className="col-md-6"><label className="form-label">Servicio de facturación</label><input className="form-control" value="FACTURACION_API_URL" readOnly /></div><div className="col-12"><div className="integration-slots"><span>PDF/Documentos: <code>DOCUMENTOS_API_URL</code></span><span>XML: <code>XML_API_URL</code></span><span>Firma: <code>FIRMA_API_URL</code></span><span>Tributación: <code>TRIBUTACION_API_URL</code></span></div><div className="form-text">Estos endpoints quedan en el backend. Cuando los demás equipos publiquen sus servicios, solo se configuran las URLs en Render.</div></div>
+          <div className="modal-body billing-config-modal">
+            <div className="billing-config-hero">
+              <div className="billing-config-hero-icon"><i className="bi bi-receipt-cutoff"></i></div>
+              <div>
+                <span className="billing-config-kicker">Factura Bonita</span>
+                <h4>Datos del emisor e integración</h4>
+                <p>EduControl enviará estos datos cuando un cargo pagado se convierta en factura. Las URLs de los servicios permanecen protegidas en Render.</p>
+              </div>
+            </div>
+
+            <div className="billing-config-grid">
+              <section className="billing-config-panel">
+                <div className="billing-config-section-title">
+                  <span><i className="bi bi-building"></i></span>
+                  <div><strong>Datos de la institución</strong><small>Información que aparecerá como emisor.</small></div>
+                </div>
+
+                <div className="row g-3 mt-1">
+                  <div className="col-12">
+                    <label className="form-label">Nombre de la institución</label>
+                    <input id="fin-config-nombre" className="form-control" required placeholder="Ej. Colegio EduControl" />
+                  </div>
+                  <div className="col-md-5">
+                    <label className="form-label">Tipo de identificación</label>
+                    <select id="fin-config-tipo-id" className="form-select">
+                      <option value="02">Jurídica</option>
+                      <option value="01">Física</option>
+                      <option value="03">DIMEX</option>
+                      <option value="04">NITE</option>
+                    </select>
+                  </div>
+                  <div className="col-md-7">
+                    <label className="form-label">Identificación</label>
+                    <input id="fin-config-numero-id" className="form-control" required placeholder="Ej. 3-101-123456" autoComplete="off" />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label">Correo de facturación</label>
+                    <input id="fin-config-correo" type="email" className="form-control" required placeholder="facturacion@educontrol.com" autoComplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="billing-config-panel billing-services-panel">
+                <div className="billing-config-section-title">
+                  <span><i className="bi bi-diagram-3"></i></span>
+                  <div><strong>Servicios conectados</strong><small>Estado de la integración REST.</small></div>
+                </div>
+
+                <div className="billing-service-list mt-3">
+                  <div className="billing-service-row primary-service">
+                    <div className="billing-service-icon"><i className="bi bi-cloud-check"></i></div>
+                    <div className="billing-service-copy">
+                      <strong>Factura Bonita</strong>
+                      <small id="fin-service-factura-detail">Comprobando el servicio principal…</small>
+                    </div>
+                    <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                  </div>
+
+                  <div className="billing-service-row">
+                    <div className="billing-service-icon"><i className="bi bi-file-earmark-pdf"></i></div>
+                    <div className="billing-service-copy">
+                      <strong>Factura visual y PDF</strong>
+                      <small id="fin-service-documentos-detail">HTML/PDF generado por Factura Bonita.</small>
+                    </div>
+                    <span id="fin-service-documentos-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                  </div>
+                </div>
+
+                <div className="billing-future-services">
+                  <p>Próximas integraciones</p>
+                  <div className="billing-future-grid">
+                    <div><span>XML</span><span id="fin-service-xml-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-xml-detail"></small></div>
+                    <div><span>Firma</span><span id="fin-service-firma-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-firma-detail"></small></div>
+                    <div><span>Tributación</span><span id="fin-service-tributacion-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-tributacion-detail"></small></div>
+                  </div>
+                </div>
+
+                <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary w-100 mt-3">
+                  <i className="bi bi-wifi"></i> Probar conexión
+                </button>
+              </section>
+            </div>
+
+            <div className="billing-config-note">
+              <i className="bi bi-shield-check"></i>
+              <span>Los endpoints no se escriben aquí. EduControl los obtiene de las variables de entorno del backend, evitando exponer la configuración al navegador.</span>
             </div>
           </div>
-          <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar configuración</button></div>
+          <div className="modal-footer billing-config-footer">
+            <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar datos del emisor</button>
+          </div>
         </form>
       </Modal>
     </section>

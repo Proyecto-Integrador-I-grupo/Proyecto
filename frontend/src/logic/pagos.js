@@ -68,6 +68,7 @@ function wirePagosEvents() {
   wire('fin-concepto-form', 'submit', guardarConcepto);
   wire('fin-concepto-existente', 'change', seleccionarConceptoExistente);
   wire('fin-config-form', 'submit', guardarConfiguracion);
+  wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
@@ -84,6 +85,14 @@ function wirePagosEvents() {
     });
   }
 
+  const modalConfiguracion = document.getElementById('modalConfigFacturacion');
+  if (modalConfiguracion && !modalConfiguracion.dataset.integrationWired) {
+    modalConfiguracion.dataset.integrationWired = '1';
+    modalConfiguracion.addEventListener('show.bs.modal', async () => {
+      await Promise.allSettled([cargarConfiguracion(), cargarEstadoIntegraciones(false)]);
+    });
+  }
+
   const pagosView = document.getElementById('pagos-view');
   if (pagosView && !pagosView.dataset.cargoActionsWired) {
     pagosView.dataset.cargoActionsWired = '1';
@@ -92,11 +101,13 @@ function wirePagosEvents() {
       const descuento = event.target.closest('[data-fin-descuento]');
       const facturar = event.target.closest('[data-fin-facturar]');
       const editar = event.target.closest('[data-fin-editar-cargo]');
+      const documento = event.target.closest('[data-fin-documento]');
 
       if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
       if (descuento) abrirEdicionCargo(Number(descuento.dataset.finDescuento), true);
       if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
-      if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar));
+      if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar), facturar);
+      if (documento) await abrirDocumentoFactura(Number(documento.dataset.finDocumento), documento.dataset.formato || 'pdf', documento);
     });
   }
 
@@ -674,7 +685,6 @@ function renderPendientesPago() {
 
 function renderFacturacion() {
   const body = document.getElementById('fin-facturas-body');
-  const resumen = document.getElementById('fin-facturas-resumen');
   if (!body) return;
 
   const pagados = obtenerCargosPagados();
@@ -698,10 +708,25 @@ function renderFacturacion() {
     const tieneFactura = Boolean(c.id_factura_externa);
     const requiereFactura = !tieneFactura && c.estado_factura !== 'generada';
     const estadoFactura = tieneFactura
-      ? '<span class="badge rounded-pill text-bg-success">Factura generada</span>'
+      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>Lista para consultar</span>'
       : (c.estado_factura === 'error'
           ? '<span class="badge rounded-pill text-bg-danger">Error de facturación</span>'
           : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>');
+
+    const acciones = tieneFactura
+      ? `<div class="finance-invoice-actions">
+           <button class="btn btn-sm btn-outline-primary" data-fin-documento="${c.id_cargo}" data-formato="html" title="Abrir factura visual">
+             <i class="bi bi-eye"></i> Ver factura
+           </button>
+           <button class="btn btn-sm btn-primary" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir PDF no editable">
+             <i class="bi bi-file-earmark-pdf"></i> PDF
+           </button>
+         </div>`
+      : (requiereFactura
+          ? `<button class="btn btn-sm btn-primary finance-generate-btn" data-fin-facturar="${c.id_cargo}">
+               <i class="bi bi-receipt-cutoff"></i> Generar factura
+             </button>`
+          : '<span class="text-muted small">Procesando…</span>');
 
     return `
       <tr>
@@ -713,13 +738,7 @@ function renderFacturacion() {
         <td class="fw-semibold">${moneda(c.total)}</td>
         <td>${renderFactura(c)}</td>
         <td>${estadoFactura}</td>
-        <td class="text-end">
-          ${requiereFactura
-            ? `<button class="btn btn-sm btn-outline-primary" data-fin-facturar="${c.id_cargo}">
-                 <i class="bi bi-receipt-cutoff"></i> Generar factura
-               </button>`
-            : '<span class="text-success small fw-semibold"><i class="bi bi-check2-circle"></i> Lista</span>'}
-        </td>
+        <td class="text-end">${acciones}</td>
       </tr>`;
   }).join('');
 }
@@ -887,12 +906,97 @@ async function guardarPago(event) {
   } catch (e) { showToast(e.message, 'error'); }
 }
 
-async function reintentarFactura(idCargo) {
+async function reintentarFactura(idCargo, button = null) {
+  const htmlOriginal = button?.innerHTML || '';
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando…';
+  }
+
   try {
-    const r = await requestJson(`/api/finanzas/cargos/${idCargo}/facturar`, { method: 'POST', body: JSON.stringify({ metodo_pago: 'otro' }) });
-    showToast(r.ok ? `Factura ${r.id_factura || ''} generada.` : (r.mensaje || 'Factura pendiente.'), r.ok ? 'success' : 'warning');
+    const r = await requestJson(`/api/finanzas/cargos/${idCargo}/facturar`, {
+      method: 'POST',
+      body: JSON.stringify({ metodo_pago: 'otro' })
+    });
+
+    if (!r.ok) {
+      showToast(r.mensaje || 'La factura todavía no se puede generar.', 'warning');
+      return;
+    }
+
+    showToast(`Factura ${r.id_factura || ''} generada correctamente.`, 'success');
     await loadPagosData();
-  } catch (e) { showToast(e.message, 'error'); }
+    renderFacturacion();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.innerHTML = htmlOriginal;
+    }
+  }
+}
+
+async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null) {
+  const formatoNormalizado = String(formato || 'pdf').toLowerCase() === 'html' ? 'html' : 'pdf';
+  const htmlOriginal = button?.innerHTML || '';
+  const ventana = window.open('about:blank', '_blank');
+  if (ventana) {
+    ventana.document.write('<title>Preparando factura</title><div style="font-family:system-ui;padding:32px;color:#334155">Preparando factura…</div>');
+    ventana.opener = null;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Abriendo…';
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 90000);
+
+  try {
+    const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/documento?formato=${formatoNormalizado}`, {
+      method: 'GET',
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+      const tipo = res.headers.get('content-type') || '';
+      let mensaje = 'No se pudo abrir el documento de la factura.';
+      if (tipo.includes('application/json')) {
+        const data = await res.json().catch(() => ({}));
+        mensaje = data.mensaje || data.error || mensaje;
+      } else {
+        const texto = await res.text().catch(() => '');
+        if (texto) mensaje = texto.slice(0, 220);
+      }
+      throw new Error(mensaje);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    if (ventana && !ventana.closed) {
+      ventana.location.replace(url);
+    } else {
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.click();
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 120000);
+  } catch (e) {
+    if (ventana && !ventana.closed) ventana.close();
+    showToast(e.name === 'AbortError' ? 'La generación del documento tardó demasiado.' : e.message, 'error');
+  } finally {
+    window.clearTimeout(timeout);
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.innerHTML = htmlOriginal;
+    }
+  }
 }
 
 function seleccionarConceptoExistente() {
@@ -941,6 +1045,65 @@ async function guardarEdicionPago(event) {
   } catch(e){ showToast(e.message,'error'); }
 }
 
+function estadoServicioTexto(servicio) {
+  if (!servicio?.configurado) return { texto: 'Pendiente', clase: 'pending', icono: 'bi-clock' };
+  if (servicio.disponible === true) return { texto: 'Conectado', clase: 'online', icono: 'bi-check-circle' };
+  if (servicio.disponible === false) return { texto: 'Sin conexión', clase: 'offline', icono: 'bi-exclamation-circle' };
+  return { texto: 'Configurado', clase: 'configured', icono: 'bi-link-45deg' };
+}
+
+function pintarEstadoServicio(prefijo, servicio) {
+  const badge = document.getElementById(`fin-service-${prefijo}-status`);
+  const detalle = document.getElementById(`fin-service-${prefijo}-detail`);
+  if (!badge) return;
+
+  const estado = estadoServicioTexto(servicio);
+  badge.className = `billing-service-status ${estado.clase}`;
+  badge.innerHTML = `<i class="bi ${estado.icono}"></i> ${estado.texto}`;
+
+  if (detalle) {
+    detalle.textContent = servicio?.url
+      ? (servicio.detalle || 'Endpoint configurado en el backend.')
+      : (servicio?.detalle || (servicio?.configurado ? 'Endpoint configurado.' : 'Pendiente de integrar.'));
+  }
+}
+
+async function cargarEstadoIntegraciones(notificar = false) {
+  const btn = document.getElementById('fin-integracion-probar');
+  const original = btn?.innerHTML || '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Probando…';
+  }
+
+  try {
+    const estado = await requestJson('/api/finanzas/integraciones/estado');
+    pintarEstadoServicio('factura', estado.facturacion);
+    pintarEstadoServicio('documentos', estado.documentos);
+    pintarEstadoServicio('xml', estado.xml);
+    pintarEstadoServicio('firma', estado.firma);
+    pintarEstadoServicio('tributacion', estado.tributacion);
+
+    if (notificar) {
+      showToast(
+        estado.facturacion?.disponible && estado.documentos?.disponible
+          ? 'Factura Bonita y los documentos HTML/PDF están disponibles.'
+          : 'Revisa el estado de los servicios antes de facturar.',
+        estado.facturacion?.disponible && estado.documentos?.disponible ? 'success' : 'warning'
+      );
+    }
+  } catch (e) {
+    if (notificar) showToast(e.message, 'error');
+    pintarEstadoServicio('factura', { configurado: true, disponible: false, detalle: e.message });
+    pintarEstadoServicio('documentos', { configurado: true, disponible: false, detalle: e.message });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = original || '<i class="bi bi-wifi"></i> Probar conexión';
+    }
+  }
+}
+
 async function cargarConfiguracion() {
   try {
     const c = await requestJson('/api/finanzas/configuracion');
@@ -958,8 +1121,9 @@ async function guardarConfiguracion(event) {
       institucion_nombre: value('fin-config-nombre'), tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'), correo: value('fin-config-correo')
     }) });
+    await cargarEstadoIntegraciones(false);
     hideModal('modalConfigFacturacion');
-    showToast('Configuración de facturación actualizada.', 'success');
+    showToast('Datos del emisor guardados. EduControl ya puede enviarlos a Factura Bonita.', 'success');
   } catch (e) { showToast(e.message, 'error'); }
 }
 

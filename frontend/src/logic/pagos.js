@@ -12,6 +12,7 @@ let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
 let facturaPreviewFormato = 'pdf';
 let logoFacturaData = null;
+const documentosFacturaEnCurso = new Map();
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -1173,6 +1174,12 @@ async function reintentarFactura(idCargo, button = null) {
 }
 
 async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, abrirModal = true) {
+  const claveDocumento = `${Number(idCargo)}:pdf`;
+  if (documentosFacturaEnCurso.has(claveDocumento)) {
+    return documentosFacturaEnCurso.get(claveDocumento);
+  }
+
+  const tareaDocumento = (async () => {
   const formatoNormalizado = 'pdf';
   const htmlOriginal = button?.innerHTML || '';
   const modalEl = document.getElementById('modalFacturaVisual');
@@ -1275,6 +1282,14 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
       button.disabled = false;
       button.innerHTML = htmlOriginal;
     }
+  }
+  })();
+
+  documentosFacturaEnCurso.set(claveDocumento, tareaDocumento);
+  try {
+    return await tareaDocumento;
+  } finally {
+    documentosFacturaEnCurso.delete(claveDocumento);
   }
 }
 

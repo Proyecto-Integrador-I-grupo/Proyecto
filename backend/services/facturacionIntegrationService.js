@@ -76,6 +76,16 @@ function obtenerRaizDocumentos() {
 }
 
 let esquemaLogoConfiguracionPromise = null;
+const logoSincronizadoPorFactura = new Map();
+
+function firmaLogo(valor) {
+  const texto = String(valor || "");
+  return `${texto.length}:${texto.slice(-48)}`;
+}
+
+function esperar(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function asegurarLogoConfiguracion() {
   if (esquemaLogoConfiguracionPromise) return esquemaLogoConfiguracionPromise;
@@ -587,17 +597,26 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
   try {
     const config = await obtenerConfiguracionFacturacion();
     const logo = config?.logo_data || null;
-    if (logo) {
+    const firmaActual = firmaLogo(logo);
+    const firmaSincronizada = logoSincronizadoPorFactura.get(idFactura);
+
+    if (logo && firmaActual !== firmaSincronizada) {
       const facturacionRoot = obtenerRaizFacturacion();
       const controllerLogo = new AbortController();
       const timeoutLogo = setTimeout(() => controllerLogo.abort(), 10000);
       try {
-        await fetch(`${facturacionRoot}/api/facturas/${encodeURIComponent(idFactura)}/logo`, {
+        const respuestaLogo = await fetch(`${facturacionRoot}/api/facturas/${encodeURIComponent(idFactura)}/logo`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ logoUrl: logo, soloSiVacio: false }),
           signal: controllerLogo.signal
         });
+
+        if (respuestaLogo.ok) {
+          logoSincronizadoPorFactura.set(idFactura, firmaActual);
+        } else if (respuestaLogo.status !== 429) {
+          console.warn(`Facturación: sincronización de logo respondió HTTP ${respuestaLogo.status}.`);
+        }
       } finally {
         clearTimeout(timeoutLogo);
       }
@@ -619,12 +638,24 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: {
         Accept: formatoNormalizado === "pdf" ? "application/pdf" : "text/html"
       },
       signal: controller.signal
     });
+
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const esperaMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 5000)
+        : 1200;
+      await esperar(esperaMs);
+      response = await fetch(url, {
+        headers: { Accept: "application/pdf" },
+        signal: controller.signal
+      });
+    }
 
     if (!response.ok) {
       const texto = await response.text().catch(() => "");

@@ -484,7 +484,7 @@ export default function Pagos() {
                 <strong>Preparando comprobante…</strong>
                 <span>Factura Bonita está generando el PDF de solo lectura.</span>
               </div>
-              <iframe id="fin-factura-preview-frame" title="Factura Bonita" className="finance-invoice-preview-frame"></iframe>
+              <object id="fin-factura-preview-frame" type="application/pdf" aria-label="Factura Bonita" className="finance-invoice-preview-frame"></object>
             </div>
           </div>
         </div>

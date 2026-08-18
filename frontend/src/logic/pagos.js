@@ -156,16 +156,36 @@ function wirePagosEvents() {
   });
 
   wire('fin-factura-preview-pdf', 'click', () => {
-    if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'pdf');
+    if (!facturaPreviewUrl) {
+      if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'pdf');
+      return;
+    }
+
+    const nueva = window.open(facturaPreviewUrl, '_blank', 'noopener,noreferrer');
+    if (!nueva) {
+      showToast('El navegador bloqueó la apertura del PDF. Permite ventanas emergentes para este sitio.', 'warning');
+    }
   });
   wire('fin-factura-preview-print', 'click', () => {
-    const frame = document.getElementById('fin-factura-preview-frame');
-    try {
-      frame?.contentWindow?.focus();
-      frame?.contentWindow?.print();
-    } catch {
-      showToast('El navegador no permitió imprimir desde el visor. Abre el PDF e inténtalo nuevamente.', 'warning');
+    if (!facturaPreviewUrl) {
+      showToast('Primero espera a que termine de cargar el PDF.', 'warning');
+      return;
     }
+
+    const nueva = window.open(facturaPreviewUrl, '_blank');
+    if (!nueva) {
+      showToast('El navegador bloqueó la ventana de impresión.', 'warning');
+      return;
+    }
+
+    window.setTimeout(() => {
+      try {
+        nueva.focus();
+        nueva.print();
+      } catch {
+        // El visor PDF del navegador mantiene disponible su propio botón Imprimir.
+      }
+    }, 900);
   });
 
   const modalFacturaVisual = document.getElementById('modalFacturaVisual');
@@ -173,7 +193,7 @@ function wirePagosEvents() {
     modalFacturaVisual.dataset.previewWired = '1';
     modalFacturaVisual.addEventListener('hidden.bs.modal', () => {
       const frame = document.getElementById('fin-factura-preview-frame');
-      if (frame) frame.removeAttribute('src');
+      if (frame) frame.removeAttribute('data');
       if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
       facturaPreviewUrl = null;
       facturaPreviewCargoId = null;
@@ -1189,18 +1209,30 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
       throw new Error(mensaje);
     }
 
-    const blob = await res.blob();
-    if (!blob.size) throw new Error('Factura Bonita devolvió un PDF vacío.');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (!bytes.length) throw new Error('Factura Bonita devolvió un PDF vacío.');
+
+    const firmaPdf = String.fromCharCode(...bytes.slice(0, 5));
+    if (!firmaPdf.startsWith('%PDF')) {
+      const texto = new TextDecoder('utf-8').decode(bytes.slice(0, 300));
+      throw new Error(texto || 'La respuesta recibida no es un PDF válido.');
+    }
+
+    const blob = new Blob([bytes], { type: 'application/pdf' });
 
     if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
     facturaPreviewUrl = URL.createObjectURL(blob);
 
     if (frame) {
-      frame.src = facturaPreviewUrl;
-      frame.onload = () => {
-        loading?.classList.add('hidden');
+      frame.removeAttribute('data');
+      // Forzamos una nueva carga del plugin PDF nativo del navegador.
+      window.requestAnimationFrame(() => {
+        frame.setAttribute('data', `${facturaPreviewUrl}#view=FitH`);
         frame.classList.remove('is-loading');
-      };
+        loading?.classList.add('hidden');
+      });
+    } else {
+      loading?.classList.add('hidden');
     }
   } catch (e) {
     loading?.classList.add('hidden');

@@ -1196,3 +1196,50 @@
   text-align: right;
   overflow-wrap: anywhere;
 }
+
+
+.billing-logo-picker {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--bs-border-color, #d9e2ec);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.billing-logo-preview {
+  min-height: 90px;
+  border: 1px dashed #b8c7d9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: #f8fafc;
+  color: #718096;
+}
+
+.billing-logo-preview img {
+  display: block;
+  max-width: 130px;
+  max-height: 72px;
+  object-fit: contain;
+}
+
+.billing-logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.billing-logo-actions small {
+  color: #667085;
+}
+
+@media (max-width: 700px) {
+  .billing-logo-picker {
+    grid-template-columns: 1fr;
+  }
+}

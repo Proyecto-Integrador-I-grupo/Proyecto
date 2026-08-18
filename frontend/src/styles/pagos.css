@@ -1096,3 +1096,84 @@
     justify-content: flex-start;
   }
 }
+
+/* Visor integrado de Factura Bonita */
+.finance-invoice-preview-modal .modal-content {
+  height: 100vh;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.finance-invoice-preview-header {
+  min-height: 74px;
+  padding: .85rem 1.25rem;
+  gap: 1rem;
+}
+
+.finance-invoice-preview-header > div:first-child {
+  min-width: 0;
+}
+
+.finance-invoice-preview-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.finance-invoice-preview-body {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: #e9eef5;
+}
+
+.finance-invoice-preview-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 74px);
+  border: 0;
+  background: #fff;
+  opacity: 1;
+  transition: opacity .15s ease;
+}
+
+.finance-invoice-preview-frame.is-loading {
+  opacity: 0;
+}
+
+.finance-invoice-preview-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: .7rem;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.finance-invoice-preview-loading span {
+  color: #64748b;
+  font-size: .9rem;
+}
+
+@media (max-width: 720px) {
+  .finance-invoice-preview-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .finance-invoice-preview-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .finance-invoice-preview-actions .btn {
+    flex: 1 1 auto;
+  }
+  .finance-invoice-preview-frame {
+    height: calc(100vh - 126px);
+  }
+}

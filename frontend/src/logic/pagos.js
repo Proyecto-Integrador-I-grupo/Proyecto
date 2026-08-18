@@ -7,6 +7,9 @@ let pagos = [];
 let profesores = [];
 let clasesExtra = [];
 let estadoCuentas = [];
+let facturaPreviewUrl = null;
+let facturaPreviewCargoId = null;
+let facturaPreviewFormato = 'html';
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -149,6 +152,35 @@ function wirePagosEvents() {
       target.closest('.finance-tool-card')?.classList.remove('is-open');
     });
   });
+
+  wire('fin-factura-preview-html', 'click', () => {
+    if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'html');
+  });
+  wire('fin-factura-preview-pdf', 'click', () => {
+    if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'pdf');
+  });
+  wire('fin-factura-preview-print', 'click', () => {
+    const frame = document.getElementById('fin-factura-preview-frame');
+    try {
+      frame?.contentWindow?.focus();
+      frame?.contentWindow?.print();
+    } catch {
+      showToast('El navegador no permitió imprimir desde el visor. Abre el PDF e inténtalo nuevamente.', 'warning');
+    }
+  });
+
+  const modalFacturaVisual = document.getElementById('modalFacturaVisual');
+  if (modalFacturaVisual && !modalFacturaVisual.dataset.previewWired) {
+    modalFacturaVisual.dataset.previewWired = '1';
+    modalFacturaVisual.addEventListener('hidden.bs.modal', () => {
+      const frame = document.getElementById('fin-factura-preview-frame');
+      if (frame) frame.removeAttribute('src');
+      if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
+      facturaPreviewUrl = null;
+      facturaPreviewCargoId = null;
+      facturaPreviewFormato = 'html';
+    });
+  }
 
   const pagosBody = document.getElementById('fin-pagos-body');
   if (pagosBody && !pagosBody.dataset.wired) {
@@ -1008,11 +1040,6 @@ async function guardarPago(event) {
 
 async function reintentarFactura(idCargo, button = null) {
   const htmlOriginal = button?.innerHTML || '';
-  const ventana = window.open('about:blank', '_blank');
-  if (ventana) {
-    ventana.document.write('<title>Factura Bonita</title><div style="font-family:system-ui;padding:32px;color:#334155">Generando factura en Factura Bonita…</div>');
-    ventana.opener = null;
-  }
 
   if (button) {
     button.disabled = true;
@@ -1027,18 +1054,17 @@ async function reintentarFactura(idCargo, button = null) {
     });
 
     if (!r.ok) {
-      if (ventana && !ventana.closed) ventana.close();
       showToast(r.mensaje || 'La factura todavía no se puede generar.', 'warning');
       return;
     }
 
     showToast(`Factura ${r.id_factura || ''} generada por Factura Bonita.`, 'success');
-    await cargarCargos();
-    await cargarPagos();
+    await Promise.allSettled([cargarCargos(), cargarPagos()]);
     renderFacturacion();
-    await abrirDocumentoFactura(idCargo, 'html', null, ventana);
+
+    // El comprobante se presenta dentro de EduControl; no se abre una pestaña externa.
+    await abrirDocumentoFactura(idCargo, 'html', null, true);
   } catch (e) {
-    if (ventana && !ventana.closed) ventana.close();
     showToast(e.message, 'error');
   } finally {
     if (button?.isConnected) {
@@ -1048,14 +1074,35 @@ async function reintentarFactura(idCargo, button = null) {
   }
 }
 
-async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ventanaExistente = null) {
+async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, abrirModal = true) {
   const formatoNormalizado = String(formato || 'pdf').toLowerCase() === 'html' ? 'html' : 'pdf';
   const htmlOriginal = button?.innerHTML || '';
-  const ventana = ventanaExistente || window.open('about:blank', '_blank');
-  if (ventana && !ventanaExistente) {
-    ventana.document.write('<title>Preparando factura</title><div style="font-family:system-ui;padding:32px;color:#334155">Preparando factura…</div>');
-    ventana.opener = null;
+  const modalEl = document.getElementById('modalFacturaVisual');
+  const frame = document.getElementById('fin-factura-preview-frame');
+  const loading = document.getElementById('fin-factura-preview-loading');
+  const title = document.getElementById('fin-factura-preview-title');
+  const htmlBtn = document.getElementById('fin-factura-preview-html');
+  const pdfBtn = document.getElementById('fin-factura-preview-pdf');
+
+  facturaPreviewCargoId = idCargo;
+  facturaPreviewFormato = formatoNormalizado;
+
+  if (title) title.textContent = formatoNormalizado === 'html' ? 'Vista de factura' : 'Factura en PDF';
+  if (htmlBtn) {
+    htmlBtn.classList.toggle('btn-light', formatoNormalizado === 'html');
+    htmlBtn.classList.toggle('btn-outline-light', formatoNormalizado !== 'html');
   }
+  if (pdfBtn) {
+    pdfBtn.classList.toggle('btn-light', formatoNormalizado === 'pdf');
+    pdfBtn.classList.toggle('btn-outline-light', formatoNormalizado !== 'pdf');
+  }
+
+  if (abrirModal && modalEl && window.bootstrap?.Modal) {
+    (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+  }
+
+  loading?.classList.remove('hidden');
+  frame?.classList.add('is-loading');
 
   if (button) {
     button.disabled = true;
@@ -1063,7 +1110,7 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ve
   }
 
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 90000);
+  const timeout = window.setTimeout(() => controller.abort(), 100000);
 
   try {
     const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/documento?formato=${formatoNormalizado}`, {
@@ -1073,34 +1120,40 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ve
 
     if (!res.ok) {
       const tipo = res.headers.get('content-type') || '';
-      let mensaje = 'No se pudo abrir el documento de la factura.';
+      let mensaje = 'Factura Bonita no pudo generar el documento.';
       if (tipo.includes('application/json')) {
         const data = await res.json().catch(() => ({}));
-        mensaje = data.mensaje || data.error || mensaje;
+        mensaje = data.mensaje || data.detalle || data.error || mensaje;
       } else {
         const texto = await res.text().catch(() => '');
-        if (texto) mensaje = texto.slice(0, 220);
+        if (texto) mensaje = texto.slice(0, 240);
       }
       throw new Error(mensaje);
     }
 
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    if (!blob.size) throw new Error('Factura Bonita devolvió un documento vacío.');
 
-    if (ventana && !ventana.closed) {
-      ventana.location.replace(url);
-    } else {
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.target = '_blank';
-      enlace.rel = 'noopener';
-      enlace.click();
+    if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
+    facturaPreviewUrl = URL.createObjectURL(blob);
+
+    if (frame) {
+      frame.src = facturaPreviewUrl;
+      frame.onload = () => {
+        loading?.classList.add('hidden');
+        frame.classList.remove('is-loading');
+      };
     }
-
-    window.setTimeout(() => URL.revokeObjectURL(url), 120000);
   } catch (e) {
-    if (ventana && !ventana.closed) ventana.close();
+    loading?.classList.add('hidden');
+    frame?.classList.remove('is-loading');
     showToast(e.name === 'AbortError' ? 'La generación del documento tardó demasiado.' : e.message, 'error');
+
+    // Si el visor se abrió automáticamente y no pudo obtener el documento, lo cerramos
+    // para que el usuario permanezca en Pagos y facturación.
+    if (abrirModal && modalEl && window.bootstrap?.Modal) {
+      window.bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
   } finally {
     window.clearTimeout(timeout);
     if (button?.isConnected) {

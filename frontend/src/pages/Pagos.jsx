@@ -459,6 +459,39 @@ export default function Pagos() {
           </div>
         </form>
       </Modal>
+
+      <div className="modal fade finance-invoice-preview-modal" id="modalFacturaVisual" tabIndex="-1" aria-hidden="true">
+        <div className="modal-dialog modal-fullscreen">
+          <div className="modal-content border-0">
+            <div className="modal-header bg-navy text-white finance-invoice-preview-header">
+              <div>
+                <small className="d-block text-white-50 text-uppercase">Factura Bonita</small>
+                <h5 className="modal-title mb-0" id="fin-factura-preview-title">Comprobante</h5>
+              </div>
+              <div className="finance-invoice-preview-actions">
+                <button id="fin-factura-preview-html" type="button" className="btn btn-sm btn-light">
+                  <i className="bi bi-file-earmark-text"></i> Visual
+                </button>
+                <button id="fin-factura-preview-pdf" type="button" className="btn btn-sm btn-outline-light">
+                  <i className="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+                <button id="fin-factura-preview-print" type="button" className="btn btn-sm btn-outline-light">
+                  <i className="bi bi-printer"></i> Imprimir
+                </button>
+                <button type="button" className="btn-close btn-close-white ms-1" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+            </div>
+            <div className="modal-body p-0 finance-invoice-preview-body">
+              <div id="fin-factura-preview-loading" className="finance-invoice-preview-loading hidden">
+                <div className="spinner-border text-primary" role="status"></div>
+                <strong>Preparando comprobante…</strong>
+                <span>Factura Bonita está generando el documento.</span>
+              </div>
+              <iframe id="fin-factura-preview-frame" title="Factura Bonita" className="finance-invoice-preview-frame"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

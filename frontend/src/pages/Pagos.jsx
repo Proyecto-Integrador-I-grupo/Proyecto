@@ -442,8 +442,8 @@ export default function Pagos() {
                       <span id="fin-config-logo-empty"><i className="bi bi-image"></i> Sin logo</span>
                     </div>
                     <div className="billing-logo-actions">
-                      <input id="fin-config-logo" type="file" className="form-control" accept="image/png,image/jpeg" />
-                      <small>PNG o JPG, máximo 500 KB. Se aplicará a las nuevas facturas.</small>
+                      <input id="fin-config-logo" type="file" className="form-control" accept="image/png,image/jpeg,image/webp" />
+                      <small>PNG, JPG o WEBP, máximo 500 KB. Se mostrará también al volver a abrir facturas ya generadas.</small>
                       <button id="fin-config-logo-remove" type="button" className="btn btn-sm btn-outline-danger hidden">
                         <i className="bi bi-trash"></i> Quitar logo
                       </button>
@@ -482,7 +482,7 @@ export default function Pagos() {
           <div className="modal-content border-0">
             <div className="modal-header bg-navy text-white finance-invoice-preview-header">
               <div>
-                <small className="d-block text-white-50 text-uppercase">Factura Bonita</small>
+                <small className="d-block text-white-50 text-uppercase">EduControl</small>
                 <h5 className="modal-title mb-0" id="fin-factura-preview-title">Factura en PDF</h5>
               </div>
               <div className="finance-invoice-preview-actions">
@@ -499,9 +499,9 @@ export default function Pagos() {
               <div id="fin-factura-preview-loading" className="finance-invoice-preview-loading hidden">
                 <div className="spinner-border text-primary" role="status"></div>
                 <strong>Preparando comprobante…</strong>
-                <span>Factura Bonita está generando el PDF de solo lectura.</span>
+                <span>EduControl está generando el PDF de solo lectura.</span>
               </div>
-              <object id="fin-factura-preview-frame" type="application/pdf" aria-label="Factura Bonita" className="finance-invoice-preview-frame"></object>
+              <object id="fin-factura-preview-frame" type="application/pdf" aria-label="Factura EduControl" className="finance-invoice-preview-frame"></object>
             </div>
           </div>
         </div>

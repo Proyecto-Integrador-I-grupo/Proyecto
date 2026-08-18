@@ -108,11 +108,11 @@ function normalizarLogoData(valor) {
   const data = String(valor).trim();
 
   if (data.length > 800000) {
-    throw new Error("El logo es demasiado grande. Usa una imagen PNG o JPG menor a 500 KB.");
+    throw new Error("El logo es demasiado grande. Usa una imagen PNG, JPG o WEBP menor a 500 KB.");
   }
 
-  if (!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=\s]+$/i.test(data)) {
-    throw new Error("El logo debe ser una imagen PNG o JPG válida.");
+  if (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=\s]+$/i.test(data)) {
+    throw new Error("El logo debe ser una imagen PNG, JPG o WEBP válida.");
   }
 
   return data;
@@ -583,6 +583,28 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
   const idFactura = String(rows[0].id_factura_externa);
   const root = obtenerRaizDocumentos();
+
+  try {
+    const config = await obtenerConfiguracionFacturacion();
+    const logo = config?.logo_data || null;
+    if (logo) {
+      const facturacionRoot = obtenerRaizFacturacion();
+      const controllerLogo = new AbortController();
+      const timeoutLogo = setTimeout(() => controllerLogo.abort(), 10000);
+      try {
+        await fetch(`${facturacionRoot}/api/facturas/${encodeURIComponent(idFactura)}/logo`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ logoUrl: logo, soloSiVacio: false }),
+          signal: controllerLogo.signal
+        });
+      } finally {
+        clearTimeout(timeoutLogo);
+      }
+    }
+  } catch (error) {
+    console.warn("Facturación: no se pudo sincronizar el logo del comprobante.", error?.message);
+  }
 
   if (!root) {
     throw new Error("El servicio de documentos no está configurado.");

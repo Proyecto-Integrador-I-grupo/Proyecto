@@ -732,7 +732,10 @@ function renderCargos() {
 
 function obtenerCargosPagados() {
   return cargos
-    .filter((c) => String(c.estado || '').toLowerCase() === 'pagado')
+    .filter((c) =>
+      String(c.estado || '').toLowerCase() === 'pagado' &&
+      Number(c.total || 0) > 0
+    )
     .sort((a, b) => Number(b.id_cargo || 0) - Number(a.id_cargo || 0));
 }
 
@@ -1056,15 +1059,56 @@ async function reintentarFactura(idCargo, button = null) {
       timeout: 100000
     });
 
-    if (!r.ok) {
-      const mensaje = r.mensaje || 'La factura todavía no se puede generar.';
+    let facturaResultado = r;
+
+    if (!r.ok && r.estado === 'cliente_requerido' && r.servicio && r.payload) {
+      showToast('Factura Bonita está ocupada entre servidores. Intentando conexión directa…', 'info');
+
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 90000);
+
+      try {
+        const apiResponse = await fetch(`${String(r.servicio).replace(/\/$/, '')}/api/facturas`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(r.payload),
+          signal: controller.signal
+        });
+
+        const apiData = await apiResponse.json().catch(() => ({}));
+
+        if (!apiResponse.ok) {
+          const detalle = apiData.detalle || apiData.error || apiData.mensaje ||
+            `Factura Bonita respondió HTTP ${apiResponse.status}.`;
+          throw new Error(detalle);
+        }
+
+        if (!apiData?.id) {
+          throw new Error('Factura Bonita respondió sin número de factura.');
+        }
+
+        facturaResultado = await requestJson(`/api/finanzas/cargos/${idCargo}/factura-confirmar`, {
+          method: 'POST',
+          body: JSON.stringify(apiData),
+          timeout: 90000
+        });
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    if (!facturaResultado.ok) {
+      const mensaje = facturaResultado.mensaje || 'La factura todavía no se puede generar.';
       showToast(mensaje, 'error');
       await cargarCargos();
       renderFacturacion();
       return;
     }
 
-    showToast(`Factura ${r.id_factura || ''} generada por Factura Bonita.`, 'success');
+    showToast(`Factura ${facturaResultado.id_factura || ''} generada por Factura Bonita.`, 'success');
     await Promise.allSettled([cargarCargos(), cargarPagos()]);
     renderFacturacion();
 

@@ -4,7 +4,7 @@ const baseUrl = import.meta.env.VITE_API_URL || (
     : 'https://proyecto-vcz6.onrender.com'
 );
 
-const REQUEST_TIMEOUT = 20000;
+const REQUEST_TIMEOUT = 90000;
 
 export async function apiFetch(path, options = {}) {
   const controller = new AbortController();

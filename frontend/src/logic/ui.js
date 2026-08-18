@@ -391,13 +391,13 @@ async function apiFetch(path, options = {}) {
   }
 
   const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-  const timeoutMs = Number(options.timeout || 20000);
+  const timeoutMs = Number(options.timeout || 90000);
   const fetchOptions = { ...options };
   delete fetchOptions.timeout;
 
   const controller = options.signal ? null : new AbortController();
   const timeout = controller
-    ? setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 20000)
+    ? setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 90000)
     : null;
 
   try {

@@ -832,12 +832,15 @@ function renderFacturacion() {
   body.innerHTML = pagados.map((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
     const requiereFactura = !tieneFactura && c.estado_factura !== 'generada';
+    const detalleErrorFactura = !tieneFactura && c.error_mensaje
+      ? `<small class="finance-invoice-error-detail">${esc(c.error_mensaje)}</small>`
+      : '';
     const estadoFactura = tieneFactura
       ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>Factura lista</span>'
       : (c.estado_factura === 'error'
-          ? '<span class="badge rounded-pill text-bg-danger">Error al facturar</span>'
+          ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-danger">Error al facturar</span>${detalleErrorFactura}</div>`
           : (c.estado_factura === 'pendiente_configuracion'
-              ? '<span class="badge rounded-pill text-bg-warning">Falta configuración</span>'
+              ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-warning">Falta configuración</span>${detalleErrorFactura}</div>`
               : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>'));
 
     const acciones = tieneFactura
@@ -1054,7 +1057,10 @@ async function reintentarFactura(idCargo, button = null) {
     });
 
     if (!r.ok) {
-      showToast(r.mensaje || 'La factura todavía no se puede generar.', 'warning');
+      const mensaje = r.mensaje || 'La factura todavía no se puede generar.';
+      showToast(mensaje, 'error');
+      await cargarCargos();
+      renderFacturacion();
       return;
     }
 

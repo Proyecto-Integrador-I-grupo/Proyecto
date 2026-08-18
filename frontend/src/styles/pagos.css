@@ -1135,6 +1135,7 @@
   height: calc(100vh - 74px);
   border: 0;
   background: #fff;
+  object-fit: contain;
   opacity: 1;
   transition: opacity .15s ease;
 }

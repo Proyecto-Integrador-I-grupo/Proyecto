@@ -4,7 +4,7 @@ import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
   getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
-  getEstadoIntegraciones, getDocumentoFactura
+  getEstadoIntegraciones, getDocumentoFactura, postConfirmarFacturaCliente
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -27,6 +27,7 @@ router.get("/estudiantes", requireRole("administrador", "asistente"), getEstudia
 router.post("/cargos/:id/pagar", requireRole("administrador", "asistente"), postPago);
 router.put("/pagos/:id", requireRole("administrador", "asistente"), putPago);
 router.post("/cargos/:id/facturar", requireRole("administrador", "asistente"), postFacturar);
+router.post("/cargos/:id/factura-confirmar", requireRole("administrador", "asistente"), postConfirmarFacturaCliente);
 router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);

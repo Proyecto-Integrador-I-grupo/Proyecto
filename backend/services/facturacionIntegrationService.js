@@ -271,7 +271,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       method: "POST",
       body: JSON.stringify(payload),
       timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 90000),
-      retry429: Number(process.env.FACTURACION_429_RETRIES || 3)
+      retry429: 0
     });
 
     if (!respuesta?.id) {
@@ -296,6 +296,20 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   } catch (error) {
     const mensaje = error?.message || "No se pudo generar la factura.";
     console.error(`[Factura Bonita] cargo ${idCargo}:`, mensaje);
+
+    const esLimiteTemporal =
+      /429|too many requests|límite temporal|limite temporal/i.test(mensaje);
+
+    if (esLimiteTemporal) {
+      return {
+        ok: false,
+        estado: "cliente_requerido",
+        mensaje: "La comunicación servidor a servidor está limitada temporalmente. EduControl intentará completar la factura desde el navegador.",
+        servicio: apiRoot,
+        payload
+      };
+    }
+
     await registrarEstadoFactura(idCargo, null, "error", null, mensaje);
     return {
       ok: false,
@@ -304,6 +318,46 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       servicio: apiRoot
     };
   }
+}
+
+export async function confirmarFacturaGeneradaDesdeCliente(idCargo, respuesta) {
+  const id = String(respuesta?.id || respuesta?.id_factura || "").trim();
+  if (!id) {
+    throw new Error("Factura Bonita no devolvió un identificador válido.");
+  }
+
+  const cargoId = Number(idCargo);
+  if (!Number.isInteger(cargoId) || cargoId <= 0) {
+    throw new Error("Cargo no válido.");
+  }
+
+  const [rows] = await pool.query(
+    `SELECT id_cargo, estado FROM cargo_estudiante WHERE id_cargo = ? LIMIT 1`,
+    [cargoId]
+  );
+
+  if (!rows.length) {
+    throw new Error("No se encontró el cargo.");
+  }
+
+  if (String(rows[0].estado || "").toLowerCase() !== "pagado") {
+    throw new Error("Solo se puede confirmar una factura de un cargo pagado.");
+  }
+
+  await registrarEstadoFactura(
+    cargoId,
+    id,
+    "generada",
+    respuesta || { id },
+    null
+  );
+
+  return {
+    ok: true,
+    estado: "generada",
+    id_factura: id,
+    factura: respuesta || { id }
+  };
 }
 
 async function solicitarEstado(baseUrl, ruta, timeoutMs) {

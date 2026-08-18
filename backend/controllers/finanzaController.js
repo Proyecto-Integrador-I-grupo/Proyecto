@@ -3,7 +3,8 @@ import {
   obtenerConfiguracionFacturacion,
   actualizarConfiguracionFacturacion,
   obtenerEstadoServiciosFacturacion,
-  obtenerDocumentoDeCargo
+  obtenerDocumentoDeCargo,
+  confirmarFacturaGeneradaDesdeCliente
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -89,6 +90,12 @@ export async function putPago(req, res) {
 export async function postFacturar(req, res) {
   try {
     res.json(await finanzaService.reintentarFactura(req.params.id, req.body?.metodo_pago || 'otro'));
+  } catch (e) { responderError(res, e); }
+}
+
+export async function postConfirmarFacturaCliente(req, res) {
+  try {
+    res.json(await confirmarFacturaGeneradaDesdeCliente(req.params.id, req.body || {}));
   } catch (e) { responderError(res, e); }
 }
 

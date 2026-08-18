@@ -160,34 +160,59 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     };
   }
 
-  if (!cargo.responsable_nombre || !cargo.responsable_correo) {
+  let configGuardada = null;
+  try {
+    configGuardada = await obtenerConfiguracionFacturacion();
+  } catch (error) {
+    console.warn("Facturación: no se pudo leer configuracion_facturacion; se usarán valores de respaldo.", error?.message);
+  }
+
+  const config = {
+    institucion_nombre:
+      configGuardada?.institucion_nombre ||
+      process.env.FACTURACION_EMISOR_NOMBRE ||
+      "EduControl",
+    tipo_identificacion:
+      configGuardada?.tipo_identificacion ||
+      process.env.FACTURACION_EMISOR_TIPO_ID ||
+      "02",
+    numero_identificacion:
+      configGuardada?.numero_identificacion ||
+      process.env.FACTURACION_EMISOR_NUMERO_ID ||
+      "3101000000",
+    correo:
+      configGuardada?.correo ||
+      process.env.FACTURACION_EMISOR_CORREO ||
+      "facturacion@educontrol.com",
+    moneda: configGuardada?.moneda || "CRC",
+    condicion_venta: configGuardada?.condicion_venta || "01"
+  };
+
+  // Los pagos históricos creados antes del módulo de responsables pueden no tener
+  // responsable_pago. Para no bloquear la factura, el estudiante se utiliza como
+  // receptor y el correo institucional queda como canal de entrega temporal.
+  const receptorNombre = String(
+    cargo.responsable_nombre ||
+    [cargo.nombre, cargo.apellido1, cargo.apellido2].filter(Boolean).join(" ")
+  ).trim();
+  const receptorCorreo = String(
+    cargo.responsable_correo ||
+    process.env.FACTURACION_RECEPTOR_CORREO_FALLBACK ||
+    config.correo
+  ).trim().toLowerCase();
+
+  if (!receptorNombre || !receptorCorreo) {
     await registrarEstadoFactura(
       idCargo,
       null,
       "pendiente_datos",
       null,
-      "Faltan datos del responsable de pago."
+      "No fue posible determinar el receptor de la factura."
     );
     return {
       ok: false,
       estado: "pendiente_datos",
-      mensaje: "Registra los datos del responsable de pago antes de generar la factura."
-    };
-  }
-
-  const config = await obtenerConfiguracionFacturacion();
-  if (!config?.institucion_nombre || !config?.numero_identificacion || !config?.correo) {
-    await registrarEstadoFactura(
-      idCargo,
-      null,
-      "pendiente_configuracion",
-      null,
-      "Falta configuración del emisor."
-    );
-    return {
-      ok: false,
-      estado: "pendiente_configuracion",
-      mensaje: "Completa la configuración de facturación de la institución."
+      mensaje: "No fue posible determinar el receptor de la factura."
     };
   }
 
@@ -211,14 +236,14 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       correo: config.correo
     },
     receptor: {
-      nombre: cargo.responsable_nombre,
+      nombre: receptorNombre,
       identificacion: cargo.responsable_numero_id
         ? {
             tipo: cargo.responsable_tipo_id || "01",
             numero: cargo.responsable_numero_id
           }
         : null,
-      correo: cargo.responsable_correo
+      correo: receptorCorreo
     },
     items: [
       {
@@ -268,11 +293,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       servicio: apiRoot
     };
   } catch (error) {
-    await registrarEstadoFactura(idCargo, null, "error", null, error.message);
+    const mensaje = error?.message || "No se pudo generar la factura.";
+    console.error(`[Factura Bonita] cargo ${idCargo}:`, mensaje);
+    await registrarEstadoFactura(idCargo, null, "error", null, mensaje);
     return {
       ok: false,
       estado: "error",
-      mensaje: error.message,
+      mensaje,
       servicio: apiRoot
     };
   }

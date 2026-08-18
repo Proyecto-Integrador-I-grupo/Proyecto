@@ -572,11 +572,113 @@ export async function obtenerEstadoServiciosFacturacion() {
   };
 }
 
-export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
-  const formatoNormalizado = "pdf";
-  if (String(formato || "pdf").trim().toLowerCase() !== "pdf") {
-    throw new Error("Por el momento Factura Bonita entrega únicamente el comprobante PDF.");
+const cacheDocumentosFactura = new Map();
+const documentosFacturaEnCurso = new Map();
+const DOCUMENTO_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function leerDocumentoCache(clave) {
+  const entrada = cacheDocumentosFactura.get(clave);
+  if (!entrada) return null;
+  if (Date.now() - entrada.creadoEn > DOCUMENTO_CACHE_TTL_MS) {
+    cacheDocumentosFactura.delete(clave);
+    return null;
   }
+  return entrada.documento;
+}
+
+function guardarDocumentoCache(clave, documento) {
+  cacheDocumentosFactura.set(clave, { creadoEn: Date.now(), documento });
+  if (cacheDocumentosFactura.size > 40) {
+    const primera = cacheDocumentosFactura.keys().next().value;
+    if (primera) cacheDocumentosFactura.delete(primera);
+  }
+}
+
+function espera429(response, intento) {
+  const retryAfterHeader = String(response.headers.get("retry-after") || "").trim();
+  const segundos = Number(retryAfterHeader);
+  if (Number.isFinite(segundos) && segundos > 0) {
+    return Math.min(Math.max(segundos * 1000, 1500), 30000);
+  }
+
+  const fecha = Date.parse(retryAfterHeader);
+  if (Number.isFinite(fecha)) {
+    return Math.min(Math.max(fecha - Date.now(), 1500), 30000);
+  }
+
+  return [3000, 8000, 15000][Math.min(intento, 2)];
+}
+
+async function descargarDocumentoFactura(url, formatoNormalizado, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    let ultimoResponse = null;
+
+    for (let intento = 0; intento < 3; intento += 1) {
+      const response = await fetch(url, {
+        headers: {
+          Accept: formatoNormalizado === "pdf" ? "application/pdf" : "text/html"
+        },
+        signal: controller.signal
+      });
+
+      ultimoResponse = response;
+      if (response.status !== 429) break;
+
+      if (intento < 2) {
+        const esperaMs = espera429(response, intento);
+        console.warn(`Facturación: servicio de documentos respondió 429. Reintento ${intento + 1}/2 en ${esperaMs} ms.`);
+        try { await response.arrayBuffer(); } catch {}
+        await esperar(esperaMs);
+      }
+    }
+
+    const response = ultimoResponse;
+    if (!response) throw new Error("El servicio de documentos no respondió.");
+
+    if (!response.ok) {
+      const texto = await response.text().catch(() => "");
+      let mensaje = response.status === 429
+        ? "El servicio de Factura Bonita está ocupado. Espera unos segundos e inténtalo nuevamente."
+        : "No se pudo generar el documento de la factura.";
+
+      if (texto) {
+        try {
+          const json = JSON.parse(texto);
+          const detalle = json?.detalle || json?.error || json?.mensaje;
+          if (detalle && response.status !== 429) mensaje = detalle;
+        } catch {
+          if (response.status !== 429) mensaje = texto.slice(0, 220) || mensaje;
+        }
+      }
+      throw new Error(mensaje);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer.length) throw new Error("Factura Bonita devolvió un documento vacío.");
+
+    return {
+      buffer,
+      contentType: response.headers.get("content-type") || (
+        formatoNormalizado === "pdf"
+          ? "application/pdf"
+          : "text/html; charset=utf-8"
+      )
+    };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("La generación del documento tardó demasiado. Inténtalo nuevamente.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
+  const formatoNormalizado = String(formato || "pdf").toLowerCase() === "html" ? "html" : "pdf";
 
   const [rows] = await pool.query(
     `SELECT fc.id_factura_externa, fc.estado_factura, c.estado AS estado_cargo
@@ -593,102 +695,39 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
   const idFactura = String(rows[0].id_factura_externa);
   const root = obtenerRaizDocumentos();
+  if (!root) throw new Error("El servicio de documentos no está configurado.");
 
-  try {
-    const config = await obtenerConfiguracionFacturacion();
-    const logo = config?.logo_data || null;
-    const firmaActual = firmaLogo(logo);
-    const firmaSincronizada = logoSincronizadoPorFactura.get(idFactura);
+  const clave = `${idFactura}:${formatoNormalizado}`;
+  const cache = leerDocumentoCache(clave);
+  if (cache) return cache;
 
-    if (logo && firmaActual !== firmaSincronizada) {
-      const facturacionRoot = obtenerRaizFacturacion();
-      const controllerLogo = new AbortController();
-      const timeoutLogo = setTimeout(() => controllerLogo.abort(), 10000);
-      try {
-        const respuestaLogo = await fetch(`${facturacionRoot}/api/facturas/${encodeURIComponent(idFactura)}/logo`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ logoUrl: logo, soloSiVacio: false }),
-          signal: controllerLogo.signal
-        });
-
-        if (respuestaLogo.ok) {
-          logoSincronizadoPorFactura.set(idFactura, firmaActual);
-        } else if (respuestaLogo.status !== 429) {
-          console.warn(`Facturación: sincronización de logo respondió HTTP ${respuestaLogo.status}.`);
-        }
-      } finally {
-        clearTimeout(timeoutLogo);
-      }
-    }
-  } catch (error) {
-    console.warn("Facturación: no se pudo sincronizar el logo del comprobante.", error?.message);
+  if (documentosFacturaEnCurso.has(clave)) {
+    return documentosFacturaEnCurso.get(clave);
   }
 
-  if (!root) {
-    throw new Error("El servicio de documentos no está configurado.");
-  }
+  const tarea = (async () => {
+    const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}`;
+    const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 90000);
+    const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
+      ? timeoutConfigurado
+      : 90000;
 
-  const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}`;
-  const controller = new AbortController();
-  const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 90000);
-  const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
-    ? timeoutConfigurado
-    : 90000;
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    let response = await fetch(url, {
-      headers: {
-        Accept: formatoNormalizado === "pdf" ? "application/pdf" : "text/html"
-      },
-      signal: controller.signal
-    });
-
-    if (response.status === 429) {
-      const retryAfter = Number(response.headers.get("retry-after"));
-      const esperaMs = Number.isFinite(retryAfter) && retryAfter > 0
-        ? Math.min(retryAfter * 1000, 5000)
-        : 1200;
-      await esperar(esperaMs);
-      response = await fetch(url, {
-        headers: { Accept: "application/pdf" },
-        signal: controller.signal
-      });
-    }
-
-    if (!response.ok) {
-      const texto = await response.text().catch(() => "");
-      let mensaje = "No se pudo generar el documento de la factura.";
-      if (texto) {
-        try {
-          const json = JSON.parse(texto);
-          mensaje = json?.detalle || json?.error || json?.mensaje || mensaje;
-        } catch {
-          mensaje = texto.slice(0, 220) || mensaje;
-        }
-      }
-      throw new Error(mensaje);
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return {
-      buffer,
-      contentType: response.headers.get("content-type") || (
-        formatoNormalizado === "pdf"
-          ? "application/pdf"
-          : "text/html; charset=utf-8"
-      ),
+    const descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
+    const documento = {
+      ...descargado,
       filename: `factura-${idFactura}.${formatoNormalizado}`,
       idFactura
     };
-  } catch (error) {
-    if (error.name === "AbortError") {
-      throw new Error("La generación del documento tardó demasiado. Inténtalo nuevamente.");
-    }
-    throw error;
+
+    guardarDocumentoCache(clave, documento);
+    return documento;
+  })();
+
+  documentosFacturaEnCurso.set(clave, tarea);
+  try {
+    return await tarea;
   } finally {
-    clearTimeout(timeout);
+    documentosFacturaEnCurso.delete(clave);
   }
 }
 

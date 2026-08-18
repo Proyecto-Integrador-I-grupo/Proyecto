@@ -270,7 +270,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     const respuesta = await consumirServicio(apiUrl, {
       method: "POST",
       body: JSON.stringify(payload),
-      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 90000)
+      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 90000),
+      retry429: Number(process.env.FACTURACION_429_RETRIES || 3)
     });
 
     if (!respuesta?.id) {

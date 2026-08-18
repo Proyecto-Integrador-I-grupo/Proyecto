@@ -1465,9 +1465,9 @@ function manejarLogoFactura(event) {
   const archivo = event.target.files?.[0];
   if (!archivo) return;
 
-  if (!['image/png', 'image/jpeg'].includes(archivo.type)) {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type)) {
     event.target.value = '';
-    showToast('El logo debe ser una imagen PNG o JPG.', 'warning');
+    showToast('El logo debe ser una imagen PNG, JPG o WEBP.', 'warning');
     return;
   }
 

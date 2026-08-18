@@ -37,6 +37,11 @@ export async function getCargos(req, res) {
   catch (e) { responderError(res, e, 500); }
 }
 
+export async function getFacturas(req, res) {
+  try { res.json(await finanzaService.listarFacturas()); }
+  catch (e) { responderError(res, e, 500); }
+}
+
 export async function postCargo(req, res) {
   try {
     res.status(201).json(await finanzaService.crearCargo(req.body, req.usuarioActual?.id_usuario));

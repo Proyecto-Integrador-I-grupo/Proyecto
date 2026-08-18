@@ -3,13 +3,14 @@ import { apiFetch, showToast } from './ui.js';
 let conceptos = [];
 let estudiantes = [];
 let cargos = [];
+let facturas = [];
 let pagos = [];
 let profesores = [];
 let clasesExtra = [];
 let estadoCuentas = [];
 let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
-let facturaPreviewFormato = 'html';
+let facturaPreviewFormato = 'pdf';
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -51,6 +52,7 @@ export async function loadPagosData() {
     cargarResumen(),
     cargarConceptos(),
     cargarCargos(),
+    cargarFacturas(),
     cargarPagos(),
     esAdmin() ? cargarConfiguracion() : Promise.resolve()
   ]);
@@ -153,9 +155,6 @@ function wirePagosEvents() {
     });
   });
 
-  wire('fin-factura-preview-html', 'click', () => {
-    if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'html');
-  });
   wire('fin-factura-preview-pdf', 'click', () => {
     if (facturaPreviewCargoId) abrirDocumentoFactura(facturaPreviewCargoId, 'pdf');
   });
@@ -178,7 +177,7 @@ function wirePagosEvents() {
       if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
       facturaPreviewUrl = null;
       facturaPreviewCargoId = null;
-      facturaPreviewFormato = 'html';
+      facturaPreviewFormato = 'pdf';
     });
   }
 
@@ -722,6 +721,15 @@ async function cargarCargos() {
   renderCargos();
 }
 
+async function cargarFacturas() {
+  const data = await requestJson('/api/finanzas/facturas');
+  facturas = Array.isArray(data) ? data : [];
+  actualizarResumenFacturacion();
+
+  const facturacion = document.getElementById('fin-facturacion-collapse');
+  if (facturacion?.classList.contains('show')) renderFacturacion();
+}
+
 function renderCargos() {
   renderPendientesPago();
   actualizarResumenFacturacion();
@@ -731,6 +739,16 @@ function renderCargos() {
 }
 
 function obtenerCargosPagados() {
+  if (Array.isArray(facturas) && facturas.length) {
+    return facturas
+      .filter((c) => Number(c.total || 0) > 0)
+      .sort((a, b) => {
+        const fa = new Date(a.fecha_actualizacion || a.fecha_solicitud || a.fecha_emision || 0).getTime();
+        const fb = new Date(b.fecha_actualizacion || b.fecha_solicitud || b.fecha_emision || 0).getTime();
+        return fb - fa || Number(b.id_cargo || 0) - Number(a.id_cargo || 0);
+      });
+  }
+
   return cargos
     .filter((c) =>
       String(c.estado || '').toLowerCase() === 'pagado' &&
@@ -819,55 +837,50 @@ function renderFacturacion() {
   const body = document.getElementById('fin-facturas-body');
   if (!body) return;
 
-  const pagados = obtenerCargosPagados();
+  const registros = obtenerCargosPagados();
   actualizarResumenFacturacion();
 
-  if (!pagados.length) {
+  if (!registros.length) {
     body.innerHTML = `
       <div class="finance-empty-state finance-empty-card compact">
         <i class="bi bi-receipt"></i>
-        <strong>Aún no hay cargos pagados</strong>
-        <span>Cuando un saldo llegue a cero aparecerá aquí para facturación.</span>
+        <strong>Aún no hay comprobantes</strong>
+        <span>Los cargos pagados aparecerán aquí para generar o consultar su PDF.</span>
       </div>`;
     return;
   }
 
-  body.innerHTML = pagados.map((c) => {
+  body.innerHTML = registros.map((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
-    const requiereFactura = !tieneFactura && c.estado_factura !== 'generada';
+    const estadoCargo = String(c.estado_cargo || c.estado || '').toLowerCase();
+    const puedeGenerar = !tieneFactura && estadoCargo === 'pagado';
     const detalleErrorFactura = !tieneFactura && c.error_mensaje
       ? `<small class="finance-invoice-error-detail">${esc(c.error_mensaje)}</small>`
       : '';
+
     const estadoFactura = tieneFactura
-      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>Factura lista</span>'
+      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>PDF disponible</span>'
       : (c.estado_factura === 'error'
           ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-danger">Error al facturar</span>${detalleErrorFactura}</div>`
-          : (c.estado_factura === 'pendiente_configuracion'
-              ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-warning">Falta configuración</span>${detalleErrorFactura}</div>`
-              : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>'));
+          : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>');
 
     const acciones = tieneFactura
-      ? `<div class="finance-invoice-actions">
-           <button class="btn btn-sm btn-outline-primary" data-fin-documento="${c.id_cargo}" data-formato="html" title="Abrir factura visual">
-             <i class="bi bi-eye"></i> Visual
-           </button>
-           <button class="btn btn-sm btn-primary" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir PDF no editable">
-             <i class="bi bi-file-earmark-pdf"></i> PDF
-           </button>
-         </div>`
-      : (requiereFactura
+      ? `<button class="btn btn-sm btn-primary finance-pdf-only-btn" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir comprobante PDF">
+           <i class="bi bi-file-earmark-pdf"></i> Ver PDF
+         </button>`
+      : (puedeGenerar
           ? `<button class="btn btn-sm btn-primary finance-generate-btn" data-fin-facturar="${c.id_cargo}">
-               <i class="bi bi-receipt-cutoff"></i> Generar factura
+               <i class="bi bi-receipt-cutoff"></i> Generar PDF
              </button>`
-          : '<span class="text-muted small">Procesando…</span>');
+          : '<span class="text-muted small">No disponible</span>');
 
     return `
       <article class="finance-invoice-record">
         <div class="finance-invoice-record-main">
-          <span class="finance-record-avatar invoice"><i class="bi bi-receipt-cutoff"></i></span>
+          <span class="finance-record-avatar invoice"><i class="bi bi-file-earmark-pdf"></i></span>
           <div>
-            <strong>${esc(c.estudiante_nombre)}</strong>
-            <span>${esc(c.concepto_nombre)}</span>
+            <strong>${esc(c.estudiante_nombre || 'Estudiante')}</strong>
+            <span>${esc(c.concepto_nombre || c.descripcion || 'Comprobante')}</span>
             <small>${tieneFactura ? esc(c.id_factura_externa) : 'Sin número de factura'}</small>
           </div>
         </div>
@@ -1109,11 +1122,11 @@ async function reintentarFactura(idCargo, button = null) {
     }
 
     showToast(`Factura ${facturaResultado.id_factura || ''} generada por Factura Bonita.`, 'success');
-    await Promise.allSettled([cargarCargos(), cargarPagos()]);
+    await Promise.allSettled([cargarCargos(), cargarFacturas(), cargarPagos()]);
     renderFacturacion();
 
     // El comprobante se presenta dentro de EduControl; no se abre una pestaña externa.
-    await abrirDocumentoFactura(idCargo, 'html', null, true);
+    await abrirDocumentoFactura(idCargo, 'pdf', null, true);
   } catch (e) {
     showToast(e.message, 'error');
   } finally {
@@ -1125,26 +1138,21 @@ async function reintentarFactura(idCargo, button = null) {
 }
 
 async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, abrirModal = true) {
-  const formatoNormalizado = String(formato || 'pdf').toLowerCase() === 'html' ? 'html' : 'pdf';
+  const formatoNormalizado = 'pdf';
   const htmlOriginal = button?.innerHTML || '';
   const modalEl = document.getElementById('modalFacturaVisual');
   const frame = document.getElementById('fin-factura-preview-frame');
   const loading = document.getElementById('fin-factura-preview-loading');
   const title = document.getElementById('fin-factura-preview-title');
-  const htmlBtn = document.getElementById('fin-factura-preview-html');
   const pdfBtn = document.getElementById('fin-factura-preview-pdf');
 
   facturaPreviewCargoId = idCargo;
-  facturaPreviewFormato = formatoNormalizado;
+  facturaPreviewFormato = 'pdf';
 
-  if (title) title.textContent = formatoNormalizado === 'html' ? 'Vista de factura' : 'Factura en PDF';
-  if (htmlBtn) {
-    htmlBtn.classList.toggle('btn-light', formatoNormalizado === 'html');
-    htmlBtn.classList.toggle('btn-outline-light', formatoNormalizado !== 'html');
-  }
+  if (title) title.textContent = 'Factura en PDF';
   if (pdfBtn) {
-    pdfBtn.classList.toggle('btn-light', formatoNormalizado === 'pdf');
-    pdfBtn.classList.toggle('btn-outline-light', formatoNormalizado !== 'pdf');
+    pdfBtn.classList.add('btn-light');
+    pdfBtn.classList.remove('btn-outline-light');
   }
 
   if (abrirModal && modalEl && window.bootstrap?.Modal) {
@@ -1156,21 +1164,21 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
 
   if (button) {
     button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Abriendo…';
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Abriendo PDF…';
   }
 
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 100000);
+  const timeout = window.setTimeout(() => controller.abort(), 120000);
 
   try {
-    const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/documento?formato=${formatoNormalizado}`, {
+    const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/documento?formato=pdf`, {
       method: 'GET',
       signal: controller.signal
     });
 
     if (!res.ok) {
       const tipo = res.headers.get('content-type') || '';
-      let mensaje = 'Factura Bonita no pudo generar el documento.';
+      let mensaje = 'Factura Bonita no pudo generar el PDF.';
       if (tipo.includes('application/json')) {
         const data = await res.json().catch(() => ({}));
         mensaje = data.mensaje || data.detalle || data.error || mensaje;
@@ -1182,7 +1190,7 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
     }
 
     const blob = await res.blob();
-    if (!blob.size) throw new Error('Factura Bonita devolvió un documento vacío.');
+    if (!blob.size) throw new Error('Factura Bonita devolvió un PDF vacío.');
 
     if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
     facturaPreviewUrl = URL.createObjectURL(blob);
@@ -1197,10 +1205,8 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
   } catch (e) {
     loading?.classList.add('hidden');
     frame?.classList.remove('is-loading');
-    showToast(e.name === 'AbortError' ? 'La generación del documento tardó demasiado.' : e.message, 'error');
+    showToast(e.name === 'AbortError' ? 'La generación del PDF tardó demasiado.' : e.message, 'error');
 
-    // Si el visor se abrió automáticamente y no pudo obtener el documento, lo cerramos
-    // para que el usuario permanezca en Pagos y facturación.
     if (abrirModal && modalEl && window.bootstrap?.Modal) {
       window.bootstrap.Modal.getInstance(modalEl)?.hide();
     }

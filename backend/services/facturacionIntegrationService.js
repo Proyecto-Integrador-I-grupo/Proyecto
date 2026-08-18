@@ -318,47 +318,53 @@ async function probarServicioHttp(baseUrl) {
     ? timeoutConfigurado
     : 65000;
 
-  const rutas = ["/health", "/api/factura-ejemplo"];
-  let ultimoDetalle = null;
+  const ruta = "/health";
 
-  for (const ruta of rutas) {
-    try {
-      const { response, data } = await solicitarEstado(baseUrl, ruta, timeoutMs);
-      if (response.ok) {
-        const detalle = typeof data === "object" && data !== null
+  try {
+    const { response, data } = await solicitarEstado(baseUrl, ruta, timeoutMs);
+
+    if (response.ok || response.status === 429) {
+      const detalle = response.status === 429
+        ? "Factura Bonita está disponible, pero aplicó límite temporal de solicitudes."
+        : (typeof data === "object" && data !== null
           ? (data.status || data.mensaje || data.id || "Respuesta correcta")
-          : "Respuesta correcta";
+          : "Respuesta correcta");
 
-        return {
-          configurado: true,
-          disponible: true,
-          estado: "disponible",
-          http_status: response.status,
-          detalle,
-          ruta_probada: ruta
-        };
-      }
-
-      ultimoDetalle = `El servicio respondió HTTP ${response.status} en ${ruta}.`;
-    } catch (error) {
-      if (error.name === "AbortError") {
-        return {
-          configurado: true,
-          disponible: false,
-          estado: "timeout",
-          detalle: "Factura Bonita tardó demasiado en responder. Puede estar iniciando en Render."
-        };
-      }
-      ultimoDetalle = error?.message || "No fue posible conectar con el servicio.";
+      return {
+        configurado: true,
+        disponible: true,
+        estado: response.status === 429 ? "limitado" : "disponible",
+        http_status: response.status,
+        detalle,
+        ruta_probada: ruta
+      };
     }
-  }
 
-  return {
-    configurado: true,
-    disponible: false,
-    estado: "error",
-    detalle: ultimoDetalle || "No fue posible conectar con el servicio."
-  };
+    return {
+      configurado: true,
+      disponible: false,
+      estado: "error",
+      http_status: response.status,
+      detalle: `El servicio respondió HTTP ${response.status} en ${ruta}.`,
+      ruta_probada: ruta
+    };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return {
+        configurado: true,
+        disponible: false,
+        estado: "timeout",
+        detalle: "Factura Bonita tardó demasiado en responder. Puede estar iniciando en Render."
+      };
+    }
+
+    return {
+      configurado: true,
+      disponible: false,
+      estado: "error",
+      detalle: error?.message || "No fue posible conectar con el servicio."
+    };
+  }
 }
 
 export async function obtenerEstadoServiciosFacturacion() {

@@ -433,6 +433,23 @@ export default function Pagos() {
                   <label className="form-label">Correo de facturación</label>
                   <input id="fin-config-correo" type="email" className="form-control" required placeholder="facturacion@educontrol.com" autoComplete="off" />
                 </div>
+
+                <div className="billing-field billing-field-wide">
+                  <label className="form-label">Logo para la factura</label>
+                  <div className="billing-logo-picker">
+                    <div className="billing-logo-preview">
+                      <img id="fin-config-logo-preview" className="hidden" alt="Vista previa del logo" />
+                      <span id="fin-config-logo-empty"><i className="bi bi-image"></i> Sin logo</span>
+                    </div>
+                    <div className="billing-logo-actions">
+                      <input id="fin-config-logo" type="file" className="form-control" accept="image/png,image/jpeg" />
+                      <small>PNG o JPG, máximo 500 KB. Se aplicará a las nuevas facturas.</small>
+                      <button id="fin-config-logo-remove" type="button" className="btn btn-sm btn-outline-danger hidden">
+                        <i className="bi bi-trash"></i> Quitar logo
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 

@@ -75,7 +75,51 @@ function obtenerRaizDocumentos() {
   return obtenerConfiguracionRaizDocumentos().url;
 }
 
+let esquemaLogoConfiguracionPromise = null;
+
+async function asegurarLogoConfiguracion() {
+  if (esquemaLogoConfiguracionPromise) return esquemaLogoConfiguracionPromise;
+
+  esquemaLogoConfiguracionPromise = (async () => {
+    const [[row]] = await pool.query(
+      `SELECT COUNT(*) AS existe
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'configuracion_facturacion'
+         AND COLUMN_NAME = 'logo_data'`
+    );
+
+    if (!Number(row?.existe || 0)) {
+      await pool.query(
+        `ALTER TABLE configuracion_facturacion
+         ADD COLUMN logo_data LONGTEXT NULL AFTER correo`
+      );
+    }
+  })().catch((error) => {
+    esquemaLogoConfiguracionPromise = null;
+    throw error;
+  });
+
+  return esquemaLogoConfiguracionPromise;
+}
+
+function normalizarLogoData(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const data = String(valor).trim();
+
+  if (data.length > 800000) {
+    throw new Error("El logo es demasiado grande. Usa una imagen PNG o JPG menor a 500 KB.");
+  }
+
+  if (!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=\s]+$/i.test(data)) {
+    throw new Error("El logo debe ser una imagen PNG o JPG válida.");
+  }
+
+  return data;
+}
+
 export async function obtenerConfiguracionFacturacion() {
+  await asegurarLogoConfiguracion();
   const [rows] = await pool.query(
     `SELECT * FROM configuracion_facturacion WHERE id_configuracion = 1 LIMIT 1`
   );
@@ -83,6 +127,8 @@ export async function obtenerConfiguracionFacturacion() {
 }
 
 export async function actualizarConfiguracionFacturacion(datos) {
+  await asegurarLogoConfiguracion();
+
   const nombre = String(datos.institucion_nombre || "").trim();
   const tipo = String(datos.tipo_identificacion || "").trim();
   const numeroId = String(datos.numero_identificacion || "").trim();
@@ -92,17 +138,23 @@ export async function actualizarConfiguracionFacturacion(datos) {
     throw new Error("Completa nombre, identificación y correo de facturación.");
   }
 
+  const actual = await obtenerConfiguracionFacturacion();
+  const logoData = Object.prototype.hasOwnProperty.call(datos || {}, "logo_data")
+    ? normalizarLogoData(datos.logo_data)
+    : (actual?.logo_data || null);
+
   await pool.query(
     `INSERT INTO configuracion_facturacion
-      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, moneda, condicion_venta, estado)
-     VALUES (1, ?, ?, ?, ?, 'CRC', '01', TRUE)
+      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
+     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE)
      ON DUPLICATE KEY UPDATE
        institucion_nombre = VALUES(institucion_nombre),
        tipo_identificacion = VALUES(tipo_identificacion),
        numero_identificacion = VALUES(numero_identificacion),
        correo = VALUES(correo),
+       logo_data = VALUES(logo_data),
        estado = TRUE`,
-    [nombre, tipo, numeroId, correo]
+    [nombre, tipo, numeroId, correo, logoData]
   );
 
   return obtenerConfiguracionFacturacion();
@@ -114,7 +166,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
 
   const [cargoRows] = await pool.query(
     `SELECT
-       c.id_cargo, c.descripcion, c.monto_base, c.descuento, c.impuesto, c.total, c.estado,
+       c.id_cargo, c.descripcion, c.monto_base, c.descuento, c.impuesto, c.total, c.saldo, c.estado,
        ce.impuesto_tarifa,
        e.id_estudiante,
        p.nombre, p.apellido1, p.apellido2,
@@ -138,12 +190,23 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   if (!cargoRows.length) throw new Error("No se encontró el cargo a facturar.");
   const cargo = cargoRows[0];
 
-  if (cargo.estado !== "pagado") {
+  const cargoPagado = cargo.estado === "pagado" || Number(cargo.saldo || 0) <= 0;
+
+  if (!cargoPagado) {
     return {
       ok: false,
       estado: "pendiente_pago",
       mensaje: "La factura se genera cuando el cargo queda completamente pagado."
     };
+  }
+
+  if (cargo.estado !== "pagado") {
+    await pool.query(
+      `UPDATE cargo_estudiante SET estado = 'pagado', saldo = 0 WHERE id_cargo = ?`,
+      [idCargo]
+    );
+    cargo.estado = "pagado";
+    cargo.saldo = 0;
   }
 
   const [existente] = await pool.query(
@@ -184,6 +247,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       configGuardada?.correo ||
       process.env.FACTURACION_EMISOR_CORREO ||
       "facturacion@educontrol.com",
+    logo_data: configGuardada?.logo_data || null,
     moneda: configGuardada?.moneda || "CRC",
     condicion_venta: configGuardada?.condicion_venta || "01"
   };
@@ -233,7 +297,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
         tipo: config.tipo_identificacion,
         numero: config.numero_identificacion
       },
-      correo: config.correo
+      correo: config.correo,
+      logoUrl: config.logo_data || undefined
     },
     receptor: {
       nombre: receptorNombre,
@@ -498,9 +563,9 @@ export async function obtenerEstadoServiciosFacturacion() {
 }
 
 export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
-  const formatoNormalizado = String(formato || "pdf").trim().toLowerCase();
-  if (!["html", "pdf"].includes(formatoNormalizado)) {
-    throw new Error("Formato de documento no válido.");
+  const formatoNormalizado = "pdf";
+  if (String(formato || "pdf").trim().toLowerCase() !== "pdf") {
+    throw new Error("Por el momento Factura Bonita entrega únicamente el comprobante PDF.");
   }
 
   const [rows] = await pool.query(

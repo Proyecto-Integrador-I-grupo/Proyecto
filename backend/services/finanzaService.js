@@ -510,6 +510,9 @@ export async function listarCargos(filtros = {}) {
 
 
 export async function listarFacturas() {
+  // Se consideran facturables tanto los cargos marcados como pagados como los
+  // registros históricos cuyo saldo ya llegó a cero. Esto evita ocultar cargos
+  // antiguos que quedaron con el estado desactualizado.
   const [rows] = await pool.query(
     `SELECT
        c.id_cargo,
@@ -523,7 +526,7 @@ export async function listarFacturas() {
        c.estado AS estado_cargo,
        cc.codigo AS concepto_codigo,
        cc.nombre AS concepto_nombre,
-       CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
+       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2)), ''), CONCAT('Estudiante #', c.id_estudiante)) AS estudiante_nombre,
        e.estado AS estudiante_activo,
        fc.id_factura_externa,
        fc.estado_factura,
@@ -531,18 +534,20 @@ export async function listarFacturas() {
        fc.fecha_solicitud,
        fc.fecha_actualizacion
      FROM cargo_estudiante c
-     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
-     INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
-     INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+     LEFT JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+     LEFT JOIN persona p ON p.id_persona = e.id_persona
      LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
-     WHERE (
-       c.estado = 'pagado'
-       OR fc.id_factura_externa IS NOT NULL
-       OR fc.estado_factura IS NOT NULL
-     )
+     WHERE c.estado <> 'anulado'
        AND c.total > 0
+       AND (
+         c.estado = 'pagado'
+         OR c.saldo <= 0
+         OR fc.id_factura_externa IS NOT NULL
+         OR fc.estado_factura IS NOT NULL
+       )
      ORDER BY
-       CASE WHEN fc.id_factura_externa IS NOT NULL THEN 0 ELSE 1 END,
+       CASE WHEN fc.id_factura_externa IS NULL THEN 0 ELSE 1 END,
        COALESCE(fc.fecha_actualizacion, fc.fecha_solicitud, c.fecha_emision) DESC,
        c.id_cargo DESC`
   );
@@ -551,7 +556,15 @@ export async function listarFacturas() {
     ...row,
     total: Number(row.total || 0),
     saldo: Number(row.saldo || 0),
-    estudiante_activo: Boolean(row.estudiante_activo)
+    estudiante_activo: Boolean(row.estudiante_activo),
+    listo_para_facturar:
+      !row.id_factura_externa &&
+      String(row.estado_cargo || '').toLowerCase() !== 'anulado' &&
+      Number(row.total || 0) > 0 &&
+      (
+        String(row.estado_cargo || '').toLowerCase() === 'pagado' ||
+        Number(row.saldo || 0) <= 0
+      )
   }));
 }
 

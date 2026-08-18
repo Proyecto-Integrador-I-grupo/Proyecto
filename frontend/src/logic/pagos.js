@@ -11,6 +11,7 @@ let estadoCuentas = [];
 let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
 let facturaPreviewFormato = 'pdf';
+let logoFacturaData = null;
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -80,6 +81,8 @@ function wirePagosEvents() {
   wire('fin-concepto-form', 'submit', guardarConcepto);
   wire('fin-concepto-existente', 'change', seleccionarConceptoExistente);
   wire('fin-config-form', 'submit', guardarConfiguracion);
+  wire('fin-config-logo', 'change', manejarLogoFactura);
+  wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-api-page-test', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
@@ -873,7 +876,11 @@ function renderFacturacion() {
   body.innerHTML = registros.map((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
     const estadoCargo = String(c.estado_cargo || c.estado || '').toLowerCase();
-    const puedeGenerar = !tieneFactura && estadoCargo === 'pagado';
+    const puedeGenerar = !tieneFactura && (
+      Boolean(c.listo_para_facturar) ||
+      estadoCargo === 'pagado' ||
+      Number(c.saldo || 0) <= 0
+    );
     const detalleErrorFactura = !tieneFactura && c.error_mensaje
       ? `<small class="finance-invoice-error-detail">${esc(c.error_mensaje)}</small>`
       : '';
@@ -1407,19 +1414,78 @@ async function cargarConfiguracion() {
     setValue('fin-config-tipo-id', c.tipo_identificacion || '02');
     setValue('fin-config-numero-id', c.numero_identificacion || '');
     setValue('fin-config-correo', c.correo || '');
-  } catch {}
+    logoFacturaData = c.logo_data || null;
+    renderLogoFacturaPreview();
+  } catch {
+    logoFacturaData = null;
+    renderLogoFacturaPreview();
+  }
+}
+
+function renderLogoFacturaPreview() {
+  const preview = document.getElementById('fin-config-logo-preview');
+  const empty = document.getElementById('fin-config-logo-empty');
+  const remove = document.getElementById('fin-config-logo-remove');
+
+  if (preview) {
+    if (logoFacturaData) {
+      preview.src = logoFacturaData;
+      preview.classList.remove('hidden');
+    } else {
+      preview.removeAttribute('src');
+      preview.classList.add('hidden');
+    }
+  }
+
+  empty?.classList.toggle('hidden', Boolean(logoFacturaData));
+  remove?.classList.toggle('hidden', !logoFacturaData);
+}
+
+function manejarLogoFactura(event) {
+  const archivo = event.target.files?.[0];
+  if (!archivo) return;
+
+  if (!['image/png', 'image/jpeg'].includes(archivo.type)) {
+    event.target.value = '';
+    showToast('El logo debe ser una imagen PNG o JPG.', 'warning');
+    return;
+  }
+
+  if (archivo.size > 500 * 1024) {
+    event.target.value = '';
+    showToast('El logo debe pesar menos de 500 KB.', 'warning');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    logoFacturaData = String(reader.result || '');
+    renderLogoFacturaPreview();
+  };
+  reader.onerror = () => showToast('No se pudo leer la imagen seleccionada.', 'error');
+  reader.readAsDataURL(archivo);
+}
+
+function quitarLogoFactura() {
+  logoFacturaData = null;
+  const input = document.getElementById('fin-config-logo');
+  if (input) input.value = '';
+  renderLogoFacturaPreview();
 }
 
 async function guardarConfiguracion(event) {
   event.preventDefault();
   try {
     await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify({
-      institucion_nombre: value('fin-config-nombre'), tipo_identificacion: value('fin-config-tipo-id'),
-      numero_identificacion: value('fin-config-numero-id'), correo: value('fin-config-correo')
+      institucion_nombre: value('fin-config-nombre'),
+      tipo_identificacion: value('fin-config-tipo-id'),
+      numero_identificacion: value('fin-config-numero-id'),
+      correo: value('fin-config-correo'),
+      logo_data: logoFacturaData
     }) });
     await cargarEstadoIntegraciones(false);
     hideModal('modalConfigFacturacion');
-    showToast('Datos del emisor guardados. EduControl ya puede enviarlos a Factura Bonita.', 'success');
+    showToast('Datos del emisor y logo guardados para las próximas facturas.', 'success');
   } catch (e) { showToast(e.message, 'error'); }
 }
 

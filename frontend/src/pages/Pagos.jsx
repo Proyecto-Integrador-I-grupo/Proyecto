@@ -395,8 +395,8 @@ export default function Pagos() {
                 <span className="billing-service-icon"><i className="bi bi-file-earmark-pdf"></i></span>
                 <div className="billing-service-copy">
                   <small>Documento</small>
-                  <strong>HTML / PDF</strong>
-                  <span id="fin-service-documentos-detail">Documento visual generado por Factura Bonita.</span>
+                  <strong>PDF de solo lectura</strong>
+                  <span id="fin-service-documentos-detail">Comprobante PDF generado por Factura Bonita.</span>
                 </div>
                 <span id="fin-service-documentos-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
               </div>
@@ -466,13 +466,10 @@ export default function Pagos() {
             <div className="modal-header bg-navy text-white finance-invoice-preview-header">
               <div>
                 <small className="d-block text-white-50 text-uppercase">Factura Bonita</small>
-                <h5 className="modal-title mb-0" id="fin-factura-preview-title">Comprobante</h5>
+                <h5 className="modal-title mb-0" id="fin-factura-preview-title">Factura en PDF</h5>
               </div>
               <div className="finance-invoice-preview-actions">
-                <button id="fin-factura-preview-html" type="button" className="btn btn-sm btn-light">
-                  <i className="bi bi-file-earmark-text"></i> Visual
-                </button>
-                <button id="fin-factura-preview-pdf" type="button" className="btn btn-sm btn-outline-light">
+                <button id="fin-factura-preview-pdf" type="button" className="btn btn-sm btn-light">
                   <i className="bi bi-file-earmark-pdf"></i> PDF
                 </button>
                 <button id="fin-factura-preview-print" type="button" className="btn btn-sm btn-outline-light">
@@ -485,7 +482,7 @@ export default function Pagos() {
               <div id="fin-factura-preview-loading" className="finance-invoice-preview-loading hidden">
                 <div className="spinner-border text-primary" role="status"></div>
                 <strong>Preparando comprobante…</strong>
-                <span>Factura Bonita está generando el documento.</span>
+                <span>Factura Bonita está generando el PDF de solo lectura.</span>
               </div>
               <iframe id="fin-factura-preview-frame" title="Factura Bonita" className="finance-invoice-preview-frame"></iframe>
             </div>

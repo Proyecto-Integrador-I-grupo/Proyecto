@@ -508,6 +508,53 @@ export async function listarCargos(filtros = {}) {
   return rows;
 }
 
+
+export async function listarFacturas() {
+  const [rows] = await pool.query(
+    `SELECT
+       c.id_cargo,
+       c.id_estudiante,
+       c.id_concepto,
+       c.descripcion,
+       c.periodo,
+       c.fecha_emision,
+       c.total,
+       c.saldo,
+       c.estado AS estado_cargo,
+       cc.codigo AS concepto_codigo,
+       cc.nombre AS concepto_nombre,
+       CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
+       e.estado AS estudiante_activo,
+       fc.id_factura_externa,
+       fc.estado_factura,
+       fc.error_mensaje,
+       fc.fecha_solicitud,
+       fc.fecha_actualizacion
+     FROM cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+     INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
+     WHERE (
+       c.estado = 'pagado'
+       OR fc.id_factura_externa IS NOT NULL
+       OR fc.estado_factura IS NOT NULL
+     )
+       AND c.total > 0
+     ORDER BY
+       CASE WHEN fc.id_factura_externa IS NOT NULL THEN 0 ELSE 1 END,
+       COALESCE(fc.fecha_actualizacion, fc.fecha_solicitud, c.fecha_emision) DESC,
+       c.id_cargo DESC`
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    total: Number(row.total || 0),
+    saldo: Number(row.saldo || 0),
+    estudiante_activo: Boolean(row.estudiante_activo)
+  }));
+}
+
 export async function crearCargo(datos, idUsuario) {
   const idEstudiante = positiveInt(datos.id_estudiante, "El estudiante");
   const idConcepto = positiveInt(datos.id_concepto, "El concepto");

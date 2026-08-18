@@ -762,22 +762,30 @@ function renderCargos() {
 }
 
 function obtenerCargosPagados() {
-  if (Array.isArray(facturas) && facturas.length) {
-    return facturas
-      .filter((c) => Number(c.total || 0) > 0)
-      .sort((a, b) => {
-        const fa = new Date(a.fecha_actualizacion || a.fecha_solicitud || a.fecha_emision || 0).getTime();
-        const fb = new Date(b.fecha_actualizacion || b.fecha_solicitud || b.fecha_emision || 0).getTime();
-        return fb - fa || Number(b.id_cargo || 0) - Number(a.id_cargo || 0);
-      });
-  }
+  // La API /facturas trae el estado de Factura Bonita, pero no debe convertirse
+  // en la única fuente visual. Si por una migración o registro histórico falta
+  // factura_cargo, el cargo pagado debe seguir apareciendo como "por generar".
+  const porId = new Map();
 
-  return cargos
+  (Array.isArray(cargos) ? cargos : [])
     .filter((c) =>
-      String(c.estado || '').toLowerCase() === 'pagado' &&
-      Number(c.total || 0) > 0
+      Number(c.total || 0) > 0 &&
+      (String(c.estado || '').toLowerCase() === 'pagado' || Number(c.saldo || 0) <= 0)
     )
-    .sort((a, b) => Number(b.id_cargo || 0) - Number(a.id_cargo || 0));
+    .forEach((c) => porId.set(Number(c.id_cargo), { ...c, estado_cargo: c.estado_cargo || c.estado }));
+
+  (Array.isArray(facturas) ? facturas : [])
+    .filter((c) => Number(c.total || 0) > 0)
+    .forEach((c) => {
+      const id = Number(c.id_cargo);
+      porId.set(id, { ...(porId.get(id) || {}), ...c });
+    });
+
+  return [...porId.values()].sort((a, b) => {
+    const fa = new Date(a.fecha_actualizacion || a.fecha_solicitud || a.fecha_emision || 0).getTime();
+    const fb = new Date(b.fecha_actualizacion || b.fecha_solicitud || b.fecha_emision || 0).getTime();
+    return fb - fa || Number(b.id_cargo || 0) - Number(a.id_cargo || 0);
+  });
 }
 
 function actualizarResumenFacturacion() {
@@ -1186,7 +1194,13 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
     (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
   }
 
-  loading?.classList.remove('hidden');
+  if (loading) {
+    loading.innerHTML = `
+      <div class="spinner-border text-primary" role="status"></div>
+      <strong>Preparando comprobante…</strong>
+      <span>Factura Bonita está generando el PDF de solo lectura.</span>`;
+    loading.classList.remove('hidden');
+  }
   frame?.classList.add('is-loading');
 
   if (button) {
@@ -1242,13 +1256,19 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
       loading?.classList.add('hidden');
     }
   } catch (e) {
-    loading?.classList.add('hidden');
     frame?.classList.remove('is-loading');
-    showToast(e.name === 'AbortError' ? 'La generación del PDF tardó demasiado.' : e.message, 'error');
+    const mensaje = e.name === 'AbortError'
+      ? 'La generación del PDF tardó demasiado.'
+      : (e.message || 'No se pudo cargar el PDF.');
 
-    if (abrirModal && modalEl && window.bootstrap?.Modal) {
-      window.bootstrap.Modal.getInstance(modalEl)?.hide();
+    if (loading) {
+      loading.classList.remove('hidden');
+      loading.innerHTML = `
+        <i class="bi bi-exclamation-triangle text-danger fs-2"></i>
+        <strong>No se pudo preparar el comprobante</strong>
+        <span>${esc(mensaje)}</span>`;
     }
+    showToast(mensaje, 'error');
   } finally {
     window.clearTimeout(timeout);
     if (button?.isConnected) {

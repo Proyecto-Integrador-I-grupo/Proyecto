@@ -1,14 +1,31 @@
 import { query } from "express-validator";
 
-const MODOS_VALIDOS = ["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"];
+const MODOS_VALIDOS = ["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria", "pagos"];
 const TIPOS_VALIDOS = ["resumen", "detalle", "individual", "grupo"];
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
+const ESTADOS_PAGO_VALIDOS = ["pendiente", "cancelado"];
 
 const validarRangoFechas = (_, { req }) => {
     const inicio = req.query?.fecha_inicio;
     const fin = req.query?.fecha_fin;
     if (!inicio || !fin) return true;
     if (inicio > fin) throw new Error("La fecha de inicio no puede ser mayor que la fecha fin.");
+    return true;
+};
+
+const validarEstadoReporte = (value, { req }) => {
+    if (!value) return true;
+
+    const estado = String(value).trim().toLowerCase();
+    const modo = String(req.query?.modo || "").trim().toLowerCase();
+    const validos = modo === "pagos" ? ESTADOS_PAGO_VALIDOS : ESTADOS_VALIDOS;
+
+    if (!validos.includes(estado)) {
+        throw new Error(modo === "pagos"
+            ? "El estado de pago no es válido. Usa pendiente o cancelado."
+            : "El estado de asistencia no es válido.");
+    }
+
     return true;
 };
 
@@ -31,8 +48,12 @@ export const reporteRules = [
         .withMessage("El estudiante debe ser un identificador válido."),
     query("estado_asistencia")
         .optional({ nullable: true, checkFalsy: true })
-        .isIn(ESTADOS_VALIDOS)
-        .withMessage("El estado de asistencia no es válido."),
+        .custom(validarEstadoReporte)
+        .withMessage("El estado del reporte no es válido."),
+    query("estado_pago")
+        .optional({ nullable: true, checkFalsy: true })
+        .custom(validarEstadoReporte)
+        .withMessage("El estado del pago no es válido."),
     query("busqueda")
         .optional({ nullable: true, checkFalsy: true })
         .isString()

@@ -286,25 +286,30 @@ function obtenerModoReporteActivo() {
 }
 
 function obtenerFiltrosActivos() {
+  const modo = obtenerModoReporteActivo();
+  const estadoValor = document.getElementById('report-filtro-estado')?.value || '';
   return {
     id_grupo: document.getElementById('report-filtro-grupo')?.value || '',
     busqueda: document.getElementById('report-filtro-busqueda')?.value.trim() || '',
     tipo_reporte: document.getElementById('report-filtro-tipo')?.value || '',
-    estado_asistencia: document.getElementById('report-filtro-estado')?.value || '',
+    estado_asistencia: estadoValor,
+    estado_pago: modo === 'pagos' ? estadoValor : '',
     fecha_inicio: document.getElementById('report-filtro-fecha-desde')?.value || '',
     fecha_fin: document.getElementById('report-filtro-fecha-hasta')?.value || '',
-    modo: obtenerModoReporteActivo()
+    modo
   };
 }
 
 function validarFiltros(filtros) {
   const modo = filtros.modo || obtenerModoReporteActivo();
+  const estadoValor = modo === 'pagos' ? (filtros.estado_pago || filtros.estado_asistencia || '') : (filtros.estado_asistencia || '');
+
   if (filtros.fecha_inicio && filtros.fecha_fin && filtros.fecha_inicio > filtros.fecha_fin) return 'La fecha de inicio no puede ser mayor que la fecha fin.';
   if ((filtros.busqueda || '').length > 120) return 'La búsqueda no puede superar 120 caracteres.';
-  if (filtros.estado_asistencia) {
-    if (modo === 'matricula' && !ESTADOS_ACTIVO.includes(filtros.estado_asistencia)) return 'El estado del estudiante seleccionado no es válido.';
-    if (modo === 'pagos' && !ESTADOS_PAGO.includes(filtros.estado_asistencia)) return 'El estado del pago seleccionado no es válido.';
-    if (modo !== 'matricula' && modo !== 'pagos' && !ESTADOS_ASISTENCIA.includes(filtros.estado_asistencia)) return 'El estado de asistencia seleccionado no es válido.';
+  if (estadoValor) {
+    if (modo === 'matricula' && !ESTADOS_ACTIVO.includes(estadoValor)) return 'El estado del estudiante seleccionado no es válido.';
+    if (modo === 'pagos' && !ESTADOS_PAGO.includes(estadoValor)) return 'El estado del pago seleccionado no es válido.';
+    if (modo !== 'matricula' && modo !== 'pagos' && !ESTADOS_ASISTENCIA.includes(estadoValor)) return 'El estado de asistencia seleccionado no es válido.';
   }
   if (filtros.tipo_reporte && !TIPOS_REPORTE.includes(filtros.tipo_reporte)) return 'El tipo de reporte seleccionado no es válido.';
   if (!MODOS[filtros.modo]) return 'El modo de reporte seleccionado no es válido.';
@@ -627,12 +632,13 @@ function renderPreviewFilters(filtros) {
   const chips = [];
   if (config.filtros.includes('grupo')) chips.push(`Grupo: ${grupoTexto}`);
   if (config.filtros.includes('estado')) {
-    const textoEstado = filtros.estado_asistencia
+    const estadoValue = filtros.modo === 'pagos' ? (filtros.estado_pago || filtros.estado_asistencia || '') : (filtros.estado_asistencia || '');
+    const textoEstado = estadoValue
       ? (filtros.modo === 'matricula'
-        ? normalizarEstadoActivo(filtros.estado_asistencia)
+        ? normalizarEstadoActivo(estadoValue)
         : filtros.modo === 'pagos'
-          ? formatearEstadoPago(filtros.estado_asistencia)
-          : formatearEstadoAsistencia(filtros.estado_asistencia))
+          ? formatearEstadoPago(estadoValue)
+          : formatearEstadoAsistencia(estadoValue))
       : 'Todos';
     chips.push(`Estado: ${textoEstado}`);
   }

@@ -2,12 +2,13 @@ import pool from "../config/database.js";
 
 const ESTADOS_ASISTENCIA_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
 const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
-const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]);
+const ESTADOS_PAGO_VALIDOS = ["pendiente", "cancelado"];
+const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria", "pagos"]);
 const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
 const MODOS_POR_ROL = {
-    administrador: new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria"]),
-    asistente: new Set(["matricula", "estudiantes", "grupos", "pre_matricula"]),
+    administrador: new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria", "pagos"]),
+    asistente: new Set(["matricula", "estudiantes", "grupos", "pre_matricula", "pagos"]),
     profesor: new Set(["estudiantes", "grupos"])
 };
 
@@ -101,6 +102,7 @@ function validarFiltrosReporte(filtros = {}) {
     const estadoSolicitado = normalizarEstado(filtros.estado_asistencia ?? filtros.estado ?? "");
     let estado_asistencia = "";
     let estado_estudiante = "";
+    let estado_pago = "";
 
     if (estadoSolicitado) {
         if (modo === "matricula") {
@@ -108,6 +110,11 @@ function validarFiltrosReporte(filtros = {}) {
                 throw new Error("Estado de estudiante no válido. Usa activo o inactivo.");
             }
             estado_estudiante = estadoSolicitado;
+        } else if (modo === "pagos") {
+            if (!ESTADOS_PAGO_VALIDOS.includes(estadoSolicitado)) {
+                throw new Error("Estado de pago no válido. Usa pendiente o cancelado.");
+            }
+            estado_pago = estadoSolicitado;
         } else {
             if (!ESTADOS_ASISTENCIA_VALIDOS.includes(estadoSolicitado)) {
                 throw new Error("Estado de asistencia no válido. Usa presente, ausente, tardia o justificada.");
@@ -129,6 +136,7 @@ function validarFiltrosReporte(filtros = {}) {
         fecha_fin,
         estado_asistencia,
         estado_estudiante,
+        estado_pago,
         busqueda,
         scope_profesor_id,
         scope_rol
@@ -552,6 +560,90 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
         };
     }
 
+    if (f.modo === "pagos") {
+        const condiciones = ["c.estado IN ('pendiente', 'parcial', 'pagado', 'anulado')"];
+        const valores = [];
+
+        if (f.busqueda) {
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(
+                ${sqlTextoNormalizado("CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) ")} LIKE ? OR
+                ${sqlTextoNormalizado("COALESCE(fc.id_factura_externa, '')")} LIKE ? OR
+                CAST(e.id_estudiante AS CHAR) LIKE ? OR
+                CAST(c.id_cargo AS CHAR) LIKE ?
+            )`);
+            valores.push(texto, texto, texto, texto);
+        }
+
+        if (f.estado_pago) {
+            if (f.estado_pago === "cancelado") {
+                condiciones.push("c.estado = 'anulado'");
+            } else {
+                condiciones.push("c.estado IN ('pendiente', 'parcial', 'pagado')");
+            }
+        }
+
+        if (f.fecha_inicio) {
+            condiciones.push("DATE(c.fecha_emision) >= ?");
+            valores.push(f.fecha_inicio);
+        }
+        if (f.fecha_fin) {
+            condiciones.push("DATE(c.fecha_emision) <= ?");
+            valores.push(f.fecha_fin);
+        }
+
+        const where = condiciones.join(" AND ");
+        const [rows] = await pool.query(
+            `SELECT
+                c.id_cargo,
+                c.id_estudiante,
+                DATE(c.fecha_emision) AS fecha,
+                c.descripcion,
+                c.total,
+                c.saldo,
+                c.estado AS estado_cargo,
+                CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) AS estudiante_nombre,
+                fc.id_factura_externa,
+                CASE
+                    WHEN c.estado = 'anulado' THEN 'C'
+                    ELSE 'P'
+                END AS estado_pago,
+                CASE
+                    WHEN c.estado = 'anulado' THEN 'Cancelado'
+                    ELSE 'Pendiente'
+                END AS estado_label
+             FROM cargo_estudiante c
+             INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
+             WHERE ${where}
+             ORDER BY c.fecha_emision DESC, c.id_cargo DESC
+             LIMIT 500`,
+            valores
+        );
+
+        const [[totales]] = await pool.query(
+            `SELECT
+                COUNT(*) AS total_pagos,
+                SUM(CASE WHEN c.estado = 'anulado' THEN 1 ELSE 0 END) AS total_cancelados,
+                SUM(CASE WHEN c.estado IN ('pendiente', 'parcial', 'pagado') THEN 1 ELSE 0 END) AS total_pendientes
+             FROM cargo_estudiante c
+             WHERE ${where}`,
+            valores
+        );
+
+        return {
+            modo: f.modo,
+            resumen: {
+                total_pagos: Number(totales?.total_pagos || 0),
+                total_cancelados: Number(totales?.total_cancelados || 0),
+                total_pendientes: Number(totales?.total_pendientes || 0)
+            },
+            detalle_por_grupo: rows,
+            detalle: rows
+        };
+    }
+
     if (f.modo === "auditoria") {
         const condiciones = [];
         const valores = [];
@@ -848,6 +940,71 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
              LIMIT 500`,
             valores
         );
+        return { modo: f.modo, detalle: rows };
+    }
+
+    if (f.modo === "pagos") {
+        const condiciones = ["c.estado IN ('pendiente', 'parcial', 'pagado', 'anulado')"];
+        const valores = [];
+
+        if (f.busqueda) {
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(
+                ${sqlTextoNormalizado("CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2)")} LIKE ? OR
+                ${sqlTextoNormalizado("COALESCE(fc.id_factura_externa, '')")} LIKE ? OR
+                CAST(e.id_estudiante AS CHAR) LIKE ? OR
+                CAST(c.id_cargo AS CHAR) LIKE ?
+            )`);
+            valores.push(texto, texto, texto, texto);
+        }
+
+        if (f.estado_pago) {
+            if (f.estado_pago === "cancelado") {
+                condiciones.push("c.estado = 'anulado'");
+            } else {
+                condiciones.push("c.estado IN ('pendiente', 'parcial', 'pagado')");
+            }
+        }
+
+        if (f.fecha_inicio) {
+            condiciones.push("DATE(c.fecha_emision) >= ?");
+            valores.push(f.fecha_inicio);
+        }
+        if (f.fecha_fin) {
+            condiciones.push("DATE(c.fecha_emision) <= ?");
+            valores.push(f.fecha_fin);
+        }
+
+        const where = condiciones.join(" AND ");
+        const [rows] = await pool.query(
+            `SELECT
+                c.id_cargo,
+                c.id_estudiante,
+                DATE(c.fecha_emision) AS fecha,
+                c.descripcion,
+                c.total,
+                c.saldo,
+                c.estado AS estado_cargo,
+                CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) AS estudiante_nombre,
+                fc.id_factura_externa,
+                CASE
+                    WHEN c.estado = 'anulado' THEN 'C'
+                    ELSE 'P'
+                END AS estado_pago,
+                CASE
+                    WHEN c.estado = 'anulado' THEN 'Cancelado'
+                    ELSE 'Pendiente'
+                END AS estado_label
+             FROM cargo_estudiante c
+             INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
+             WHERE ${where}
+             ORDER BY c.fecha_emision DESC, c.id_cargo DESC
+             LIMIT 500`,
+            valores
+        );
+
         return { modo: f.modo, detalle: rows };
     }
 

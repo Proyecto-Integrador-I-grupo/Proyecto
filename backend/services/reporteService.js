@@ -99,7 +99,12 @@ function validarFiltrosReporte(filtros = {}) {
         throw new Error("La fecha de inicio no puede ser mayor que la fecha fin.");
     }
 
-    const estadoSolicitado = normalizarEstado(filtros.estado_asistencia ?? filtros.estado ?? "");
+    const estadoSolicitado = normalizarEstado(
+        filtros.estado_pago
+            ?? filtros.estado_asistencia
+            ?? filtros.estado
+            ?? ""
+    );
     let estado_asistencia = "";
     let estado_estudiante = "";
     let estado_pago = "";

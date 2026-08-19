@@ -13,6 +13,7 @@ export default function Reportes() {
                 <button type="button" className="btn btn-sm" data-report-mode="grupos"><i className="bi bi-diagram-3" /> Grupos</button>
                 <button type="button" className="btn btn-sm" data-report-mode="profesores"><i className="bi bi-person-badge" /> Profesores</button>
                 <button type="button" className="btn btn-sm" data-report-mode="pre_matricula"><i className="bi bi-person-plus-fill" /> Pre-matrículas</button>
+                <button type="button" className="btn btn-sm" data-report-mode="pagos"><i className="bi bi-cash-stack" /> Pagos</button>
                 <button type="button" className="btn btn-sm" data-report-mode="auditoria"><i className="bi bi-shield-check" /> Auditoría</button>
               </div>
             </div>

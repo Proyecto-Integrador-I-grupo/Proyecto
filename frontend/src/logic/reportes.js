@@ -7,11 +7,13 @@ const MODOS = {
   grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', titulo: 'Reporte de grupos' },
   profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / ID', placeholder: 'Nombre, apellido o ID del profesor', titulo: 'Reporte de profesores' },
   pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / ID', placeholder: 'Nombre, apellido o ID del pre-registro', titulo: 'Reporte de pre-matrículas' },
+  pagos: { tipo: 'resumen', filtros: ['busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Factura', placeholder: 'Nombre del estudiante o número de factura', titulo: 'Reporte de pagos' },
   auditoria: { tipo: 'detalle', filtros: ['busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Auditoría / Acción', placeholder: 'Tabla, usuario, acción o contenido del cambio', titulo: 'Reporte de auditoría' }
 };
 
 const ESTADOS_ASISTENCIA = ['presente', 'ausente', 'tardia', 'justificada'];
 const ESTADOS_ACTIVO = ['activo', 'inactivo'];
+const ESTADOS_PAGO = ['pendiente', 'cancelado'];
 const TIPOS_REPORTE = ['resumen', 'detalle', 'individual', 'grupo'];
 const REPORTE_LOGO_SRC = '/images/logo1.jpg';
 let consultaAplicada = false;
@@ -21,8 +23,8 @@ let reporteCargando = false;
 let timerCargaAutomatica = null;
 
 const MODOS_POR_ROL = {
-  administrador: ['matricula', 'estudiantes', 'grupos', 'profesores', 'pre_matricula', 'auditoria'],
-  asistente: ['matricula', 'estudiantes', 'grupos', 'pre_matricula'],
+  administrador: ['matricula', 'estudiantes', 'grupos', 'profesores', 'pre_matricula', 'pagos', 'auditoria'],
+  asistente: ['matricula', 'estudiantes', 'grupos', 'pre_matricula', 'pagos'],
   profesor: ['estudiantes', 'grupos']
 };
 
@@ -101,7 +103,6 @@ async function loadReportesData() {
   limpiarFiltrosReporte(inicial);
   cambiarModoReporte(inicial);
   resetearDatosReporte();
-  actualizarEstadoBotonAplicar();
 }
 
 function wireReportesEvents() {
@@ -142,7 +143,6 @@ function wireReportesEvents() {
       input.dataset.wired = '1';
       input.addEventListener('change', () => {
         validarRangoFechasEnUI();
-        actualizarEstadoBotonAplicar();
       });
     }
   });
@@ -151,7 +151,9 @@ function wireReportesEvents() {
     const select = document.getElementById(id);
     if (select && !select.dataset.wired) {
       select.dataset.wired = '1';
-      select.addEventListener('change', actualizarEstadoBotonAplicar);
+      select.addEventListener('change', () => {
+        limpiarError();
+      });
     }
   });
 
@@ -161,7 +163,6 @@ function wireReportesEvents() {
     search.addEventListener('input', () => {
       if (search.value.length > 120) search.value = search.value.slice(0, 120);
       limpiarError();
-      actualizarEstadoBotonAplicar();
     });
     search.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') cargarReporte();
@@ -231,7 +232,6 @@ function cambiarModoReporte(modo = 'matricula') {
 
   actualizarResumenTexto();
   limpiarError();
-  actualizarEstadoBotonAplicar();
   return actual;
 }
 
@@ -242,22 +242,29 @@ function actualizarOpcionesEstado(modo = obtenerModoReporteActivo()) {
 
   const valorActual = String(select.value || '').toLowerCase();
   const esMatricula = modo === 'matricula';
+  const esPagos = modo === 'pagos';
   const opciones = esMatricula
     ? [
       { value: '', label: '--Seleccionar--' },
       { value: 'activo', label: 'Activo' },
       { value: 'inactivo', label: 'Inactivo' }
     ]
-    : [
-      { value: '', label: 'Todos los estados' },
-      { value: 'presente', label: 'Presente' },
-      { value: 'ausente', label: 'Ausente' },
-      { value: 'tardia', label: 'Tardía' },
-      { value: 'justificada', label: 'Justificada' }
-    ];
+    : esPagos
+      ? [
+        { value: '', label: 'Todos los pagos' },
+        { value: 'pendiente', label: 'Pagos pendientes' },
+        { value: 'cancelado', label: 'Pagos cancelados' }
+      ]
+      : [
+        { value: '', label: 'Todos los estados' },
+        { value: 'presente', label: 'Presente' },
+        { value: 'ausente', label: 'Ausente' },
+        { value: 'tardia', label: 'Tardía' },
+        { value: 'justificada', label: 'Justificada' }
+      ];
 
   if (label) {
-    label.textContent = esMatricula ? 'Estado del estudiante' : 'Estado de asistencia';
+    label.textContent = esMatricula ? 'Estado del estudiante' : esPagos ? 'Estado del pago' : 'Estado de asistencia';
   }
 
   select.innerHTML = opciones.map((opcion) => `<option value="${opcion.value}">${opcion.label}</option>`).join('');
@@ -284,36 +291,14 @@ function obtenerFiltrosActivos() {
   };
 }
 
-function hayFiltrosAplicados(filtros) {
-  const modo = filtros?.modo || obtenerModoReporteActivo();
-  const config = MODOS[modo] || MODOS.matricula;
-  const checks = {
-    grupo: Boolean((filtros.id_grupo || '').trim()),
-    busqueda: Boolean((filtros.busqueda || '').trim()),
-    tipo: Boolean((filtros.tipo_reporte || '').trim()),
-    estado: Boolean((filtros.estado_asistencia || '').trim()),
-    'fecha-desde': Boolean((filtros.fecha_inicio || '').trim()),
-    'fecha-hasta': Boolean((filtros.fecha_fin || '').trim())
-  };
-  return (config.filtros || []).some((filtro) => checks[filtro]);
-}
-
-function actualizarEstadoBotonAplicar() {
-  const button = document.getElementById('report-aplicar');
-  if (!button) return;
-  const deshabilitado = Boolean(reporteCargando);
-  button.disabled = deshabilitado;
-  button.classList.toggle('disabled', deshabilitado);
-  button.setAttribute('aria-disabled', String(deshabilitado));
-}
-
 function validarFiltros(filtros) {
   const modo = filtros.modo || obtenerModoReporteActivo();
   if (filtros.fecha_inicio && filtros.fecha_fin && filtros.fecha_inicio > filtros.fecha_fin) return 'La fecha de inicio no puede ser mayor que la fecha fin.';
   if ((filtros.busqueda || '').length > 120) return 'La búsqueda no puede superar 120 caracteres.';
   if (filtros.estado_asistencia) {
     if (modo === 'matricula' && !ESTADOS_ACTIVO.includes(filtros.estado_asistencia)) return 'El estado del estudiante seleccionado no es válido.';
-    if (modo !== 'matricula' && !ESTADOS_ASISTENCIA.includes(filtros.estado_asistencia)) return 'El estado de asistencia seleccionado no es válido.';
+    if (modo === 'pagos' && !ESTADOS_PAGO.includes(filtros.estado_asistencia)) return 'El estado del pago seleccionado no es válido.';
+    if (modo !== 'matricula' && modo !== 'pagos' && !ESTADOS_ASISTENCIA.includes(filtros.estado_asistencia)) return 'El estado de asistencia seleccionado no es válido.';
   }
   if (filtros.tipo_reporte && !TIPOS_REPORTE.includes(filtros.tipo_reporte)) return 'El tipo de reporte seleccionado no es válido.';
   if (!MODOS[filtros.modo]) return 'El modo de reporte seleccionado no es válido.';
@@ -345,11 +330,7 @@ async function cargarReporte() {
   if (error) { mostrarError(error); showToast(error, 'error'); return; }
 
   limpiarError();
-  const button = document.getElementById('report-aplicar');
-  const oldText = button?.innerHTML;
   reporteCargando = true;
-  if (button) { button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...'; }
-  actualizarEstadoBotonAplicar();
 
   try {
     const params = new URLSearchParams();
@@ -381,8 +362,6 @@ async function cargarReporte() {
     showToast(error.message || 'No se pudo generar el reporte.', 'error');
   } finally {
     reporteCargando = false;
-    if (button) { button.innerHTML = oldText; }
-    actualizarEstadoBotonAplicar();
   }
 }
 
@@ -393,7 +372,6 @@ function limpiarFiltrosReporte(modo = obtenerModoReporteActivo()) {
   };
   Object.entries(values).forEach(([id, value]) => { const el = document.getElementById(id); if (el) el.value = value; });
   limpiarError();
-  actualizarEstadoBotonAplicar();
 }
 
 function limpiarReporte() {
@@ -410,18 +388,30 @@ function resetearDatosReporte() {
   renderTablaPrincipal({ detalle_por_grupo: [], detalle: [] });
   renderEmptyState(null);
   actualizarResumenTexto();
-  actualizarEstadoBotonAplicar();
+}
+
+function obtenerFilasReporte(data = reporteActual, modo = obtenerModoReporteActivo()) {
+  if (['profesores', 'estudiantes', 'grupos'].includes(modo)) {
+    return Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
+  }
+  return Array.isArray(data?.detalle) ? data.detalle : [];
 }
 
 function actualizarResumenTexto(data = reporteActual, error = '') {
   const el = document.getElementById('report-result-summary');
   if (!el) return;
-  if (error) { el.textContent = error; return; }
-  if (!consultaAplicada || !data) { el.textContent = 'Selecciona los filtros para una búsqueda más precisa.'; return; }
-  const modo = obtenerModoReporteActivo();
-  const count = ['estudiantes', 'profesores', 'grupos'].includes(modo)
-    ? (Array.isArray(data.detalle_por_grupo) ? data.detalle_por_grupo.length : 0)
-    : (Array.isArray(data.detalle) ? data.detalle.length : 0);
+
+  if (error) {
+    el.textContent = error;
+    return;
+  }
+
+  if (!consultaAplicada || !data) {
+    el.textContent = 'Selecciona los filtros para una búsqueda más precisa.';
+    return;
+  }
+
+  const count = obtenerFilasReporte(data).length;
   el.textContent = `${count} resultado${count === 1 ? '' : 's'} con los filtros aplicados.`;
 }
 
@@ -430,17 +420,16 @@ function renderEmptyState(data, errorMessage = '') {
   const message = document.getElementById('report-empty-message');
   if (box) box.hidden = true;
   if (message) message.textContent = '';
-  const modo = obtenerModoReporteActivo();
-  const rows = ['profesores', 'estudiantes', 'grupos'].includes(modo)
-    ? (Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [])
-    : (Array.isArray(data?.detalle) ? data.detalle : []);
+
   if (!consultaAplicada && !errorMessage) return;
+
   if (errorMessage) {
     const el = document.getElementById('report-result-summary');
     if (el) el.textContent = errorMessage;
     return;
   }
-  if (!rows.length) {
+
+  if (!obtenerFilasReporte(data).length) {
     const el = document.getElementById('report-result-summary');
     if (el) el.textContent = obtenerMensajeSinDatos();
   }
@@ -463,12 +452,16 @@ function renderTablaPrincipal(data = {}) {
   const head = document.getElementById('report-tabla-head');
   if (!body || !head) return;
   const modo = obtenerModoReporteActivo();
-  const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
-  const detalle = Array.isArray(data?.detalle) ? data.detalle : [];
+  const agrupado = obtenerFilasReporte(data, 'grupos');
+  const detalle = obtenerFilasReporte(data, 'matricula');
 
   if (modo === 'pre_matricula') {
     head.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>';
     renderRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return;
+  }
+  if (modo === 'pagos') {
+    head.innerHTML = '<th>Estudiante</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>';
+    renderRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))]); return;
   }
   if (modo === 'auditoria') { renderAuditoria(body, head, detalle, false); return; }
   if (modo === 'estudiantes') {
@@ -483,7 +476,7 @@ function renderTablaPrincipal(data = {}) {
     head.innerHTML = '<th>Grupo</th><th>Sección</th><th>Ocupados</th><th>Capacidad</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>';
     renderRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0, r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return;
   }
-  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor</th><th>Estado estudiante</th>';
+  head.innerHTML = '<th>Fecha</th><th>Estudiante</th><th>Grupo</th><th>Profesor(es)</th><th>Estado estudiante</th>';
   renderRows(body, detalle, r => [formatDate(r.fecha), fullName(r), r.nombre_grupo ?? '-', fullName(r, 'profesor'), normalizarEstadoActivo(r.estudiante_estado ?? r.estado_estudiante ?? r.estado)]);
 }
 
@@ -629,7 +622,11 @@ function renderPreviewFilters(filtros) {
   if (config.filtros.includes('grupo')) chips.push(`Grupo: ${grupoTexto}`);
   if (config.filtros.includes('estado')) {
     const textoEstado = filtros.estado_asistencia
-      ? (filtros.modo === 'matricula' ? normalizarEstadoActivo(filtros.estado_asistencia) : formatearEstadoAsistencia(filtros.estado_asistencia))
+      ? (filtros.modo === 'matricula'
+        ? normalizarEstadoActivo(filtros.estado_asistencia)
+        : filtros.modo === 'pagos'
+          ? formatearEstadoPago(filtros.estado_asistencia)
+          : formatearEstadoAsistencia(filtros.estado_asistencia))
       : 'Todos';
     chips.push(`Estado: ${textoEstado}`);
   }
@@ -646,6 +643,7 @@ function renderPreviewMetrics(resumen, data = reporteActual) {
   const modo = obtenerModoReporteActivo();
   let metrics = [];
   if (modo === 'auditoria') metrics = [['Auditorías', resumen.total_auditorias ?? 0], ['Registros', resumen.total_registros ?? 0]];
+  else if (modo === 'pagos') metrics = [['Pagos', resumen.total_pagos ?? 0], ['Cancelados', resumen.total_cancelados ?? 0], ['Pendientes', resumen.total_pendientes ?? 0]];
   else if (modo === 'pre_matricula') metrics = [['Pre-matrículas', resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0], ['Estudiantes', resumen.total_estudiantes ?? 0]];
   else if (modo === 'profesores') {
     const profesores = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
@@ -666,6 +664,7 @@ function renderPreviewTable(data) {
   const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
+  if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))]); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Matriculados</th><th>Capacidad</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0]); return; }
@@ -732,6 +731,7 @@ async function imprimirReportePdf() {
 
 function construirResumenPdf(modo, resumen) {
   if (modo === 'auditoria') return [`Auditorías: ${resumen.total_auditorias ?? 0}`];
+  if (modo === 'pagos') return [`Pagos: ${resumen.total_pagos ?? 0}`, `Cancelados: ${resumen.total_cancelados ?? 0}`, `Pendientes: ${resumen.total_pendientes ?? 0}`];
   if (modo === 'pre_matricula') return [`Pre-matrículas: ${resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0}`];
   return [`Estudiantes: ${resumen.total_estudiantes ?? 0}`, `Profesores: ${resumen.total_profesores ?? 0}`, `Grupos: ${resumen.total_grupos ?? 0}`, `Presentismo: ${resumen.tasa_presentismo ?? 0}%`];
 }
@@ -744,7 +744,9 @@ function descripcionFiltrosPdf(filtros) {
   if (filtros.estado_asistencia) {
     const textoEstado = filtros.modo === 'matricula'
       ? normalizarEstadoActivo(filtros.estado_asistencia)
-      : formatearEstadoAsistencia(filtros.estado_asistencia);
+      : filtros.modo === 'pagos'
+        ? formatearEstadoPago(filtros.estado_asistencia)
+        : formatearEstadoAsistencia(filtros.estado_asistencia);
     items.push(`Estado ${textoEstado}`);
   }
   if (filtros.fecha_inicio || filtros.fecha_fin) items.push(obtenerRangoFechaAplicado(filtros));
@@ -759,6 +761,10 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
   if (modo === 'auditoria') return {
     columnas: [{ label: 'Fecha', width: 29 }, { label: 'Tabla', width: 32 }, { label: 'Acción', width: 28 }, { label: 'Usuario', width: 34 }, { label: 'Cambio', width: usable - 123 }],
     filas: detalle.map(r => [formatDateTime(r.fecha_creacion), r.nombre_tabla ?? '-', r.accion_usuario ?? '-', r.usuario_nombre || r.id_usuario || '-', resumenCambioAuditoria(r)])
+  };
+  if (modo === 'pagos') return {
+    columnas: [{ label: 'Estudiante', width: 58 }, { label: 'Factura', width: 30 }, { label: 'Fecha', width: 26 }, { label: 'Monto', width: 24 }, { label: 'Saldo', width: 24 }, { label: 'Estado', width: usable - 162 }],
+    filas: detalle.map(r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))])
   };
   if (modo === 'pre_matricula') return {
     columnas: [{ label: 'Estudiante', width: 85 }, { label: 'Cédula', width: 30 }, { label: 'Estado', width: 30 }, { label: 'Tipo', width: usable - 145 }],
@@ -1054,6 +1060,21 @@ function formatDateTime(value) {
 function formatearEstadoAsistencia(value) {
   const estado = String(value || '').toLowerCase().trim();
   return ({ presente: 'Presente', ausente: 'Ausente', tardia: 'Tardía', justificada: 'Justificada' })[estado] || value || '-';
+}
+
+function formatearEstadoPago(value) {
+  const estado = String(value || '').trim().toUpperCase();
+  if (estado === 'C') return 'C · Cancelado';
+  if (estado === 'P') return 'P · Pendiente';
+  const texto = String(value || '').toLowerCase().trim();
+  if (texto === 'cancelado') return 'C · Cancelado';
+  if (texto === 'pendiente') return 'P · Pendiente';
+  return value || '-';
+}
+
+function moneda(valor) {
+  const numero = Number(valor || 0);
+  return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(numero);
 }
 
 function normalizarEstadoActivo(value) {

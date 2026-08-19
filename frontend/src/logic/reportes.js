@@ -7,7 +7,7 @@ const MODOS = {
   grupos: { tipo: 'grupo', filtros: ['grupo', 'fecha-desde', 'fecha-hasta'], label: 'Grupo', placeholder: 'Grupo', titulo: 'Reporte de grupos' },
   profesores: { tipo: 'resumen', filtros: ['grupo', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Profesor / ID', placeholder: 'Nombre, apellido o ID del profesor', titulo: 'Reporte de profesores' },
   pre_matricula: { tipo: 'resumen', filtros: ['busqueda'], label: 'Estudiante / ID', placeholder: 'Nombre, apellido o ID del pre-registro', titulo: 'Reporte de pre-matrículas' },
-  pagos: { tipo: 'resumen', filtros: ['busqueda', 'estado', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Factura', placeholder: 'Nombre del estudiante o número de factura', titulo: 'Reporte de pagos' },
+  pagos: { tipo: 'resumen', filtros: ['estado', 'busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Estudiante / Factura', placeholder: 'Nombre del estudiante o número de factura', titulo: 'Reporte de pagos' },
   auditoria: { tipo: 'detalle', filtros: ['busqueda', 'fecha-desde', 'fecha-hasta'], label: 'Auditoría / Acción', placeholder: 'Tabla, usuario, acción o contenido del cambio', titulo: 'Reporte de auditoría' }
 };
 
@@ -103,6 +103,9 @@ async function loadReportesData() {
   limpiarFiltrosReporte(inicial);
   cambiarModoReporte(inicial);
   resetearDatosReporte();
+  window.setTimeout(() => {
+    if (!reporteCargando) cargarReporte();
+  }, 0);
 }
 
 function wireReportesEvents() {
@@ -124,6 +127,9 @@ function wireReportesEvents() {
       limpiarFiltrosReporte(modo);
       cambiarModoReporte(modo);
       resetearDatosReporte();
+      window.setTimeout(() => {
+        if (!reporteCargando) cargarReporte();
+      }, 0);
     });
   });
 

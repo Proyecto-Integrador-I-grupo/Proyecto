@@ -27,6 +27,13 @@ export default function Reportes() {
                   </select>
                 </div>
 
+                <div className="report-filter-field" data-filter="estado">
+                  <label id="report-estado-label" className="form-label" htmlFor="report-filtro-estado">Estado del estudiante</label>
+                  <select id="report-filtro-estado" className="form-select form-select-sm">
+                    <option value="">--Seleccionar--</option>
+                  </select>
+                </div>
+
                 <div className="report-filter-field" data-filter="busqueda">
                   <label id="report-busqueda-label" className="form-label" htmlFor="report-filtro-busqueda">Estudiante / ID</label>
                   <input id="report-filtro-busqueda" type="text" maxLength="120" className="form-control form-control-sm" placeholder="Nombre, apellido o ID" autoComplete="off" />
@@ -40,13 +47,6 @@ export default function Reportes() {
                     <option value="detalle">Detalle</option>
                     <option value="individual">Individual</option>
                     <option value="grupo">Grupo</option>
-                  </select>
-                </div>
-
-                <div className="report-filter-field" data-filter="estado">
-                  <label id="report-estado-label" className="form-label" htmlFor="report-filtro-estado">Estado del estudiante</label>
-                  <select id="report-filtro-estado" className="form-select form-select-sm">
-                    <option value="">--Seleccionar--</option>
                   </select>
                 </div>
 

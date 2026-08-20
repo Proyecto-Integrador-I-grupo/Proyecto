@@ -243,6 +243,12 @@ export default function App() {
               </button>
             </form>
           </div>
+
+          <footer className="login-footer" aria-label="Pie de página de EduControl">
+            <span>EduControl</span>
+            <span className="login-footer-separator">•</span>
+            <span>Gestión académica y financiera</span>
+          </footer>
         </div>
       ) : (
         <div id="app-shell" className="d-flex min-vh-100">
@@ -433,6 +439,22 @@ export default function App() {
               <Usuarios />
               <Perfil />
             </main>
+
+            <footer className="app-footer" aria-label="Pie de página de EduControl">
+              <div className="app-footer-brand">
+                <span className="app-footer-mark">EC</span>
+                <div>
+                  <strong>EduControl</strong>
+                  <span>Gestión académica y financiera</span>
+                </div>
+              </div>
+
+              <div className="app-footer-meta">
+                <span><i className="bi bi-shield-check" aria-hidden="true"></i> Acceso institucional</span>
+                <span className="app-footer-divider" aria-hidden="true"></span>
+                <span>© {new Date().getFullYear()} EduControl</span>
+              </div>
+            </footer>
           </div>
         </div>
       )}

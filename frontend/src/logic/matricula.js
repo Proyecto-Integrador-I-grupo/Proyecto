@@ -929,13 +929,21 @@ async function handleMatriculaSubmit(e) {
 
     if (res.ok) {
       showToast('¡Matrícula definitiva completada y cupo actualizado correctamente!', 'success');
-      const modalEl = document.getElementById('modalMatricula');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('matricula-form').reset();
-      
+
+      // Mantener la ventana abierta para que el administrador pueda procesar
+      // varias matrículas consecutivas. Solo se cierra cuando la persona lo decide.
+      const form = document.getElementById('matricula-form');
+      form?.reset();
+
       await populateGruposSelects();
       await populatePersonaSelects();
       await refreshDashboardCounts();
+
+      const fechaInput = document.getElementById('mat-fecha');
+      if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+      const infoGrupo = document.getElementById('mat-grupo-info');
+      if (infoGrupo) infoGrupo.textContent = 'Selecciona un grupo para ver el cupo disponible.';
+      await validarEstadoFinancieroMatricula();
     } else {
       showToast(json.error || json.mensaje || 'Error al procesar la matrícula', 'error');
     }
@@ -1023,10 +1031,18 @@ async function handleGrupoSubmit(e) {
       }
       sessionStorage.setItem('educontrol_active_view', 'matricula');
       showToast('Grupo creado correctamente');
-      const modalEl = document.getElementById('modalGrupo');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('grupo-form').reset();
+
+      // Mantener "Crear Grupo" abierto para registrar varios grupos seguidos.
+      document.getElementById('grupo-form')?.reset();
+      actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
+      const searchProfesor = document.getElementById('grupo-profesor-search');
+      if (searchProfesor) searchProfesor.value = '';
+      const searchSeccion = document.getElementById('grupo-seccion-search');
+      if (searchSeccion) searchSeccion.value = '';
+
       await populateGruposSelects();
+      await populateSeccionesSelect();
+      await populateProfesoresSelects(false);
     } else {
       const mensaje = json.error || json.mensaje || 'Error creando grupo';
       if (typeof showResultModal === 'function') {
@@ -1062,9 +1078,10 @@ async function handleSeccionSubmit(e) {
 
     if (res.ok) {
       showToast('Sección creada correctamente');
-      const modalEl = document.getElementById('modalSeccion');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('seccion-form').reset();
+
+      // Esta es una ventana de trabajo continuo: se mantiene abierta hasta
+      // que el administrador la cierre manualmente.
+      document.getElementById('seccion-form')?.reset();
       setDefaultSeccionPeriodo();
 
       await populateSeccionesSelect();

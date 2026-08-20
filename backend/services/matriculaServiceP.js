@@ -220,10 +220,17 @@ export async function crearGrupoService(datos) {
     }
 
     const [dupRows] = await connection.query(
-      "SELECT id_grupo FROM grupo WHERE nombre_grupo = ? AND estado = TRUE",
-      [nombreLimpio]
+      `SELECT id_grupo
+       FROM grupo
+       WHERE nombre_grupo = ?
+         AND id_seccion = ?
+         AND estado = TRUE
+       LIMIT 1`,
+      [nombreLimpio, idSeccionNum]
     );
-    if (dupRows.length > 0) throw new Error("Ya existe un grupo activo con ese nombre.");
+    if (dupRows.length > 0) {
+      throw new Error("Ya existe un grupo activo con ese nombre en la sección seleccionada.");
+    }
 
     const [result] = await connection.query(
       "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, id_seccion) VALUES (?, TRUE, ?, ?, ?)",

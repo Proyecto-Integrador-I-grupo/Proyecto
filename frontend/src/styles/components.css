@@ -965,3 +965,22 @@ body.high-contrast .accessibility-toggle {
     linear-gradient(180deg, rgba(4,15,25,.06), rgba(4,15,25,.28)),
     radial-gradient(circle at 16% 18%, rgba(255,255,255,.12), transparent 35%);
 }
+
+/* Mantener el control flotante de accesibilidad por encima del footer institucional. */
+.accessibility-widget {
+  bottom: 86px;
+}
+
+@media (max-width: 767.98px) {
+  .accessibility-widget {
+    right: 14px;
+    bottom: 78px;
+  }
+}
+
+@media (max-width: 480px) {
+  .accessibility-widget {
+    right: 12px;
+    bottom: 72px;
+  }
+}

@@ -118,14 +118,12 @@ function wirePagosEvents() {
     pagosView.addEventListener('click', async (event) => {
       const pagar = event.target.closest('[data-fin-pagar]');
       const descuento = event.target.closest('[data-fin-descuento]');
-      const facturar = event.target.closest('[data-fin-facturar]');
       const editar = event.target.closest('[data-fin-editar-cargo]');
       const documento = event.target.closest('[data-fin-documento]');
 
       if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
       if (descuento) abrirEdicionCargo(Number(descuento.dataset.finDescuento), true);
       if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
-      if (facturar) await reintentarFactura(Number(facturar.dataset.finFacturar), facturar);
       if (documento) await abrirDocumentoFactura(Number(documento.dataset.finDocumento), documento.dataset.formato || 'pdf', documento);
     });
   }
@@ -796,8 +794,8 @@ function actualizarResumenFacturacion() {
   if (!resumen) return;
   const registros = obtenerCargosPagados();
   const facturados = registros.filter((r) => Boolean(r.id_factura_externa)).length;
-  const porGenerar = Math.max(0, registros.length - facturados);
-  resumen.textContent = `${facturados} facturado${facturados === 1 ? '' : 's'} · ${porGenerar} por generar`;
+  const procesando = Math.max(0, registros.length - facturados);
+  resumen.textContent = `${facturados} facturado${facturados === 1 ? '' : 's'} · ${procesando} procesando`;
   resumen.classList.toggle('is-empty', registros.length === 0);
 }
 
@@ -882,7 +880,6 @@ function renderFacturacion() {
     const tieneFactura = Boolean(c.id_factura_externa);
     const esError = !tieneFactura && String(c.estado_factura || '').toLowerCase() === 'error';
     if (filtro === 'facturada' && !tieneFactura) return false;
-    if (filtro === 'por_generar' && (tieneFactura || esError)) return false;
     if (filtro === 'error' && !esError) return false;
     if (!busqueda) return true;
     return [c.estudiante_nombre, c.concepto_nombre, c.descripcion, c.id_factura_externa, c.id_cargo]
@@ -894,19 +891,13 @@ function renderFacturacion() {
       <div class="finance-empty-state finance-empty-card compact">
         <i class="bi bi-receipt"></i>
         <strong>${todos.length ? 'No hay coincidencias' : 'Aún no hay comprobantes'}</strong>
-        <span>${todos.length ? 'Ajusta la búsqueda o el filtro para ver otros comprobantes.' : 'Los cargos pagados aparecerán aquí para generar o consultar su PDF.'}</span>
+        <span>${todos.length ? 'Ajusta la búsqueda o el filtro para ver otros comprobantes.' : 'Los cargos pagados se facturan automáticamente y aparecerán aquí para consultar su PDF.'}</span>
       </div>`;
     return;
   }
 
   body.innerHTML = registros.map((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
-    const estadoCargo = String(c.estado_cargo || c.estado || '').toLowerCase();
-    const puedeGenerar = !tieneFactura && (
-      Boolean(c.listo_para_facturar) ||
-      estadoCargo === 'pagado' ||
-      Number(c.saldo || 0) <= 0
-    );
     const detalleErrorFactura = !tieneFactura && c.error_mensaje
       ? `<small class="finance-invoice-error-detail">${esc(c.error_mensaje)}</small>`
       : '';
@@ -914,18 +905,14 @@ function renderFacturacion() {
     const estadoFactura = tieneFactura
       ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>PDF disponible</span>'
       : (c.estado_factura === 'error'
-          ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-danger">Error al facturar</span>${detalleErrorFactura}</div>`
-          : '<span class="badge rounded-pill text-bg-warning">Pendiente de factura</span>');
+          ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-warning">Reintento automático</span>${detalleErrorFactura}</div>`
+          : '<span class="badge rounded-pill text-bg-info">Generando automáticamente</span>');
 
     const acciones = tieneFactura
       ? `<button class="btn btn-sm btn-primary finance-pdf-only-btn" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir comprobante PDF">
            <i class="bi bi-file-earmark-pdf"></i> Ver PDF
          </button>`
-      : (puedeGenerar
-          ? `<button class="btn btn-sm btn-primary finance-generate-btn" data-fin-facturar="${c.id_cargo}">
-               <i class="bi bi-receipt-cutoff"></i> Generar PDF
-             </button>`
-          : '<span class="text-muted small">No disponible</span>');
+      : '<span class="text-muted small"><i class="bi bi-arrow-repeat me-1"></i>Automático</span>';
 
     return `
       <article class="finance-invoice-record">
@@ -1104,8 +1091,9 @@ async function guardarPago(event) {
     const r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, { method: 'POST', body: JSON.stringify(payload) });
     hideModal('modalRegistrarPago');
     const fact = r.facturacion;
-    if (fact?.ok) showToast(`Pago aplicado y factura ${fact.id_factura || ''} generada.`, 'success');
-    else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, fact?.estado === 'error' ? 'warning' : 'success');
+    if (fact?.ok) showToast(`Pago aplicado. Factura ${fact.id_factura || ''} generada automáticamente.`, 'success');
+    else if (r.estado_cargo === 'pagado') showToast(`Pago aplicado. ${fact?.mensaje || 'La factura se generará automáticamente.'}`, 'warning');
+    else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, 'success');
     await loadPagosData();
   } catch (e) { showToast(e.message, 'error'); }
 }
@@ -1486,18 +1474,49 @@ function quitarLogoFactura() {
 
 async function guardarConfiguracion(event) {
   event.preventDefault();
+  const submit = event.currentTarget?.querySelector('button[type="submit"]');
+  const original = submit?.innerHTML;
+  if (submit) {
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+  }
+
   try {
-    await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify({
+    const guardada = await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify({
       institucion_nombre: value('fin-config-nombre'),
       tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'),
       correo: value('fin-config-correo'),
       logo_data: logoFacturaData
     }) });
+
+    // Usamos la respuesta persistida del backend, no solamente la vista previa
+    // local. Así, al cerrar y volver a abrir el modal, se conserva exactamente
+    // el logo almacenado en configuracion_facturacion.
+    logoFacturaData = guardada?.logo_data || null;
+    renderLogoFacturaPreview();
+
+    const verificacion = await requestJson('/api/finanzas/configuracion');
+    logoFacturaData = verificacion?.logo_data || null;
+    renderLogoFacturaPreview();
+
+    if (Boolean(logoFacturaData) !== Boolean(guardada?.logo_data)) {
+      throw new Error('La configuración se guardó, pero no fue posible verificar el logo. Inténtalo nuevamente.');
+    }
+
+    const input = document.getElementById('fin-config-logo');
+    if (input) input.value = '';
     await cargarEstadoIntegraciones(false);
     hideModal('modalConfigFacturacion');
-    showToast('Datos del emisor y logo guardados para las próximas facturas.', 'success');
-  } catch (e) { showToast(e.message, 'error'); }
+    showToast(logoFacturaData ? 'Configuración y logo guardados correctamente.' : 'Configuración guardada correctamente.', 'success');
+  } catch (e) {
+    showToast(e.message || 'No se pudo guardar la configuración.', 'error');
+  } finally {
+    if (submit) {
+      submit.disabled = false;
+      submit.innerHTML = original || 'Guardar';
+    }
+  }
 }
 
 function renderFactura(r) {
@@ -1506,7 +1525,7 @@ function renderFactura(r) {
   if (r.estado_factura === 'pendiente_datos') return '<span class="badge text-bg-warning">Faltan datos</span>';
   if (r.estado_factura === 'pendiente_configuracion') return '<span class="badge text-bg-warning">Configurar</span>';
   if (String(r.estado || '').toLowerCase() === 'pagado' || Number(r.saldo || 0) <= 0) {
-    return '<span class="badge text-bg-warning">Por generar</span>';
+    return '<span class="badge text-bg-info">Automático</span>';
   }
   return '<span class="text-muted">—</span>';
 }

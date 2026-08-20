@@ -174,21 +174,52 @@ export async function actualizarConcepto(id, datos) {
 
 async function normalizarEstadosCargosPorPagos() {
   // La fuente de verdad del estado financiero es la suma de pagos aplicados.
-  // Esto corrige registros históricos que quedaron como pendientes aunque ya
-  // tengan el total cubierto, o como pagados cuando todavía conservan saldo.
+  // Primero recuperamos cargos históricos cuyo total quedó en 0 pero sí tienen
+  // pagos reales. En ese caso el monto pagado es la mejor evidencia disponible
+  // del importe que debe quedar conciliado para facturación y reportes.
   await pool.query(
     `UPDATE cargo_estudiante c
-     LEFT JOIN (
-       SELECT id_cargo, COALESCE(SUM(monto), 0) AS total_pagado
+     INNER JOIN (
+       SELECT id_cargo, ROUND(COALESCE(SUM(monto), 0), 2) AS total_pagado
        FROM pago
        WHERE estado = 'aplicado'
        GROUP BY id_cargo
      ) pg ON pg.id_cargo = c.id_cargo
      SET
-       c.saldo = GREATEST(0, ROUND(c.total - COALESCE(pg.total_pagado, 0), 2)),
+       c.monto_base = CASE WHEN c.monto_base <= 0 THEN pg.total_pagado ELSE c.monto_base END,
+       c.total = CASE WHEN c.total <= 0 THEN pg.total_pagado ELSE c.total END,
+       c.saldo = CASE WHEN c.total <= 0 THEN 0 ELSE GREATEST(0, ROUND(c.total - pg.total_pagado, 2)) END,
        c.estado = CASE
          WHEN c.estado = 'anulado' THEN 'anulado'
-         WHEN GREATEST(0, ROUND(c.total - COALESCE(pg.total_pagado, 0), 2)) <= 0 THEN 'pagado'
+         WHEN pg.total_pagado > 0 AND (c.total <= 0 OR pg.total_pagado >= c.total) THEN 'pagado'
+         WHEN pg.total_pagado > 0 THEN 'parcial'
+         ELSE 'pendiente'
+       END
+     WHERE c.estado <> 'anulado'
+       AND pg.total_pagado > 0`
+  );
+
+  // Después normalizamos todos los cargos con total válido. Es importante no
+  // convertir automáticamente un cargo de total 0 y sin pagos en "pagado":
+  // esos registros requieren corrección del monto y no deben aparecer como
+  // facturas pendientes.
+  await pool.query(
+    `UPDATE cargo_estudiante c
+     LEFT JOIN (
+       SELECT id_cargo, ROUND(COALESCE(SUM(monto), 0), 2) AS total_pagado
+       FROM pago
+       WHERE estado = 'aplicado'
+       GROUP BY id_cargo
+     ) pg ON pg.id_cargo = c.id_cargo
+     SET
+       c.saldo = CASE
+         WHEN c.total > 0 THEN GREATEST(0, ROUND(c.total - COALESCE(pg.total_pagado, 0), 2))
+         ELSE 0
+       END,
+       c.estado = CASE
+         WHEN c.estado = 'anulado' THEN 'anulado'
+         WHEN c.total <= 0 AND COALESCE(pg.total_pagado, 0) <= 0 THEN 'pendiente'
+         WHEN c.total > 0 AND COALESCE(pg.total_pagado, 0) >= c.total THEN 'pagado'
          WHEN COALESCE(pg.total_pagado, 0) > 0 THEN 'parcial'
          ELSE 'pendiente'
        END
@@ -304,7 +335,7 @@ async function anularCargosPendientesDeEstudiantesInactivos() {
   );
 }
 
-async function prepararDatosFinancieros() {
+export async function prepararDatosFinancieros() {
   const tareas = [
     normalizarEstadosCargosPorPagos,
     anularCargosPendientesDeEstudiantesInactivos,
@@ -535,6 +566,57 @@ export async function listarCargos(filtros = {}) {
 }
 
 
+let facturacionPendientesEnCurso = null;
+
+async function facturarCargosPagadosPendientesAutomaticamente() {
+  if (facturacionPendientesEnCurso) return facturacionPendientesEnCurso;
+
+  facturacionPendientesEnCurso = (async () => {
+    const [pendientes] = await pool.query(
+      `SELECT
+         c.id_cargo,
+         COALESCE((
+           SELECT pg.metodo_pago
+           FROM pago pg
+           WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'
+           ORDER BY pg.fecha_pago DESC, pg.id_pago DESC
+           LIMIT 1
+         ), 'otro') AS metodo_pago
+       FROM cargo_estudiante c
+       LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
+       WHERE c.estado <> 'anulado'
+         AND (c.estado = 'pagado' OR c.saldo <= 0)
+         AND (
+           c.total > 0 OR
+           COALESCE((SELECT SUM(pg2.monto) FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado'), 0) > 0
+         )
+         AND fc.id_factura_externa IS NULL
+       ORDER BY c.fecha_emision ASC, c.id_cargo ASC
+       LIMIT 30`
+    );
+
+    if (!pendientes.length) return;
+
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(2, pendientes.length) }, async () => {
+      while (cursor < pendientes.length) {
+        const actual = pendientes[cursor++];
+        try {
+          await generarFacturaDeCargo(actual.id_cargo, actual.metodo_pago || 'otro');
+        } catch (error) {
+          console.warn(`Finanzas: no se pudo facturar automáticamente el cargo ${actual.id_cargo}:`, error?.message || error);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+  })().finally(() => {
+    facturacionPendientesEnCurso = null;
+  });
+
+  return facturacionPendientesEnCurso;
+}
+
 export async function listarFacturas() {
   await prepararDatosFinancieros();
 
@@ -547,6 +629,15 @@ export async function listarFacturas() {
     await reconciliarFacturasEduControl();
   } catch (error) {
     console.warn('Finanzas: no se pudo conciliar Factura Bonita:', error?.message || error);
+  }
+
+  // Los cargos históricos que ya estaban pagados antes de esta versión también
+  // se facturan sin intervención manual. Esto mantiene el módulo y reportes
+  // consistentes aunque el pago se haya registrado en una versión anterior.
+  try {
+    await facturarCargosPagadosPendientesAutomaticamente();
+  } catch (error) {
+    console.warn('Finanzas: no se pudo completar la facturación automática pendiente:', error?.message || error);
   }
 
   // Se consideran facturables tanto los cargos marcados como pagados como los
@@ -562,6 +653,7 @@ export async function listarFacturas() {
        c.fecha_emision,
        c.total,
        c.saldo,
+       COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS total_pagado,
        c.estado AS estado_cargo,
        cc.codigo AS concepto_codigo,
        cc.nombre AS concepto_nombre,
@@ -578,7 +670,10 @@ export async function listarFacturas() {
      LEFT JOIN persona p ON p.id_persona = e.id_persona
      LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
      WHERE c.estado <> 'anulado'
-       AND c.total > 0
+       AND (
+         c.total > 0
+         OR COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) > 0
+       )
        AND (
          c.estado = 'pagado'
          OR c.saldo <= 0
@@ -593,13 +688,14 @@ export async function listarFacturas() {
 
   return rows.map((row) => ({
     ...row,
-    total: Number(row.total || 0),
+    total: Number(row.total || row.total_pagado || 0),
+    total_pagado: Number(row.total_pagado || 0),
     saldo: Number(row.saldo || 0),
     estudiante_activo: Boolean(row.estudiante_activo),
     listo_para_facturar:
       !row.id_factura_externa &&
       String(row.estado_cargo || '').toLowerCase() !== 'anulado' &&
-      Number(row.total || 0) > 0 &&
+      Number(row.total || row.total_pagado || 0) > 0 &&
       (
         String(row.estado_cargo || '').toLowerCase() === 'pagado' ||
         Number(row.saldo || 0) <= 0
@@ -816,11 +912,13 @@ export async function registrarPago(idCargo, datos, idUsuario) {
   const cargoId = positiveInt(idCargo, "El cargo");
   const montoPago = money(datos.monto, "El monto del pago");
   const metodo = String(datos.metodo_pago || "").trim().toLowerCase();
-  if (!['efectivo','tarjeta','transferencia','sinpe','otro'].includes(metodo)) {
+  if (!["efectivo", "tarjeta", "transferencia", "sinpe", "otro"].includes(metodo)) {
     throw new Error("Método de pago no válido.");
   }
 
   const connection = await pool.getConnection();
+  let pagoResultId = null;
+  let saldoNuevo = null;
   let cargoPagado = false;
 
   try {
@@ -832,10 +930,10 @@ export async function registrarPago(idCargo, datos, idUsuario) {
     );
     if (!cargoRows.length) throw new Error("Cargo no encontrado.");
     const cargo = cargoRows[0];
-    if (cargo.estado === 'anulado') throw new Error("El cargo está anulado.");
-    if (cargo.estado === 'pagado' || Number(cargo.saldo) <= 0) throw new Error("El cargo ya está pagado.");
+    if (cargo.estado === "anulado") throw new Error("El cargo está anulado.");
+    if (cargo.estado === "pagado" || Number(cargo.saldo) <= 0) throw new Error("El cargo ya está pagado.");
     if (montoPago > Number(cargo.saldo) + 0.001) {
-      throw new Error(`El pago no puede superar el saldo pendiente de CRC ${Number(cargo.saldo).toLocaleString('es-CR')}.`);
+      throw new Error(`El pago no puede superar el saldo pendiente de CRC ${Number(cargo.saldo).toLocaleString("es-CR")}.`);
     }
 
     if (datos.responsable) {
@@ -846,39 +944,58 @@ export async function registrarPago(idCargo, datos, idUsuario) {
       `INSERT INTO pago
        (id_cargo, fecha_pago, monto, metodo_pago, referencia, estado, id_usuario)
        VALUES (?, NOW(), ?, ?, ?, 'aplicado', ?)`,
-      [cargoId, montoPago, metodo, String(datos.referencia || '').trim().slice(0, 100) || null, idUsuario || null]
+      [cargoId, montoPago, metodo, String(datos.referencia || "").trim().slice(0, 100) || null, idUsuario || null]
     );
 
-    const saldoNuevo = Math.max(0, Math.round((Number(cargo.saldo) - montoPago) * 100) / 100);
+    pagoResultId = pagoResult.insertId;
+    saldoNuevo = Math.max(0, Math.round((Number(cargo.saldo) - montoPago) * 100) / 100);
     cargoPagado = saldoNuevo <= 0;
+
     await connection.query(
       `UPDATE cargo_estudiante SET saldo = ?, estado = ? WHERE id_cargo = ?`,
-      [saldoNuevo, cargoPagado ? 'pagado' : 'parcial', cargoId]
+      [saldoNuevo, cargoPagado ? "pagado" : "parcial", cargoId]
     );
 
     await connection.commit();
-
-    const facturacion = {
-      ok: false,
-      estado: cargoPagado ? 'lista_para_facturar' : 'pendiente_pago',
-      mensaje: cargoPagado
-        ? 'Pago aplicado. El cargo ya está listo para generar la factura desde Facturación.'
-        : 'Pago parcial aplicado. La factura estará disponible al completar el cargo.'
-    };
-
-    return {
-      id_pago: pagoResult.insertId,
-      id_cargo: cargoId,
-      saldo: saldoNuevo,
-      estado_cargo: cargoPagado ? 'pagado' : 'parcial',
-      facturacion
-    };
   } catch (error) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
     throw error;
   } finally {
     connection.release();
   }
+
+  let facturacion = {
+    ok: false,
+    estado: "pendiente_pago",
+    mensaje: "Pago parcial aplicado. La factura se generará automáticamente al completar el cargo."
+  };
+
+  if (cargoPagado) {
+    try {
+      facturacion = await generarFacturaDeCargo(cargoId, metodo);
+      if (!facturacion?.ok) {
+        facturacion = {
+          ...facturacion,
+          mensaje: facturacion?.mensaje || "El pago quedó aplicado y el sistema seguirá intentando generar la factura automáticamente."
+        };
+      }
+    } catch (error) {
+      console.error(`Finanzas: pago ${pagoResultId} aplicado, pero la facturación automática falló:`, error);
+      facturacion = {
+        ok: false,
+        estado: "error",
+        mensaje: "El pago quedó aplicado. La factura se reintentará automáticamente desde el módulo de facturación."
+      };
+    }
+  }
+
+  return {
+    id_pago: pagoResultId,
+    id_cargo: cargoId,
+    saldo: saldoNuevo,
+    estado_cargo: cargoPagado ? "pagado" : "parcial",
+    facturacion
+  };
 }
 
 async function upsertResponsable(connection, idEstudiante, datos) {

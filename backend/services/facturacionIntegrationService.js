@@ -92,7 +92,7 @@ async function asegurarLogoConfiguracion() {
 
   esquemaLogoConfiguracionPromise = (async () => {
     const [[row]] = await pool.query(
-      `SELECT COUNT(*) AS existe
+      `SELECT COUNT(*) AS existe, MAX(DATA_TYPE) AS data_type
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE()
          AND TABLE_NAME = 'configuracion_facturacion'
@@ -103,6 +103,14 @@ async function asegurarLogoConfiguracion() {
       await pool.query(
         `ALTER TABLE configuracion_facturacion
          ADD COLUMN logo_data LONGTEXT NULL AFTER correo`
+      );
+    } else if (String(row?.data_type || '').toLowerCase() !== 'longtext') {
+      // Algunas instalaciones antiguas tenían logo_data como TEXT/VARCHAR y la
+      // imagen podía truncarse o perderse al recargar. LONGTEXT permite guardar
+      // cómodamente el data URL validado (máximo 500 KB en la aplicación).
+      await pool.query(
+        `ALTER TABLE configuracion_facturacion
+         MODIFY COLUMN logo_data LONGTEXT NULL`
       );
     }
   })().catch((error) => {
@@ -177,6 +185,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const [cargoRows] = await pool.query(
     `SELECT
        c.id_cargo, c.descripcion, c.monto_base, c.descuento, c.impuesto, c.total, c.saldo, c.estado,
+       COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS total_pagado,
        ce.impuesto_tarifa,
        e.id_estudiante,
        p.nombre, p.apellido1, p.apellido2,
@@ -290,11 +299,24 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     };
   }
 
-  const base = numero(cargo.monto_base);
-  const descuento = numero(cargo.descuento);
-  const impuesto = numero(cargo.impuesto);
-  const total = numero(cargo.total);
-  const tarifa = numero(cargo.impuesto_tarifa);
+  const totalPagado = numero(cargo.total_pagado);
+  const totalRegistrado = numero(cargo.total);
+  const total = totalRegistrado > 0 ? totalRegistrado : totalPagado;
+  if (total <= 0) {
+    return {
+      ok: false,
+      estado: 'pendiente_monto',
+      mensaje: 'El cargo no tiene un monto facturable. Corrige el cargo antes de generar el PDF.'
+    };
+  }
+
+  // Compatibilidad con cargos históricos: si el total original quedó en 0
+  // pero existen pagos aplicados, se utiliza el monto efectivamente pagado.
+  const baseRegistrada = numero(cargo.monto_base);
+  const base = baseRegistrada > 0 ? baseRegistrada : total;
+  const descuento = Math.min(numero(cargo.descuento), base);
+  const impuesto = totalRegistrado > 0 ? numero(cargo.impuesto) : 0;
+  const tarifa = totalRegistrado > 0 ? numero(cargo.impuesto_tarifa) : 0;
 
   const payload = {
     origen: "educontrol",

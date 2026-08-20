@@ -1,4 +1,5 @@
 import pool from "../config/database.js";
+import { prepararDatosFinancieros } from "./finanzaService.js";
 
 const ESTADOS_ASISTENCIA_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
 const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
@@ -488,6 +489,7 @@ export async function generarReporteCaso(filtros = {}, usuarioActual = null) {
 
 export async function generarReporteResumen(filtros = {}, usuarioActual = null) {
     const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
+    if (f.modo === "pagos") await prepararDatosFinancieros();
 
     // Matrícula debe salir de las matrículas reales, no depender de que ya exista asistencia.
     if (f.modo === "matricula") {
@@ -586,7 +588,7 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
             } else if (f.estado_pago === "facturado") {
                 condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL");
             } else if (f.estado_pago === "pagado") {
-                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0)");
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0)");
             } else if (f.estado_pago === "parcial") {
                 condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total");
             } else {
@@ -618,14 +620,14 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
                 CASE
                     WHEN c.estado = 'anulado' THEN 'anulado'
                     WHEN fc.id_factura_externa IS NOT NULL THEN 'facturado'
-                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'pagado'
+                    WHEN c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 'pagado'
                     WHEN c.saldo > 0 AND c.saldo < c.total THEN 'parcial'
                     ELSE 'pendiente'
                 END AS estado_pago,
                 CASE
                     WHEN c.estado = 'anulado' THEN 'Anulado'
                     WHEN fc.id_factura_externa IS NOT NULL THEN 'Facturado'
-                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'Pagado · por facturar'
+                    WHEN c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 'Facturación automática'
                     WHEN c.saldo > 0 AND c.saldo < c.total THEN 'Pago parcial'
                     ELSE 'Pendiente de pago'
                 END AS estado_label
@@ -644,7 +646,7 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
                 COUNT(*) AS total_movimientos,
                 SUM(CASE WHEN c.estado = 'anulado' THEN 1 ELSE 0 END) AS total_anulados,
                 SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL THEN 1 ELSE 0 END) AS total_facturados,
-                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 1 ELSE 0 END) AS total_pagados,
+                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 1 ELSE 0 END) AS total_pagados,
                 SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total THEN 1 ELSE 0 END) AS total_parciales,
                 SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo >= c.total THEN 1 ELSE 0 END) AS total_pendientes
              FROM cargo_estudiante c
@@ -854,6 +856,7 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
 
 export async function generarReporteDetalle(filtros = {}, usuarioActual = null) {
     const f = validarFiltrosReporte(aplicarAlcanceUsuario(filtros, usuarioActual));
+    if (f.modo === "pagos") await prepararDatosFinancieros();
 
     if (f.modo === "matricula") {
         const condiciones = ["m.estado_matricula = 'activa'", "dm.estado = TRUE", "g.estado = TRUE"];
@@ -990,7 +993,7 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
             } else if (f.estado_pago === "facturado") {
                 condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL");
             } else if (f.estado_pago === "pagado") {
-                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0)");
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0)");
             } else if (f.estado_pago === "parcial") {
                 condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total");
             } else {
@@ -1022,14 +1025,14 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
                 CASE
                     WHEN c.estado = 'anulado' THEN 'anulado'
                     WHEN fc.id_factura_externa IS NOT NULL THEN 'facturado'
-                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'pagado'
+                    WHEN c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 'pagado'
                     WHEN c.saldo > 0 AND c.saldo < c.total THEN 'parcial'
                     ELSE 'pendiente'
                 END AS estado_pago,
                 CASE
                     WHEN c.estado = 'anulado' THEN 'Anulado'
                     WHEN fc.id_factura_externa IS NOT NULL THEN 'Facturado'
-                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'Pagado · por facturar'
+                    WHEN c.total > 0 AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 'Facturación automática'
                     WHEN c.saldo > 0 AND c.saldo < c.total THEN 'Pago parcial'
                     ELSE 'Pendiente de pago'
                 END AS estado_label

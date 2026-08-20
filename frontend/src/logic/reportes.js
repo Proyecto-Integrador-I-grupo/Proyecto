@@ -13,7 +13,7 @@ const MODOS = {
 
 const ESTADOS_ASISTENCIA = ['presente', 'ausente', 'tardia', 'justificada'];
 const ESTADOS_ACTIVO = ['activo', 'inactivo'];
-const ESTADOS_PAGO = ['pendiente', 'cancelado'];
+const ESTADOS_PAGO = ['pendiente', 'parcial', 'pagado', 'facturado', 'anulado'];
 const TIPOS_REPORTE = ['resumen', 'detalle', 'individual', 'grupo'];
 const REPORTE_LOGO_SRC = '/images/logo1.jpg';
 let consultaAplicada = false;
@@ -257,9 +257,12 @@ function actualizarOpcionesEstado(modo = obtenerModoReporteActivo()) {
     ]
     : esPagos
       ? [
-        { value: '', label: 'Todos los pagos' },
-        { value: 'pendiente', label: 'Pagos pendientes' },
-        { value: 'cancelado', label: 'Pagos cancelados' }
+        { value: '', label: 'Todos los movimientos' },
+        { value: 'pendiente', label: 'Pendiente de pago' },
+        { value: 'parcial', label: 'Pago parcial' },
+        { value: 'pagado', label: 'Pagado · por facturar' },
+        { value: 'facturado', label: 'Facturado' },
+        { value: 'anulado', label: 'Anulado' }
       ]
       : [
         { value: '', label: 'Todos los estados' },
@@ -472,7 +475,7 @@ function renderTablaPrincipal(data = {}) {
   }
   if (modo === 'pagos') {
     head.innerHTML = '<th>Estudiante</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>';
-    renderRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))]); return;
+    renderRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return;
   }
   if (modo === 'auditoria') { renderAuditoria(body, head, detalle, false); return; }
   if (modo === 'estudiantes') {
@@ -655,7 +658,7 @@ function renderPreviewMetrics(resumen, data = reporteActual) {
   const modo = obtenerModoReporteActivo();
   let metrics = [];
   if (modo === 'auditoria') metrics = [['Auditorías', resumen.total_auditorias ?? 0], ['Registros', resumen.total_registros ?? 0]];
-  else if (modo === 'pagos') metrics = [['Pagos', resumen.total_pagos ?? 0], ['Cancelados', resumen.total_cancelados ?? 0], ['Pendientes', resumen.total_pendientes ?? 0]];
+  else if (modo === 'pagos') metrics = [['Movimientos', resumen.total_movimientos ?? 0], ['Facturados', resumen.total_facturados ?? 0], ['Pagados por facturar', resumen.total_pagados ?? 0], ['Parciales', resumen.total_parciales ?? 0], ['Pendientes', resumen.total_pendientes ?? 0], ['Anulados', resumen.total_anulados ?? 0]];
   else if (modo === 'pre_matricula') metrics = [['Pre-matrículas', resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0], ['Estudiantes', resumen.total_estudiantes ?? 0]];
   else if (modo === 'profesores') {
     const profesores = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
@@ -676,7 +679,7 @@ function renderPreviewTable(data) {
   const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
-  if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))]); return; }
+  if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Matriculados</th><th>Capacidad</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0]); return; }
@@ -743,7 +746,7 @@ async function imprimirReportePdf() {
 
 function construirResumenPdf(modo, resumen) {
   if (modo === 'auditoria') return [`Auditorías: ${resumen.total_auditorias ?? 0}`];
-  if (modo === 'pagos') return [`Pagos: ${resumen.total_pagos ?? 0}`, `Cancelados: ${resumen.total_cancelados ?? 0}`, `Pendientes: ${resumen.total_pendientes ?? 0}`];
+  if (modo === 'pagos') return [`Movimientos: ${resumen.total_movimientos ?? 0}`, `Facturados: ${resumen.total_facturados ?? 0}`, `Pagados por facturar: ${resumen.total_pagados ?? 0}`, `Parciales: ${resumen.total_parciales ?? 0}`, `Pendientes: ${resumen.total_pendientes ?? 0}`, `Anulados: ${resumen.total_anulados ?? 0}`];
   if (modo === 'pre_matricula') return [`Pre-matrículas: ${resumen.total_pre_matriculas ?? resumen.total_estudiantes ?? 0}`];
   return [`Estudiantes: ${resumen.total_estudiantes ?? 0}`, `Profesores: ${resumen.total_profesores ?? 0}`, `Grupos: ${resumen.total_grupos ?? 0}`, `Presentismo: ${resumen.tasa_presentismo ?? 0}%`];
 }
@@ -776,7 +779,7 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
   };
   if (modo === 'pagos') return {
     columnas: [{ label: 'Estudiante', width: 58 }, { label: 'Factura', width: 30 }, { label: 'Fecha', width: 26 }, { label: 'Monto', width: 24 }, { label: 'Saldo', width: 24 }, { label: 'Estado', width: usable - 162 }],
-    filas: detalle.map(r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || (r.estado_cargo === 'anulado' ? 'C' : 'P'))])
+    filas: detalle.map(r => [fullName(r), r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)])
   };
   if (modo === 'pre_matricula') return {
     columnas: [{ label: 'Estudiante', width: 85 }, { label: 'Cédula', width: 30 }, { label: 'Estado', width: 30 }, { label: 'Tipo', width: usable - 145 }],
@@ -1075,13 +1078,15 @@ function formatearEstadoAsistencia(value) {
 }
 
 function formatearEstadoPago(value) {
-  const estado = String(value || '').trim().toUpperCase();
-  if (estado === 'C') return 'C · Cancelado';
-  if (estado === 'P') return 'P · Pendiente';
   const texto = String(value || '').toLowerCase().trim();
-  if (texto === 'cancelado') return 'C · Cancelado';
-  if (texto === 'pendiente') return 'P · Pendiente';
-  return value || '-';
+  const etiquetas = {
+    pendiente: 'Pendiente de pago',
+    parcial: 'Pago parcial',
+    pagado: 'Pagado · por facturar',
+    facturado: 'Facturado',
+    anulado: 'Anulado'
+  };
+  return etiquetas[texto] || value || '-';
 }
 
 function moneda(valor) {

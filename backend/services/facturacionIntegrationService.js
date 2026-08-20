@@ -297,6 +297,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const tarifa = numero(cargo.impuesto_tarifa);
 
   const payload = {
+    origen: "educontrol",
+    referenciaExterna: `cargo:${idCargo}`,
     fecha: new Date().toISOString(),
     moneda: config.moneda || "CRC",
     condicionVenta: config.condicion_venta || "01",
@@ -345,8 +347,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     const respuesta = await consumirServicio(apiUrl, {
       method: "POST",
       body: JSON.stringify(payload),
-      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 90000),
-      retry429: 0
+      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 45000),
+      retry429: 1
     });
 
     if (!respuesta?.id) {
@@ -378,10 +380,9 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     if (esLimiteTemporal) {
       return {
         ok: false,
-        estado: "cliente_requerido",
-        mensaje: "La comunicación servidor a servidor está limitada temporalmente. EduControl intentará completar la factura desde el navegador.",
-        servicio: apiRoot,
-        payload
+        estado: "capacidad_temporal",
+        mensaje: "El servicio de facturación alcanzó temporalmente su capacidad. Inténtalo nuevamente en unos segundos.",
+        servicio: apiRoot
       };
     }
 
@@ -470,10 +471,10 @@ async function probarServicioHttp(baseUrl) {
     };
   }
 
-  const timeoutConfigurado = Number(process.env.FACTURACION_HEALTH_TIMEOUT_MS || 65000);
+  const timeoutConfigurado = Number(process.env.FACTURACION_HEALTH_TIMEOUT_MS || 10000);
   const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
     ? timeoutConfigurado
-    : 65000;
+    : 10000;
 
   const ruta = "/health";
 
@@ -544,14 +545,6 @@ export async function obtenerEstadoServiciosFacturacion() {
       : facturacion.detalle
   };
 
-  const servicioSimple = (nombre) => {
-    const valor = String(process.env[nombre] || "").trim();
-    return {
-      configurado: Boolean(valor),
-      disponible: null,
-      estado: valor ? "configurado" : "pendiente"
-    };
-  };
 
   return {
     facturacion: {
@@ -565,11 +558,42 @@ export async function obtenerEstadoServiciosFacturacion() {
       url: documentosRoot,
       usa_facturacion_principal: !String(process.env.DOCUMENTOS_API_URL || "").trim(),
       configuracion_invalida: documentosConfig.configuracionInvalida
-    },
-    xml: servicioSimple("XML_API_URL"),
-    firma: servicioSimple("FIRMA_API_URL"),
-    tributacion: servicioSimple("TRIBUTACION_API_URL")
+    }
   };
+}
+
+export async function reconciliarFacturasEduControl() {
+  const apiRoot = obtenerRaizFacturacion();
+  if (!apiRoot) return { conciliadas: 0 };
+
+  const data = await consumirServicio(
+    `${apiRoot}/api/facturas?origen=educontrol&limit=200`,
+    { method: "GET", timeout: 8000, retry429: 0 }
+  );
+
+  const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+  let conciliadas = 0;
+
+  for (const factura of items) {
+    const referencia = String(factura?.referenciaExterna || factura?.referencia_externa || "").trim();
+    const match = /^cargo:(\d+)$/i.exec(referencia);
+    const idFactura = String(factura?.id || "").trim();
+    if (!match || !idFactura) continue;
+
+    const idCargo = Number(match[1]);
+    if (!Number.isInteger(idCargo) || idCargo <= 0) continue;
+
+    const [[cargo]] = await pool.query(
+      `SELECT id_cargo, estado, saldo FROM cargo_estudiante WHERE id_cargo = ? LIMIT 1`,
+      [idCargo]
+    );
+    if (!cargo || (String(cargo.estado).toLowerCase() !== "pagado" && Number(cargo.saldo || 0) > 0)) continue;
+
+    await registrarEstadoFactura(idCargo, idFactura, "generada", factura, null);
+    conciliadas += 1;
+  }
+
+  return { conciliadas };
 }
 
 const cacheDocumentosFactura = new Map();
@@ -594,7 +618,7 @@ function guardarDocumentoCache(clave, documento) {
   }
 }
 
-function espera429(response, intento) {
+function esperaTransitoria(response, intento) {
   const retryAfterHeader = String(response.headers.get("retry-after") || "").trim();
   const segundos = Number(retryAfterHeader);
   if (Number.isFinite(segundos) && segundos > 0) {
@@ -616,7 +640,7 @@ async function descargarDocumentoFactura(url, formatoNormalizado, timeoutMs) {
   try {
     let ultimoResponse = null;
 
-    for (let intento = 0; intento < 3; intento += 1) {
+    for (let intento = 0; intento < 2; intento += 1) {
       const response = await fetch(url, {
         headers: {
           Accept: formatoNormalizado === "pdf" ? "application/pdf" : "text/html"
@@ -625,11 +649,11 @@ async function descargarDocumentoFactura(url, formatoNormalizado, timeoutMs) {
       });
 
       ultimoResponse = response;
-      if (response.status !== 429) break;
+      if (![429, 503].includes(response.status)) break;
 
-      if (intento < 2) {
-        const esperaMs = espera429(response, intento);
-        console.warn(`Facturación: servicio de documentos respondió 429. Reintento ${intento + 1}/2 en ${esperaMs} ms.`);
+      if (intento < 1) {
+        const esperaMs = esperaTransitoria(response, intento);
+        console.warn(`Facturación: servicio de documentos respondió ${response.status}. Reintento ${intento + 1}/1 en ${esperaMs} ms.`);
         try { await response.arrayBuffer(); } catch {}
         await esperar(esperaMs);
       }
@@ -640,17 +664,17 @@ async function descargarDocumentoFactura(url, formatoNormalizado, timeoutMs) {
 
     if (!response.ok) {
       const texto = await response.text().catch(() => "");
-      let mensaje = response.status === 429
-        ? "El servicio de Factura Bonita está ocupado. Espera unos segundos e inténtalo nuevamente."
+      let mensaje = [429, 503].includes(response.status)
+        ? "El servicio de facturación alcanzó temporalmente su capacidad. Espera unos segundos e inténtalo nuevamente."
         : "No se pudo generar el documento de la factura.";
 
       if (texto) {
         try {
           const json = JSON.parse(texto);
           const detalle = json?.detalle || json?.error || json?.mensaje;
-          if (detalle && response.status !== 429) mensaje = detalle;
+          if (detalle && ![429, 503].includes(response.status)) mensaje = detalle;
         } catch {
-          if (response.status !== 429) mensaje = texto.slice(0, 220) || mensaje;
+          if (![429, 503].includes(response.status)) mensaje = texto.slice(0, 220) || mensaje;
         }
       }
       throw new Error(mensaje);
@@ -707,10 +731,10 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
   const tarea = (async () => {
     const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}`;
-    const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 90000);
+    const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 45000);
     const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
       ? timeoutConfigurado
-      : 90000;
+      : 45000;
 
     const descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
     const documento = {

@@ -3,7 +3,8 @@ import { query } from "express-validator";
 const MODOS_VALIDOS = ["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria", "pagos"];
 const TIPOS_VALIDOS = ["resumen", "detalle", "individual", "grupo"];
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
-const ESTADOS_PAGO_VALIDOS = ["pendiente", "cancelado"];
+const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
+const ESTADOS_PAGO_VALIDOS = ["pendiente", "parcial", "pagado", "facturado", "anulado"];
 
 const validarRangoFechas = (_, { req }) => {
     const inicio = req.query?.fecha_inicio;
@@ -18,12 +19,16 @@ const validarEstadoReporte = (value, { req }) => {
 
     const estado = String(value).trim().toLowerCase();
     const modo = String(req.query?.modo || "").trim().toLowerCase();
-    const validos = modo === "pagos" ? ESTADOS_PAGO_VALIDOS : ESTADOS_VALIDOS;
+    const validos = modo === "pagos" ? ESTADOS_PAGO_VALIDOS : (modo === "matricula" ? ESTADOS_ACTIVO_VALIDOS : ESTADOS_VALIDOS);
 
     if (!validos.includes(estado)) {
-        throw new Error(modo === "pagos"
-            ? "El estado de pago no es válido. Usa pendiente o cancelado."
-            : "El estado de asistencia no es válido.");
+        throw new Error(
+            modo === "pagos"
+                ? "El estado financiero no es válido. Usa pendiente, parcial, pagado, facturado o anulado."
+                : modo === "matricula"
+                    ? "El estado del estudiante no es válido. Usa activo o inactivo."
+                    : "El estado de asistencia no es válido."
+        );
     }
 
     return true;

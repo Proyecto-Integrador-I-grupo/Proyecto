@@ -197,7 +197,7 @@
 .finance-panel-title h3 {
   margin: 0;
   color: #17253b;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 1.04rem;
 }
 .finance-panel-title p {
@@ -479,7 +479,7 @@
 .finance-card-heading h3 {
   margin: .12rem 0 .12rem;
   color: #26384f;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: .94rem;
 }
 .finance-card-heading p {

@@ -15,8 +15,48 @@ function money(value, field, allowZero = false) {
   return Math.round(n * 100) / 100;
 }
 
+async function normalizarDescuentosVencidos(db = pool) {
+  await db.query(`
+    UPDATE cargo_estudiante c
+    INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+    LEFT JOIN (
+      SELECT id_cargo, COALESCE(SUM(monto), 0) AS pagado
+      FROM pago
+      WHERE estado = 'aplicado'
+      GROUP BY id_cargo
+    ) pg ON pg.id_cargo = c.id_cargo
+    SET
+      c.descuento = 0,
+      c.impuesto = ROUND(c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100, 2),
+      c.total = ROUND(c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100), 2),
+      c.saldo = GREATEST(0, ROUND((c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100)) - COALESCE(pg.pagado, 0), 2)),
+      c.estado = CASE
+        WHEN ROUND((c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100)) - COALESCE(pg.pagado, 0), 2) <= 0 THEN 'pagado'
+        WHEN COALESCE(pg.pagado, 0) > 0 THEN 'parcial'
+        ELSE 'pendiente'
+      END
+    WHERE c.estado IN ('pendiente', 'parcial')
+      AND c.fecha_vencimiento IS NOT NULL
+      AND c.fecha_vencimiento < CURDATE()
+      AND c.descuento > 0
+  `);
+}
+
+async function validarDescuentoVigente(fechaVencimiento, descuento, db = pool) {
+  if (!(Number(descuento) > 0) || !fechaVencimiento) return;
+  const fecha = String(fechaVencimiento).slice(0, 10);
+  const [[row]] = await db.query(
+    `SELECT CASE WHEN DATE(?) < CURDATE() THEN 1 ELSE 0 END AS vencida`,
+    [fecha]
+  );
+  if (Number(row?.vencida || 0) === 1) {
+    throw new Error('No se puede aplicar un descuento a un cargo vencido. Cambia la fecha de vencimiento a una fecha vigente o deja el descuento en CRC 0.');
+  }
+}
+
 export async function obtenerResumenFinanciero() {
   await prepararDatosFinancieros();
+  await normalizarDescuentosVencidos();
   const [[row]] = await pool.query(
     `SELECT
        COUNT(*) AS total_cargos,
@@ -519,6 +559,7 @@ export async function listarEstadoCuentas() {
 
 export async function listarCargos(filtros = {}) {
   await prepararDatosFinancieros();
+  await normalizarDescuentosVencidos();
   const conditions = ["c.estado <> 'anulado'", "e.estado = TRUE"];
 
   const values = [];
@@ -734,6 +775,7 @@ export async function crearCargo(datos, idUsuario) {
   const periodo = String(datos.periodo || "").trim().slice(0, 30) || null;
   const fechaEmision = datos.fecha_emision || new Date().toISOString().slice(0, 10);
   const fechaVencimiento = datos.fecha_vencimiento || null;
+  await validarDescuentoVigente(fechaVencimiento, descuento);
 
   const [result] = await pool.query(
     `INSERT INTO cargo_estudiante
@@ -851,6 +893,10 @@ export async function actualizarCargo(idCargo, datos) {
     const base = datos.monto_base === undefined ? Number(cargo.monto_base) : money(datos.monto_base, 'El monto base', true);
     const descuento = datos.descuento === undefined ? Number(cargo.descuento) : money(datos.descuento, 'El descuento', true);
     if (descuento > base) throw new Error('El descuento no puede ser mayor al monto base.');
+    const fechaVencimientoResultante = datos.fecha_vencimiento === undefined
+      ? (cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : null)
+      : (datos.fecha_vencimiento || null);
+    await validarDescuentoVigente(fechaVencimientoResultante, descuento, connection);
     const subtotal = base - descuento;
     const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
     const total = Math.round((subtotal + impuesto) * 100) / 100;
@@ -859,7 +905,7 @@ export async function actualizarCargo(idCargo, datos) {
     const estado = saldo <= 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
     await connection.query(
       `UPDATE cargo_estudiante SET descripcion = ?, periodo = ?, fecha_vencimiento = ?, monto_base = ?, descuento = ?, impuesto = ?, total = ?, saldo = ?, estado = ? WHERE id_cargo = ?`,
-      [String(datos.descripcion ?? cargo.descripcion ?? '').trim().slice(0,200), String(datos.periodo ?? cargo.periodo ?? '').trim().slice(0,30) || null, datos.fecha_vencimiento || null, base, descuento, impuesto, total, saldo, estado, id]
+      [String(datos.descripcion ?? cargo.descripcion ?? '').trim().slice(0,200), String(datos.periodo ?? cargo.periodo ?? '').trim().slice(0,30) || null, fechaVencimientoResultante, base, descuento, impuesto, total, saldo, estado, id]
     );
     await connection.commit();
     return { id_cargo:id, total, saldo, estado, pagado };
@@ -909,6 +955,7 @@ export async function listarPagos(filtros = {}) {
 }
 
 export async function registrarPago(idCargo, datos, idUsuario) {
+  await normalizarDescuentosVencidos();
   const cargoId = positiveInt(idCargo, "El cargo");
   const montoPago = money(datos.monto, "El monto del pago");
   const metodo = String(datos.metodo_pago || "").trim().toLowerCase();

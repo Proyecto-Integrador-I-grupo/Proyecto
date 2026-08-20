@@ -89,6 +89,8 @@ function wirePagosEvents() {
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-api-page-test', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
+  wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
+  wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
   wire('fin-extra-profesor-search', 'input', (event) => renderProfesoresExtraSelect(event.target.value));
@@ -858,7 +860,8 @@ function renderPendientesPago() {
         </div>
 
         <div class="finance-record-actions">
-          ${esAdmin() ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Descuento</button>` : ''}
+          ${esAdmin() && !vencido ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Descuento</button>` : ''}
+          ${esAdmin() && vencido ? `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Los cargos vencidos no admiten descuentos"><i class="bi bi-percent"></i> Sin descuento</button>` : ''}
           <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
             <i class="bi bi-cash-coin"></i> Pagar
           </button>
@@ -977,6 +980,36 @@ function renderAdministracionCargos() {
   `).join('');
 }
 
+function fechaVencimientoPasada(valor) {
+  if (!valor) return false;
+  const fecha = String(valor).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
+  const ahora = new Date();
+  const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+  return fecha < hoy;
+}
+
+function sincronizarDescuentoConVencimiento(idFecha, idDescuento) {
+  const fecha = value(idFecha);
+  const input = document.getElementById(idDescuento);
+  if (!input) return;
+  const vencida = fechaVencimientoPasada(fecha);
+  if (vencida) {
+    input.value = '0';
+    input.disabled = true;
+    input.title = 'No se permiten descuentos cuando la fecha de vencimiento ya pasó.';
+  } else {
+    input.disabled = false;
+    input.removeAttribute('title');
+  }
+}
+
+function validarDescuentoNoVencido(fecha, descuento) {
+  if (fechaVencimientoPasada(fecha) && Number(descuento || 0) > 0) {
+    throw new Error('No se puede aplicar un descuento a un cargo vencido. Usa una fecha vigente o deja el descuento en CRC 0.');
+  }
+}
+
 function estaVencido(cargo) {
   if (!cargo?.fecha_vencimiento) return false;
   if (!['pendiente', 'parcial'].includes(String(cargo.estado || '').toLowerCase())) return false;
@@ -993,6 +1026,7 @@ function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   setValue('fin-edit-cargo-vencimiento', c.fecha_vencimiento ? String(c.fecha_vencimiento).slice(0,10) : '');
   setValue('fin-edit-cargo-periodo', c.periodo || '');
   setValue('fin-edit-cargo-descripcion', c.descripcion || '');
+  sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento');
   const ctx = document.getElementById('fin-edit-cargo-contexto');
   if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
   showModal('modalEditarCargo');
@@ -1009,9 +1043,12 @@ async function guardarEdicionCargo(event) {
   event.preventDefault();
   const id = Number(value('fin-edit-cargo-id'));
   try {
+    const fechaVencimiento = value('fin-edit-cargo-vencimiento') || null;
+    const descuento = value('fin-edit-cargo-descuento') || 0;
+    validarDescuentoNoVencido(fechaVencimiento, descuento);
     await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify({
-      monto_base:value('fin-edit-cargo-monto'), descuento:value('fin-edit-cargo-descuento') || 0,
-      fecha_vencimiento:value('fin-edit-cargo-vencimiento') || null, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion')
+      monto_base:value('fin-edit-cargo-monto'), descuento,
+      fecha_vencimiento:fechaVencimiento, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion')
     })});
     hideModal('modalEditarCargo');
     showToast('Cargo actualizado correctamente.', 'success');
@@ -1022,12 +1059,15 @@ async function guardarEdicionCargo(event) {
 async function guardarCargo(event) {
   event.preventDefault();
   try {
+    const fechaVencimiento = value('fin-cargo-vencimiento') || null;
+    const descuento = value('fin-cargo-descuento') || 0;
+    validarDescuentoNoVencido(fechaVencimiento, descuento);
     const payload = {
       id_estudiante: value('fin-cargo-estudiante'),
       id_concepto: value('fin-cargo-concepto'),
       monto_base: value('fin-cargo-monto'),
-      descuento: value('fin-cargo-descuento') || 0,
-      fecha_vencimiento: value('fin-cargo-vencimiento') || null,
+      descuento,
+      fecha_vencimiento: fechaVencimiento,
       periodo: value('fin-cargo-periodo'),
       descripcion: value('fin-cargo-descripcion')
     };

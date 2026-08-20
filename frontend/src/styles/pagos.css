@@ -1243,3 +1243,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Configuración de facturación: mantener Guardar siempre accesible.
+   modal-dialog-scrollable espera que modal-body sea hijo directo de modal-content,
+   pero aquí está dentro de un form. Convertimos el formulario en el contenedor
+   flexible/scrollable para que el footer no quede fuera de la pantalla. */
+#modalConfigFacturacion .modal-content {
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+}
+#modalConfigFacturacion #fin-config-form {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+#modalConfigFacturacion .billing-config-modal {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#modalConfigFacturacion .billing-config-footer {
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -8px 20px rgba(15, 23, 42, .06);
+}
+@media (max-height: 760px) {
+  #modalConfigFacturacion .modal-dialog {
+    margin-top: .5rem;
+    margin-bottom: .5rem;
+  }
+  #modalConfigFacturacion .modal-content {
+    max-height: calc(100vh - 1rem);
+  }
+}

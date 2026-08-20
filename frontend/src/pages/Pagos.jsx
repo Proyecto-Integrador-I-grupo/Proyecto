@@ -25,7 +25,7 @@ export default function Pagos() {
               <i className="bi bi-cash-stack me-2"></i>Pagos y facturación
             </h2>
             <p className="finance-page-subtitle mb-0">
-              Registra pagos, genera comprobantes y consulta movimientos desde un solo lugar.
+              Registra pagos y consulta comprobantes y movimientos desde un solo lugar.
             </p>
           </div>
 
@@ -83,7 +83,7 @@ export default function Pagos() {
             <span className="finance-step">1</span>
             <div>
               <h3>Pendientes de pago</h3>
-              <p>Abona o cancela el saldo. Cuando llegue a cero quedará listo para facturar.</p>
+              <p>Abona o cancela el saldo. Al llegar a cero, el sistema genera la factura automáticamente.</p>
             </div>
           </div>
           <span id="fin-pendientes-resumen" className="finance-count-badge">0 pendientes</span>
@@ -99,11 +99,11 @@ export default function Pagos() {
               <div>
                 <span className="finance-tool-eyebrow">Comprobantes</span>
                 <h3><i className="bi bi-receipt-cutoff me-2"></i>Facturación</h3>
-                <p>Todos los cargos pagados aparecen aquí: los pendientes para generar y los facturados para consultar su PDF.</p>
+                <p>Todos los cargos pagados aparecen aquí. La factura se genera automáticamente al completar el pago y queda disponible para consultar su PDF.</p>
               </div>
             </div>
             <div className="finance-tool-heading-actions">
-              <span id="fin-facturas-resumen" className="finance-count-badge invoice">0 facturados · 0 por generar</span>
+              <span id="fin-facturas-resumen" className="finance-count-badge invoice">0 facturados · 0 procesando</span>
               <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-facturacion-collapse" data-label-show="Abrir" data-label-hide="Cerrar" aria-expanded="false" aria-controls="fin-facturacion-collapse">
                 <i className="bi bi-chevron-down me-1"></i> Abrir
               </button>
@@ -118,7 +118,6 @@ export default function Pagos() {
                 </div>
                 <select id="fin-facturas-filtro" className="form-select form-select-sm finance-state-filter" defaultValue="">
                   <option value="">Todos los comprobantes</option>
-                  <option value="por_generar">Por generar</option>
                   <option value="facturada">Facturadas</option>
                   <option value="error">Con error</option>
                 </select>

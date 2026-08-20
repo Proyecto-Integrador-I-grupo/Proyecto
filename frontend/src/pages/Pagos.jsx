@@ -473,7 +473,7 @@ export default function Pagos() {
           </div>
           <div className="modal-footer billing-config-footer">
             <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar emisor</button>
+            <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar configuración</button>
           </div>
         </form>
       </Modal>

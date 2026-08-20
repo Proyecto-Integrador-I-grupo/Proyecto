@@ -75,6 +75,8 @@ function wirePagosEvents() {
   wire('fin-refrescar', 'click', loadPagosData);
   wire('fin-busqueda', 'input', debounce(renderCargos, 180));
   wire('fin-filtro-estado', 'change', renderCargos);
+  wire('fin-facturas-busqueda', 'input', debounce(renderFacturacion, 160));
+  wire('fin-facturas-filtro', 'change', renderFacturacion);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
   wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
@@ -792,9 +794,11 @@ function obtenerCargosPagados() {
 function actualizarResumenFacturacion() {
   const resumen = document.getElementById('fin-facturas-resumen');
   if (!resumen) return;
-  const cantidad = obtenerCargosPagados().length;
-  resumen.textContent = `${cantidad} pagado${cantidad === 1 ? '' : 's'}`;
-  resumen.classList.toggle('is-empty', cantidad === 0);
+  const registros = obtenerCargosPagados();
+  const facturados = registros.filter((r) => Boolean(r.id_factura_externa)).length;
+  const porGenerar = Math.max(0, registros.length - facturados);
+  resumen.textContent = `${facturados} facturado${facturados === 1 ? '' : 's'} · ${porGenerar} por generar`;
+  resumen.classList.toggle('is-empty', registros.length === 0);
 }
 
 function renderPendientesPago() {
@@ -869,15 +873,28 @@ function renderFacturacion() {
   const body = document.getElementById('fin-facturas-body');
   if (!body) return;
 
-  const registros = obtenerCargosPagados();
+  const todos = obtenerCargosPagados();
   actualizarResumenFacturacion();
+
+  const busqueda = String(document.getElementById('fin-facturas-busqueda')?.value || '').trim().toLowerCase();
+  const filtro = String(document.getElementById('fin-facturas-filtro')?.value || '').trim().toLowerCase();
+  const registros = todos.filter((c) => {
+    const tieneFactura = Boolean(c.id_factura_externa);
+    const esError = !tieneFactura && String(c.estado_factura || '').toLowerCase() === 'error';
+    if (filtro === 'facturada' && !tieneFactura) return false;
+    if (filtro === 'por_generar' && (tieneFactura || esError)) return false;
+    if (filtro === 'error' && !esError) return false;
+    if (!busqueda) return true;
+    return [c.estudiante_nombre, c.concepto_nombre, c.descripcion, c.id_factura_externa, c.id_cargo]
+      .join(' ').toLowerCase().includes(busqueda);
+  });
 
   if (!registros.length) {
     body.innerHTML = `
       <div class="finance-empty-state finance-empty-card compact">
         <i class="bi bi-receipt"></i>
-        <strong>Aún no hay comprobantes</strong>
-        <span>Los cargos pagados aparecerán aquí para generar o consultar su PDF.</span>
+        <strong>${todos.length ? 'No hay coincidencias' : 'Aún no hay comprobantes'}</strong>
+        <span>${todos.length ? 'Ajusta la búsqueda o el filtro para ver otros comprobantes.' : 'Los cargos pagados aparecerán aquí para generar o consultar su PDF.'}</span>
       </div>`;
     return;
   }
@@ -1110,44 +1127,6 @@ async function reintentarFactura(idCargo, button = null) {
 
     let facturaResultado = r;
 
-    if (!r.ok && r.estado === 'cliente_requerido' && r.servicio && r.payload) {
-      showToast('Factura Bonita está ocupada entre servidores. Intentando conexión directa…', 'info');
-
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 90000);
-
-      try {
-        const apiResponse = await fetch(`${String(r.servicio).replace(/\/$/, '')}/api/facturas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(r.payload),
-          signal: controller.signal
-        });
-
-        const apiData = await apiResponse.json().catch(() => ({}));
-
-        if (!apiResponse.ok) {
-          const detalle = apiData.detalle || apiData.error || apiData.mensaje ||
-            `Factura Bonita respondió HTTP ${apiResponse.status}.`;
-          throw new Error(detalle);
-        }
-
-        if (!apiData?.id) {
-          throw new Error('Factura Bonita respondió sin número de factura.');
-        }
-
-        facturaResultado = await requestJson(`/api/finanzas/cargos/${idCargo}/factura-confirmar`, {
-          method: 'POST',
-          body: JSON.stringify(apiData),
-          timeout: 90000
-        });
-      } finally {
-        window.clearTimeout(timer);
-      }
-    }
 
     if (!facturaResultado.ok) {
       const mensaje = facturaResultado.mensaje || 'La factura todavía no se puede generar.';
@@ -1157,7 +1136,7 @@ async function reintentarFactura(idCargo, button = null) {
       return;
     }
 
-    showToast(`Factura ${facturaResultado.id_factura || ''} generada por Factura Bonita.`, 'success');
+    showToast(`Factura ${facturaResultado.id_factura || ''} generada correctamente.`, 'success');
     await Promise.allSettled([cargarCargos(), cargarFacturas(), cargarPagos()]);
     renderFacturacion();
 
@@ -1205,7 +1184,7 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
     loading.innerHTML = `
       <div class="spinner-border text-primary" role="status"></div>
       <strong>Preparando comprobante…</strong>
-      <span>Factura Bonita está generando el PDF de solo lectura.</span>`;
+      <span>Preparando el comprobante PDF de solo lectura.</span>`;
     loading.classList.remove('hidden');
   }
   frame?.classList.add('is-loading');
@@ -1412,9 +1391,6 @@ async function cargarEstadoIntegraciones(notificar = false) {
     const estado = await requestJson('/api/finanzas/integraciones/estado', { timeout: 80000 });
     pintarEstadoServicio('factura', estado.facturacion);
     pintarEstadoServicio('documentos', estado.documentos);
-    pintarEstadoServicio('xml', estado.xml);
-    pintarEstadoServicio('firma', estado.firma);
-    pintarEstadoServicio('tributacion', estado.tributacion);
     pintarEstadoIntegracionPagina(estado);
 
     if (notificar) {
@@ -1529,6 +1505,9 @@ function renderFactura(r) {
   if (r.estado_factura === 'error') return '<span class="badge text-bg-danger">Error</span>';
   if (r.estado_factura === 'pendiente_datos') return '<span class="badge text-bg-warning">Faltan datos</span>';
   if (r.estado_factura === 'pendiente_configuracion') return '<span class="badge text-bg-warning">Configurar</span>';
+  if (String(r.estado || '').toLowerCase() === 'pagado' || Number(r.saldo || 0) <= 0) {
+    return '<span class="badge text-bg-warning">Por generar</span>';
+  }
   return '<span class="text-muted">—</span>';
 }
 

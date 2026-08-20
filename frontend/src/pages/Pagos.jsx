@@ -99,11 +99,11 @@ export default function Pagos() {
               <div>
                 <span className="finance-tool-eyebrow">Comprobantes</span>
                 <h3><i className="bi bi-receipt-cutoff me-2"></i>Facturación</h3>
-                <p>Los cargos pagados aparecen aquí para generar o volver a abrir su factura.</p>
+                <p>Todos los cargos pagados aparecen aquí: los pendientes para generar y los facturados para consultar su PDF.</p>
               </div>
             </div>
             <div className="finance-tool-heading-actions">
-              <span id="fin-facturas-resumen" className="finance-count-badge invoice">0 pagados</span>
+              <span id="fin-facturas-resumen" className="finance-count-badge invoice">0 facturados · 0 por generar</span>
               <button className="btn btn-sm btn-outline-secondary finance-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#fin-facturacion-collapse" data-label-show="Abrir" data-label-hide="Cerrar" aria-expanded="false" aria-controls="fin-facturacion-collapse">
                 <i className="bi bi-chevron-down me-1"></i> Abrir
               </button>
@@ -111,6 +111,18 @@ export default function Pagos() {
           </div>
           <div className="collapse" id="fin-facturacion-collapse">
             <div className="finance-tool-body">
+              <div className="finance-filter-row finance-invoice-filter-row mb-3">
+                <div className="input-group input-group-sm finance-search">
+                  <span className="input-group-text"><i className="bi bi-search"></i></span>
+                  <input id="fin-facturas-busqueda" className="form-control" placeholder="Estudiante, concepto o número de factura" />
+                </div>
+                <select id="fin-facturas-filtro" className="form-select form-select-sm finance-state-filter" defaultValue="">
+                  <option value="">Todos los comprobantes</option>
+                  <option value="por_generar">Por generar</option>
+                  <option value="facturada">Facturadas</option>
+                  <option value="error">Con error</option>
+                </select>
+              </div>
               <div id="fin-facturas-body" className="finance-record-list finance-invoice-list"></div>
             </div>
           </div>
@@ -443,7 +455,7 @@ export default function Pagos() {
                     </div>
                     <div className="billing-logo-actions">
                       <input id="fin-config-logo" type="file" className="form-control" accept="image/png,image/jpeg,image/webp" />
-                      <small>PNG, JPG o WEBP, máximo 500 KB. Se mostrará también al volver a abrir facturas ya generadas.</small>
+                      <small>PNG, JPG o WEBP, máximo 500 KB. Se incluirá automáticamente en las nuevas facturas.</small>
                       <button id="fin-config-logo-remove" type="button" className="btn btn-sm btn-outline-danger hidden">
                         <i className="bi bi-trash"></i> Quitar logo
                       </button>
@@ -453,17 +465,7 @@ export default function Pagos() {
               </div>
             </section>
 
-            <details className="billing-future-details">
-              <summary>
-                <span><i className="bi bi-diagram-3"></i> Integraciones siguientes</span>
-                <small>XML, firma y tributación</small>
-              </summary>
-              <div className="billing-future-grid">
-                <div><span>XML</span><span id="fin-service-xml-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-xml-detail"></small></div>
-                <div><span>Firma</span><span id="fin-service-firma-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-firma-detail"></small></div>
-                <div><span>Tributación</span><span id="fin-service-tributacion-status" className="billing-service-status pending">Pendiente</span><small id="fin-service-tributacion-detail"></small></div>
-              </div>
-            </details>
+
 
             <div className="billing-config-note">
               <i className="bi bi-shield-check"></i>

@@ -1,5 +1,5 @@
 import pool from "../config/database.js";
-import { generarFacturaDeCargo } from "./facturacionIntegrationService.js";
+import { generarFacturaDeCargo, reconciliarFacturasEduControl } from "./facturacionIntegrationService.js";
 
 function positiveInt(value, field) {
   const n = Number(value);
@@ -172,6 +172,30 @@ export async function actualizarConcepto(id, datos) {
 }
 
 
+async function normalizarEstadosCargosPorPagos() {
+  // La fuente de verdad del estado financiero es la suma de pagos aplicados.
+  // Esto corrige registros históricos que quedaron como pendientes aunque ya
+  // tengan el total cubierto, o como pagados cuando todavía conservan saldo.
+  await pool.query(
+    `UPDATE cargo_estudiante c
+     LEFT JOIN (
+       SELECT id_cargo, COALESCE(SUM(monto), 0) AS total_pagado
+       FROM pago
+       WHERE estado = 'aplicado'
+       GROUP BY id_cargo
+     ) pg ON pg.id_cargo = c.id_cargo
+     SET
+       c.saldo = GREATEST(0, ROUND(c.total - COALESCE(pg.total_pagado, 0), 2)),
+       c.estado = CASE
+         WHEN c.estado = 'anulado' THEN 'anulado'
+         WHEN GREATEST(0, ROUND(c.total - COALESCE(pg.total_pagado, 0), 2)) <= 0 THEN 'pagado'
+         WHEN COALESCE(pg.total_pagado, 0) > 0 THEN 'parcial'
+         ELSE 'pendiente'
+       END
+     WHERE c.estado <> 'anulado'`
+  );
+}
+
 async function normalizarCargosMatriculaDuplicados() {
   const [pagados] = await pool.query(
     `SELECT c.id_estudiante,
@@ -282,10 +306,12 @@ async function anularCargosPendientesDeEstudiantesInactivos() {
 
 async function prepararDatosFinancieros() {
   const tareas = [
+    normalizarEstadosCargosPorPagos,
     anularCargosPendientesDeEstudiantesInactivos,
     normalizarCargosMatriculaDuplicados,
     asegurarCargosMatriculaActivos,
-    normalizarCargosMatriculaDuplicados
+    normalizarCargosMatriculaDuplicados,
+    normalizarEstadosCargosPorPagos
   ];
   for (const tarea of tareas) {
     try {
@@ -510,6 +536,19 @@ export async function listarCargos(filtros = {}) {
 
 
 export async function listarFacturas() {
+  await prepararDatosFinancieros();
+
+  // Si el API compartido conserva una factura creada anteriormente pero el
+  // vínculo local factura_cargo se perdió, se intenta recuperar por la
+  // referencia estable `educontrol / cargo:<id>`. La conciliación es
+  // no bloqueante: si el servicio externo está iniciando, la interfaz local
+  // sigue mostrando los cargos pagados como pendientes de facturar.
+  try {
+    await reconciliarFacturasEduControl();
+  } catch (error) {
+    console.warn('Finanzas: no se pudo conciliar Factura Bonita:', error?.message || error);
+  }
+
   // Se consideran facturables tanto los cargos marcados como pagados como los
   // registros históricos cuyo saldo ya llegó a cero. Esto evita ocultar cargos
   // antiguos que quedaron con el estado desactualizado.

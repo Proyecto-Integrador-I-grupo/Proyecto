@@ -2,7 +2,7 @@ import pool from "../config/database.js";
 
 const ESTADOS_ASISTENCIA_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
 const ESTADOS_ACTIVO_VALIDOS = ["activo", "inactivo"];
-const ESTADOS_PAGO_VALIDOS = ["pendiente", "cancelado"];
+const ESTADOS_PAGO_VALIDOS = ["pendiente", "parcial", "pagado", "facturado", "anulado"];
 const MODOS_VALIDOS = new Set(["matricula", "estudiantes", "grupos", "profesores", "pre_matricula", "auditoria", "pagos"]);
 const TIPOS_REPORTE_VALIDOS = new Set(["resumen", "detalle", "individual", "grupo"]);
 
@@ -117,7 +117,7 @@ function validarFiltrosReporte(filtros = {}) {
             estado_estudiante = estadoSolicitado;
         } else if (modo === "pagos") {
             if (!ESTADOS_PAGO_VALIDOS.includes(estadoSolicitado)) {
-                throw new Error("Estado de pago no válido. Usa pendiente o cancelado.");
+                throw new Error("Estado financiero no válido. Usa pendiente, parcial, pagado, facturado o anulado.");
             }
             estado_pago = estadoSolicitado;
         } else {
@@ -581,10 +581,16 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
         }
 
         if (f.estado_pago) {
-            if (f.estado_pago === "cancelado") {
+            if (f.estado_pago === "anulado") {
                 condiciones.push("c.estado = 'anulado'");
+            } else if (f.estado_pago === "facturado") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL");
+            } else if (f.estado_pago === "pagado") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0)");
+            } else if (f.estado_pago === "parcial") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total");
             } else {
-                condiciones.push("c.estado IN ('pendiente', 'parcial', 'pagado')");
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo >= c.total");
             }
         }
 
@@ -610,12 +616,18 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
                 CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) AS estudiante_nombre,
                 fc.id_factura_externa,
                 CASE
-                    WHEN c.estado = 'anulado' THEN 'C'
-                    ELSE 'P'
+                    WHEN c.estado = 'anulado' THEN 'anulado'
+                    WHEN fc.id_factura_externa IS NOT NULL THEN 'facturado'
+                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'pagado'
+                    WHEN c.saldo > 0 AND c.saldo < c.total THEN 'parcial'
+                    ELSE 'pendiente'
                 END AS estado_pago,
                 CASE
-                    WHEN c.estado = 'anulado' THEN 'Cancelado'
-                    ELSE 'Pendiente'
+                    WHEN c.estado = 'anulado' THEN 'Anulado'
+                    WHEN fc.id_factura_externa IS NOT NULL THEN 'Facturado'
+                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'Pagado · por facturar'
+                    WHEN c.saldo > 0 AND c.saldo < c.total THEN 'Pago parcial'
+                    ELSE 'Pendiente de pago'
                 END AS estado_label
              FROM cargo_estudiante c
              INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
@@ -629,10 +641,16 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
 
         const [[totales]] = await pool.query(
             `SELECT
-                COUNT(*) AS total_pagos,
-                SUM(CASE WHEN c.estado = 'anulado' THEN 1 ELSE 0 END) AS total_cancelados,
-                SUM(CASE WHEN c.estado IN ('pendiente', 'parcial', 'pagado') THEN 1 ELSE 0 END) AS total_pendientes
+                COUNT(*) AS total_movimientos,
+                SUM(CASE WHEN c.estado = 'anulado' THEN 1 ELSE 0 END) AS total_anulados,
+                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL THEN 1 ELSE 0 END) AS total_facturados,
+                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0) THEN 1 ELSE 0 END) AS total_pagados,
+                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total THEN 1 ELSE 0 END) AS total_parciales,
+                SUM(CASE WHEN c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo >= c.total THEN 1 ELSE 0 END) AS total_pendientes
              FROM cargo_estudiante c
+             INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+             INNER JOIN persona pe ON pe.id_persona = e.id_persona
+             LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
              WHERE ${where}`,
             valores
         );
@@ -640,9 +658,12 @@ export async function generarReporteResumen(filtros = {}, usuarioActual = null) 
         return {
             modo: f.modo,
             resumen: {
-                total_pagos: Number(totales?.total_pagos || 0),
-                total_cancelados: Number(totales?.total_cancelados || 0),
-                total_pendientes: Number(totales?.total_pendientes || 0)
+                total_movimientos: Number(totales?.total_movimientos || 0),
+                total_facturados: Number(totales?.total_facturados || 0),
+                total_pagados: Number(totales?.total_pagados || 0),
+                total_parciales: Number(totales?.total_parciales || 0),
+                total_pendientes: Number(totales?.total_pendientes || 0),
+                total_anulados: Number(totales?.total_anulados || 0)
             },
             detalle_por_grupo: rows,
             detalle: rows
@@ -964,10 +985,16 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
         }
 
         if (f.estado_pago) {
-            if (f.estado_pago === "cancelado") {
+            if (f.estado_pago === "anulado") {
                 condiciones.push("c.estado = 'anulado'");
+            } else if (f.estado_pago === "facturado") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NOT NULL");
+            } else if (f.estado_pago === "pagado") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND (c.estado = 'pagado' OR c.saldo <= 0)");
+            } else if (f.estado_pago === "parcial") {
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo < c.total");
             } else {
-                condiciones.push("c.estado IN ('pendiente', 'parcial', 'pagado')");
+                condiciones.push("c.estado <> 'anulado' AND fc.id_factura_externa IS NULL AND c.saldo > 0 AND c.saldo >= c.total");
             }
         }
 
@@ -993,12 +1020,18 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
                 CONCAT_WS(' ', pe.nombre, pe.apellido1, pe.apellido2) AS estudiante_nombre,
                 fc.id_factura_externa,
                 CASE
-                    WHEN c.estado = 'anulado' THEN 'C'
-                    ELSE 'P'
+                    WHEN c.estado = 'anulado' THEN 'anulado'
+                    WHEN fc.id_factura_externa IS NOT NULL THEN 'facturado'
+                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'pagado'
+                    WHEN c.saldo > 0 AND c.saldo < c.total THEN 'parcial'
+                    ELSE 'pendiente'
                 END AS estado_pago,
                 CASE
-                    WHEN c.estado = 'anulado' THEN 'Cancelado'
-                    ELSE 'Pendiente'
+                    WHEN c.estado = 'anulado' THEN 'Anulado'
+                    WHEN fc.id_factura_externa IS NOT NULL THEN 'Facturado'
+                    WHEN c.estado = 'pagado' OR c.saldo <= 0 THEN 'Pagado · por facturar'
+                    WHEN c.saldo > 0 AND c.saldo < c.total THEN 'Pago parcial'
+                    ELSE 'Pendiente de pago'
                 END AS estado_label
              FROM cargo_estudiante c
              INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante

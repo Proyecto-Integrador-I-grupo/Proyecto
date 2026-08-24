@@ -262,3 +262,92 @@ body.high-contrast #profesores-table tbody td {
     align-items: stretch !important;
   }
 }
+
+
+/* ===== Presentación comercial final ===== */
+/* El rol administrativo pertenece a la identidad azul de EduControl, no a una alerta. */
+.role-badge-admin {
+  background: #eaf2f8 !important;
+  color: #245b82 !important;
+  border: 1px solid #c9deec;
+}
+.sidebar .role-badge-admin {
+  background: rgba(90, 170, 215, .16) !important;
+  color: #d9f1ff !important;
+  border-color: rgba(140, 205, 239, .32);
+}
+
+/* Perfil: contraste correcto sobre el hero azul. */
+#perfil-view .perfil-hero,
+#perfil-view .perfil-hero h1,
+#perfil-view .perfil-hero h2,
+#perfil-view .perfil-hero h3,
+#perfil-view .perfil-hero p,
+#perfil-view .perfil-hero .text-muted,
+#perfil-view .perfil-hero .perfil-eyebrow {
+  color: #fff !important;
+}
+#perfil-view .perfil-hero .perfil-eyebrow { color: rgba(255,255,255,.8) !important; }
+#perfil-view .perfil-hero p { color: rgba(255,255,255,.86) !important; }
+
+/* Pre-registro: ventana proporcionada y fácil de escanear. */
+#modalEstudiante .modal-dialog.modal-estudiante-dialog {
+  width: min(92vw, 760px) !important;
+  max-width: min(92vw, 760px) !important;
+}
+#modalEstudiante .modal-body { padding: 1rem 1.15rem !important; }
+#modalEstudiante .modal-footer { padding: .75rem 1.15rem !important; }
+#modalEstudiante .row.g-3 { --bs-gutter-y: .8rem; --bs-gutter-x: 1rem; }
+
+/* Profesores: menos columnas, grupos convertidos a bloques legibles y acciones compactas. */
+#profesores-view .profesores-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid #e4eaf0; }
+#profesores-table { min-width: 960px; }
+#profesores-table thead th { white-space: nowrap; }
+#profesores-table tbody td { vertical-align: middle; }
+#profesores-table td:first-child { min-width: 190px; }
+#profesores-table td:nth-child(2) { min-width: 115px; }
+#profesores-table td:nth-child(3) { width: 112px; min-width: 112px; }
+#profesores-table td:nth-child(4) { min-width: 260px; }
+#profesores-table td:nth-child(5) { width: 105px; }
+#profesores-table td:nth-child(6) { width: 265px; }
+.profesor-name-cell { display:flex; flex-direction:column; gap:.15rem; }
+.profesor-name-cell strong { color:#16324a; font-size:.96rem; line-height:1.25; }
+.profesor-name-cell small { color:#7a8b9b; font-size:.72rem; }
+.profesor-groups-list { display:flex; flex-direction:column; gap:.38rem; }
+.profesor-group-pill {
+  display:flex; align-items:flex-start; gap:.4rem; width:fit-content; max-width:100%;
+  padding:.36rem .55rem; border:1px solid #d9e6ee; border-radius:9px;
+  background:#f7fafc; color:#35536b; font-size:.76rem; line-height:1.32;
+}
+.profesor-group-pill i { color:#2e789d; margin-top:.06rem; }
+.profesor-actions-grid { grid-template-columns: repeat(2, minmax(92px,1fr)); max-width: 250px; }
+.profesor-actions-grid .profesor-action-btn { min-height: 34px; padding:.36rem .52rem; }
+@media (min-width: 992px) {
+  #profesores-table th:nth-child(1) { width: 17%; }
+  #profesores-table th:nth-child(2) { width: 10%; }
+  #profesores-table th:nth-child(3) { width: 9%; }
+  #profesores-table th:nth-child(4) { width: 25%; }
+  #profesores-table th:nth-child(5) { width: 9%; }
+  #profesores-table th:nth-child(6) { width: 30%; }
+}
+
+/* Usuarios: la tabla no debe parecer consola ni obligar a refrescar visualmente. */
+#usuarios-view .card { border:1px solid #e4eaf0 !important; box-shadow:0 8px 24px rgba(15,23,42,.045) !important; }
+#usuarios-view .card-header { background:#fff !important; border-bottom:1px solid #e8edf2; }
+#usuarios-view .table > :not(caption) > * > * { padding:.82rem .9rem; }
+#usuarios-view .table tbody strong { color:#17324a; font-family:inherit; }
+#usuarios-view .table tbody tr:nth-child(even) td { background:#fbfcfd; }
+#usuarios-view .badge.bg-dark { background:#203c57 !important; }
+#usuarios-view .badge.bg-info { background:#dff3f8 !important; color:#17657b !important; border:1px solid #b7e3ec; }
+
+/* Sidebar: bloque de sesión menos parecido a una alerta. */
+.sidebar-user { border-color: rgba(148,163,184,.28) !important; background: rgba(255,255,255,.025) !important; }
+#logout-btn { border-color: rgba(226,232,240,.75) !important; }
+
+/* Títulos de tarjetas claros y consistentes. */
+body:not(.theme-dark):not(.high-contrast) .view .card-header .card-title,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h4,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h5,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h6 {
+  color:#172b40 !important;
+}

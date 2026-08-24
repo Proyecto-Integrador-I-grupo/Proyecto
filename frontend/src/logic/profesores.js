@@ -318,7 +318,7 @@ function renderProfesoresTable(profesores) {
     const mensaje = (profesorFiltroEstado !== 'todos' || profesorBusqueda)
       ? 'No hay profesores que coincidan con la búsqueda o el filtro seleccionado.'
       : 'No hay profesores registrados.';
-    profTableBody.innerHTML = `<tr><td colspan="7" class="text-muted text-center py-4">${mensaje}</td></tr>`;
+    profTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center py-4">${mensaje}</td></tr>`;
     return;
   }
 
@@ -334,17 +334,23 @@ function renderProfesoresTable(profesores) {
       ? '<span class="badge bg-success">Activo</span>' 
       : '<span class="badge bg-danger" title="Profesor incapacitado o inactivo">Inactivo</span>';
 
+    const gruposProfesor = String(p.grupos_asignados || '')
+      .split(/,\s*(?=[^,]+(?:·|\-|$))/)
+      .map((grupo) => grupo.trim())
+      .filter(Boolean);
+
     const celdaGrupos = activo
-      ? (p.grupos_asignados ? `<span class="small">${p.grupos_asignados}</span>` : '<span class="text-muted small">Sin grupos</span>')
+      ? (gruposProfesor.length
+          ? `<div class="profesor-groups-list">${gruposProfesor.map((grupo) => `<span class="profesor-group-pill"><i class="bi bi-calendar3"></i>${grupo}</span>`).join('')}</div>`
+          : '<span class="text-muted small">Sin grupos asignados</span>')
       : (grupoPendientes > 0
-          ? `<span class="badge bg-warning text-dark" title="Grupos pendientes por cubrir o restaurar">${grupoPendientes} grupo(s) pendiente(s)</span>`
+          ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Grupos pendientes por cubrir o restaurar">${grupoPendientes} grupo(s) pendiente(s)</span>`
           : '<span class="text-muted small">Sin grupos pendientes</span>');
 
     const tr = document.createElement('tr');
     if (!activo) tr.classList.add('profesor-row-inactivo');
     tr.innerHTML = `
-      <td>${idProf}</td>
-      <td>${nombreComp}</td>
+      <td><div class="profesor-name-cell"><strong>${nombreComp}</strong><small>Docente</small></div></td>
       <td><span class="badge bg-light text-dark border px-2 py-1">${materia}</span></td>
       <td>${ingreso}</td>
       <td>${celdaGrupos}</td>

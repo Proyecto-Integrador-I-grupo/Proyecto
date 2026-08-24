@@ -28,7 +28,7 @@ export default function Estudiantes() {
       </div>
 
       <div className="modal fade" id="modalEstudiante" tabIndex="-1" aria-hidden="true">
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-estudiante-dialog">
           <div className="modal-content border-0 shadow-lg">
             <div className="modal-header bg-navy text-white">
               <h5 id="persona-form-title" className="modal-title font-serif"><i className="bi bi-person-plus"></i> Pre-registro de Estudiante</h5>

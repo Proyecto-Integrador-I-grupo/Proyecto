@@ -727,6 +727,8 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   const capacidadInput = document.getElementById('gestion-grupo-capacidad');
   const aulaSelect = document.getElementById('gestion-grupo-aula');
   const profSelect = document.getElementById('gestion-grupo-profesor');
+  const horaInicioInput = document.getElementById('gestion-grupo-hora-inicio');
+  const horaFinInput = document.getElementById('gestion-grupo-hora-fin');
 
   if (!grupo || !capacidadInput || !aulaSelect || !profSelect) return;
 
@@ -743,6 +745,8 @@ async function cargarDetalleGestionGrupo(idGrupo) {
     ? `Este grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'}. La capacidad no puede ser menor a ${ocupadosActuales}.`
     : 'La capacidad debe ser mayor a cero.';
   aulaSelect.value = grupo.aula ?? '';
+  if (horaInicioInput) horaInicioInput.value = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
+  if (horaFinInput) horaFinInput.value = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
 
   try {
     const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/detalle`);
@@ -768,12 +772,22 @@ async function handleGestionGrupoSubmit(e) {
   const idGrupo = Number(String(rawGrupoVal).split(':')[0].trim());
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
   const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
+  const horaInicio = document.getElementById('gestion-grupo-hora-inicio')?.value || null;
+  const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
   
   const profSelect = document.getElementById('gestion-grupo-profesor');
   const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
 
   if (!idGrupo || !capacidad) {
     showToast('Selecciona un grupo y capacidad.', 'error');
+    return;
+  }
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+    return;
+  }
+  if (horaInicio && horaFin && horaFin <= horaInicio) {
+    showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
     return;
   }
 
@@ -796,7 +810,7 @@ async function handleGestionGrupoSubmit(e) {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados })
+      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados, hora_inicio: horaInicio, hora_fin: horaFin })
     });
 
     const json = await res.json().catch(() => ({}));
@@ -984,6 +998,8 @@ async function handleGrupoSubmit(e) {
   const capacidad = parseInt(document.getElementById('grupo-capacidad').value, 10);
   const idSeccion = parseInt(document.getElementById('grupo-seccion').value, 10);
   const aula = document.getElementById('grupo-aula').value.trim() || null;
+  const horaInicio = document.getElementById('grupo-hora-inicio')?.value || null;
+  const horaFin = document.getElementById('grupo-hora-fin')?.value || null;
 
   // Validación previa en el frontend: si algo no es válido, avisamos exactamente
   // qué falta en vez de mandar la petición y dejar que el 400 del servidor
@@ -1000,10 +1016,18 @@ async function handleGrupoSubmit(e) {
     showToast('Selecciona una sección académica válida de la lista (haz clic en una opción del desplegable).', 'error');
     return;
   }
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+    return;
+  }
+  if (horaInicio && horaFin && horaFin <= horaInicio) {
+    showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
+    return;
+  }
 
   // El grupo se crea sin profesores: la asignación docente se hace después
   // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
-  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion };
+  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion, hora_inicio: horaInicio, hora_fin: horaFin };
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando...'; }

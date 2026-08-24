@@ -28,6 +28,26 @@ const MODOS_POR_ROL = {
   profesor: ['estudiantes', 'grupos']
 };
 
+
+function textoPdfSeguro(value) {
+  return String(value ?? '')
+    .normalize('NFC')
+    .replace(/₡/g, 'CRC ')
+    .replace(/[•·]/g, ' - ')
+    .replace(/[–—]/g, '-')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/…/g, '...')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function monedaPdf(value) {
+  const number = Number(value || 0);
+  return `CRC ${number.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function obtenerRolActual() {
   return String(currentUser?.rol || '').toLowerCase().trim();
 }
@@ -475,7 +495,7 @@ function renderTablaPrincipal(data = {}) {
   }
   if (modo === 'pagos') {
     head.innerHTML = '<th>Estudiante</th><th>Concepto / servicio</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>';
-    renderRows(body, detalle, r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return;
+    renderRows(body, detalle, r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return;
   }
   if (modo === 'auditoria') { renderAuditoria(body, head, detalle, false); return; }
   if (modo === 'estudiantes') {
@@ -679,7 +699,7 @@ function renderPreviewTable(data) {
   const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
   if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
-  if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Concepto / servicio</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return; }
+  if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Concepto / servicio</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
   if (modo === 'grupos') { header.innerHTML = '<th>Grupo</th><th>Sección</th><th>Matriculados</th><th>Capacidad</th>'; renderPreviewRows(body, agrupado, r => [r.nombre_grupo ?? '-', r.nombre_seccion ?? '-', r.ocupados ?? 0, r.capacidad ?? 0]); return; }
@@ -714,15 +734,15 @@ async function imprimirReportePdf() {
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(titulo, 14, 12);
+    doc.text(textoPdfSeguro(titulo), 14, 12);
     const logo = await obtenerLogoReporteDataUrl();
     if (logo) {
       try { doc.addImage(logo, 'JPEG', pageWidth - 28, 3, 22, 22); } catch (error) { console.warn('No se pudo incrustar el logo en el PDF:', error); }
     }
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, 14, 20);
-    doc.text(`Filtros: ${descripcionFiltrosPdf(filtros)}`, 14, 24, { maxWidth: pageWidth - 50 });
+    doc.text(textoPdfSeguro(`Generado: ${new Date().toLocaleString('es-CR')}`), 14, 20);
+    doc.text(textoPdfSeguro(`Filtros: ${descripcionFiltrosPdf(filtros)}`), 14, 24, { maxWidth: pageWidth - 50 });
   };
 
   await headerPagina();
@@ -735,7 +755,7 @@ async function imprimirReportePdf() {
     doc.setTextColor(30, 64, 175);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
-    doc.text(resumen.join('   •   '), 16, y + 2, { maxWidth: pageWidth - 32 });
+    doc.text(textoPdfSeguro(resumen.join('   -   ')), 16, y + 2, { maxWidth: pageWidth - 32 });
     y += 17;
   }
 
@@ -779,7 +799,7 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
   };
   if (modo === 'pagos') return {
     columnas: [{ label: 'Estudiante', width: 44 }, { label: 'Concepto / servicio', width: 44 }, { label: 'Factura', width: 28 }, { label: 'Fecha', width: 24 }, { label: 'Monto', width: 22 }, { label: 'Saldo', width: 22 }, { label: 'Estado', width: usable - 184 }],
-    filas: detalle.map(r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), moneda(r.total ?? 0), moneda(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)])
+    filas: detalle.map(r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)])
   };
   if (modo === 'pre_matricula') return {
     columnas: [{ label: 'Estudiante', width: 85 }, { label: 'Cédula', width: 30 }, { label: 'Estado', width: 30 }, { label: 'Tipo', width: usable - 145 }],
@@ -813,7 +833,7 @@ function agregarTablaAcademica(doc, titulo, columnas, filas, ctx) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(31, 41, 55);
-    doc.text(continuacion ? `${titulo} (continuación)` : titulo, left + 2, y);
+    doc.text(textoPdfSeguro(continuacion ? `${titulo} (continuación)` : titulo), left + 2, y);
     y += 8;
   };
   const dibujarHeader = () => {
@@ -825,7 +845,7 @@ function agregarTablaAcademica(doc, titulo, columnas, filas, ctx) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(45, 55, 72);
-    columnas.forEach(col => { doc.text(col.label, x + 1.2, y); x += col.width; });
+    columnas.forEach(col => { doc.text(textoPdfSeguro(col.label), x + 1.2, y); x += col.width; });
     y += 3;
   };
   const nuevaPaginaTabla = () => { ctx.nuevaPagina(); y = 18; dibujarTitulo(true); dibujarHeader(); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(25, 25, 25); };
@@ -839,7 +859,7 @@ function agregarTablaAcademica(doc, titulo, columnas, filas, ctx) {
     const cellPadding = 1.2;
     const lineHeight = 3.5;
     const lineas = columnas.map((col, idx) => {
-      const valor = String(fila[idx] ?? '-');
+      const valor = textoPdfSeguro(fila[idx] ?? '-');
       const parsed = doc.splitTextToSize(valor, Math.max(col.width - cellPadding * 2, 2));
       return Array.isArray(parsed) && parsed.length ? parsed.slice(0, 7) : ['-'];
     });
@@ -908,7 +928,7 @@ async function generarBoletaEstudiante(estudiante) {
   doc.text('Boleta de seguimiento del estudiante', 14, 14);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text('EduControl · Seguimiento académico y de asistencia', 14, 21);
+  doc.text('EduControl - Seguimiento académico y de asistencia', 14, 21);
   doc.text(`Emitida: ${new Date().toLocaleString('es-CR')}`, 14, 27);
 
   const logo = await obtenerLogoReporteDataUrl();
@@ -925,9 +945,9 @@ async function generarBoletaEstudiante(estudiante) {
   doc.text('Información del estudiante', 18, y + 1);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`Estudiante: ${nombre}`, 18, y + 9);
-  doc.text(`Grupo / sección: ${grupo}`, 18, y + 16);
-  doc.text(`Profesor: ${profesor}`, 18, y + 23);
+  doc.text(textoPdfSeguro(`Estudiante: ${nombre}`), 18, y + 9);
+  doc.text(textoPdfSeguro(`Grupo / sección: ${grupo}`), 18, y + 16);
+  doc.text(textoPdfSeguro(`Profesor: ${profesor}`), 18, y + 23);
   y += 45;
 
   doc.setFont('helvetica', 'bold');
@@ -966,7 +986,7 @@ async function generarBoletaEstudiante(estudiante) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(55, 65, 81);
-  doc.text(`Periodo consultado: ${obtenerRangoFechaAplicado(filtros)}`, 14, y);
+  doc.text(textoPdfSeguro(`Periodo consultado: ${obtenerRangoFechaAplicado(filtros)}`), 14, y);
   y += 10;
 
   if (!asistencias) {
@@ -987,7 +1007,7 @@ async function generarBoletaEstudiante(estudiante) {
     detalleAsistencia.slice(0, 8).forEach((registro) => {
       const estado = String(registro.estado_asistencia || '-');
       const observacion = String(registro.observaciones || 'Sin observación');
-      const texto = `${formatDate(registro.fecha)} · ${estado} · ${observacion}`;
+      const texto = textoPdfSeguro(`${formatDate(registro.fecha)} - ${estado} - ${observacion}`);
       const lineas = doc.splitTextToSize(texto, 176);
       const alto = Math.max(5, lineas.length * 4);
       if (y + alto > 245) return;

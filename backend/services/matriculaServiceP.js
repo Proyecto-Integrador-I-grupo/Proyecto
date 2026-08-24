@@ -1,5 +1,28 @@
 import pool from "../config/database.js";
 
+let grupoHorarioSchemaPromise = null;
+
+async function asegurarCamposHorarioGrupo() {
+  if (grupoHorarioSchemaPromise) return grupoHorarioSchemaPromise;
+  grupoHorarioSchemaPromise = (async () => {
+    const [inicio] = await pool.query("SHOW COLUMNS FROM grupo LIKE 'hora_inicio'");
+    if (!inicio.length) await pool.query("ALTER TABLE grupo ADD COLUMN hora_inicio TIME NULL");
+    const [fin] = await pool.query("SHOW COLUMNS FROM grupo LIKE 'hora_fin'");
+    if (!fin.length) await pool.query("ALTER TABLE grupo ADD COLUMN hora_fin TIME NULL");
+  })().catch((error) => {
+    grupoHorarioSchemaPromise = null;
+    throw new Error(`No se pudo preparar el horario de grupos: ${error.message}`);
+  });
+  return grupoHorarioSchemaPromise;
+}
+
+function normalizarHoraGrupo(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (!/^([01]\d|2[0-3]):[0-5]\d(?:\:[0-5]\d)?$/.test(raw)) throw new Error('El horario del grupo no tiene un formato válido.');
+  return raw.length === 5 ? `${raw}:00` : raw;
+}
+
 /* ==========================================
    MATRÍCULA
    ========================================== */
@@ -122,6 +145,7 @@ export async function procesarMatricula(datos) {
    GRUPOS
    ========================================== */
 export async function obtenerGruposService(usuarioActual = null) {
+  await asegurarCamposHorarioGrupo();
   const rol = (usuarioActual?.nom_rol || usuarioActual?.rol || "").toLowerCase();
 
   if (rol === "profesor") {
@@ -136,6 +160,8 @@ export async function obtenerGruposService(usuarioActual = null) {
           g.nombre_grupo,
           g.capacidad,
           g.aula,
+          g.hora_inicio,
+          g.hora_fin,
           g.id_seccion,
           s.nombre_seccion,
           s.nivel,
@@ -161,6 +187,8 @@ export async function obtenerGruposService(usuarioActual = null) {
         g.nombre_grupo,
         g.capacidad,
         g.aula,
+        g.hora_inicio,
+        g.hora_fin,
         g.id_seccion,
         s.nombre_seccion,
         s.nivel,
@@ -175,11 +203,14 @@ export async function obtenerGruposService(usuarioActual = null) {
 }
 
 export async function crearGrupoService(datos) {
-  const { nombre_grupo, capacidad, aula, profesores, id_profesor, id_seccion } = datos;
+  await asegurarCamposHorarioGrupo();
+  const { nombre_grupo, capacidad, aula, profesores, id_profesor, id_seccion, hora_inicio, hora_fin } = datos;
 
   const nombreLimpio = (nombre_grupo || "").trim();
   const capacidadNum = Number(capacidad);
   const idSeccionNum = Number(id_seccion);
+  const horaInicio = normalizarHoraGrupo(hora_inicio);
+  const horaFin = normalizarHoraGrupo(hora_fin);
 
   // Normalizar array de profesores
   let listaProfesores = [];
@@ -192,6 +223,8 @@ export async function crearGrupoService(datos) {
   if (!nombreLimpio) throw new Error("El nombre del grupo es obligatorio.");
   if (!Number.isInteger(capacidadNum) || capacidadNum <= 0) throw new Error("La capacidad debe ser un número entero mayor a cero.");
   if (!Number.isInteger(idSeccionNum) || idSeccionNum <= 0) throw new Error("Debe seleccionar una sección académica.");
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) throw new Error("Debe indicar hora de inicio y hora de finalización.");
+  if (horaInicio && horaFin && horaFin <= horaInicio) throw new Error("La hora de finalización debe ser posterior a la hora de inicio.");
 
   const connection = await pool.getConnection();
   try {
@@ -233,8 +266,8 @@ export async function crearGrupoService(datos) {
     }
 
     const [result] = await connection.query(
-      "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, id_seccion) VALUES (?, TRUE, ?, ?, ?)",
-      [nombreLimpio, capacidadNum, aula ? aula.trim() : null, idSeccionNum]
+      "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, hora_inicio, hora_fin, id_seccion) VALUES (?, TRUE, ?, ?, ?, ?, ?)",
+      [nombreLimpio, capacidadNum, aula ? aula.trim() : null, horaInicio, horaFin, idSeccionNum]
     );
     const id_grupo = result.insertId;
 
@@ -259,7 +292,12 @@ export async function crearGrupoService(datos) {
 }
 
 export async function actualizarGrupoService(idGrupo, datos) {
-  const { capacidad, aula, id_profesor, profesores } = datos;
+  await asegurarCamposHorarioGrupo();
+  const { capacidad, aula, id_profesor, profesores, hora_inicio, hora_fin } = datos;
+  const horaInicio = normalizarHoraGrupo(hora_inicio);
+  const horaFin = normalizarHoraGrupo(hora_fin);
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) throw new Error('Debe indicar hora de inicio y hora de finalización.');
+  if (horaInicio && horaFin && horaFin <= horaInicio) throw new Error('La hora de finalización debe ser posterior a la hora de inicio.');
 
   const capacidadNum = Number(capacidad);
   let listaProfesores = [];
@@ -300,9 +338,9 @@ export async function actualizarGrupoService(idGrupo, datos) {
 
     await connection.query(
       `UPDATE grupo
-       SET capacidad = ?, aula = ?
+       SET capacidad = ?, aula = ?, hora_inicio = ?, hora_fin = ?
        WHERE id_grupo = ?`,
-      [capacidadNum, aula ? aula.trim() : null, idGrupo]
+      [capacidadNum, aula ? aula.trim() : null, horaInicio, horaFin, idGrupo]
     );
 
     if (listaProfesores.length > 0) {

@@ -1,0 +1,264 @@
+/* ===== Pulido visual final EduControl ===== */
+
+/* Jerarquía de títulos consistente en superficies claras */
+body:not(.theme-dark):not(.high-contrast) .view .page-header h1,
+body:not(.theme-dark):not(.high-contrast) .view .page-header h2,
+body:not(.theme-dark):not(.high-contrast) .view .page-header h3,
+body:not(.theme-dark):not(.high-contrast) .view .card-title,
+body:not(.theme-dark):not(.high-contrast) .view .card-title-serif,
+body:not(.theme-dark):not(.high-contrast) .view .finance-panel-title h3,
+body:not(.theme-dark):not(.high-contrast) .view .finance-card-heading h3,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h1,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h2,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h3 {
+  color: #13243a !important;
+}
+
+body:not(.theme-dark):not(.high-contrast) .view .page-header p,
+body:not(.theme-dark):not(.high-contrast) .view .card-subtitle,
+body:not(.theme-dark):not(.high-contrast) .view .text-muted,
+body:not(.theme-dark):not(.high-contrast) .view .form-text {
+  color: #627489 !important;
+}
+
+/* Encabezados oscuros siempre con texto claro */
+.modal-header.bg-navy,
+.modal-header.bg-dark,
+.modal-header.bg-primary,
+.modal-header.bg-success,
+.modal-header.bg-danger,
+.modal-header.bg-navy .modal-title,
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-success .modal-title,
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-navy .modal-title *,
+.modal-header.bg-dark .modal-title *,
+.modal-header.bg-primary .modal-title *,
+.modal-header.bg-success .modal-title *,
+.modal-header.bg-danger .modal-title * {
+  color: #fff !important;
+}
+
+/* Cabeceras de página más limpias */
+.view .page-header {
+  padding: .25rem .15rem .15rem;
+}
+.view .page-header h1,
+.view .page-header h2,
+.view .page-header h3 {
+  margin-bottom: .2rem !important;
+  font-weight: 760;
+  letter-spacing: -.025em;
+}
+
+/* Tarjetas consistentes */
+body:not(.theme-dark):not(.high-contrast) .view > .card,
+body:not(.theme-dark):not(.high-contrast) .view .card:not(.hero-card),
+body:not(.theme-dark):not(.high-contrast) .finance-panel,
+body:not(.theme-dark):not(.high-contrast) .report-main-card {
+  border-color: #e1e8f0 !important;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .055) !important;
+}
+
+/* ===== Profesores ===== */
+#profesores-view .card-body {
+  padding: 1rem 1.05rem 1.15rem;
+}
+
+#profesores-view .card-body > .d-flex:first-child {
+  padding: .15rem .1rem .85rem;
+  border-bottom: 1px solid #e8edf3;
+}
+
+#profesores-view .search-box {
+  width: min(100%, 430px);
+  min-width: 280px;
+}
+
+#profesores-view #prof-filtro-estado {
+  min-width: 235px;
+  min-height: 42px;
+  border-radius: .7rem;
+}
+
+#profesores-view .search-box .form-control,
+#profesores-view .search-box .input-group-text {
+  min-height: 42px;
+  border-color: #d9e2ec;
+  background: #fff;
+}
+
+#profesores-view .search-box .input-group-text {
+  color: #49647f;
+}
+
+#profesores-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#profesores-table thead th {
+  padding: .8rem .75rem;
+  background: #f6f8fb;
+  color: #2b4056 !important;
+  border-bottom: 1px solid #dfe7ef;
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+#profesores-table tbody td {
+  padding: .9rem .75rem;
+  border-bottom: 1px solid #e9eef4;
+  background: #fff;
+  color: #20354a;
+  line-height: 1.42;
+}
+
+#profesores-table tbody tr:nth-child(even) td {
+  background: #fbfcfe;
+}
+
+#profesores-table tbody tr:hover td {
+  background: #f5f9fc;
+}
+
+#profesores-table td:nth-child(2) {
+  font-weight: 650;
+  color: #18314a;
+}
+
+#profesores-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+#profesores-table td:nth-child(5) {
+  color: #405a73;
+  line-height: 1.5;
+}
+
+#profesores-table td:nth-child(5) br + br {
+  display: none;
+}
+
+#profesores-table .badge {
+  padding: .38rem .58rem;
+  border-radius: 999px;
+  font-size: .72rem;
+}
+
+.profesor-actions-grid {
+  max-width: 270px;
+  gap: .42rem;
+}
+
+.profesor-actions-grid .profesor-action-btn {
+  min-height: 36px;
+  border-radius: .65rem;
+  font-size: .75rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.profesor-actions-grid .profesor-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(15, 23, 42, .08);
+}
+
+@media (min-width: 992px) {
+  #profesores-table th:nth-child(1) { width: 4%; }
+  #profesores-table th:nth-child(2) { width: 16%; }
+  #profesores-table th:nth-child(3) { width: 11%; }
+  #profesores-table th:nth-child(4) { width: 9%; }
+  #profesores-table th:nth-child(5) { width: 22%; }
+  #profesores-table th:nth-child(6) { width: 10%; }
+  #profesores-table th:nth-child(7) { width: 28%; }
+}
+
+/* ===== Pagos y facturación ===== */
+#pagos-view .finance-summary {
+  gap: .9rem;
+  margin-bottom: 1.15rem;
+}
+
+#pagos-view .finance-summary-card {
+  min-height: 92px;
+  border-radius: 16px;
+  border-color: #e0e8f0;
+  box-shadow: 0 7px 20px rgba(15, 23, 42, .045);
+}
+
+#pagos-view .finance-workspace {
+  gap: 1.15rem;
+}
+
+#pagos-view .finance-panel {
+  border-radius: 18px;
+}
+
+#pagos-view .finance-panel-header {
+  padding: 1rem 1.05rem .9rem;
+  background: linear-gradient(180deg, #fff, #fbfcfe);
+}
+
+#pagos-view .finance-record-list {
+  padding: .9rem;
+  gap: .72rem;
+}
+
+#pagos-view .finance-record-card {
+  padding: .85rem .9rem;
+  border-radius: 14px;
+  background: #fff;
+}
+
+#pagos-view .finance-record-card:hover {
+  border-color: #cfd9e4;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .055);
+}
+
+#pagos-view .finance-record-money > div {
+  background: #f5f7fa;
+  border: 1px solid #e8edf3;
+}
+
+#pagos-view .finance-card-heading h3,
+#pagos-view .finance-panel-title h3,
+#pagos-view .finance-record-title,
+#pagos-view .billing-service-copy strong {
+  color: #16324a !important;
+}
+
+/* Formularios y filtros más uniformes en módulos administrativos */
+.view .form-control,
+.view .form-select,
+.view .input-group-text {
+  border-color: #d8e1eb;
+}
+.view .form-control:focus,
+.view .form-select:focus {
+  border-color: #78a9c4;
+  box-shadow: 0 0 0 .2rem rgba(46, 111, 149, .12);
+}
+
+/* Mantener dark/high contrast sin forzar paleta clara */
+body.theme-dark #profesores-table thead th,
+body.theme-dark #profesores-table tbody td,
+body.high-contrast #profesores-table thead th,
+body.high-contrast #profesores-table tbody td {
+  background: inherit;
+  color: inherit !important;
+}
+
+@media (max-width: 767.98px) {
+  #profesores-view .search-box,
+  #profesores-view #prof-filtro-estado {
+    width: 100% !important;
+    min-width: 0;
+  }
+  #profesores-view .card-body > .d-flex:first-child {
+    align-items: stretch !important;
+  }
+}

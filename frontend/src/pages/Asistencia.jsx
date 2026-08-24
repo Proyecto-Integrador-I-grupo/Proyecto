@@ -172,7 +172,7 @@ export default function Asistencia() {
                 <div>
                   <label className="form-label">Observaciones</label>
                   <textarea id="asis-observacion-texto" className="form-control" rows="4" maxLength="250" placeholder="Escribe una observación opcional para este día..."></textarea>
-                  <div className="form-text">Máximo 250 caracteres.</div>
+                  
                 </div>
               </div>
               <div className="modal-footer">

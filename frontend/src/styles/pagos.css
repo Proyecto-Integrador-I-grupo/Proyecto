@@ -1394,3 +1394,61 @@
   #pagos-view .finance-page-header-main { align-items: stretch; flex-direction: column; }
   #pagos-view .finance-toolbar-actions { justify-content: flex-start; }
 }
+
+/* ===== Pulido final de Pagos y facturación ===== */
+#pagos-view .pagos-shell {
+  --fin-ink:#1d3045;
+  --fin-muted:#63758a;
+  --fin-line:#dde6ef;
+}
+#pagos-view .finance-page-header {
+  padding: .35rem .2rem 1.05rem;
+  border-bottom: 1px solid #e8eef4;
+  margin-bottom: 1rem;
+}
+#pagos-view .finance-page-title-block .card-title-serif { color:#172a40 !important; }
+#pagos-view .finance-page-subtitle { color:#64788d !important; }
+#pagos-view .finance-summary-card {
+  border-color:#dfe8f1;
+  box-shadow:0 8px 22px rgba(28,47,68,.05);
+}
+#pagos-view .finance-panel,
+#pagos-view .finance-tool-card {
+  border-color:#dfe7ef;
+  box-shadow:0 8px 24px rgba(25,43,64,.045);
+}
+#pagos-view .finance-panel-header,
+#pagos-view .finance-tool-card-heading {
+  background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+}
+#pagos-view .finance-record-card,
+#pagos-view .finance-history-record,
+#pagos-view .finance-invoice-record {
+  background:#fff;
+  border-color:#e1e8f0;
+}
+#pagos-view .finance-record-card:hover,
+#pagos-view .finance-history-record:hover,
+#pagos-view .finance-invoice-record:hover {
+  border-color:#cbd9e7;
+  box-shadow:0 8px 20px rgba(25,43,64,.055);
+}
+#pagos-view .finance-filter-row {
+  padding:.72rem;
+  border:1px solid #e4ebf2;
+  border-radius:13px;
+  background:#f8fafc;
+}
+#pagos-view .finance-record-actions .btn,
+#pagos-view .finance-invoice-actions .btn,
+#pagos-view .finance-history-actions .btn { border-radius:9px; }
+#pagos-view .invoice-chip {
+  background:#eaf7f7;
+  color:#1e7279;
+  border:1px solid #cce8e9;
+}
+#pagos-view .finance-empty-state {
+  border:1px dashed #cfdae5;
+  border-radius:14px;
+  background:#fafcfe;
+}

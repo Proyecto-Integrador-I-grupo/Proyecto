@@ -257,3 +257,136 @@ body.edu-modal-lock #content {
 .report-main-card small {
   color: #52677c !important;
 }
+
+/* ===== Ajuste UX final: modales legibles, amplios y sin scroll interno ===== */
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+  zoom: 1 !important;
+  width: min(94vw, 900px) !important;
+  max-width: min(94vw, 900px) !important;
+  min-height: auto !important;
+  max-height: none !important;
+  margin: 2vh auto !important;
+  align-items: center !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+  width: min(94vw, 980px) !important;
+  max-width: min(94vw, 980px) !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-content {
+  max-height: 96vh !important;
+  overflow: hidden !important;
+  border-radius: 16px;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-body,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-body {
+  overflow: hidden !important;
+  padding: 1.15rem 1.25rem !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-header,
+.modal:not(.finance-invoice-preview-modal) .modal-footer {
+  flex: 0 0 auto;
+  padding: .85rem 1.2rem !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-title { font-size: 1.08rem; }
+.modal:not(.finance-invoice-preview-modal) .form-control,
+.modal:not(.finance-invoice-preview-modal) .form-select {
+  min-height: 40px;
+  font-size: .94rem;
+}
+.modal:not(.finance-invoice-preview-modal) textarea.form-control {
+  min-height: 64px;
+  max-height: 92px;
+}
+
+/* Configuración de facturación: ventana grande y contenido distribuido para que el botón siempre sea visible. */
+#modalConfigFacturacion .modal-dialog {
+  width: min(96vw, 1120px) !important;
+  max-width: min(96vw, 1120px) !important;
+}
+#modalConfigFacturacion .billing-config-modal {
+  padding: .9rem 1rem !important;
+}
+#modalConfigFacturacion .billing-config-intro {
+  padding: .7rem .8rem;
+  margin-bottom: .65rem;
+}
+#modalConfigFacturacion .billing-service-overview {
+  gap: .55rem;
+  margin-bottom: .65rem;
+}
+#modalConfigFacturacion .billing-service-card {
+  min-height: 68px;
+  padding: .65rem .72rem;
+}
+#modalConfigFacturacion .billing-emitter-card {
+  padding: .8rem .9rem;
+}
+#modalConfigFacturacion .billing-emitter-grid {
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: .65rem .75rem;
+}
+#modalConfigFacturacion .billing-field-wide { grid-column: span 2; }
+#modalConfigFacturacion .billing-logo-picker {
+  min-height: 84px;
+  padding: .65rem;
+}
+#modalConfigFacturacion .billing-config-note {
+  margin-top: .55rem;
+  padding: .55rem .7rem;
+}
+
+@media (max-height: 820px) and (min-width: 768px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+    margin: 1vh auto !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .modal-body { padding: .75rem 1rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-header,
+  .modal:not(.finance-invoice-preview-modal) .modal-footer { padding: .62rem 1rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .row.g-3,
+  .modal:not(.finance-invoice-preview-modal) .row.g-4 { --bs-gutter-y: .5rem; }
+  #modalConfigFacturacion .billing-config-intro p,
+  #modalConfigFacturacion .billing-emitter-heading small,
+  #modalConfigFacturacion .billing-config-note { display: none; }
+  #modalConfigFacturacion .billing-config-modal { padding: .65rem .8rem !important; }
+  #modalConfigFacturacion .billing-service-card { min-height: 58px; padding: .5rem .6rem; }
+  #modalConfigFacturacion .billing-emitter-card { padding: .6rem .75rem; }
+  #modalConfigFacturacion .billing-logo-picker { min-height: 70px; }
+}
+
+@media (max-width: 767.98px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    margin: .5rem auto !important;
+  }
+  #modalConfigFacturacion .billing-emitter-grid { grid-template-columns: 1fr 1fr; }
+  #modalConfigFacturacion .billing-field-wide { grid-column: 1 / -1; }
+}
+
+/* ===== Contraste coherente: títulos visibles sin alterar la paleta de cada módulo ===== */
+.view .bg-navy, .view .bg-dark, .view .bg-primary, .view .bg-success, .view .bg-danger,
+.view .bg-navy *, .view .bg-dark *, .view .bg-primary *, .view .bg-success *, .view .bg-danger * {
+  --bs-heading-color: #fff;
+}
+.view .bg-navy .modal-title, .view .bg-dark .modal-title, .view .bg-primary .modal-title,
+.view .bg-success .modal-title, .view .bg-danger .modal-title,
+.view .bg-navy h1,.view .bg-navy h2,.view .bg-navy h3,.view .bg-navy h4,.view .bg-navy h5,.view .bg-navy h6,
+.view .bg-dark h1,.view .bg-dark h2,.view .bg-dark h3,.view .bg-dark h4,.view .bg-dark h5,.view .bg-dark h6 {
+  color:#fff !important;
+}
+.view .card:not(.bg-dark):not(.bg-navy),
+.view .modal-body,
+.view .modal-footer,
+.view .finance-panel,
+.view .report-main-card { color:#203247 !important; }
+.view .card:not(.bg-dark):not(.bg-navy) h1,
+.view .card:not(.bg-dark):not(.bg-navy) h2,
+.view .card:not(.bg-dark):not(.bg-navy) h3,
+.view .card:not(.bg-dark):not(.bg-navy) h4,
+.view .card:not(.bg-dark):not(.bg-navy) h5,
+.view .modal-body h1,.view .modal-body h2,.view .modal-body h3,.view .modal-body h4,.view .modal-body h5 {
+  color:#17283a !important;
+}

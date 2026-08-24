@@ -150,7 +150,7 @@ export default function App() {
           <div className="login-card">
             <div className="text-center mb-4">
               <img
-                src="/images/logo1.jpg"
+                src="/images/logo1-transparent.png"
                 alt="EduControl"
                 className="login-logo mb-3"
               />

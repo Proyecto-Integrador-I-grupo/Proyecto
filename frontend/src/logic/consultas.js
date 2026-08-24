@@ -13,13 +13,66 @@ let profesores = [];
 let matriculas = [];
 let asistencias = [];
 let gruposAsignados = [];
+let grupos = [];
 
 // Registro que se está mostrando en la vista previa
 let documentoActual = null;
 let tipoDocumentoActual = null;
 
+registrarAuditoriaConsulta(
+  'estudiante',
+  'vista_previa',
+  {
+    id_registro:
+      estudiante.id_estudiante ??
+      estudiante.id ??
+      null
+  }
+);
+
+registrarAuditoriaConsulta(
+  'matriculado',
+  'vista_previa',
+  {
+    id_registro:
+      registro.id_estudiante ?? null,
+    id_matricula:
+      registro.id_matricula ?? null
+  }
+);
+
+registrarAuditoriaConsulta(
+  'profesor',
+  'vista_previa',
+  {
+    id_registro:
+      profesor.id_profesor ??
+      profesor.id ??
+      null
+  }
+);
+
+registrarAuditoriaConsulta(
+  'matricula',
+  'vista_previa',
+  {
+    id_registro:
+      registro.id_matricula ?? null
+  }
+);
+
+registrarAuditoriaConsulta(
+  'asistencia',
+  'vista_previa',
+  {
+    id_registro:
+      registro.id_asistencia ?? null
+  }
+);
+
+
 const CONSULTAS_POR_ROL = {
-  administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia'],
+  administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia', 'grupos'],
   asistente: ['prematriculados', 'matriculados', 'matriculas'],
   profesor: ['asistencia']
 };
@@ -49,10 +102,11 @@ function aplicarPermisosConsultaUI() {
 
   const statMap = {
     'consulta-total-estudiantes': 'prematriculados',
-    'consulta-total-matriculados': 'matriculados',
-    'consulta-total-profesores': 'profesores',
-    'consulta-total-matriculas': 'matriculas',
-    'consulta-total-asistencias': 'asistencia'
+  'consulta-total-matriculados': 'matriculados',
+  'consulta-total-profesores': 'profesores',
+  'consulta-total-matriculas': 'matriculas',
+  'consulta-total-asistencias': 'asistencia',
+  'consulta-total-grupos': 'grupos'
   };
 
   Object.entries(statMap).forEach(([id, tipo]) => {
@@ -90,7 +144,6 @@ function aplicarPermisosConsultaUI() {
     const limpiar = document.getElementById('consulta-limpiar');
     const refrescar = document.getElementById('consulta-refrescar');
     const tablaBody = document.getElementById('consulta-tabla-body');
-    const modificarDetalle = document.getElementById('consulta-detalle-modificar');
     const descargarPdf = document.getElementById('consulta-descargar-pdf');
 
     tipo?.addEventListener('change', actualizarConsulta);
@@ -103,11 +156,6 @@ function aplicarPermisosConsultaUI() {
     refrescar?.addEventListener('click', cargarConsultas);
 
     tablaBody?.addEventListener('click', manejarAccionesTabla);
-
-    modificarDetalle?.addEventListener(
-      'click',
-      modificarDesdeDetalle
-    );
     descargarPdf?.addEventListener(
   'click',
   descargarDocumentoPDF
@@ -146,7 +194,7 @@ function aplicarPermisosConsultaUI() {
         return Array.isArray(data) ? data : [];
       };
 
-      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, gruposAsignados] = await Promise.all([
+      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, grupos] = await Promise.all([
         pedir('prematriculados', '/api/estudiantes'),
         pedir('matriculados', '/api/estudiantes/matriculados'),
         pedir('profesores', '/api/profesores'),
@@ -154,6 +202,8 @@ function aplicarPermisosConsultaUI() {
         pedir('asistencia', '/api/procesos/asistencia'),
         pedirGrupos()
       ]);
+
+      gruposAsignados = grupos;
 
       actualizarResumen();
       cargarFiltroGrupos();
@@ -195,6 +245,10 @@ function aplicarPermisosConsultaUI() {
       'consulta-total-asistencias'
     );
 
+    const totalGrupos = document.getElementById(
+      'consulta-total-grupos'
+   );
+
     if (totalEstudiantes) {
       totalEstudiantes.textContent = estudiantes.length;
     }
@@ -215,6 +269,10 @@ function aplicarPermisosConsultaUI() {
     if (totalAsistencias) {
       totalAsistencias.textContent = asistencias.length;
     }
+
+    if (totalGrupos) {
+      totalGrupos.textContent = grupos.length;
+   }
   }
 
   /* ==========================================
@@ -259,8 +317,13 @@ function aplicarPermisosConsultaUI() {
     }
 
     if (tipo === 'asistencia') {
-      mostrarAsistencias();
-    }
+  mostrarAsistencias();
+  return;
+}
+
+if (tipo === 'grupos') {
+  mostrarGrupos();
+}
   }
 
   /* ==========================================
@@ -329,7 +392,10 @@ function aplicarPermisosConsultaUI() {
         'Buscar por estudiante o grupo...',
 
       asistencia:
-        'Buscar por estudiante, grupo o profesor...'
+    'Buscar por estudiante, grupo o profesor...',
+
+  grupos:
+    'Buscar por nombre de grupo, sección o nivel...'
     };
 
     input.placeholder =
@@ -354,16 +420,17 @@ function aplicarPermisosConsultaUI() {
     );
 
     const usaGrupo =
-      tipo === 'matriculados' ||
-      tipo === 'matriculas' ||
-      tipo === 'asistencia';
+  tipo === 'matriculados' ||
+  tipo === 'matriculas' ||
+  tipo === 'asistencia';
 
-    const usaFecha =
-      tipo === 'matriculas' ||
-      tipo === 'asistencia';
+const usaFecha =
+  tipo === 'matriculas' ||
+  tipo === 'asistencia';
 
-    const usaInformacionAcademica =
-      tipo === 'matriculados';
+const usaInformacionAcademica =
+  tipo === 'matriculados' ||
+  tipo === 'grupos';
 
     filtroGrupo?.classList.toggle(
       'hidden',
@@ -511,17 +578,8 @@ function aplicarPermisosConsultaUI() {
     class="btn btn-sm btn-outline-primary consulta-ver-estudiante"
     data-id="${id}">
     <i class="bi bi-file-earmark-text"></i>
-    Vista previa
+    Vista previa 
   </button>
-
-  <button
-    type="button"
-    class="btn btn-sm btn-outline-secondary consulta-editar-estudiante"
-    data-id="${id}">
-    <i class="bi bi-pencil"></i>
-    Modificar
-  </button>
-</td>
 `;
 
       body.appendChild(fila);
@@ -825,7 +883,7 @@ function aplicarPermisosConsultaUI() {
         <td class="text-end">
           <button
             type="button"
-            class="btn btn-sm btn-outline-secondary consulta-ver-profesor"
+            class="btn btn-sm btn-outline-primary consulta-ver-profesor"
             data-id="${id}">
            <i class="bi bi-file-earmark-text"></i>
              Vista previa
@@ -980,15 +1038,24 @@ function aplicarPermisosConsultaUI() {
         </td>
 
         <td>
-          <span class="badge bg-primary">
-            ${estado}
-          </span>
+        <span
+  class="badge ${
+    String(estado).toLowerCase() === 'activa'
+      ? 'bg-success'
+      : String(estado).toLowerCase() === 'inactiva'
+        ? 'bg-secondary'
+        : String(estado).toLowerCase() === 'retirada'
+          ? 'bg-danger'
+          : 'bg-secondary'
+  }">
+  ${estado}
+</span>
         </td>
 
         <td class="text-end">
           <button
             type="button"
-            class="btn btn-sm btn-outline-secondary consulta-ver-matricula"
+            class="btn btn-sm btn-outline-primary consulta-ver-matricula"
             data-id="${registro.id_matricula}">
             <i class="bi bi-file-earmark-text"></i>
               Vista previa
@@ -1159,7 +1226,7 @@ function aplicarPermisosConsultaUI() {
         <td class="text-end">
           <button
             type="button"
-            class="btn btn-sm btn-outline-secondary consulta-ver-asistencia"
+            class="btn btn-sm btn-outline-primary consulta-ver-asistencia"
             data-id="${registro.id_asistencia}">
             <i class="bi bi-file-earmark-text"></i>
               Vista previa
@@ -1206,6 +1273,99 @@ function aplicarPermisosConsultaUI() {
       </span>
     `;
   }
+
+  function mostrarGrupos() {
+  const busqueda = obtenerBusqueda();
+
+  const resultados = [...grupos]
+    .filter((grupo) => {
+      const texto = `
+        ${grupo.nombre_grupo ?? grupo.nombre ?? ''}
+        ${grupo.nombre_seccion ?? grupo.seccion ?? ''}
+        ${grupo.nivel ?? ''}
+      `
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return !busqueda || texto.includes(busqueda);
+    })
+    .sort((a, b) => {
+      const nombreA = String(
+        a.nombre_grupo ?? a.nombre ?? ''
+      );
+
+      const nombreB = String(
+        b.nombre_grupo ?? b.nombre ?? ''
+      );
+
+      return nombreA.localeCompare(
+        nombreB,
+        'es',
+        { sensitivity: 'base' }
+      );
+    });
+
+  actualizarTitulo(
+    'Lista de grupos',
+    resultados.length
+  );
+
+  cambiarEncabezado(`
+    <tr>
+      <th>Grupo</th>
+      <th>Sección</th>
+      <th>Nivel</th>
+      <th class="text-end">Acciones</th>
+    </tr>
+  `);
+
+  if (!resultados.length) {
+    mostrarSinResultados(4);
+    return;
+  }
+
+  const body = document.getElementById(
+    'consulta-tabla-body'
+  );
+
+  if (!body) return;
+
+  body.innerHTML = '';
+
+  resultados.forEach((grupo) => {
+    const fila = document.createElement('tr');
+
+    fila.innerHTML = `
+      <td>
+        <strong>
+          ${grupo.nombre_grupo ?? grupo.nombre ?? '-'}
+        </strong>
+      </td>
+
+      <td>
+        ${grupo.nombre_seccion ?? grupo.seccion ?? '-'}
+      </td>
+
+      <td>
+        ${grupo.nivel ?? '-'}
+      </td>
+
+      <td class="text-end">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary consulta-ver-grupo"
+          data-id="${grupo.id_grupo ?? grupo.id ?? ''}"
+        >
+          <i class="bi bi-file-earmark-text"></i>
+          Vista previa
+        </button>
+      </td>
+    `;
+
+    body.appendChild(fila);
+  });
+}
 
   /* ==========================================
      FILTROS DE GRUPO, SECCIÓN Y NIVEL
@@ -1425,12 +1585,6 @@ function aplicarPermisosConsultaUI() {
   evento.target.closest(
     '.consulta-ver-matriculado'
   );
-
-    const editarEstudiante =
-      evento.target.closest(
-        '.consulta-editar-estudiante'
-      );
-
     const verProfesor =
       evento.target.closest(
         '.consulta-ver-profesor'
@@ -1446,16 +1600,14 @@ function aplicarPermisosConsultaUI() {
         '.consulta-ver-asistencia'
       );
 
+    const verGrupo =
+     evento.target.closest(
+      '.consulta-ver-grupo'
+    );
+
     if (verEstudiante) {
       await mostrarDetalleEstudiante(
         verEstudiante.dataset.id
-      );
-      return;
-    }
-
-    if (editarEstudiante) {
-      await abrirEdicionEstudiante(
-        editarEstudiante.dataset.id
       );
       return;
     }
@@ -1487,6 +1639,12 @@ function aplicarPermisosConsultaUI() {
         verAsistencia.dataset.id
       );
     }
+
+   if (verGrupo) {
+     mostrarDetalleGrupo(
+       verGrupo.dataset.id
+      );
+    }
   }
 
   async function mostrarDetalleEstudiante(id) {
@@ -1498,11 +1656,6 @@ function aplicarPermisosConsultaUI() {
     const titulo =
       document.getElementById(
         'consulta-detalle-titulo'
-      );
-
-    const modificar =
-      document.getElementById(
-        'consulta-detalle-modificar'
       );
 
     if (
@@ -1524,9 +1677,6 @@ function aplicarPermisosConsultaUI() {
         Cargando información...
       </div>
     `;
-
-    modificar.classList.add('hidden');
-    modificar.dataset.id = '';
 
     abrirModalDetalle();
 
@@ -1602,9 +1752,6 @@ prepararEncabezadoDocumento(
 
         </div>
       `;
-
-      modificar.dataset.id = id;
-      modificar.classList.remove('hidden');
     } catch (error) {
       contenido.innerHTML = `
         <div class="text-center py-4 text-danger">
@@ -1648,19 +1795,12 @@ prepararEncabezadoDocumento(
     'consulta-detalle-titulo'
   );
 
-  const modificar = document.getElementById(
-    'consulta-detalle-modificar'
-  );
-
   if (!contenido || !titulo || !modificar) {
     return;
   }
 
   titulo.textContent =
     'Vista previa del estudiante matriculado';
-
-  modificar.classList.add('hidden');
-  modificar.dataset.id = '';
 
   if (!registro) {
     contenido.innerHTML = `
@@ -1779,11 +1919,6 @@ prepararEncabezadoDocumento(
         'consulta-detalle-titulo'
       );
 
-    const modificar =
-      document.getElementById(
-        'consulta-detalle-modificar'
-      );
-
     if (
       !contenido ||
       !titulo ||
@@ -1794,9 +1929,6 @@ prepararEncabezadoDocumento(
 
     titulo.textContent =
      'Vista previa del profesor';
-
-    modificar.classList.add('hidden');
-    modificar.dataset.id = '';
 
     if (!profesor) {
       contenido.innerHTML = `
@@ -1886,11 +2018,6 @@ prepararEncabezadoDocumento(
         'consulta-detalle-titulo'
       );
 
-    const modificar =
-      document.getElementById(
-        'consulta-detalle-modificar'
-      );
-
     if (
       !contenido ||
       !titulo ||
@@ -1901,9 +2028,6 @@ prepararEncabezadoDocumento(
 
     titulo.textContent =
       'Vista previa de la matrícula';
-
-    modificar.classList.add('hidden');
-    modificar.dataset.id = '';
 
     if (!registro) {
       contenido.innerHTML = `
@@ -2008,24 +2132,15 @@ prepararEncabezadoDocumento(
         'consulta-detalle-titulo'
       );
 
-    const modificar =
-      document.getElementById(
-        'consulta-detalle-modificar'
-      );
-
-    if (
-      !contenido ||
-      !titulo ||
-      !modificar
-    ) {
-      return;
-    }
+   if (
+  !contenido ||
+  !titulo
+) {
+  return;
+}
 
     titulo.textContent =
      'Vista previa de la asistencia';
-
-    modificar.classList.add('hidden');
-    modificar.dataset.id = '';
 
     if (!registro) {
       contenido.innerHTML = `
@@ -2114,167 +2229,156 @@ prepararEncabezadoDocumento(
     abrirModalDetalle();
   }
 
-  async function abrirEdicionEstudiante(id) {
-    try {
-      const respuesta = await apiFetch(
-        `/api/estudiantes/${id}`
-      );
+  function mostrarDetalleGrupo(id) {
+  const grupo = grupos.find((item) => {
+    return String(item.id_grupo ?? item.id) === String(id);
+  });
 
-      if (!respuesta.ok) {
-        throw new Error(
-          'No se pudo obtener la información del estudiante.'
-        );
-      }
+  const contenido = document.getElementById(
+    'consulta-detalle-contenido'
+  );
 
-      const estudiante =
-        await respuesta.json();
+  const titulo = document.getElementById(
+    'consulta-detalle-titulo'
+  );
 
-      const campoId =
-        document.getElementById(
-          'persona-id'
-        );
+  if (!contenido || !titulo) return;
 
-      if (campoId) {
-        campoId.value =
-          estudiante.id_estudiante ??
-          estudiante.id ??
-          '';
-      }
+  titulo.textContent = 'Vista previa del grupo';
 
-      const campoNombre =
-        document.getElementById(
-          'nombre'
-        );
+  if (!grupo) {
+    contenido.innerHTML = `
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró la información del grupo.
+      </div>
+    `;
 
-      if (campoNombre) {
-        campoNombre.value =
-          estudiante.nombre ?? '';
-      }
-
-      const campoApellido1 =
-        document.getElementById(
-          'apellido1'
-        );
-
-      if (campoApellido1) {
-        campoApellido1.value =
-          estudiante.apellido1 ?? '';
-      }
-
-      const campoApellido2 =
-        document.getElementById(
-          'apellido2'
-        );
-
-      if (campoApellido2) {
-        campoApellido2.value =
-          estudiante.apellido2 ?? '';
-      }
-
-      const campoNacimiento =
-        document.getElementById(
-          'fecha_nacimiento'
-        );
-
-      if (campoNacimiento) {
-        campoNacimiento.value =
-          estudiante.fecha_nacimiento
-            ? String(
-                estudiante.fecha_nacimiento
-              ).split('T')[0]
-            : '';
-      }
-
-      const campoGenero =
-        document.getElementById(
-          'genero'
-        );
-
-      if (campoGenero) {
-        campoGenero.value =
-          estudiante.genero ?? '';
-      }
-
-      const ingreso =
-        document.getElementById(
-          'persona-fecha-ingreso'
-        );
-
-      if (ingreso) {
-        ingreso.value =
-          estudiante.fecha_ingreso
-            ? String(
-                estudiante.fecha_ingreso
-              ).split('T')[0]
-            : '';
-      }
-
-      const titulo =
-        document.getElementById(
-          'persona-form-title'
-        );
-
-      if (titulo) {
-        titulo.textContent =
-          'Editar Estudiante';
-      }
-
-      const botonGuardar =
-        document.getElementById(
-          'persona-submit'
-        );
-
-      if (botonGuardar) {
-        botonGuardar.innerHTML =
-          '<i class="bi bi-check2-circle"></i> Guardar Cambios';
-      }
-
-      const modalDetalle =
-        document.getElementById(
-          'modalDetalleConsulta'
-        );
-
-      if (modalDetalle) {
-        bootstrap.Modal
-          .getInstance(modalDetalle)
-          ?.hide();
-      }
-
-      const modalEstudiante =
-        document.getElementById(
-          'modalEstudiante'
-        );
-
-      if (modalEstudiante) {
-        const instancia =
-          bootstrap.Modal.getInstance(
-            modalEstudiante
-          ) ||
-          new bootstrap.Modal(
-            modalEstudiante
-          );
-
-        instancia.show();
-      }
-    } catch (error) {
-      mostrarMensajeConsulta(
-        error.message
-      );
-    }
+    abrirModalDetalle();
+    return;
   }
 
-  function modificarDesdeDetalle() {
-    const boton =
-      document.getElementById(
-        'consulta-detalle-modificar'
+  const estudiantesGrupo = estudiantesMatriculados
+    .filter((estudiante) => {
+      return String(estudiante.id_grupo) === String(id);
+    })
+    .sort((a, b) => {
+      return formarNombre(a).localeCompare(
+        formarNombre(b),
+        'es',
+        { sensitivity: 'base' }
       );
+    });
 
-    const id = boton?.dataset.id;
+  documentoActual = {
+    ...grupo,
+    estudiantes: estudiantesGrupo
+  };
 
-    if (id) {
-      abrirEdicionEstudiante(id);
+  tipoDocumentoActual = 'grupo';
+
+  registrarAuditoriaConsulta(
+    'grupo',
+    'vista_previa',
+    {
+      id_registro:
+        grupo.id_grupo ??
+        grupo.id ??
+        null
     }
-  }
+  );
+
+  prepararEncabezadoDocumento(
+    `Grupo ${grupo.nombre_grupo ?? grupo.nombre ?? ''}`
+  );
+
+  const filasEstudiantes = estudiantesGrupo.length
+    ? estudiantesGrupo
+        .map((estudiante, indice) => `
+          <tr>
+            <td>${indice + 1}</td>
+            <td>${formarNombre(estudiante) || '-'}</td>
+            <td>${estudiante.nombre_seccion ?? '-'}</td>
+            <td>${estudiante.nivel ?? '-'}</td>
+          </tr>
+        `)
+        .join('')
+    : `
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">
+            No hay estudiantes matriculados en este grupo.
+          </td>
+        </tr>
+      `;
+
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Información del grupo
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
+          'Grupo',
+          grupo.nombre_grupo ??
+          grupo.nombre ??
+          '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Sección',
+          grupo.nombre_seccion ??
+          grupo.seccion ??
+          '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Nivel',
+          grupo.nivel ??
+          '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Cantidad de estudiantes',
+          estudiantesGrupo.length
+        )}
+
+      </div>
+    </div>
+
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Lista de estudiantes
+      </h3>
+
+      <div class="table-responsive">
+
+        <table class="table table-sm consulta-lista-grupo">
+
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Estudiante</th>
+              <th>Sección</th>
+              <th>Nivel</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${filasEstudiantes}
+          </tbody>
+
+        </table>
+
+      </div>
+    </div>
+  `;
+
+  abrirModalDetalle();
+}
 
   function abrirModalDetalle() {
     const modal =
@@ -2417,9 +2521,25 @@ prepararEncabezadoDocumento(
   );
 
   const nombreArchivo =
-    obtenerNombreArchivoPDF();
+  obtenerNombreArchivoPDF();
 
-  pdf.save(nombreArchivo);
+pdf.save(nombreArchivo);
+
+registrarAuditoriaConsulta(
+  tipoDocumentoActual,
+  'descargar_pdf',
+  {
+    nombre_archivo: nombreArchivo,
+    id_registro:
+      documentoActual.id_estudiante ??
+      documentoActual.id_profesor ??
+      documentoActual.id_matricula ??
+      documentoActual.id_asistencia ??
+      documentoActual.id_grupo ??
+      documentoActual.id ??
+      null
+  }
+);
 }
 
 function obtenerTituloDocumento() {
@@ -2881,6 +3001,36 @@ function prepararEncabezadoDocumento(titulo) {
       '-'
     );
   }
+
+  async function registrarAuditoriaConsulta(
+  tipo,
+  accion,
+  detalle = {}
+) {
+  try {
+    await apiFetch('/api/auditoria', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        nombre_tabla: 'consultas',
+        accion_usuario: 'SELECT',
+        datos_anteriores: null,
+        datos_nuevos: JSON.stringify({
+          tipo,
+          accion,
+          ...detalle
+        })
+      })
+    });
+  } catch (error) {
+    console.warn(
+      'No se pudo registrar la auditoría de consulta:',
+      error
+    );
+  }
+}
 
   function mostrarMensajeConsulta(mensaje) {
     if (

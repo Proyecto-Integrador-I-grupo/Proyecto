@@ -151,7 +151,26 @@ export default function Consultas() {
               </div>
             </div>
           </div>
+        <div className="col-6 col-lg">
+  <div className="consulta-stat h-100">
+    <div className="consulta-stat-icon">
+      <i className="bi bi-people"></i>
+    </div>
 
+    <div>
+      <span className="text-muted small">
+        Grupos
+      </span>
+
+      <div
+        id="consulta-total-grupos"
+        className="fs-3 fw-semibold mt-1"
+      >
+        0
+      </div>
+    </div>
+  </div>
+</div>
         </div>
 
 
@@ -194,6 +213,10 @@ export default function Consultas() {
                   <option value="asistencia">
                     Asistencia
                   </option>
+
+                  <option value="grupos">
+                    Grupos
+                  </option> 
                 </select>
               </div>
 
@@ -508,34 +531,30 @@ export default function Consultas() {
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button
-                type="button"
-                id="consulta-detalle-modificar"
-                className="btn btn-outline-primary hidden"
-              >
-                <i className="bi bi-pencil"></i> Modificar
-              </button>
+          <div className="modal-footer">
+  <button
+    type="button"
+    id="consulta-descargar-pdf"
+    className="btn btn-primary"
+  >
+    <i className="bi bi-file-earmark-pdf"></i>
+    {' '}
+    Descargar PDF
+  </button>
 
-              <button
-                type="button"
-                id="consulta-descargar-pdf"
-                className="btn btn-primary"
-              >
-                <i className="bi bi-file-earmark-pdf"></i> Descargar PDF
-              </button>
+  <button
+    type="button"
+    className="btn btn-secondary"
+    data-bs-dismiss="modal"
+  >
+    Cerrar
+  </button>
+</div>
 
-              <button
-                type="button"
-                className="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Cerrar
-              </button>
-            </div>
           </div>
         </div>
       </div>
+
     </>
   );
 }

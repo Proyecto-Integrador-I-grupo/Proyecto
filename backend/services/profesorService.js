@@ -30,6 +30,29 @@ const normalizarMateriaProfesor = (materia) => {
   return normalizada;
 };
 
+
+const validarNombreHumano = (valor, etiqueta, obligatorio = true) => {
+  const texto = String(valor ?? "").trim();
+  if (!texto && !obligatorio) return null;
+  if (!texto) throw new Error(`${etiqueta} es obligatorio.`);
+  if (texto.length < 2 || texto.length > 60) throw new Error(`${etiqueta} debe contener entre 2 y 60 caracteres.`);
+  if (!/^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u.test(texto)) {
+    throw new Error(`${etiqueta} solo puede contener letras, espacios, apóstrofes y guiones.`);
+  }
+  return texto;
+};
+
+const validarMayorEdad = (fechaNacimiento) => {
+  const fecha = new Date(`${String(fechaNacimiento || '').slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(fecha.getTime())) throw new Error("La fecha de nacimiento no es válida.");
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fecha.getFullYear();
+  const m = hoy.getMonth() - fecha.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) edad -= 1;
+  if (edad < 18) throw new Error("El profesor debe ser mayor de 18 años.");
+  if (edad > 100) throw new Error("La fecha de nacimiento no es válida para un profesor activo.");
+};
+
 const normalizarGeneroProfesor = (genero) => {
   const valor = String(genero ?? "").trim().toLowerCase();
   const mapa = {
@@ -60,6 +83,7 @@ export const obtenerProfesoresService = async () => {
       pr.materia,
       pr.fecha_ingreso,
       pr.estado,
+      (SELECT u.correo FROM usuario u WHERE u.id_persona = pr.id_persona AND u.estado = TRUE LIMIT 1) AS correo,
       GROUP_CONCAT(
         DISTINCT CONCAT(
           g.nombre_grupo,
@@ -102,15 +126,16 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     throw new Error("El correo y la contraseña de acceso son obligatorios para registrar al profesor.");
   }
 
-  if (contrasena.length < 6) {
-    throw new Error("La contraseña de acceso debe tener al menos 6 caracteres.");
+  if (contrasena.length < 6 || contrasena.length > 128) {
+    throw new Error("La contraseña de acceso debe tener entre 6 y 128 caracteres.");
   }
 
   const generoNormalizado = normalizarGeneroProfesor(genero);
   const materiaNormalizada = normalizarMateriaProfesor(materia);
-  const nombreLimpio = nombre.trim();
-  const apellido1Limpio = apellido1.trim();
-  const apellido2Limpio = apellido2 ? apellido2.trim() : null;
+  const nombreLimpio = validarNombreHumano(nombre, "El nombre");
+  const apellido1Limpio = validarNombreHumano(apellido1, "El primer apellido");
+  const apellido2Limpio = validarNombreHumano(apellido2, "El segundo apellido", false);
+  validarMayorEdad(fecha_nacimiento);
   const correoLimpio = validarCorreoInstitucional(correo);
 
   const connection = await conexionPromise.getConnection();
@@ -228,6 +253,55 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       throw new Error(error.message);
     }
     throw new Error("Error interno al registrar el profesor en la base de datos.");
+  } finally {
+    connection.release();
+  }
+};
+
+export const actualizarProfesorService = async (idProfesor, datos) => {
+  const id = Number(idProfesor);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Profesor no válido.");
+
+  const nombre = validarNombreHumano(datos.nombre, "El nombre");
+  const apellido1 = validarNombreHumano(datos.apellido1, "El primer apellido");
+  const apellido2 = validarNombreHumano(datos.apellido2, "El segundo apellido", false);
+  const materia = normalizarMateriaProfesor(datos.materia);
+  const genero = normalizarGeneroProfesor(datos.genero);
+  const fechaNacimiento = String(datos.fecha_nacimiento || "").slice(0, 10);
+  const fechaIngreso = String(datos.fecha_ingreso || "").slice(0, 10);
+  const correo = validarCorreoInstitucional(datos.correo);
+  validarMayorEdad(fechaNacimiento);
+
+  const connection = await conexionPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[profesor]] = await connection.query(
+      `SELECT pr.id_profesor, pr.id_persona FROM profesor pr WHERE pr.id_profesor = ? LIMIT 1`,
+      [id]
+    );
+    if (!profesor) throw new Error("El profesor no existe.");
+
+    const [correoDuplicado] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE correo = ? AND id_persona <> ? LIMIT 1`,
+      [correo, profesor.id_persona]
+    );
+    if (correoDuplicado.length) throw new Error("Ese correo ya pertenece a otro usuario.");
+
+    await connection.query(
+      `UPDATE persona SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ? WHERE id_persona = ?`,
+      [nombre, apellido1, apellido2, fechaNacimiento, genero, profesor.id_persona]
+    );
+    await connection.query(
+      `UPDATE profesor SET materia = ?, fecha_ingreso = ? WHERE id_profesor = ?`,
+      [materia, fechaIngreso || new Date().toISOString().slice(0, 10), id]
+    );
+    await connection.query(`UPDATE usuario SET correo = ? WHERE id_persona = ?`, [correo, profesor.id_persona]);
+
+    await connection.commit();
+    return { id_profesor: id, nombre, apellido1, apellido2, materia, fecha_nacimiento: fechaNacimiento, fecha_ingreso: fechaIngreso, genero, correo };
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    throw error;
   } finally {
     connection.release();
   }

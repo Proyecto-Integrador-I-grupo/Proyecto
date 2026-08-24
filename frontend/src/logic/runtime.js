@@ -19,6 +19,25 @@ import './consultas.js';
 import './reportes.js';
 import './perfil.js';
 
+
+function applyInputGuards() {
+  const inferLimit = (el) => {
+    const key = `${el.id || ''} ${el.name || ''}`.toLowerCase();
+    if (key.includes('correo') || el.type === 'email') return 150;
+    if (key.includes('apellido') || /(^|[-_])nombre($|[-_])/.test(key)) return 60;
+    if (key.includes('telefono')) return 25;
+    if (key.includes('referencia')) return 100;
+    if (key.includes('descripcion')) return 250;
+    if (key.includes('observacion') || el.tagName === 'TEXTAREA') return 500;
+    if (key.includes('busqueda') || key.includes('search') || el.type === 'search') return 120;
+    return 180;
+  };
+
+  document.querySelectorAll('input[type="text"], input[type="email"], input[type="search"], input[type="tel"], textarea').forEach((el) => {
+    if (!el.hasAttribute('maxlength')) el.maxLength = inferLimit(el);
+  });
+}
+
 let booted = false;
 
 export function bootLegacyRuntime() {
@@ -58,6 +77,7 @@ export function syncReactSession(user) {
 
     sessionInitFrame = null;
     renderUserInfo();
+    applyInputGuards();
     initApp();
   };
 

@@ -43,12 +43,6 @@ async function requestJson(path, options = {}) {
 export async function loadPagosData() {
   aplicarPermisos();
 
-  // La prueba del servicio externo corre aparte para que un cold-start de Render
-  // no bloquee la carga de cargos, pagos y estudiantes.
-  cargarEstadoIntegraciones(false).catch((error) => {
-    console.warn('EduControl Finanzas: Factura Bonita no respondió durante la carga inicial.', error);
-  });
-
   const resultadosBase = await Promise.allSettled([
     cargarEstudiantes(),
     cargarResumen(),
@@ -77,6 +71,14 @@ function wirePagosEvents() {
   wire('fin-filtro-estado', 'change', renderCargos);
   wire('fin-facturas-busqueda', 'input', debounce(renderFacturacion, 160));
   wire('fin-facturas-filtro', 'change', renderFacturacion);
+  wire('fin-facturas-desde', 'change', renderFacturacion);
+  wire('fin-facturas-hasta', 'change', renderFacturacion);
+  wire('fin-facturas-limpiar', 'click', limpiarFiltrosFacturas);
+  wire('fin-pagos-busqueda', 'input', debounce(renderHistorialPagos, 160));
+  wire('fin-pagos-metodo', 'change', renderHistorialPagos);
+  wire('fin-pagos-desde', 'change', renderHistorialPagos);
+  wire('fin-pagos-hasta', 'change', renderHistorialPagos);
+  wire('fin-pagos-limpiar', 'click', limpiarFiltrosPagos);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
   wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
@@ -87,7 +89,6 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
-  wire('fin-api-page-test', 'click', () => cargarEstadoIntegraciones(true));
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
@@ -295,17 +296,31 @@ function renderHistorialPagos() {
     resumen.classList.toggle('is-empty', pagos.length === 0);
   }
 
-  if (!pagos.length) {
+  const busqueda = String(document.getElementById('fin-pagos-busqueda')?.value || '').trim().toLowerCase();
+  const metodo = String(document.getElementById('fin-pagos-metodo')?.value || '').trim().toLowerCase();
+  const desde = String(document.getElementById('fin-pagos-desde')?.value || '');
+  const hasta = String(document.getElementById('fin-pagos-hasta')?.value || '');
+  const filtrados = pagos.filter((pago) => {
+    if (metodo && String(pago.metodo_pago || '').toLowerCase() !== metodo) return false;
+    const fecha = String(pago.fecha_pago || '').slice(0, 10);
+    if (desde && fecha && fecha < desde) return false;
+    if (hasta && fecha && fecha > hasta) return false;
+    if (!busqueda) return true;
+    return [pago.estudiante_nombre, pago.concepto_nombre, pago.descripcion, pago.referencia, pago.id_factura_externa]
+      .join(' ').toLowerCase().includes(busqueda);
+  });
+
+  if (!filtrados.length) {
     body.innerHTML = `
       <div class="finance-empty-state finance-empty-card compact">
         <i class="bi bi-clock-history"></i>
-        <strong>No hay pagos registrados todavía</strong>
-        <span>Los abonos y pagos completos aparecerán aquí automáticamente.</span>
+        <strong>${pagos.length ? 'No hay pagos con esos filtros' : 'No hay pagos registrados todavía'}</strong>
+        <span>${pagos.length ? 'Ajusta los filtros para consultar otros movimientos.' : 'Los abonos y pagos completos aparecerán aquí automáticamente.'}</span>
       </div>`;
     return;
   }
 
-  body.innerHTML = pagos.map((pago) => {
+  body.innerHTML = filtrados.map((pago) => {
     const concepto = pago.concepto_nombre || pago.descripcion || `Cargo #${pago.id_cargo}`;
     const puedeEditar = !pago.id_factura_externa;
     const referencia = pago.referencia ? esc(pago.referencia) : 'Sin referencia';
@@ -765,7 +780,7 @@ function renderCargos() {
 }
 
 function obtenerCargosPagados() {
-  // La API /facturas trae el estado de Factura Bonita, pero no debe convertirse
+  // La API /facturas trae el estado de EduControl, pero no debe convertirse
   // en la única fuente visual. Si por una migración o registro histórico falta
   // factura_cargo, el cargo pagado debe seguir apareciendo como "por generar".
   const porId = new Map();
@@ -879,11 +894,16 @@ function renderFacturacion() {
 
   const busqueda = String(document.getElementById('fin-facturas-busqueda')?.value || '').trim().toLowerCase();
   const filtro = String(document.getElementById('fin-facturas-filtro')?.value || '').trim().toLowerCase();
+  const desde = String(document.getElementById('fin-facturas-desde')?.value || '');
+  const hasta = String(document.getElementById('fin-facturas-hasta')?.value || '');
   const registros = todos.filter((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
     const esError = !tieneFactura && String(c.estado_factura || '').toLowerCase() === 'error';
     if (filtro === 'facturada' && !tieneFactura) return false;
-    if (filtro === 'error' && !esError) return false;
+    if (filtro === 'pendiente' && tieneFactura) return false;
+    const fecha = String(c.fecha_actualizacion || c.fecha_solicitud || c.fecha_emision || '').slice(0, 10);
+    if (desde && fecha && fecha < desde) return false;
+    if (hasta && fecha && fecha > hasta) return false;
     if (!busqueda) return true;
     return [c.estudiante_nombre, c.concepto_nombre, c.descripcion, c.id_factura_externa, c.id_cargo]
       .join(' ').toLowerCase().includes(busqueda);
@@ -1131,11 +1151,25 @@ async function guardarPago(event) {
     const r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, { method: 'POST', body: JSON.stringify(payload) });
     hideModal('modalRegistrarPago');
     const fact = r.facturacion;
-    if (fact?.ok) showToast(`Pago aplicado. Factura ${fact.id_factura || ''} generada automáticamente.`, 'success');
+    if (fact?.ok) showToast(`Pago aplicado. Factura ${fact.id_factura || ''} generada correctamente.`, 'success');
     else if (r.estado_cargo === 'pagado') showToast(`Pago aplicado. ${fact?.mensaje || 'La factura se generará automáticamente.'}`, 'warning');
     else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, 'success');
     await loadPagosData();
+    if (fact?.ok && r.estado_cargo === 'pagado') {
+      await new Promise((resolve) => window.setTimeout(resolve, 260));
+      await abrirDocumentoFactura(idCargo, 'pdf', null, true);
+    }
   } catch (e) { showToast(e.message, 'error'); }
+}
+
+function limpiarFiltrosFacturas() {
+  ['fin-facturas-busqueda','fin-facturas-filtro','fin-facturas-desde','fin-facturas-hasta'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderFacturacion();
+}
+
+function limpiarFiltrosPagos() {
+  ['fin-pagos-busqueda','fin-pagos-metodo','fin-pagos-desde','fin-pagos-hasta'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderHistorialPagos();
 }
 
 async function reintentarFactura(idCargo, button = null) {
@@ -1233,7 +1267,7 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
 
     if (!res.ok) {
       const tipo = res.headers.get('content-type') || '';
-      let mensaje = 'Factura Bonita no pudo generar el PDF.';
+      let mensaje = 'EduControl no pudo generar el PDF.';
       if (tipo.includes('application/json')) {
         const data = await res.json().catch(() => ({}));
         mensaje = data.mensaje || data.detalle || data.error || mensaje;
@@ -1245,7 +1279,7 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
     }
 
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if (!bytes.length) throw new Error('Factura Bonita devolvió un PDF vacío.');
+    if (!bytes.length) throw new Error('EduControl devolvió un PDF vacío.');
 
     const firmaPdf = String.fromCharCode(...bytes.slice(0, 5));
     if (!firmaPdf.startsWith('%PDF')) {
@@ -1366,19 +1400,19 @@ function pintarEstadoIntegracionPagina(estado) {
   dot.className = 'finance-api-dot';
   if (facturaOk && documentosOk) {
     dot.classList.add('online');
-    label.textContent = 'Factura Bonita conectada';
+    label.textContent = 'Facturación local activa';
   } else if (facturaOk) {
     dot.classList.add('warning');
-    label.textContent = 'Factura Bonita conectada · documento pendiente';
+    label.textContent = 'Facturación activa · PDF pendiente';
   } else if (estadoFactura === 'timeout') {
     dot.classList.add('warning');
-    label.textContent = 'Factura Bonita está iniciando';
+    label.textContent = 'Preparando módulo de facturación';
   } else if (estado?.facturacion?.configurado) {
     dot.classList.add('offline');
-    label.textContent = 'No se pudo conectar con Factura Bonita';
+    label.textContent = 'No se pudo verificar la facturación local';
   } else {
     dot.classList.add('offline');
-    label.textContent = 'Servicio de facturación no configurado';
+    label.textContent = 'Configuración de facturación pendiente';
   }
 
   if (detail) {
@@ -1398,8 +1432,8 @@ function pintarEstadoServicio(prefijo, servicio) {
 
   if (detalle) {
     detalle.textContent = servicio?.url
-      ? (servicio.detalle || 'Endpoint configurado en el backend.')
-      : (servicio?.detalle || (servicio?.configurado ? 'Endpoint configurado.' : 'Pendiente de integrar.'));
+      ? (servicio.detalle || 'Módulo disponible en el backend.')
+      : (servicio?.detalle || (servicio?.configurado ? 'Módulo configurado.' : 'Configuración pendiente.'));
   }
 }
 
@@ -1425,7 +1459,7 @@ async function cargarEstadoIntegraciones(notificar = false) {
       const conectado = estado.facturacion?.disponible && estado.documentos?.disponible;
       showToast(
         conectado
-          ? 'Conexión confirmada: EduControl está consumiendo Factura Bonita y el generador HTML/PDF.'
+          ? 'Módulo financiero verificado: facturación y PDF disponibles.'
           : 'La prueba respondió, pero algún servicio todavía no está disponible.',
         conectado ? 'success' : 'warning'
       );
@@ -1441,7 +1475,7 @@ async function cargarEstadoIntegraciones(notificar = false) {
   } finally {
     botones.forEach((btn, index) => {
       btn.disabled = false;
-      btn.innerHTML = originales[index] || '<i class="bi bi-wifi"></i> Probar API';
+      btn.innerHTML = originales[index] || '<i class="bi bi-check2-circle"></i> Verificar módulo';
     });
   }
 }

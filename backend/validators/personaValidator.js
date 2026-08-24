@@ -45,17 +45,20 @@ export const personaRules = [
         .exists({ checkFalsy: true }).withMessage("El nombre es obligatorio.")
         .isString().withMessage("El nombre debe ser texto.")
         .trim()
-        .isLength({ min: 3, max: 100 }).withMessage("El nombre debe tener entre 3 y 100 caracteres."),
+        .isLength({ min: 2, max: 60 }).withMessage("El nombre debe tener entre 2 y 60 caracteres.")
+        .matches(/^[\p{L}\p{M}]+(?:[ '-][\p{L}\p{M}]+)*$/u).withMessage("El nombre solo puede contener letras, espacios, apóstrofes y guiones."),
     body("apellido1")
         .exists({ checkFalsy: true }).withMessage("El apellido 1 es obligatorio.")
         .isString().withMessage("El apellido 1 debe ser texto.")
         .trim()
-        .isLength({ min: 2, max: 100 }).withMessage("El apellido 1 debe tener entre 2 y 100 caracteres."),
+        .isLength({ min: 2, max: 60 }).withMessage("El apellido 1 debe tener entre 2 y 60 caracteres.")
+        .matches(/^[\p{L}\p{M}]+(?:[ '-][\p{L}\p{M}]+)*$/u).withMessage("El primer apellido solo puede contener letras, espacios, apóstrofes y guiones."),
     body("apellido2")
         .optional({ nullable: true })
         .isString().withMessage("El apellido 2 debe ser texto.")
         .trim()
-        .isLength({ min: 2, max: 100 }).withMessage("El apellido 2 debe tener entre 2 y 100 caracteres."),
+        .isLength({ min: 2, max: 60 }).withMessage("El apellido 2 debe tener entre 2 y 60 caracteres.")
+        .matches(/^[\p{L}\p{M}]+(?:[ '-][\p{L}\p{M}]+)*$/u).withMessage("El segundo apellido solo puede contener letras, espacios, apóstrofes y guiones."),
     body("fecha_nacimiento")
         .exists({ checkFalsy: true }).withMessage("La fecha de nacimiento es obligatoria.")
         .isISO8601().withMessage("La fecha de nacimiento debe tener un formato válido (YYYY-MM-DD)." )

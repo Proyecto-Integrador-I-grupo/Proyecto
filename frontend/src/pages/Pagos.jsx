@@ -2,7 +2,7 @@ import React from 'react';
 
 const Modal = ({ id, title, children, lg = false }) => (
   <div className="modal fade" id={id} tabIndex="-1" aria-hidden="true">
-    <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${lg ? 'modal-lg' : ''}`}>
+    <div className={`modal-dialog modal-dialog-centered ${lg ? 'modal-lg' : ''}`}>
       <div className="modal-content border-0 shadow-lg">
         <div className="modal-header bg-navy text-white">
           <h5 className="modal-title font-serif">{title}</h5>
@@ -45,16 +45,13 @@ export default function Pagos() {
           </div>
         </div>
 
-        <div className="finance-api-strip" aria-live="polite">
-          <span id="fin-api-page-dot" className="finance-api-dot checking"></span>
+        <div className="finance-api-strip is-local" aria-live="polite">
+          <span id="fin-api-page-dot" className="finance-api-dot online"></span>
           <div className="finance-api-copy">
-            <small>Integración REST</small>
-            <strong id="fin-api-page-status">Comprobando Factura Bonita…</strong>
-            <span id="fin-api-page-detail">La primera prueba puede tardar si Render está iniciando el servicio.</span>
+            <small>Comprobantes EduControl</small>
+            <strong id="fin-api-page-status">Facturación local activa</strong>
+            <span id="fin-api-page-detail">Los pagos completos generan su PDF dentro del sistema, sin depender de servicios externos.</span>
           </div>
-          <button id="fin-api-page-test" type="button" className="btn btn-sm btn-outline-primary">
-            <i className="bi bi-wifi"></i> Probar API
-          </button>
         </div>
       </header>
 
@@ -118,9 +115,12 @@ export default function Pagos() {
                 </div>
                 <select id="fin-facturas-filtro" className="form-select form-select-sm finance-state-filter" defaultValue="">
                   <option value="">Todos los comprobantes</option>
-                  <option value="facturada">Facturadas</option>
-                  <option value="error">Con error</option>
+                  <option value="facturada">PDF disponible</option>
+                  <option value="pendiente">Pendientes de generar</option>
                 </select>
+                <input id="fin-facturas-desde" type="date" className="form-control form-control-sm finance-date-filter" title="Desde" />
+                <input id="fin-facturas-hasta" type="date" className="form-control form-control-sm finance-date-filter" title="Hasta" />
+                <button id="fin-facturas-limpiar" type="button" className="btn btn-sm btn-outline-secondary"><i className="bi bi-eraser"></i> Limpiar</button>
               </div>
               <div id="fin-facturas-body" className="finance-record-list finance-invoice-list"></div>
             </div>
@@ -191,6 +191,13 @@ export default function Pagos() {
           </div>
           <div className="collapse" id="fin-historial-collapse">
             <div className="finance-tool-body">
+              <div className="finance-filter-row mb-3">
+                <div className="input-group input-group-sm finance-search"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="fin-pagos-busqueda" className="form-control" maxLength="120" placeholder="Estudiante, concepto o referencia" /></div>
+                <select id="fin-pagos-metodo" className="form-select form-select-sm finance-state-filter"><option value="">Todos los métodos</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select>
+                <input id="fin-pagos-desde" type="date" className="form-control form-control-sm finance-date-filter" title="Desde" />
+                <input id="fin-pagos-hasta" type="date" className="form-control form-control-sm finance-date-filter" title="Hasta" />
+                <button id="fin-pagos-limpiar" type="button" className="btn btn-sm btn-outline-secondary"><i className="bi bi-eraser"></i> Limpiar</button>
+              </div>
               <div id="fin-pagos-body" className="finance-history-list"></div>
             </div>
           </div>
@@ -333,12 +340,12 @@ export default function Pagos() {
             <hr className="my-4" />
             <div className="d-flex justify-content-between align-items-center mb-2"><h6 className="mb-0">Responsable de facturación</h6><small className="text-muted">Se guarda para próximos pagos</small></div>
             <div className="row g-3">
-              <div className="col-md-6"><label className="form-label">Nombre completo</label><input id="fin-resp-nombre" className="form-control" required /></div>
-              <div className="col-md-3"><label className="form-label">Parentesco</label><input id="fin-resp-parentesco" className="form-control" placeholder="Madre, padre..." /></div>
-              <div className="col-md-3"><label className="form-label">Teléfono</label><input id="fin-resp-telefono" className="form-control" /></div>
-              <div className="col-md-5"><label className="form-label">Correo</label><input id="fin-resp-correo" type="email" className="form-control" required /></div>
+              <div className="col-md-6"><label className="form-label">Nombre completo</label><input id="fin-resp-nombre" className="form-control" maxLength="100" required /></div>
+              <div className="col-md-3"><label className="form-label">Parentesco</label><input id="fin-resp-parentesco" className="form-control" maxLength="40" placeholder="Madre, padre..." /></div>
+              <div className="col-md-3"><label className="form-label">Teléfono</label><input id="fin-resp-telefono" className="form-control" maxLength="25" /></div>
+              <div className="col-md-5"><label className="form-label">Correo</label><input id="fin-resp-correo" type="email" className="form-control" maxLength="150" required /></div>
               <div className="col-md-3"><label className="form-label">Tipo ID</label><select id="fin-resp-tipo-id" className="form-select"><option value="01">Física</option><option value="02">Jurídica</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
-              <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-resp-numero-id" className="form-control" /></div>
+              <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-resp-numero-id" className="form-control" maxLength="30" /></div>
             </div>
           </div>
           <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-success"><i className="bi bi-check-circle"></i> Aplicar pago</button></div>
@@ -365,9 +372,9 @@ export default function Pagos() {
           <div className="modal-body p-4"><div className="row g-3">
             <input id="fin-concepto-id" type="hidden" />
             <div className="col-12"><label className="form-label">Crear nuevo o editar existente</label><select id="fin-concepto-existente" className="form-select"><option value="">Nuevo concepto</option></select><div className="form-text">Selecciona un concepto para modificar su monto, nombre, descripción o estado.</div></div>
-            <div className="col-md-6"><label className="form-label">Código</label><input id="fin-concepto-codigo" className="form-control" required placeholder="Ej. UNIFORME" /></div>
+            <div className="col-md-6"><label className="form-label">Código</label><input id="fin-concepto-codigo" className="form-control" maxLength="50" required placeholder="Ej. UNIFORME" /></div>
             <div className="col-md-6"><label className="form-label">Tipo</label><select id="fin-concepto-tipo" className="form-select"><option value="servicio">Servicio</option><option value="matricula">Matrícula</option><option value="mensualidad">Mensualidad</option><option value="otro">Otro</option></select></div>
-            <div className="col-12"><label className="form-label">Nombre</label><input id="fin-concepto-nombre" className="form-control" required /></div>
+            <div className="col-12"><label className="form-label">Nombre</label><input id="fin-concepto-nombre" className="form-control" maxLength="100" required /></div>
             <div className="col-md-6"><label className="form-label">Monto base</label><input id="fin-concepto-monto" type="number" min="0" step="0.01" className="form-control" required /></div>
             <div className="col-md-6"><label className="form-label">Impuesto %</label><input id="fin-concepto-impuesto" type="number" min="0" max="100" step="0.01" className="form-control" defaultValue="0" /></div>
             <div className="col-12"><label className="form-label">Descripción</label><textarea id="fin-concepto-descripcion" className="form-control" rows="2" maxLength="250"></textarea></div><div className="col-12"><div className="form-check form-switch"><input id="fin-concepto-estado" className="form-check-input" type="checkbox" defaultChecked /><label className="form-check-label" htmlFor="fin-concepto-estado">Concepto activo</label></div></div>
@@ -376,18 +383,18 @@ export default function Pagos() {
         </form>
       </Modal>
 
-      <Modal id="modalConfigFacturacion" title={<><i className="bi bi-building-gear"></i> Facturación e integración</>} lg>
+      <Modal id="modalConfigFacturacion" title={<><i className="bi bi-building-gear"></i> Configuración de facturación</>} lg>
         <form id="fin-config-form">
           <div className="modal-body billing-config-modal">
             <div className="billing-config-intro">
               <div className="billing-config-intro-icon"><i className="bi bi-receipt-cutoff"></i></div>
               <div>
-                <span>Factura Bonita</span>
-                <strong>Configura el emisor y verifica la conexión REST</strong>
-                <p>Las URLs permanecen en Render. Aquí solo administras los datos visibles de la institución.</p>
+                <span>Comprobantes EduControl</span>
+                <strong>Configura los datos del emisor y el comprobante</strong>
+                <p>Estos datos se aplican directamente a las facturas generadas por EduControl.</p>
               </div>
               <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary">
-                <i className="bi bi-wifi"></i> Probar API
+                <i className="bi bi-check2-circle"></i> Verificar módulo
               </button>
             </div>
 
@@ -396,7 +403,7 @@ export default function Pagos() {
                 <span className="billing-service-icon"><i className="bi bi-cloud-check"></i></span>
                 <div className="billing-service-copy">
                   <small>Servicio principal</small>
-                  <strong>Factura Bonita</strong>
+                  <strong>Comprobantes EduControl</strong>
                   <span id="fin-service-factura-detail">Comprobando conexión…</span>
                 </div>
                 <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
@@ -407,7 +414,7 @@ export default function Pagos() {
                 <div className="billing-service-copy">
                   <small>Documento</small>
                   <strong>PDF de solo lectura</strong>
-                  <span id="fin-service-documentos-detail">Comprobante PDF generado por Factura Bonita.</span>
+                  <span id="fin-service-documentos-detail">Comprobante PDF generado por Comprobantes EduControl.</span>
                 </div>
                 <span id="fin-service-documentos-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
               </div>
@@ -418,14 +425,14 @@ export default function Pagos() {
                 <span><i className="bi bi-building"></i></span>
                 <div>
                   <strong>Datos del emisor</strong>
-                  <small>Esta información se envía a Factura Bonita cuando se genera el comprobante.</small>
+                  <small>Esta información se utiliza para identificar a la institución en cada comprobante generado.</small>
                 </div>
               </div>
 
               <div className="billing-emitter-grid">
                 <div className="billing-field billing-field-wide">
                   <label className="form-label">Nombre de la institución</label>
-                  <input id="fin-config-nombre" className="form-control" required placeholder="Colegio EduControl" autoComplete="organization" />
+                  <input id="fin-config-nombre" className="form-control" maxLength="100" required placeholder="Colegio EduControl" autoComplete="organization" />
                 </div>
                 <div className="billing-field">
                   <label className="form-label">Tipo de identificación</label>
@@ -438,11 +445,11 @@ export default function Pagos() {
                 </div>
                 <div className="billing-field">
                   <label className="form-label">Identificación</label>
-                  <input id="fin-config-numero-id" className="form-control" required placeholder="3-101-123456" autoComplete="off" />
+                  <input id="fin-config-numero-id" className="form-control" maxLength="30" required placeholder="3-101-123456" autoComplete="off" />
                 </div>
                 <div className="billing-field billing-field-wide">
                   <label className="form-label">Correo de facturación</label>
-                  <input id="fin-config-correo" type="email" className="form-control" required placeholder="facturacion@educontrol.com" autoComplete="off" />
+                  <input id="fin-config-correo" type="email" className="form-control" maxLength="150" required placeholder="facturacion@educontrol.com" autoComplete="off" />
                 </div>
 
                 <div className="billing-field billing-field-wide">
@@ -468,7 +475,7 @@ export default function Pagos() {
 
             <div className="billing-config-note">
               <i className="bi bi-shield-check"></i>
-              <span>EduControl no expone endpoints en el navegador: el backend consume Factura Bonita y devuelve únicamente el resultado al módulo financiero.</span>
+              <span>Los comprobantes se generan directamente en EduControl y quedan disponibles para consulta e impresión desde este módulo.</span>
             </div>
           </div>
           <div className="modal-footer billing-config-footer">

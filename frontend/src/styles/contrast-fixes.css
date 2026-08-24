@@ -1,0 +1,229 @@
+/* ===== Mejora final de contraste y legibilidad EduControl ===== */
+:root {
+  --text-primary: #162536;
+  --text-secondary: #526579;
+  --ink-muted: #607286;
+}
+
+body {
+  color: var(--text-primary);
+}
+
+/* Texto general sobre superficies claras */
+.card,
+.modal-content,
+.dropdown-menu,
+.list-group-item,
+.table,
+.form-control,
+.form-select,
+.input-group-text,
+.alert,
+.toast,
+.accordion-item,
+.offcanvas {
+  color: var(--text-primary);
+}
+
+.text-muted,
+.text-secondary,
+small.text-muted,
+.form-text,
+.help-text,
+.finance-card-copy,
+.finance-record-meta,
+.dashboard-meta {
+  color: var(--text-secondary) !important;
+}
+
+.form-label,
+.modal-title,
+.card-title,
+.table td,
+.table th,
+.dropdown-item,
+.list-group-item,
+.form-check-label {
+  color: var(--text-primary);
+}
+
+.form-control::placeholder,
+textarea::placeholder,
+input::placeholder {
+  color: #7B8999 !important;
+  opacity: 1;
+}
+
+/* Botones: asegurar contraste en fondos sólidos y gradientes */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.view .btn-primary,
+.view .btn-success,
+.view .btn-danger,
+.view .btn-warning {
+  color: #FFFFFF !important;
+}
+
+.btn-primary:disabled,
+.btn-success:disabled,
+.btn-danger:disabled,
+.btn-warning:disabled,
+.btn.disabled,
+.btn:disabled {
+  opacity: .72;
+}
+
+/* Bootstrap a veces hereda texto oscuro sobre botones coloreados */
+.btn-primary *,
+.btn-success *,
+.btn-danger *,
+.btn-warning *,
+.view .btn-primary *,
+.view .btn-success *,
+.view .btn-danger *,
+.view .btn-warning * {
+  color: inherit !important;
+}
+
+/* Estados y badges */
+.badge.bg-primary,
+.badge.bg-success,
+.badge.bg-danger,
+.badge.bg-secondary,
+.badge.bg-dark,
+.badge.bg-info {
+  color: #FFFFFF !important;
+}
+
+.badge.bg-warning,
+.alert-warning {
+  color: #5D3A00 !important;
+}
+
+.alert-success { color: #174D35 !important; }
+.alert-danger { color: #7F1D2D !important; }
+.alert-info { color: #164E63 !important; }
+
+/* Encabezados suaves por módulo: títulos siempre legibles */
+.view .card:not(.hero-card) > .card-header,
+.view .card:not(.hero-card) > .card-header *:not(.badge):not(.btn) {
+  color: var(--text-primary);
+}
+
+/* Tarjetas hero y sidebar: todo texto visible sobre fondos oscuros */
+.hero-card,
+.hero-card h1,
+.hero-card h2,
+.hero-card h3,
+.hero-card h4,
+.hero-card h5,
+.hero-card h6,
+.hero-card p,
+.hero-card small,
+.hero-card .text-muted,
+.sidebar,
+.sidebar .nav-link,
+.sidebar .brand-name {
+  color: #FFFFFF !important;
+}
+
+.sidebar .nav-link:not(.active) {
+  color: #D8E2EE !important;
+}
+
+.sidebar .nav-link:not(.active):hover {
+  color: #FFFFFF !important;
+}
+
+/* Tablas y filas */
+.table thead th {
+  color: #33475B !important;
+}
+
+.table tbody td {
+  color: #233548;
+}
+
+.table .text-muted,
+.table small {
+  color: #5E7083 !important;
+}
+
+/* Finanzas/pagos: elevar contraste de textos que antes se veían demasiado grises */
+#pagos-view .finance-card-heading h3,
+#pagos-view .finance-panel-title h3,
+#pagos-view .finance-record-title,
+#pagos-view .billing-service-copy strong,
+#pagos-view .billing-emitter-heading strong,
+#pagos-view .finance-flow-help strong,
+#pagos-view .finance-empty-state strong,
+#pagos-view .finance-payment-context strong {
+  color: #1D3044 !important;
+}
+
+#pagos-view .finance-card-heading p,
+#pagos-view .finance-record-meta,
+#pagos-view .finance-record-state small,
+#pagos-view .billing-service-copy p,
+#pagos-view .billing-emitter-heading small,
+#pagos-view .billing-config-intro p,
+#pagos-view .billing-field .form-label,
+#pagos-view .finance-note,
+#pagos-view .finance-payment-context span {
+  color: #566A7E !important;
+}
+
+/* Profesores: acciones outline legibles sin depender de herencia */
+#profesores-view .btn-outline-primary { color: #284F9B; }
+#profesores-view .btn-outline-success { color: #206346; }
+#profesores-view .btn-outline-warning { color: #7A4E16; }
+#profesores-view .btn-outline-danger { color: #8F3542; }
+
+#profesores-view .btn-outline-primary:hover,
+#profesores-view .btn-outline-success:hover,
+#profesores-view .btn-outline-warning:hover,
+#profesores-view .btn-outline-danger:hover {
+  color: #FFFFFF !important;
+}
+
+/* Inputs deshabilitados deben seguir siendo legibles */
+.form-control:disabled,
+.form-select:disabled,
+.form-control[readonly] {
+  color: #43566A !important;
+  background-color: #EEF2F6 !important;
+  opacity: 1;
+}
+
+/* Dark mode conserva contraste alto */
+body.theme-dark .text-muted,
+body.theme-dark .text-secondary,
+body.theme-dark .form-text,
+body.theme-dark .help-text,
+body.theme-dark .table small {
+  color: #CBD5E1 !important;
+}
+
+body.theme-dark .table thead th,
+body.theme-dark .table tbody td,
+body.theme-dark .form-label,
+body.theme-dark .card-title,
+body.theme-dark .modal-title {
+  color: #F8FAFC !important;
+}
+
+body.theme-dark .form-control::placeholder,
+body.theme-dark textarea::placeholder,
+body.theme-dark input::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Alto contraste */
+body.high-contrast .text-muted,
+body.high-contrast .text-secondary,
+body.high-contrast .form-text,
+body.high-contrast .help-text {
+  color: #FFFFFF !important;
+}

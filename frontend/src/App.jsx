@@ -409,7 +409,7 @@ export default function App() {
               </div>
             </header>
 
-            <main id="content" className="flex-grow-1 overflow-auto p-4">
+            <main id="content" className="flex-grow-1 p-4">
               <div id="toast" className="toast hidden"></div>
 
               <section id="dashboard-hero" className="hero-card p-4 mb-4">

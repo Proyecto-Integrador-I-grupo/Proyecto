@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import * as usuarioModel from "../models/usuarioModel.js";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
+import { crearSessionToken } from "../utils/sessionToken.js";
+import { clearLoginAttempts } from "../middleware/loginRateLimit.js";
 
 export const login = async (req, res) => {
     try {
@@ -47,6 +49,8 @@ export const login = async (req, res) => {
         }
 
         const esAdmin = rolNormalizado === "administrador";
+        clearLoginAttempts(req);
+        const token = crearSessionToken(usuario);
 
         res.status(200).json({
             mensaje: "Inicio de sesión correcto.",
@@ -58,6 +62,7 @@ export const login = async (req, res) => {
                 nombre: usuario.nombre,
                 apellido1: usuario.apellido1,
                 apellido2: usuario.apellido2,
+                token,
                 permisos: {
                     eliminarEstudiantes: esAdmin,
                     gestionarUsuarios: esAdmin,

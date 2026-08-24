@@ -68,7 +68,7 @@ export default function Perfil() {
 <label className="form-label">
                   Nombre
                 </label>
-<input id="perfil-nombre" className="form-control" required="" />
+<input id="perfil-nombre" className="form-control" maxLength="60" required="" />
 </div>
 <div className="col-md-6">
 <label className="form-label">
@@ -80,13 +80,13 @@ export default function Perfil() {
 <label className="form-label">
                   Primer apellido
                 </label>
-<input id="perfil-apellido1" className="form-control" required="" />
+<input id="perfil-apellido1" className="form-control" maxLength="60" required="" />
 </div>
 <div className="col-md-6">
 <label className="form-label">
                   Segundo apellido
                 </label>
-<input id="perfil-apellido2" className="form-control" />
+<input id="perfil-apellido2" className="form-control" maxLength="60" />
 </div>
 </div>
 <hr className="my-4" />

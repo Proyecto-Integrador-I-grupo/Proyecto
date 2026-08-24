@@ -784,13 +784,18 @@ function wireUsuariosForm() {
       // La respuesta del POST es la fuente inmediata de verdad para la UI.
       // Así el usuario aparece una sola vez, sin depender de una segunda
       // lectura que podría tardar unos milisegundos en reflejar el INSERT.
-      if (Number(usuarioNuevo.id_usuario)) {
-        usuariosCargados = [
-          ...usuariosCargados.filter((u) => Number(u.id_usuario) !== Number(usuarioNuevo.id_usuario)),
-          usuarioNuevo
-        ].sort((a, b) => Number(a.id_usuario) - Number(b.id_usuario));
-        renderTablaUsuarios(usuariosCargados);
-      }
+      // Inserción optimista: el usuario aparece inmediatamente aun si la BD tarda
+      // unos milisegundos en devolverlo en un GET posterior. Se identifica también
+      // por correo para evitar que el administrador crea que debe registrarlo otra vez.
+      usuariosCargados = [
+        ...usuariosCargados.filter((u) => {
+          const mismoId = Number(usuarioNuevo.id_usuario) && Number(u.id_usuario) === Number(usuarioNuevo.id_usuario);
+          const mismoCorreo = String(u.correo || '').toLowerCase() === String(usuarioNuevo.correo || '').toLowerCase();
+          return !mismoId && !mismoCorreo;
+        }),
+        usuarioNuevo
+      ].sort((a, b) => Number(a.id_usuario || 999999) - Number(b.id_usuario || 999999));
+      renderTablaUsuarios(usuariosCargados);
 
       form.reset();
       const rolSelect = document.getElementById('usuario-rol');
@@ -800,7 +805,7 @@ function wireUsuariosForm() {
 
       // Sincroniza en segundo plano. Si la primera lectura todavía no refleja
       // el INSERT, conserva la fila recién pintada y reintenta sin molestar al usuario.
-      confirmarUsuarioEnLista(Number(usuarioNuevo.id_usuario));
+      confirmarUsuarioEnLista(Number(usuarioNuevo.id_usuario), usuarioNuevo.correo);
     } catch (error) {
       showToast(error.message || 'No se pudo registrar el usuario.', 'error');
     } finally {
@@ -1019,8 +1024,8 @@ async function loadUsuariosData() {
 }
 
 
-async function confirmarUsuarioEnLista(idUsuario) {
-  if (!idUsuario) return;
+async function confirmarUsuarioEnLista(idUsuario, correoUsuario = '') {
+  if (!idUsuario && !correoUsuario) return;
 
   for (let intento = 0; intento < 3; intento += 1) {
     try {
@@ -1033,7 +1038,10 @@ async function confirmarUsuarioEnLista(idUsuario) {
 
       if (!res.ok || !Array.isArray(data)) continue;
 
-      const yaVisible = data.some((u) => Number(u.id_usuario) === Number(idUsuario));
+      const yaVisible = data.some((u) =>
+        (idUsuario && Number(u.id_usuario) === Number(idUsuario)) ||
+        (correoUsuario && String(u.correo || '').toLowerCase() === String(correoUsuario).toLowerCase())
+      );
       if (!yaVisible) continue;
 
       usuariosCargados = data;

@@ -114,13 +114,42 @@ function unlockDocumentAfterModal() {
   window.scrollTo({ top: modalScrollY, left: 0, behavior: 'auto' });
 }
 
+function fitModalToViewport(modal) {
+  if (!modal || modal.classList.contains('finance-invoice-preview-modal')) return;
+  const dialog = modal.querySelector('.modal-dialog');
+  const content = modal.querySelector('.modal-content');
+  if (!dialog || !content) return;
+
+  dialog.style.removeProperty('zoom');
+  dialog.style.removeProperty('--edu-modal-fit');
+
+  const available = Math.max(320, window.innerHeight - 16);
+  const height = Math.max(content.scrollHeight, content.getBoundingClientRect().height);
+  if (!height || height <= available) return;
+
+  const scale = Math.max(0.62, Math.min(0.98, available / height));
+  dialog.style.zoom = String(scale);
+  dialog.style.setProperty('--edu-modal-fit', String(scale));
+}
+
+function fitOpenModals() {
+  document.querySelectorAll('.modal.show').forEach(fitModalToViewport);
+}
+
 function initGlobalModalLock() {
   if (document.documentElement.dataset.eduModalGuard === '1') return;
   document.documentElement.dataset.eduModalGuard = '1';
 
   document.addEventListener('show.bs.modal', lockDocumentForModal);
-  document.addEventListener('shown.bs.modal', lockDocumentForModal);
-  document.addEventListener('hidden.bs.modal', () => window.setTimeout(unlockDocumentAfterModal, 0));
+  document.addEventListener('shown.bs.modal', (event) => {
+    lockDocumentForModal();
+    window.requestAnimationFrame(() => fitModalToViewport(event.target));
+  });
+  document.addEventListener('hidden.bs.modal', (event) => {
+    event.target?.querySelector('.modal-dialog')?.style.removeProperty('zoom');
+    window.setTimeout(unlockDocumentAfterModal, 0);
+  });
+  window.addEventListener('resize', () => window.requestAnimationFrame(fitOpenModals));
 
   const stopScrollWhenModalOpen = (event) => {
     if (!document.querySelector('.modal.show')) return;

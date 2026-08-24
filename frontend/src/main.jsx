@@ -16,7 +16,6 @@ import './styles/pagos.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
 import './styles/accessibility-theme.css';
-import { bootLegacyRuntime } from './logic/runtime.js';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };
@@ -28,5 +27,3 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(<App />);
-
-bootLegacyRuntime();

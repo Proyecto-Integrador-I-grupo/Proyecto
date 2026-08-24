@@ -10,7 +10,7 @@ import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
 import Pagos from './pages/Pagos';
 import { getCurrentUser, login, logout } from './services/auth';
-import { syncReactSession, legacyLogout } from './logic/runtime';
+import { bootLegacyRuntime, syncReactSession, legacyLogout } from './logic/runtime';
 
 const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
   .trim()
@@ -42,6 +42,10 @@ export default function App() {
 
     return () => window.clearInterval(timer);
   }, [user]);
+
+  useEffect(() => {
+    bootLegacyRuntime();
+  }, []);
 
   useEffect(() => {
     if (user) {

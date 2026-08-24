@@ -178,6 +178,31 @@ export async function actualizarConfiguracionFacturacion(datos) {
   return obtenerConfiguracionFacturacion();
 }
 
+async function verificarFacturaRemota(idFactura) {
+  const id = String(idFactura || "").trim();
+  if (!id) return false;
+
+  const root = obtenerRaizFacturacion();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const response = await fetch(`${root}/api/facturas/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
+
+    if (response.status === 404) return false;
+    if (!response.ok) return null;
+    return true;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const apiRoot = obtenerRaizFacturacion();
   const apiUrl = `${apiRoot}/api/facturas`;
@@ -234,12 +259,24 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   );
 
   if (existente.length && existente[0].id_factura_externa) {
-    return {
-      ok: true,
-      estado: existente[0].estado_factura,
-      id_factura: existente[0].id_factura_externa,
-      mensaje: "El cargo ya fue facturado."
-    };
+    const estadoRemoto = await verificarFacturaRemota(existente[0].id_factura_externa);
+
+    if (estadoRemoto !== false) {
+      return {
+        ok: true,
+        estado: existente[0].estado_factura,
+        id_factura: existente[0].id_factura_externa,
+        mensaje: estadoRemoto === true
+          ? "El cargo ya fue facturado."
+          : "La factura ya está registrada localmente; se conserva mientras el servicio remoto vuelve a responder."
+      };
+    }
+
+    // La base de EduControl conserva el identificador, pero la factura ya no existe
+    // en Factura Bonita (por ejemplo, después de reiniciar/restaurar su base).
+    // Se limpia únicamente el vínculo externo para volver a crearla de forma segura.
+    await pool.query(`DELETE FROM factura_cargo WHERE id_cargo = ?`, [idCargo]);
+    cacheDocumentosFactura.clear();
   }
 
   let configGuardada = null;
@@ -726,54 +763,83 @@ async function descargarDocumentoFactura(url, formatoNormalizado, timeoutMs) {
 export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
   const formatoNormalizado = String(formato || "pdf").toLowerCase() === "html" ? "html" : "pdf";
 
-  const [rows] = await pool.query(
-    `SELECT fc.id_factura_externa, fc.estado_factura, c.estado AS estado_cargo
-     FROM factura_cargo fc
-     INNER JOIN cargo_estudiante c ON c.id_cargo = fc.id_cargo
-     WHERE fc.id_cargo = ?
-     LIMIT 1`,
-    [idCargo]
-  );
+  const cargarVinculo = async () => {
+    const [rows] = await pool.query(
+      `SELECT fc.id_factura_externa, fc.estado_factura, c.estado AS estado_cargo
+       FROM factura_cargo fc
+       INNER JOIN cargo_estudiante c ON c.id_cargo = fc.id_cargo
+       WHERE fc.id_cargo = ?
+       LIMIT 1`,
+      [idCargo]
+    );
+    return rows[0] || null;
+  };
 
-  if (!rows.length || !rows[0].id_factura_externa) {
-    throw new Error("Primero genera la factura de este cargo.");
+  let vinculo = await cargarVinculo();
+
+  if (!vinculo?.id_factura_externa) {
+    const generada = await generarFacturaDeCargo(idCargo, "otro");
+    if (!generada?.ok || !generada?.id_factura) {
+      throw new Error(generada?.mensaje || "Primero genera la factura de este cargo.");
+    }
+    vinculo = await cargarVinculo();
   }
 
-  const idFactura = String(rows[0].id_factura_externa);
-  const root = obtenerRaizDocumentos();
-  if (!root) throw new Error("El servicio de documentos no está configurado.");
+  const descargar = async (idFactura) => {
+    const root = obtenerRaizDocumentos();
+    if (!root) throw new Error("El servicio de documentos no está configurado.");
 
-  const clave = `${idFactura}:${formatoNormalizado}`;
-  const cache = leerDocumentoCache(clave);
-  if (cache) return cache;
+    const clave = `${idFactura}:${formatoNormalizado}`;
+    const cache = leerDocumentoCache(clave);
+    if (cache) return cache;
 
-  if (documentosFacturaEnCurso.has(clave)) {
-    return documentosFacturaEnCurso.get(clave);
-  }
+    if (documentosFacturaEnCurso.has(clave)) return documentosFacturaEnCurso.get(clave);
 
-  const tarea = (async () => {
-    const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}&plantilla=educontrol`;
-    const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 45000);
-    const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
-      ? timeoutConfigurado
-      : 45000;
+    const tarea = (async () => {
+      const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}&plantilla=educontrol`;
+      const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 45000);
+      const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
+        ? timeoutConfigurado
+        : 45000;
 
-    const descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
-    const documento = {
-      ...descargado,
-      filename: `factura-${idFactura}.${formatoNormalizado}`,
-      idFactura
-    };
+      const descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
+      const documento = {
+        ...descargado,
+        filename: `factura-${idFactura}.${formatoNormalizado}`,
+        idFactura
+      };
 
-    guardarDocumentoCache(clave, documento);
-    return documento;
-  })();
+      guardarDocumentoCache(clave, documento);
+      return documento;
+    })();
 
-  documentosFacturaEnCurso.set(clave, tarea);
+    documentosFacturaEnCurso.set(clave, tarea);
+    try {
+      return await tarea;
+    } finally {
+      documentosFacturaEnCurso.delete(clave);
+    }
+  };
+
+  const idInicial = String(vinculo.id_factura_externa);
+
   try {
-    return await tarea;
-  } finally {
-    documentosFacturaEnCurso.delete(clave);
+    return await descargar(idInicial);
+  } catch (error) {
+    const mensaje = String(error?.message || "");
+    if (!/factura no encontrada|no encontrada|not found/i.test(mensaje)) throw error;
+
+    // Autorreparación: el id externo quedó obsoleto. Se vuelve a publicar la factura
+    // usando la misma referencia cargo:<id>, se actualiza el vínculo local y se reintenta.
+    await pool.query(`DELETE FROM factura_cargo WHERE id_cargo = ?`, [idCargo]);
+    cacheDocumentosFactura.clear();
+
+    const regenerada = await generarFacturaDeCargo(idCargo, "otro");
+    if (!regenerada?.ok || !regenerada?.id_factura) {
+      throw new Error(regenerada?.mensaje || "No se pudo volver a preparar la factura.");
+    }
+
+    return descargar(String(regenerada.id_factura));
   }
 }
 

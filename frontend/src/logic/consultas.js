@@ -19,58 +19,6 @@ let grupos = [];
 let documentoActual = null;
 let tipoDocumentoActual = null;
 
-registrarAuditoriaConsulta(
-  'estudiante',
-  'vista_previa',
-  {
-    id_registro:
-      estudiante.id_estudiante ??
-      estudiante.id ??
-      null
-  }
-);
-
-registrarAuditoriaConsulta(
-  'matriculado',
-  'vista_previa',
-  {
-    id_registro:
-      registro.id_estudiante ?? null,
-    id_matricula:
-      registro.id_matricula ?? null
-  }
-);
-
-registrarAuditoriaConsulta(
-  'profesor',
-  'vista_previa',
-  {
-    id_registro:
-      profesor.id_profesor ??
-      profesor.id ??
-      null
-  }
-);
-
-registrarAuditoriaConsulta(
-  'matricula',
-  'vista_previa',
-  {
-    id_registro:
-      registro.id_matricula ?? null
-  }
-);
-
-registrarAuditoriaConsulta(
-  'asistencia',
-  'vista_previa',
-  {
-    id_registro:
-      registro.id_asistencia ?? null
-  }
-);
-
-
 const CONSULTAS_POR_ROL = {
   administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia', 'grupos'],
   asistente: ['prematriculados', 'matriculados', 'matriculas'],
@@ -1697,6 +1645,14 @@ const usaInformacionAcademica =
       documentoActual = estudiante;
 tipoDocumentoActual = 'estudiante';
 
+registrarAuditoriaConsulta(
+  'estudiante',
+  'vista_previa',
+  {
+    id_registro: estudiante.id_estudiante ?? estudiante.id ?? null
+  }
+);
+
 prepararEncabezadoDocumento(
   'Ficha del estudiante'
 );
@@ -1816,6 +1772,15 @@ prepararEncabezadoDocumento(
 
   documentoActual = registro;
   tipoDocumentoActual = 'matriculado';
+
+  registrarAuditoriaConsulta(
+    'matriculado',
+    'vista_previa',
+    {
+      id_registro: registro.id_estudiante ?? null,
+      id_matricula: registro.id_matricula ?? null
+    }
+  );
 
   prepararEncabezadoDocumento(
     'Constancia de estudiante matriculado'
@@ -1944,6 +1909,14 @@ prepararEncabezadoDocumento(
     documentoActual = profesor;
 tipoDocumentoActual = 'profesor';
 
+registrarAuditoriaConsulta(
+  'profesor',
+  'vista_previa',
+  {
+    id_registro: profesor.id_profesor ?? profesor.id ?? null
+  }
+);
+
 prepararEncabezadoDocumento(
   'Ficha del profesor'
 );
@@ -2042,6 +2015,14 @@ prepararEncabezadoDocumento(
 
     documentoActual = registro;
 tipoDocumentoActual = 'matricula';
+
+registrarAuditoriaConsulta(
+  'matricula',
+  'vista_previa',
+  {
+    id_registro: registro.id_matricula ?? null
+  }
+);
 
 prepararEncabezadoDocumento(
   'Comprobante de matrícula'
@@ -2155,6 +2136,14 @@ prepararEncabezadoDocumento(
 
     documentoActual = registro;
 tipoDocumentoActual = 'asistencia';
+
+registrarAuditoriaConsulta(
+  'asistencia',
+  'vista_previa',
+  {
+    id_registro: registro.id_asistencia ?? null
+  }
+);
 
 prepararEncabezadoDocumento(
   'Registro de asistencia'

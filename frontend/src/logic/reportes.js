@@ -721,7 +721,7 @@ async function imprimirReportePdf() {
   const modo = obtenerModoReporteActivo();
   const filtros = obtenerFiltrosActivos();
   const titulo = MODOS[modo]?.titulo || 'Reporte EduControl';
-  const landscape = modo === 'auditoria' || modo === 'estudiantes' || modo === 'profesores';
+  const landscape = ['auditoria', 'estudiantes', 'profesores', 'pagos'].includes(modo);
   const doc = new JsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = landscape ? 297 : 210;
   const pageHeight = landscape ? 205 : 290;
@@ -798,7 +798,7 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
     filas: detalle.map(r => [formatDateTime(r.fecha_creacion), r.nombre_tabla ?? '-', r.accion_usuario ?? '-', r.usuario_nombre || r.id_usuario || '-', resumenCambioAuditoria(r)])
   };
   if (modo === 'pagos') return {
-    columnas: [{ label: 'Estudiante', width: 44 }, { label: 'Concepto / servicio', width: 44 }, { label: 'Factura', width: 28 }, { label: 'Fecha', width: 24 }, { label: 'Monto', width: 22 }, { label: 'Saldo', width: 22 }, { label: 'Estado', width: usable - 184 }],
+    columnas: [{ label: 'Estudiante', width: 48 }, { label: 'Concepto / servicio', width: 58 }, { label: 'Factura', width: 36 }, { label: 'Fecha', width: 30 }, { label: 'Monto', width: 30 }, { label: 'Saldo', width: 30 }, { label: 'Estado', width: Math.max(38, usable - 232) }],
     filas: detalle.map(r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)])
   };
   if (modo === 'pre_matricula') return {
@@ -829,49 +829,83 @@ function agregarTablaAcademica(doc, titulo, columnas, filas, ctx) {
   const totalWidth = columnas.reduce((sum, c) => sum + c.width, 0);
   const dibujarTitulo = (continuacion = false) => {
     doc.setFillColor(236, 244, 255);
-    doc.rect(left, y - 6, totalWidth, 8, 'F');
+    doc.roundedRect(left, y - 6, totalWidth, 8, 1.2, 1.2, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(31, 41, 55);
     doc.text(textoPdfSeguro(continuacion ? `${titulo} (continuación)` : titulo), left + 2, y);
     y += 8;
   };
   const dibujarHeader = () => {
-    doc.setFillColor(243, 244, 246);
-    doc.rect(left, y - 5, totalWidth, 7, 'F');
-    doc.setDrawColor(220, 220, 220);
-    doc.rect(left, y - 5, totalWidth, 7);
+    doc.setFillColor(224, 235, 247);
+    doc.rect(left, y - 5, totalWidth, 8, 'F');
+    doc.setDrawColor(205, 218, 232);
+    doc.rect(left, y - 5, totalWidth, 8);
     let x = left;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(45, 55, 72);
-    columnas.forEach(col => { doc.text(textoPdfSeguro(col.label), x + 1.2, y); x += col.width; });
-    y += 3;
+    doc.setFontSize(7.7);
+    doc.setTextColor(30, 45, 65);
+    columnas.forEach(col => {
+      const label = textoPdfSeguro(col.label);
+      const labelLines = doc.splitTextToSize(label, Math.max(col.width - 2.4, 3));
+      doc.text(labelLines.slice(0, 2), x + 1.2, y - 0.3, { lineHeightFactor: 1.05 });
+      x += col.width;
+    });
+    y += 4;
   };
-  const nuevaPaginaTabla = () => { ctx.nuevaPagina(); y = 18; dibujarTitulo(true); dibujarHeader(); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(25, 25, 25); };
+  const nuevaPaginaTabla = () => {
+    ctx.nuevaPagina();
+    y = 18;
+    dibujarTitulo(true);
+    dibujarHeader();
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.1);
+    doc.setTextColor(25, 25, 25);
+  };
 
   dibujarTitulo(false);
-  if (!filas.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(80, 80, 80); doc.text('No hay datos para imprimir con los filtros aplicados.', left + 2, y); ctx.setY(y + 8); return; }
-  dibujarHeader();
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(25, 25, 25);
+  if (!filas.length) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text('No hay datos para imprimir con los filtros aplicados.', left + 2, y);
+    ctx.setY(y + 8);
+    return;
+  }
 
-  filas.slice(0, 500).forEach(fila => {
-    const cellPadding = 1.2;
-    const lineHeight = 3.5;
+  dibujarHeader();
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.1);
+  doc.setTextColor(25, 25, 25);
+
+  filas.slice(0, 500).forEach((fila, rowIndex) => {
+    const cellPadding = 1.5;
+    const lineHeight = 3.35;
     const lineas = columnas.map((col, idx) => {
       const valor = textoPdfSeguro(fila[idx] ?? '-');
-      const parsed = doc.splitTextToSize(valor, Math.max(col.width - cellPadding * 2, 2));
-      return Array.isArray(parsed) && parsed.length ? parsed.slice(0, 7) : ['-'];
+      const parsed = doc.splitTextToSize(valor, Math.max(col.width - cellPadding * 2, 3));
+      return Array.isArray(parsed) && parsed.length ? parsed.slice(0, 5) : ['-'];
     });
     const maxLines = Math.max(...lineas.map(v => v.length));
-    const rowHeight = Math.max(7, maxLines * lineHeight + 2.4);
-    if (y + rowHeight > ctx.pageHeight - 8) nuevaPaginaTabla();
+    const rowHeight = Math.max(8, maxLines * lineHeight + 3.2);
+    if (y + rowHeight > ctx.pageHeight - 10) nuevaPaginaTabla();
+
+    if (rowIndex % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(left, y, totalWidth, rowHeight, 'F');
+    }
+
     let x = left;
-    lineas.forEach((cell, idx) => { cell.forEach((line, n) => doc.text(line, x + cellPadding, y + 2.6 + n * lineHeight)); x += columnas[idx].width; });
-    doc.setDrawColor(235, 235, 235);
+    lineas.forEach((cell, idx) => {
+      cell.forEach((line, n) => doc.text(line, x + cellPadding, y + 3.4 + n * lineHeight));
+      x += columnas[idx].width;
+    });
+
+    doc.setDrawColor(226, 232, 240);
     doc.line(left, y + rowHeight, left + totalWidth, y + rowHeight);
     y += rowHeight;
   });
+
   ctx.setY(y + 4);
 }
 

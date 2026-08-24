@@ -49,8 +49,8 @@ export default function Pagos() {
           <span id="fin-api-page-dot" className="finance-api-dot online"></span>
           <div className="finance-api-copy">
             <small>Comprobantes EduControl</small>
-            <strong id="fin-api-page-status">Facturación local activa</strong>
-            <span id="fin-api-page-detail">Los pagos completos generan su PDF dentro del sistema, sin depender de servicios externos.</span>
+            <strong id="fin-api-page-status">Verificando Factura Bonita</strong>
+            <span id="fin-api-page-detail">Los pagos completos generan el comprobante visual con la plantilla EduControl.</span>
           </div>
         </div>
       </header>

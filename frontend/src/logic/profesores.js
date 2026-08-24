@@ -880,8 +880,11 @@ function renderChecklistGrupos(grupos) {
   lista.innerHTML = grupos.map((g) => {
     const id = g.id_grupo ?? g.id;
     const checked = profesorGruposActualesIds.includes(Number(id)) ? 'checked' : '';
-    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}`;
-    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''}`.toLowerCase();
+    const horaInicio = g.hora_inicio ? String(g.hora_inicio).slice(0, 5) : '';
+    const horaFin = g.hora_fin ? String(g.hora_fin).slice(0, 5) : '';
+    const horario = horaInicio && horaFin ? ` · Horario ${horaInicio} - ${horaFin}` : ' · Horario no definido';
+    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}${horario}`;
+    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''} ${horaInicio} ${horaFin}`.toLowerCase();
     return `
       <label class="form-check d-flex align-items-center gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item" data-busqueda="${busqueda}">
         <input class="form-check-input mt-0 asignar-grupo-checkbox" type="checkbox" value="${id}" ${checked}>

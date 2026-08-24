@@ -2,6 +2,19 @@ import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 
+
+let profesorHorarioSchemaPromise = null;
+async function asegurarHorarioGruposProfesor() {
+  if (profesorHorarioSchemaPromise) return profesorHorarioSchemaPromise;
+  profesorHorarioSchemaPromise = (async () => {
+    const [inicio] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'hora_inicio'");
+    if (!inicio.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_inicio TIME NULL");
+    const [fin] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'hora_fin'");
+    if (!fin.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_fin TIME NULL");
+  })().catch((error) => { profesorHorarioSchemaPromise = null; throw error; });
+  return profesorHorarioSchemaPromise;
+}
+
 const MATERIAS_BASICAS = new Map([
   ["español", "Español"],
   ["espanol", "Español"],
@@ -71,6 +84,7 @@ const normalizarGeneroProfesor = (genero) => {
   return normalizado;
 };
 export const obtenerProfesoresService = async () => {
+  await asegurarHorarioGruposProfesor();
   const query = `
     SELECT 
       pr.id_profesor,
@@ -90,6 +104,11 @@ export const obtenerProfesoresService = async () => {
           CASE
             WHEN s.nombre_seccion IS NOT NULL AND s.nombre_seccion <> ''
               THEN CONCAT(' · ', s.nombre_seccion)
+            ELSE ''
+          END,
+          CASE
+            WHEN g.hora_inicio IS NOT NULL AND g.hora_fin IS NOT NULL
+              THEN CONCAT(' · ', TIME_FORMAT(g.hora_inicio, '%H:%i'), ' - ', TIME_FORMAT(g.hora_fin, '%H:%i'))
             ELSE ''
           END
         )

@@ -1400,16 +1400,16 @@ function pintarEstadoIntegracionPagina(estado) {
   dot.className = 'finance-api-dot';
   if (facturaOk && documentosOk) {
     dot.classList.add('online');
-    label.textContent = 'Facturación local activa';
+    label.textContent = 'Factura Bonita conectada';
   } else if (facturaOk) {
     dot.classList.add('warning');
-    label.textContent = 'Facturación activa · PDF pendiente';
+    label.textContent = 'Factura registrada · PDF pendiente';
   } else if (estadoFactura === 'timeout') {
     dot.classList.add('warning');
-    label.textContent = 'Preparando módulo de facturación';
+    label.textContent = 'Conectando con Factura Bonita';
   } else if (estado?.facturacion?.configurado) {
     dot.classList.add('offline');
-    label.textContent = 'No se pudo verificar la facturación local';
+    label.textContent = 'Factura Bonita no disponible';
   } else {
     dot.classList.add('offline');
     label.textContent = 'Configuración de facturación pendiente';

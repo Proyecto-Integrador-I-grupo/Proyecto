@@ -556,7 +556,7 @@
 }
 .finance-payment-context span { color: #64748b; }
 
-/* Configuración de Factura Bonita */
+/* Configuración de facturación local */
 .billing-config-modal {
   padding: 1rem;
   background: #f6f8fb;
@@ -1097,7 +1097,7 @@
   }
 }
 
-/* Visor integrado de Factura Bonita */
+/* Visor integrado de comprobantes */
 .finance-invoice-preview-modal .modal-content {
   height: 100vh;
   border-radius: 0;
@@ -1281,5 +1281,59 @@
   }
   #modalConfigFacturacion .modal-content {
     max-height: calc(100vh - 1rem);
+  }
+}
+
+/* Filtros compactos y lectura fluida */
+.finance-filter-row.finance-invoice-filter-row,
+#fin-historial-collapse .finance-filter-row {
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 180px) 145px 145px auto;
+}
+
+.finance-date-filter {
+  min-width: 0;
+}
+
+.finance-api-strip.is-local {
+  border-color: rgba(47, 133, 90, .2);
+  background: rgba(240, 253, 244, .72);
+}
+
+@media (max-width: 1199.98px) {
+  .finance-filter-row.finance-invoice-filter-row,
+  #fin-historial-collapse .finance-filter-row {
+    grid-template-columns: minmax(220px, 1fr) 160px 140px 140px;
+  }
+  .finance-filter-row.finance-invoice-filter-row > .btn,
+  #fin-historial-collapse .finance-filter-row > .btn {
+    grid-column: 4;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .finance-filter-row.finance-invoice-filter-row,
+  #fin-historial-collapse .finance-filter-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .finance-filter-row.finance-invoice-filter-row .finance-search,
+  #fin-historial-collapse .finance-filter-row .finance-search {
+    grid-column: 1 / -1;
+  }
+  .finance-filter-row.finance-invoice-filter-row > .btn,
+  #fin-historial-collapse .finance-filter-row > .btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .finance-filter-row.finance-invoice-filter-row,
+  #fin-historial-collapse .finance-filter-row {
+    grid-template-columns: 1fr;
+  }
+  .finance-filter-row.finance-invoice-filter-row .finance-search,
+  #fin-historial-collapse .finance-filter-row .finance-search,
+  .finance-filter-row.finance-invoice-filter-row > .btn,
+  #fin-historial-collapse .finance-filter-row > .btn {
+    grid-column: auto;
   }
 }

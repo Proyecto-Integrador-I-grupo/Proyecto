@@ -375,21 +375,38 @@ async function anularCargosPendientesDeEstudiantesInactivos() {
   );
 }
 
-export async function prepararDatosFinancieros() {
-  const tareas = [
-    normalizarEstadosCargosPorPagos,
-    anularCargosPendientesDeEstudiantesInactivos,
-    normalizarCargosMatriculaDuplicados,
-    asegurarCargosMatriculaActivos,
-    normalizarCargosMatriculaDuplicados,
-    normalizarEstadosCargosPorPagos
-  ];
-  for (const tarea of tareas) {
-    try {
-      await tarea();
-    } catch (error) {
-      console.error(`Finanzas: mantenimiento no bloqueante (${tarea.name}):`, error.message);
+let preparacionFinancieraEnCurso = null;
+let ultimaPreparacionFinanciera = 0;
+const PREPARACION_FINANCIERA_TTL_MS = 5000;
+
+export async function prepararDatosFinancieros({ force = false } = {}) {
+  const ahora = Date.now();
+  if (!force && ahora - ultimaPreparacionFinanciera < PREPARACION_FINANCIERA_TTL_MS) return;
+  if (preparacionFinancieraEnCurso) return preparacionFinancieraEnCurso;
+
+  preparacionFinancieraEnCurso = (async () => {
+    const tareas = [
+      normalizarEstadosCargosPorPagos,
+      anularCargosPendientesDeEstudiantesInactivos,
+      normalizarCargosMatriculaDuplicados,
+      asegurarCargosMatriculaActivos,
+      normalizarCargosMatriculaDuplicados,
+      normalizarEstadosCargosPorPagos
+    ];
+    for (const tarea of tareas) {
+      try {
+        await tarea();
+      } catch (error) {
+        console.error(`Finanzas: mantenimiento no bloqueante (${tarea.name}):`, error.message);
+      }
     }
+    ultimaPreparacionFinanciera = Date.now();
+  })();
+
+  try {
+    await preparacionFinancieraEnCurso;
+  } finally {
+    preparacionFinancieraEnCurso = null;
   }
 }
 
@@ -669,7 +686,7 @@ export async function listarFacturas() {
   try {
     await reconciliarFacturasEduControl();
   } catch (error) {
-    console.warn('Finanzas: no se pudo conciliar Factura Bonita:', error?.message || error);
+    console.warn('Finanzas: no se pudo conciliar la facturación local:', error?.message || error);
   }
 
   // Los cargos históricos que ya estaban pagados antes de esta versión también

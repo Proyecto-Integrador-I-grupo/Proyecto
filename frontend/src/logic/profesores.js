@@ -105,6 +105,12 @@ function wireProfesoresEvents() {
     profForm.addEventListener('submit', handleProfesorSubmit);
   }
 
+  const editForm = document.getElementById('editar-profesor-form');
+  if (editForm && !editForm.dataset.wired) {
+    editForm.dataset.wired = '1';
+    editForm.addEventListener('submit', guardarEdicionProfesor);
+  }
+
   const toggleProfPassword = document.getElementById('toggle-prof-password');
   if (toggleProfPassword && !toggleProfPassword.dataset.wired) {
     toggleProfPassword.dataset.wired = '1';
@@ -277,7 +283,8 @@ function filtrarProfesores(profesores) {
     resultado = resultado.filter((p) => {
       const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.toLowerCase();
       const materia = (p.materia ?? '').toLowerCase();
-      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda);
+      const correo = (p.correo ?? '').toLowerCase();
+      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda) || correo.includes(profesorBusqueda);
     });
   }
 
@@ -344,6 +351,11 @@ function renderProfesoresTable(profesores) {
       <td>${badgeEstado}</td>
       <td class="text-end">
         <div class="profesor-actions-grid">
+          ${esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-secondary profesor-action-btn editar-profesor-btn" data-id="${idProf}">
+              <i class="bi bi-pencil-square me-1"></i>Editar
+            </button>
+          ` : ''}
           ${activo && esAdmin ? `
             <button type="button" class="btn btn-sm btn-outline-primary profesor-action-btn asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
               <i class="bi bi-diagram-3 me-1"></i>Grupos
@@ -453,9 +465,14 @@ function handleProfesorTableClick(e) {
   const btnReintegrar = e.target.closest('.reintegrar-btn');
   const btnSustituto = e.target.closest('.sustituto-btn');
   const btnAsignarGrupos = e.target.closest('.asignar-grupos-btn');
+  const btnEditar = e.target.closest('.editar-profesor-btn');
 
-  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto || btnAsignarGrupos) {
+  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto || btnAsignarGrupos || btnEditar) {
     e.preventDefault();
+  }
+
+  if (btnEditar) {
+    abrirEdicionProfesor(btnEditar.dataset.id);
   }
 
   if (btnDestituir) {
@@ -498,6 +515,52 @@ function handleProfesorTableClick(e) {
       btnAsignarGrupos.dataset.materia || ''
     );
   }
+}
+
+function abrirEdicionProfesor(idProf) {
+  const profesor = allProfesores.find((p) => String(p.id_profesor ?? p.id) === String(idProf));
+  if (!profesor) { showToast('No se encontró el profesor seleccionado.', 'error'); return; }
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value ?? ''; };
+  set('edit-prof-id', profesor.id_profesor ?? profesor.id);
+  set('edit-prof-nombre', profesor.nombre);
+  set('edit-prof-apellido1', profesor.apellido1);
+  set('edit-prof-apellido2', profesor.apellido2);
+  set('edit-prof-materia', profesor.materia);
+  set('edit-prof-correo', profesor.correo);
+  set('edit-prof-genero', profesor.genero || 'O');
+  set('edit-prof-fecha-nac', String(profesor.fecha_nacimiento || '').slice(0, 10));
+  set('edit-prof-fecha-ingreso', String(profesor.fecha_ingreso || '').slice(0, 10));
+  const modalEl = document.getElementById('modalEditarProfesor');
+  if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+async function guardarEdicionProfesor(event) {
+  event.preventDefault();
+  const val = (id) => document.getElementById(id)?.value?.trim() || '';
+  const id = Number(val('edit-prof-id'));
+  const payload = {
+    nombre: val('edit-prof-nombre'),
+    apellido1: val('edit-prof-apellido1'),
+    apellido2: val('edit-prof-apellido2'),
+    materia: val('edit-prof-materia'),
+    correo: val('edit-prof-correo'),
+    genero: val('edit-prof-genero'),
+    fecha_nacimiento: val('edit-prof-fecha-nac'),
+    fecha_ingreso: val('edit-prof-fecha-ingreso')
+  };
+  if (!id || !payload.nombre || !payload.apellido1 || !payload.correo || !payload.fecha_nacimiento) {
+    showToast('Completa todos los datos obligatorios.', 'error'); return;
+  }
+  if (!isSchoolEmail(payload.correo)) { showToast(`Utiliza un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error'); return; }
+  try {
+    const res = await apiFetch(`/api/profesores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'No se pudo actualizar el profesor.');
+    bootstrap.Modal.getInstance(document.getElementById('modalEditarProfesor'))?.hide();
+    await loadProfesores();
+    await populateProfesoresSelects();
+    showResultModal('success', 'Profesor actualizado', 'Los datos del docente se actualizaron sin alterar sus grupos ni historial.');
+  } catch (error) { showResultModal('error', 'No se pudo actualizar', error.message || 'Ocurrió un error al actualizar.'); }
 }
 
 async function destituirProfesor(idProf, motivo) {

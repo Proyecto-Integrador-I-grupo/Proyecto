@@ -87,7 +87,7 @@ export default function Reportes() {
       </div>
 
       <div className="modal fade" id="modalPreviewReporte" tabIndex="-1" aria-hidden="true">
-        <div className="modal-dialog modal-dialog-scrollable modal-xl">
+        <div className="modal-dialog modal-xl">
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div className="modal-header bg-navy text-white px-3 px-md-4 py-3">
               <div className="d-flex align-items-center gap-3">

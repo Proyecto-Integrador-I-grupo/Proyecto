@@ -386,7 +386,9 @@ async function apiFetch(path, options = {}) {
     ...(options.headers || {})
   };
 
-  if (currentUser?.id_usuario) {
+  if (currentUser?.token) {
+    headers.Authorization = `Bearer ${currentUser.token}`;
+  } else if (currentUser?.id_usuario) {
     headers['x-user-id'] = String(currentUser.id_usuario);
   }
 

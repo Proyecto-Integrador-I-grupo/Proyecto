@@ -14,8 +14,18 @@ import auditoriaRoutes from "./routes/auditoriaRoutes.js";
 import finanzaRoutes from "./routes/finanzaRoutes.js";
 
 import { identificarUsuario } from "./middleware/authMiddleware.js";
+import { validateInputPayload } from "./middleware/inputValidationMiddleware.js";
 
 const app = express();
+
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 
 const configuredOrigins = (process.env.FRONTEND_URL || "")
   .split(",")
@@ -42,8 +52,7 @@ function isAllowedOrigin(origin) {
       url.hostname.endsWith(".vercel.app") &&
       (
         url.hostname === "proyecto-five-ivory.vercel.app" ||
-        url.hostname.startsWith("proyecto-five-ivory-") ||
-        url.hostname.startsWith("proyecto-")
+        url.hostname.startsWith("proyecto-five-ivory-")
       )
     );
   } catch {
@@ -75,7 +84,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use("/api", validateInputPayload);
 app.use(identificarUsuario);
 
 app.get("/", (req, res) => {

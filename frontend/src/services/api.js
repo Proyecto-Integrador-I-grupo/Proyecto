@@ -25,7 +25,9 @@ export async function apiFetch(path, options = {}) {
     ...(options.headers || {})
   };
 
-  if (sessionUser?.id_usuario) {
+  if (sessionUser?.token) {
+    headers.Authorization = `Bearer ${sessionUser.token}`;
+  } else if (sessionUser?.id_usuario) {
     headers['x-user-id'] = String(sessionUser.id_usuario);
   }
 

@@ -439,7 +439,7 @@ export default function Consultas() {
         aria-labelledby="consulta-detalle-titulo"
         aria-hidden="true"
       >
-        <div className="modal-dialog modal-xl modal-dialog-scrollable">
+        <div className="modal-dialog modal-xl">
           <div className="modal-content">
             <div className="modal-header">
               <div>

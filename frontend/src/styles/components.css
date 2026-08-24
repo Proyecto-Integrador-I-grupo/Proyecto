@@ -984,3 +984,15 @@ body.high-contrast .accessibility-toggle {
     bottom: 72px;
   }
 }
+
+/* Límites visibles de campos */
+.edu-char-counter {
+  margin-top: .28rem;
+  text-align: right;
+  color: #7b8797;
+  font-size: .72rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.edu-char-counter.near-limit { color: #9a6a18; font-weight: 700; }
+.edu-char-counter.at-limit { color: #b42334; font-weight: 800; }

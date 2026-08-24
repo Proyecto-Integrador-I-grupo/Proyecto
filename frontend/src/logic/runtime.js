@@ -38,6 +38,40 @@ function applyInputGuards() {
   });
 }
 
+function installCharacterCounters() {
+  const selector = 'input[maxlength]:not([type="password"]):not([type="search"]), textarea[maxlength]';
+  document.querySelectorAll(selector).forEach((el) => {
+    if (el.dataset.eduCounterWired === '1' || el.dataset.noCounter === '1') return;
+    const key = `${el.id || ''} ${el.name || ''}`.toLowerCase();
+    if (/(search|busqueda|búsqueda|filtro|filter)/.test(key)) return;
+    const limit = Number(el.getAttribute('maxlength'));
+    if (!Number.isFinite(limit) || limit <= 0) return;
+
+    el.dataset.eduCounterWired = '1';
+    const counter = document.createElement('div');
+    counter.className = 'edu-char-counter';
+    counter.setAttribute('aria-live', 'polite');
+    const id = el.id ? `${el.id}-counter` : `edu-counter-${Math.random().toString(36).slice(2)}`;
+    counter.id = id;
+
+    const update = () => {
+      const used = String(el.value || '').length;
+      counter.textContent = `${used}/${limit}`;
+      counter.classList.toggle('near-limit', used >= Math.ceil(limit * 0.85));
+      counter.classList.toggle('at-limit', used >= limit);
+    };
+
+    const group = el.closest('.input-group');
+    const anchor = group || el;
+    anchor.insertAdjacentElement('afterend', counter);
+    const describedBy = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (!describedBy.includes(id)) describedBy.push(id);
+    el.setAttribute('aria-describedby', describedBy.join(' '));
+    el.addEventListener('input', update);
+    update();
+  });
+}
+
 
 let modalScrollY = 0;
 
@@ -144,6 +178,7 @@ export function syncReactSession(user) {
     sessionInitFrame = null;
     renderUserInfo();
     applyInputGuards();
+    installCharacterCounters();
     initApp();
   };
 

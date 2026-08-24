@@ -436,7 +436,7 @@ const usaInformacionAcademica =
       'hidden',
       !usaGrupo
     );
-
+  
     filtroFecha?.classList.toggle(
       'hidden',
       !usaFecha

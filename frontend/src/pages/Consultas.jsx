@@ -16,8 +16,7 @@ export default function Consultas() {
             </h2>
 
             <p className="text-muted mb-0">
-              Consulta estudiantes en pre-matrícula, estudiantes matriculados,
-              profesores, matrículas y registros de asistencia.
+              Consulta estudiantes, profesores, matrículas, grupos y registros de asistencia.
             </p>
           </div>
 
@@ -216,7 +215,7 @@ export default function Consultas() {
 
                   <option value="grupos">
                     Grupos
-                  </option> 
+                  </option>  
                 </select>
               </div>
 

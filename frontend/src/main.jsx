@@ -14,6 +14,7 @@ import './styles/matricula.css';
 import './styles/perfil.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
+import './styles/accessibility-theme.css';
 import { bootLegacyRuntime } from './logic/runtime.js';
 
 window.bootstrap = bootstrap;

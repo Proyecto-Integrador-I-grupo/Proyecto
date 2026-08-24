@@ -42,7 +42,7 @@ export default function Estudiantes() {
                   <div className="col-md-6"><label className="form-label" htmlFor="apellido1">Primer apellido</label><input id="apellido1" className="form-control" required /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="apellido2">Segundo apellido</label><input id="apellido2" className="form-control" /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="fecha_nacimiento">Fecha de nacimiento</label><input id="fecha_nacimiento" type="date" className="form-control" /></div>
-                  <div className="col-md-6"><label className="form-label" htmlFor="genero">Género</label><select id="genero" className="form-select"><option value="">Seleccionar</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option></select></div>
+                  <div className="col-md-6"><label className="form-label" htmlFor="genero">Género</label><select id="genero" className="form-select"><option value="">Seleccionar</option><option value="M">Masculino</option><option value="F">Femenino</option><option value="O">Otro</option></select></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="persona-fecha-ingreso">Fecha de ingreso</label><input id="persona-fecha-ingreso" type="date" className="form-control" /></div>
                 </div>
               </div>

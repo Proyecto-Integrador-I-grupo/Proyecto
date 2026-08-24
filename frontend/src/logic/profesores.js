@@ -166,6 +166,16 @@ function wireProfesoresEvents() {
   }
 }
 
+function normalizeGenero(val) {
+  if (val === undefined || val === null) return null;
+  const v = String(val).trim().toLowerCase();
+  if (!v) return null;
+  if (v === 'm' || v === 'masculino') return 'M';
+  if (v === 'f' || v === 'femenino') return 'F';
+  if (v === 'o' || v === 'otro' || v === 'otros') return 'O';
+  return val;
+}
+
 async function loadProfesores() {
   const profTableBody = document.querySelector('#profesores-table tbody');
   if (!profTableBody) return;
@@ -324,7 +334,7 @@ async function handleProfesorSubmit(e) {
     apellido1: apellido1,
     apellido2: document.getElementById('prof-apellido2')?.value.trim() || '',
     fecha_nacimiento: document.getElementById('prof-fecha-nac')?.value || null,
-    genero: document.getElementById('prof-genero')?.value || null,
+    genero: normalizeGenero(document.getElementById('prof-genero')?.value) || null,
     materia: materia,
     fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null,
     correo: correo,

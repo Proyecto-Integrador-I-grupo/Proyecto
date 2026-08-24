@@ -8,13 +8,40 @@ import Reportes from './pages/Reportes';
 import Consultas from './pages/Consultas';
 import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
+import Pagos from './pages/Pagos';
 import { getCurrentUser, login, logout } from './services/auth';
 import { syncReactSession, legacyLogout } from './logic/runtime';
+
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim()
+  .toLowerCase()
+  .replace(/^@+/, '');
+
+function isSchoolEmail(email) {
+  return String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
+}
+
+const LOGIN_BACKGROUNDS = [
+  '/images/fondo-login.jpeg?v=20260816',
+  '/images/imagen-2.jpg?v=20260816',
+  '/images/imagen-3.jpeg?v=20260816'
+];
 
 export default function App() {
   const [user, setUser] = useState(() => getCurrentUser());
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loginBackgroundIndex, setLoginBackgroundIndex] = useState(0);
+
+  useEffect(() => {
+    if (user) return undefined;
+
+    const timer = window.setInterval(() => {
+      setLoginBackgroundIndex((current) => (current + 1) % LOGIN_BACKGROUNDS.length);
+    }, 6500);
+
+    return () => window.clearInterval(timer);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -67,6 +94,11 @@ export default function App() {
       return;
     }
 
+    if (!isSchoolEmail(correo)) {
+      setLoginError(`Utiliza tu correo institucional @${SCHOOL_EMAIL_DOMAIN}.`);
+      return;
+    }
+
     setLoginLoading(true);
 
     try {
@@ -113,11 +145,12 @@ export default function App() {
         <div
           id="login-screen"
           className="login-screen d-flex align-items-center justify-content-center"
+          style={{ '--login-bg': `url("${LOGIN_BACKGROUNDS[loginBackgroundIndex]}")` }}
         >
           <div className="login-card">
             <div className="text-center mb-4">
               <img
-                src="/images/logo.jpg"
+                src="/images/logo1-transparent.png"
                 alt="EduControl"
                 className="login-logo mb-3"
               />
@@ -141,7 +174,7 @@ export default function App() {
                     name="correo"
                     type="email"
                     className="form-control"
-                    placeholder="usuario@educontrol.com"
+                    placeholder={`usuario@${SCHOOL_EMAIL_DOMAIN}`}
                     required
                     autoComplete="username"
                     disabled={loginLoading}
@@ -210,6 +243,12 @@ export default function App() {
               </button>
             </form>
           </div>
+
+          <footer className="login-footer" aria-label="Pie de página de EduControl">
+            <span>EduControl</span>
+            <span className="login-footer-separator">•</span>
+            <span>Gestión académica y financiera</span>
+          </footer>
         </div>
       ) : (
         <div id="app-shell" className="d-flex min-vh-100">
@@ -270,7 +309,18 @@ export default function App() {
                 </button>
               </li>
 
-              <li className="nav-item admin-only">
+
+              <li className="nav-item">
+                <button
+                  type="button"
+                  data-view="pagos"
+                  className="nav-link w-100 text-start d-flex align-items-center gap-2"
+                >
+                  <i className="bi bi-cash-coin"></i> Pagos y facturación
+                </button>
+              </li>
+
+              <li className="nav-item">
                 <button
                   type="button"
                   data-view="reportes"
@@ -368,7 +418,7 @@ export default function App() {
                     <p className="eyebrow mb-1">Panel de Control</p>
                     <h2 className="h4 mb-1">Bienvenido a EduControl</h2>
                     <p className="mb-0 text-white-50 small">
-                      Administración integral de matrículas, profesores, asistencia y expedientes.
+                      Administración académica y financiera para una escuela privada.
                     </p>
                   </div>
                   <div className="hero-pill">
@@ -383,11 +433,28 @@ export default function App() {
               <Matricula />
               <Profesores />
               <Asistencia />
+              <Pagos />
               <Reportes />
               <Consultas />
               <Usuarios />
               <Perfil />
             </main>
+
+            <footer className="app-footer" aria-label="Pie de página de EduControl">
+              <div className="app-footer-brand">
+                <span className="app-footer-mark">EC</span>
+                <div>
+                  <strong>EduControl</strong>
+                  <span>Gestión académica y financiera</span>
+                </div>
+              </div>
+
+              <div className="app-footer-meta">
+                <span><i className="bi bi-shield-check" aria-hidden="true"></i> Acceso institucional</span>
+                <span className="app-footer-divider" aria-hidden="true"></span>
+                <span>© {new Date().getFullYear()} EduControl</span>
+              </div>
+            </footer>
           </div>
         </div>
       )}

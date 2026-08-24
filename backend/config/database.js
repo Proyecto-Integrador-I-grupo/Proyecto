@@ -7,12 +7,19 @@ const conexion = mysql.createPool({
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "sistema_escolar_db",
     port: process.env.DB_PORT || 18817,
-    ssl: {
+    ssl: {  
         rejectUnauthorized: false
     },
+    charset: "utf8mb4_unicode_ci",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
+});
+
+conexion.on("connection", (connection) => {
+    connection.query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci", (error) => {
+        if (error) console.log("No se pudo establecer la collation de la sesión", error.message);
+    });
 });
 
 // Probar la conexión

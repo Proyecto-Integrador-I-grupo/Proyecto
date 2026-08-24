@@ -10,7 +10,7 @@ export default function Estudiantes() {
             <div className="d-flex gap-2 align-items-center flex-wrap">
               <div className="input-group input-group-sm search-box">
                 <span className="input-group-text"><i className="bi bi-search"></i></span>
-                <input id="persona-search" type="text" className="form-control" placeholder="Buscar por nombre..." />
+                <input id="persona-search" type="text" className="form-control" maxLength="120" placeholder="Buscar por nombre..." />
               </div>
               <button type="button" className="btn btn-primary btn-sm" id="btn-abrir-modal-estudiante" data-bs-toggle="modal" data-bs-target="#modalEstudiante">
                 <i className="bi bi-plus-lg"></i> Agregar Estudiante
@@ -28,7 +28,7 @@ export default function Estudiantes() {
       </div>
 
       <div className="modal fade" id="modalEstudiante" tabIndex="-1" aria-hidden="true">
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-estudiante-dialog">
           <div className="modal-content border-0 shadow-lg">
             <div className="modal-header bg-navy text-white">
               <h5 id="persona-form-title" className="modal-title font-serif"><i className="bi bi-person-plus"></i> Pre-registro de Estudiante</h5>

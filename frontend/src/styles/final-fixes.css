@@ -1,0 +1,458 @@
+/* Correcciones finales de layout, modales y contraste. */
+html, body, #root { width: 100%; min-width: 0; }
+
+/* Un solo scroll: el del navegador cuando no existe una ventana modal. */
+body:not(.edu-modal-lock) { overflow-x: hidden; overflow-y: auto; }
+#app-shell, #content { max-width: 100%; }
+
+/* Durante una ventana emergente el documento de fondo queda totalmente inmóvil. */
+html.edu-modal-lock,
+body.edu-modal-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+body.edu-modal-lock #app-shell,
+body.edu-modal-lock .topbar,
+body.edu-modal-lock .sidebar,
+body.edu-modal-lock #content {
+  overscroll-behavior: none !important;
+}
+
+/* Las ventanas no crean un segundo scroll. Se compactan según la altura disponible. */
+.modal {
+  position: fixed !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+.modal-dialog {
+  display: flex;
+  align-items: center;
+  min-height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  margin: .75rem auto !important;
+}
+.modal-dialog.modal-dialog-centered { min-height: calc(100dvh - 1.5rem); }
+.modal-content {
+  width: 100%;
+  max-height: calc(100dvh - 1.5rem);
+  overflow: hidden !important;
+}
+.modal-body,
+.modal-dialog-scrollable .modal-body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+.modal form { min-height: 0; }
+.modal .row.g-3 { --bs-gutter-y: .75rem; }
+.modal .form-text { margin-top: .25rem; line-height: 1.25; }
+.modal textarea { resize: none; }
+
+/* Contraste: nunca colocar texto oscuro sobre encabezados oscuros. */
+.modal-header.bg-navy,
+.modal-header.bg-navy .modal-title,
+.modal-header.bg-navy .modal-title *,
+.bg-navy,
+.bg-navy > h1,
+.bg-navy > h2,
+.bg-navy > h3,
+.bg-navy > h4,
+.bg-navy > h5,
+.bg-navy > h6 {
+  color: #fff !important;
+}
+.modal-header.bg-navy .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .92; }
+
+/* Títulos y texto sobre superficies claras. */
+.view .card-title,
+.view .card-title-serif,
+.view .page-header h1,
+.view .page-header h2,
+.view .page-header h3,
+.view .modal-body h1,
+.view .modal-body h2,
+.view .modal-body h3,
+.view .modal-body h4,
+.view .modal-body h5,
+.view .form-label,
+.view .table th {
+  color: #1c2c3d !important;
+}
+.view .text-muted,
+.view .form-text,
+.view small.text-muted { color: #5b6f83 !important; }
+
+/* Mantener texto blanco donde el fondo sea realmente sólido/oscuro. */
+.view .btn-primary,
+.view .btn-primary *,
+.view .btn-success,
+.view .btn-success *,
+.view .btn-danger:hover,
+.view .btn-danger:hover *,
+.sidebar,
+.sidebar * { color: inherit; }
+.sidebar .brand-name,
+.sidebar .nav-link.active,
+.sidebar .nav-link.active * { color: #fff !important; }
+
+/* Compactación vertical para evitar scroll dentro de modales en portátiles. */
+@media (max-height: 900px) {
+  .modal-dialog { min-height: calc(100dvh - .75rem); max-height: calc(100dvh - .75rem); margin: .375rem auto !important; }
+  .modal-content { max-height: calc(100dvh - .75rem); }
+  .modal-header, .modal-footer { padding: .6rem .9rem !important; }
+  .modal-body { padding: .8rem 1rem !important; }
+  .modal .row.g-3 { --bs-gutter-y: .5rem; --bs-gutter-x: .75rem; }
+  .modal .form-control, .modal .form-select { min-height: 36px; padding-top: .38rem; padding-bottom: .38rem; }
+  .modal textarea.form-control { min-height: 58px; max-height: 76px; }
+  .modal .mat-financial-status { padding: .75rem 1rem !important; }
+}
+
+@media (max-height: 720px) {
+  .modal-header, .modal-footer { padding: .45rem .75rem !important; }
+  .modal-body { padding: .55rem .8rem !important; font-size: .9rem; }
+  .modal .form-label { margin-bottom: .18rem; font-size: .82rem; }
+  .modal .form-control, .modal .form-select { min-height: 32px; padding-top: .25rem; padding-bottom: .25rem; font-size: .88rem; }
+  .modal .form-text, .modal .small { font-size: .75rem !important; }
+  .modal textarea.form-control { min-height: 46px; max-height: 56px; }
+}
+
+@media (max-width: 575.98px) {
+  .modal-dialog { width: calc(100% - .5rem); max-width: calc(100% - .5rem); }
+}
+
+/* ===== Ajuste definitivo de modales: sin scroll interno y siempre visibles ===== */
+.modal:not(.finance-invoice-preview-modal) .modal-dialog {
+  width: min(96vw, var(--bs-modal-width, 860px));
+  max-width: min(96vw, var(--bs-modal-width, 860px));
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-content {
+  max-height: none !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-body,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-body {
+  overflow: visible !important;
+}
+
+/* En pantallas de portátil compactamos el contenido en lugar de crear un segundo scroll. */
+@media (max-height: 950px) and (min-width: 576px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog {
+    zoom: .88;
+    min-height: calc(100dvh / .88 - 1rem) !important;
+    max-height: none !important;
+    margin: .5rem auto !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .modal-header,
+  .modal:not(.finance-invoice-preview-modal) .modal-footer {
+    padding: .55rem .85rem !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .modal-body {
+    padding: .72rem .9rem !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .row.g-3,
+  .modal:not(.finance-invoice-preview-modal) .row.g-4 {
+    --bs-gutter-y: .45rem;
+  }
+  .modal:not(.finance-invoice-preview-modal) .form-label {
+    margin-bottom: .18rem;
+    font-size: .82rem;
+  }
+  .modal:not(.finance-invoice-preview-modal) .form-control,
+  .modal:not(.finance-invoice-preview-modal) .form-select {
+    min-height: 34px;
+    padding-top: .3rem;
+    padding-bottom: .3rem;
+  }
+  .modal:not(.finance-invoice-preview-modal) textarea.form-control {
+    min-height: 48px;
+    max-height: 62px;
+  }
+  .modal:not(.finance-invoice-preview-modal) .form-text,
+  .modal:not(.finance-invoice-preview-modal) small {
+    line-height: 1.18;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 576px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog {
+    zoom: .78;
+    min-height: calc(100dvh / .78 - .5rem) !important;
+  }
+}
+
+/* Modal de factura: ocupa la pantalla y no hereda la compactación de formularios. */
+.finance-invoice-preview-modal .modal-dialog,
+.finance-invoice-preview-modal .modal-content {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  zoom: 1 !important;
+}
+.finance-invoice-preview-modal .modal-body { overflow: hidden !important; }
+
+/* ===== Contraste final ===== */
+.modal-header.bg-navy,
+.modal-header.bg-dark,
+.modal-header.bg-primary,
+.modal-header.bg-success,
+.modal-header.bg-danger,
+.modal-header.bg-navy .modal-title,
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-success .modal-title,
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-navy small,
+.modal-header.bg-dark small {
+  color: #ffffff !important;
+}
+
+.modal-content:not(.bg-dark) .modal-body,
+.modal-content:not(.bg-dark) .modal-footer,
+.card,
+.finance-panel,
+.report-main-card {
+  color: #17283a !important;
+}
+
+.modal-body .form-label,
+.modal-body h1,
+.modal-body h2,
+.modal-body h3,
+.modal-body h4,
+.modal-body h5,
+.modal-body h6,
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+.card h5,
+.card h6,
+.finance-panel h1,
+.finance-panel h2,
+.finance-panel h3,
+.report-main-card h1,
+.report-main-card h2,
+.report-main-card h3 {
+  color: #17283a !important;
+}
+
+.bg-navy h1,.bg-navy h2,.bg-navy h3,.bg-navy h4,.bg-navy h5,.bg-navy h6,
+.bg-dark h1,.bg-dark h2,.bg-dark h3,.bg-dark h4,.bg-dark h5,.bg-dark h6,
+.bg-primary h1,.bg-primary h2,.bg-primary h3,.bg-primary h4,.bg-primary h5,.bg-primary h6 {
+  color: #fff !important;
+}
+
+/* Textos auxiliares con contraste suficiente sobre fondos claros. */
+.form-text,
+.text-muted,
+.finance-page-subtitle,
+.finance-panel p,
+.finance-record-meta,
+.report-main-card .small,
+.report-main-card small {
+  color: #52677c !important;
+}
+
+/* ===== Ajuste UX final: modales legibles, amplios y sin scroll interno ===== */
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+  zoom: 1 !important;
+  width: min(94vw, 900px) !important;
+  max-width: min(94vw, 900px) !important;
+  min-height: auto !important;
+  max-height: none !important;
+  margin: 2vh auto !important;
+  align-items: center !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+  width: min(94vw, 980px) !important;
+  max-width: min(94vw, 980px) !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-content {
+  max-height: 96vh !important;
+  overflow: hidden !important;
+  border-radius: 16px;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-body,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-body {
+  overflow: hidden !important;
+  padding: 1.15rem 1.25rem !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-header,
+.modal:not(.finance-invoice-preview-modal) .modal-footer {
+  flex: 0 0 auto;
+  padding: .85rem 1.2rem !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-title { font-size: 1.08rem; }
+.modal:not(.finance-invoice-preview-modal) .form-control,
+.modal:not(.finance-invoice-preview-modal) .form-select {
+  min-height: 40px;
+  font-size: .94rem;
+}
+.modal:not(.finance-invoice-preview-modal) textarea.form-control {
+  min-height: 64px;
+  max-height: 92px;
+}
+
+/* Configuración de facturación: ventana grande y contenido distribuido para que el botón siempre sea visible. */
+#modalConfigFacturacion .modal-dialog {
+  width: min(96vw, 1120px) !important;
+  max-width: min(96vw, 1120px) !important;
+}
+#modalConfigFacturacion .billing-config-modal {
+  padding: .9rem 1rem !important;
+}
+#modalConfigFacturacion .billing-config-intro {
+  padding: .7rem .8rem;
+  margin-bottom: .65rem;
+}
+#modalConfigFacturacion .billing-service-overview {
+  gap: .55rem;
+  margin-bottom: .65rem;
+}
+#modalConfigFacturacion .billing-service-card {
+  min-height: 68px;
+  padding: .65rem .72rem;
+}
+#modalConfigFacturacion .billing-emitter-card {
+  padding: .8rem .9rem;
+}
+#modalConfigFacturacion .billing-emitter-grid {
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: .65rem .75rem;
+}
+#modalConfigFacturacion .billing-field-wide { grid-column: span 2; }
+#modalConfigFacturacion .billing-logo-picker {
+  min-height: 84px;
+  padding: .65rem;
+}
+#modalConfigFacturacion .billing-config-note {
+  margin-top: .55rem;
+  padding: .55rem .7rem;
+}
+
+@media (max-height: 820px) and (min-width: 768px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+    margin: 1vh auto !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .modal-body { padding: .75rem 1rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-header,
+  .modal:not(.finance-invoice-preview-modal) .modal-footer { padding: .62rem 1rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .row.g-3,
+  .modal:not(.finance-invoice-preview-modal) .row.g-4 { --bs-gutter-y: .5rem; }
+  #modalConfigFacturacion .billing-config-intro p,
+  #modalConfigFacturacion .billing-emitter-heading small,
+  #modalConfigFacturacion .billing-config-note { display: none; }
+  #modalConfigFacturacion .billing-config-modal { padding: .65rem .8rem !important; }
+  #modalConfigFacturacion .billing-service-card { min-height: 58px; padding: .5rem .6rem; }
+  #modalConfigFacturacion .billing-emitter-card { padding: .6rem .75rem; }
+  #modalConfigFacturacion .billing-logo-picker { min-height: 70px; }
+}
+
+@media (max-width: 767.98px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    margin: .5rem auto !important;
+  }
+  #modalConfigFacturacion .billing-emitter-grid { grid-template-columns: 1fr 1fr; }
+  #modalConfigFacturacion .billing-field-wide { grid-column: 1 / -1; }
+}
+
+/* ===== Contraste coherente: títulos visibles sin alterar la paleta de cada módulo ===== */
+.view .bg-navy, .view .bg-dark, .view .bg-primary, .view .bg-success, .view .bg-danger,
+.view .bg-navy *, .view .bg-dark *, .view .bg-primary *, .view .bg-success *, .view .bg-danger * {
+  --bs-heading-color: #fff;
+}
+.view .bg-navy .modal-title, .view .bg-dark .modal-title, .view .bg-primary .modal-title,
+.view .bg-success .modal-title, .view .bg-danger .modal-title,
+.view .bg-navy h1,.view .bg-navy h2,.view .bg-navy h3,.view .bg-navy h4,.view .bg-navy h5,.view .bg-navy h6,
+.view .bg-dark h1,.view .bg-dark h2,.view .bg-dark h3,.view .bg-dark h4,.view .bg-dark h5,.view .bg-dark h6 {
+  color:#fff !important;
+}
+.view .card:not(.bg-dark):not(.bg-navy),
+.view .modal-body,
+.view .modal-footer,
+.view .finance-panel,
+.view .report-main-card { color:#203247 !important; }
+.view .card:not(.bg-dark):not(.bg-navy) h1,
+.view .card:not(.bg-dark):not(.bg-navy) h2,
+.view .card:not(.bg-dark):not(.bg-navy) h3,
+.view .card:not(.bg-dark):not(.bg-navy) h4,
+.view .card:not(.bg-dark):not(.bg-navy) h5,
+.view .modal-body h1,.view .modal-body h2,.view .modal-body h3,.view .modal-body h4,.view .modal-body h5 {
+  color:#17283a !important;
+}
+
+
+/* === Ajuste final: Profesores sin scroll horizontal y con todas las acciones visibles === */
+#profesores-view .profesores-table-wrap {
+  width: 100% !important;
+  overflow: visible !important;
+  border: 1px solid #e4eaf0;
+  border-radius: 14px;
+}
+#profesores-view #profesores-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+#profesores-view #profesores-table th,
+#profesores-view #profesores-table td {
+  min-width: 0 !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  padding: .72rem .58rem !important;
+}
+#profesores-view #profesores-table th:nth-child(1) { width: 18% !important; }
+#profesores-view #profesores-table th:nth-child(2) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(3) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(4) { width: 27% !important; }
+#profesores-view #profesores-table th:nth-child(5) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(6) { width: 24% !important; }
+#profesores-view .profesor-name-cell strong { font-size: .91rem; }
+#profesores-view .profesor-name-cell small { display: none; }
+#profesores-view .profesor-groups-list { gap: .3rem; }
+#profesores-view .profesor-group-pill {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: .32rem .44rem !important;
+  font-size: .72rem !important;
+  white-space: normal;
+}
+#profesores-view .profesor-actions-grid {
+  width: 100% !important;
+  max-width: none !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: .34rem !important;
+  margin-left: 0 !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  padding: .3rem .35rem !important;
+  font-size: .71rem !important;
+  justify-content: center !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn i { margin-right: .12rem !important; }
+@media (max-width: 1100px) {
+  #profesores-view #profesores-table th,
+  #profesores-view #profesores-table td { padding: .62rem .42rem !important; font-size: .82rem; }
+  #profesores-view .profesor-actions-grid .profesor-action-btn { font-size: .68rem !important; }
+}
+
+/* Usuarios: feedback institucional claro */
+#usuarios-view .form-control.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 .18rem rgba(220,53,69,.08) !important;
+}
+#usuarios-view .invalid-feedback { font-size: .8rem; font-weight: 600; }

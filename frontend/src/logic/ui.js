@@ -4,11 +4,17 @@ const baseUrl = import.meta.env.VITE_API_URL || ((window.location.hostname === "
   : "https://proyecto-vcz6.onrender.com");
 
 const SESSION_KEY = "educontrol_usuario";
+const ACTIVE_VIEW_KEY = 'educontrol_active_view';
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim().toLowerCase().replace(/^@+/, '');
+const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
 let currentUser = null;
 let views = [];
 let appViewsReady = false;
 let appInitialized = false;
+let usuariosCargados = [];
+let usuarioPendienteEliminar = null;
 
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 
@@ -164,6 +170,7 @@ async function handleLogin(e) {
 
 function logout() {
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(ACTIVE_VIEW_KEY);
 
   currentUser = null;
   window.EduControlCurrentUser = null;
@@ -207,6 +214,7 @@ const VISTAS_RESTRINGIDAS_PROFESOR = [
   'matricula',
   'estudiantes',
   'profesores',
+  'pagos',
   'usuarios'
 ];
 
@@ -326,10 +334,8 @@ function renderUserInfo() {
     );
 
   if (assistantBanner) {
-    assistantBanner.classList.toggle(
-      'hidden',
-      esAdmin
-    );
+    const esAsistente = !esAdmin && !esProfesor;
+    assistantBanner.classList.toggle('hidden', !esAsistente);
   }
 
   aplicarRestriccionesModulos(
@@ -381,19 +387,27 @@ async function apiFetch(path, options = {}) {
     ...(options.headers || {})
   };
 
-  if (currentUser?.id_usuario) {
+  if (currentUser?.token) {
+    headers.Authorization = `Bearer ${currentUser.token}`;
+  } else if (currentUser?.id_usuario) {
     headers['x-user-id'] = String(currentUser.id_usuario);
   }
 
   const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeoutMs = Number(options.timeout || 90000);
+  const fetchOptions = { ...options };
+  delete fetchOptions.timeout;
+
+  const controller = options.signal ? null : new AbortController();
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 90000)
+    : null;
 
   try {
     const res = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
-      signal: options.signal || controller.signal
+      signal: options.signal || controller?.signal
     });
 
     if (res.status === 401) {
@@ -412,7 +426,7 @@ async function apiFetch(path, options = {}) {
     }
     throw error;
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 }
 
@@ -421,62 +435,44 @@ async function apiFetch(path, options = {}) {
    ========================================== */
 
 function initApp() {
-  /*
-   * React puede volver a ejecutar esta función
-   * después de actualizar el estado de sesión.
-   *
-   * Evitamos registrar los mismos listeners
-   * varias veces.
-   */
-  if (appInitialized) {
-    views = document.querySelectorAll(
-      '.sidebar button[data-view]'
-    );
-
-    const activeButton =
-      document.querySelector(
-        '.sidebar button[data-view].active'
-      );
-
-    setActiveView(
-      activeButton?.dataset.view ||
-      'dashboard'
-    );
-
-    return;
-  }
-
   views = document.querySelectorAll(
     '.sidebar button[data-view]'
   );
 
+  if (!views.length) {
+    return false;
+  }
+
   views.forEach((button) => {
-    button.addEventListener(
-      'click',
-      () => {
-        setActiveView(
-          button.dataset.view
-        );
-      }
-    );
+    if (button.dataset.viewWired === 'true') {
+      return;
+    }
+
+    button.dataset.viewWired = 'true';
+    button.addEventListener('click', () => {
+      setActiveView(button.dataset.view);
+    });
   });
 
-  wireUsuariosForm();
-  wireUsuariosDelete();
-  wireSidebarToggle();
-  initAccessibilityWidget();
+  if (!appInitialized) {
+    wireUsuariosForm();
+    wireUsuariosDelete();
+    wireUsuariosEdit();
+    wireUsuariosRefresh();
+    wireSidebarToggle();
+    initAccessibilityWidget();
+    appInitialized = true;
+  } else {
+    wireSidebarToggle();
+  }
 
-  appInitialized = true;
+  const vistaGuardada =
+    sessionStorage.getItem(ACTIVE_VIEW_KEY) ||
+    document.querySelector('.sidebar button[data-view].active')?.dataset.view ||
+    'dashboard';
 
-  /*
-   * React ya renderizó las páginas.
-   * Solo activamos la vista inicial.
-   *
-   * NO llamamos refreshDashboardCounts()
-   * aquí porque esa lógica pertenece al
-   * módulo dashboard.js.
-   */
-  setActiveView('dashboard');
+  setActiveView(vistaGuardada);
+  return true;
 }
 
 function wireSidebarToggle() {
@@ -605,6 +601,8 @@ function setActiveView(viewName) {
     return;
   }
 
+  sessionStorage.setItem(ACTIVE_VIEW_KEY, viewName);
+
   const modulo =
     window.EduControlModules?.[viewName];
 
@@ -716,301 +714,457 @@ function setActiveView(viewName) {
    3. MÓDULO DE USUARIOS Y PERMISOS
    ========================================== */
 
+function actualizarValidacionCorreoInstitucional(inputId, errorId) {
+  const input = document.getElementById(inputId);
+  const error = document.getElementById(errorId);
+  if (!input) return true;
+  const correo = String(input.value || '').trim().toLowerCase();
+  const invalido = Boolean(correo) && !isSchoolEmail(correo);
+  input.classList.toggle('is-invalid', invalido);
+  input.setAttribute('aria-invalid', invalido ? 'true' : 'false');
+  if (error) error.classList.toggle('d-block', invalido);
+  return !invalido;
+}
+
+function wireValidacionCorreosUsuarios() {
+  [
+    ['usuario-correo', 'usuario-correo-error'],
+    ['usuario-editar-correo', 'usuario-editar-correo-error']
+  ].forEach(([inputId, errorId]) => {
+    const input = document.getElementById(inputId);
+    if (!input || input.dataset.domainValidationWired === 'true') return;
+    input.dataset.domainValidationWired = 'true';
+    const validar = () => actualizarValidacionCorreoInstitucional(inputId, errorId);
+    input.addEventListener('input', validar);
+    input.addEventListener('blur', validar);
+  });
+}
+
 function wireUsuariosForm() {
-  const form =
-    document.getElementById(
-      'usuario-form'
-    );
+  const form = document.getElementById('usuario-form');
+  if (!form || form.dataset.wired === 'true') return;
 
-  if (
-    !form ||
-    form.dataset.wired === "true"
-  ) {
-    return;
-  }
+  form.dataset.wired = 'true';
+  wireValidacionCorreosUsuarios();
 
-  form.dataset.wired = "true";
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-  form.addEventListener(
-    'submit',
-    async (e) => {
-      e.preventDefault();
+    const submitBtn = document.getElementById('btn-guardar-usuario');
+    const nombre = document.getElementById('usuario-nombre')?.value.trim() || '';
+    const apellido1 = document.getElementById('usuario-apellido1')?.value.trim() || '';
+    const correo = document.getElementById('usuario-correo')?.value.trim().toLowerCase() || '';
+    const rolTexto = document.getElementById('usuario-rol')?.value || 'Asistente';
+    const contrasena = document.getElementById('usuario-clave')?.value || '';
 
-      const submitBtn =
-        document.getElementById(
-          'btn-guardar-usuario'
-        );
+    if (!nombre || !apellido1 || !correo || !contrasena) {
+      showToast('Por favor completa todos los campos.', 'error');
+      return;
+    }
 
-      const nombre =
-        document
-          .getElementById(
-            'usuario-nombre'
-          )
-          ?.value
-          .trim();
+    if (!isSchoolEmail(correo)) {
+      actualizarValidacionCorreoInstitucional('usuario-correo', 'usuario-correo-error');
+      showToast('No se acepta ese correo. Utiliza el correo institucional indicado.', 'error', 4500);
+      document.getElementById('usuario-correo')?.focus();
+      return;
+    }
 
-      const apellido1 =
-        document
-          .getElementById(
-            'usuario-apellido1'
-          )
-          ?.value
-          .trim();
+    if (contrasena.length < 6) {
+      showToast('La contraseña temporal debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
 
-      const correo =
-        document
-          .getElementById(
-            'usuario-correo'
-          )
-          ?.value
-          .trim()
-          .toLowerCase();
+    const payload = {
+      nombre,
+      primer_apellido: apellido1,
+      correo,
+      contrasena,
+      id_rol: rolTexto === 'Administrador' ? 1 : 2
+    };
 
-      const rolTexto =
-        document.getElementById(
-          'usuario-rol'
-        )?.value;
+    const textoOriginal = submitBtn?.innerHTML;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    }
 
-      const contrasena =
-        document.getElementById(
-          'usuario-clave'
-        )?.value;
+    try {
+      const res = await apiFetch('/api/usuarios', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
 
-      if (
-        !nombre ||
-        !apellido1 ||
-        !correo ||
-        !contrasena
-      ) {
-        showToast(
-          'Por favor completa todos los campos.',
-          'error'
-        );
-
-        return;
+      if (!res.ok) {
+        throw new Error(data.mensaje || data.error || 'Error al guardar el usuario.');
       }
 
-      const payload = {
-        nombre,
-        primer_apellido: apellido1,
-        correo,
-        contrasena,
-        id_rol:
-          rolTexto === 'Administrador'
-            ? 1
-            : 2
+      const usuarioNuevo = data.usuario || {
+        id_usuario: Number(data.id || 0),
+        id_persona: null,
+        id_rol: Number(payload.id_rol),
+        nom_rol: Number(payload.id_rol) === 1 ? 'Administrador' : 'Asistente',
+        nombre: payload.nombre,
+        apellido1: payload.primer_apellido,
+        apellido2: '',
+        correo: payload.correo,
+        estado: 1
       };
 
+      // La respuesta del POST es la fuente inmediata de verdad para la UI.
+      // Así el usuario aparece una sola vez, sin depender de una segunda
+      // lectura que podría tardar unos milisegundos en reflejar el INSERT.
+      // Inserción optimista: el usuario aparece inmediatamente aun si la BD tarda
+      // unos milisegundos en devolverlo en un GET posterior. Se identifica también
+      // por correo para evitar que el administrador crea que debe registrarlo otra vez.
+      usuariosCargados = [
+        ...usuariosCargados.filter((u) => {
+          const mismoId = Number(usuarioNuevo.id_usuario) && Number(u.id_usuario) === Number(usuarioNuevo.id_usuario);
+          const mismoCorreo = String(u.correo || '').toLowerCase() === String(usuarioNuevo.correo || '').toLowerCase();
+          return !mismoId && !mismoCorreo;
+        }),
+        usuarioNuevo
+      ].sort((a, b) => Number(a.id_usuario || 999999) - Number(b.id_usuario || 999999));
+      renderTablaUsuarios(usuariosCargados);
+
+      form.reset();
+      const rolSelect = document.getElementById('usuario-rol');
+      if (rolSelect) rolSelect.value = 'Asistente';
+
+      showToast('Usuario guardado correctamente.', 'success');
+
+      // Sincroniza en segundo plano. Si la primera lectura todavía no refleja
+      // el INSERT, conserva la fila recién pintada y reintenta sin molestar al usuario.
+      confirmarUsuarioEnLista(Number(usuarioNuevo.id_usuario), usuarioNuevo.correo);
+    } catch (error) {
+      showToast(error.message || 'No se pudo registrar el usuario.', 'error');
+    } finally {
       if (submitBtn) {
-        submitBtn.disabled = true;
-
-        submitBtn.innerHTML =
-          '<span class="spinner-border spinner-border-sm"></span> Guardando...';
-      }
-
-      try {
-        const res = await apiFetch(
-          '/api/usuarios',
-          {
-            method: 'POST',
-
-            headers: {
-              'Content-Type':
-                'application/json'
-            },
-
-            body:
-              JSON.stringify(payload)
-          }
-        );
-
-        const data =
-          await res
-            .json()
-            .catch(() => ({}));
-
-        if (!res.ok) {
-          throw new Error(
-            data.mensaje ||
-            'Error al guardar el usuario.'
-          );
-        }
-
-        showToast(
-          'Usuario guardado con éxito.',
-          'success'
-        );
-
-        form.reset();
-
-        await loadUsuariosData();
-
-      } catch (err) {
-        showToast(
-          err.message,
-          'error'
-        );
-
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-
-          submitBtn.innerHTML =
-            '<i class="bi bi-download me-1"></i> Guardar Usuario';
-        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = textoOriginal || '<i class="bi bi-person-check me-1"></i> Guardar Usuario';
       }
     }
-  );
+  });
+}
+
+function wireUsuariosRefresh() {
+  const button = document.getElementById('btn-refrescar-usuarios');
+  if (!button || button.dataset.wired === 'true') return;
+
+  button.dataset.wired = 'true';
+  button.addEventListener('click', async () => {
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Actualizando';
+    try {
+      await loadUsuariosData();
+      showToast('Lista de usuarios actualizada.', 'success', 2000);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  });
 }
 
 function wireUsuariosDelete() {
   const tbody = document.getElementById('tabla-usuarios-body');
-  if (!tbody || tbody.dataset.deleteWired === 'true') return;
-  tbody.dataset.deleteWired = 'true';
+  const confirmar = document.getElementById('btn-confirmar-eliminar-usuario');
 
-  tbody.addEventListener('click', async (event) => {
-    const button = event.target.closest('.btn-eliminar-usuario');
-    if (!button) return;
+  if (tbody && tbody.dataset.deleteWired !== 'true') {
+    tbody.dataset.deleteWired = 'true';
+    tbody.addEventListener('click', (event) => {
+      const button = event.target.closest('.btn-eliminar-usuario');
+      if (!button) return;
 
-    const id = button.dataset.id;
-    if (!id) return;
+      const id = Number(button.dataset.id);
+      if (!id) return;
+      if (id === Number(currentUser?.id_usuario)) {
+        showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
+        return;
+      }
 
-    if (Number(id) === Number(currentUser?.id_usuario)) {
-      showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
+      const fila = button.closest('tr');
+      const nombre = fila?.querySelector('td strong')?.textContent?.trim() || 'este usuario';
+      usuarioPendienteEliminar = { id, button, nombre };
+      const nombreEl = document.getElementById('usuario-eliminar-nombre');
+      if (nombreEl) nombreEl.textContent = nombre;
+
+      const modalEl = document.getElementById('modalEliminarUsuario');
+      if (modalEl && window.bootstrap?.Modal) {
+        (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+      }
+    });
+  }
+
+  if (confirmar && confirmar.dataset.wired !== 'true') {
+    confirmar.dataset.wired = 'true';
+    confirmar.addEventListener('click', async () => {
+      const pendiente = usuarioPendienteEliminar;
+      if (!pendiente?.id) return;
+      confirmar.disabled = true;
+      confirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Eliminando...';
+      try {
+        const res = await apiFetch(`/api/usuarios/${pendiente.id}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
+
+        const modalEl = document.getElementById('modalEliminarUsuario');
+        window.bootstrap?.Modal.getInstance(modalEl)?.hide();
+        usuariosCargados = usuariosCargados.filter((u) => Number(u.id_usuario) !== Number(pendiente.id));
+        renderTablaUsuarios(usuariosCargados);
+        showToast('Usuario eliminado correctamente.', 'success');
+        usuarioPendienteEliminar = null;
+        void loadUsuariosData();
+      } catch (error) {
+        showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
+      } finally {
+        confirmar.disabled = false;
+        confirmar.innerHTML = '<i class="bi bi-trash me-1"></i> Sí, eliminar';
+      }
+    });
+  }
+}
+
+function wireUsuariosEdit() {
+  wireValidacionCorreosUsuarios();
+  const tbody = document.getElementById('tabla-usuarios-body');
+  const form = document.getElementById('usuario-editar-form');
+
+  if (tbody && tbody.dataset.editWired !== 'true') {
+    tbody.dataset.editWired = 'true';
+    tbody.addEventListener('click', async (event) => {
+      const button = event.target.closest('.btn-editar-usuario');
+      if (!button) return;
+
+      const id = Number(button.dataset.id);
+      if (!id) return;
+
+      button.disabled = true;
+      try {
+        const res = await apiFetch(`/api/usuarios/${id}`, { cache: 'no-store' });
+        const usuario = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(usuario.mensaje || 'No se pudo cargar el usuario.');
+
+        document.getElementById('usuario-editar-id').value = usuario.id_usuario || id;
+        document.getElementById('usuario-editar-id-persona').value = usuario.id_persona || '';
+        document.getElementById('usuario-editar-nombre').value = usuario.nombre || '';
+        document.getElementById('usuario-editar-apellido1').value = usuario.apellido1 || '';
+        document.getElementById('usuario-editar-correo').value = usuario.correo || '';
+        document.getElementById('usuario-editar-clave').value = '';
+
+        const rolSelect = document.getElementById('usuario-editar-rol');
+        const esSesionActual = Number(usuario.id_usuario) === Number(currentUser?.id_usuario);
+        if (rolSelect) {
+          rolSelect.value = String(Number(usuario.id_rol) || 2);
+          rolSelect.disabled = esSesionActual;
+        }
+        document.getElementById('usuario-editar-rol-ayuda')?.classList.toggle('d-none', !esSesionActual);
+
+        const modalEl = document.getElementById('modalEditarUsuario');
+        if (modalEl && window.bootstrap?.Modal) {
+          (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+        }
+      } catch (error) {
+        showToast(error.message || 'No se pudo cargar el usuario.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
+  if (!form || form.dataset.wired === 'true') return;
+  form.dataset.wired = 'true';
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const id = Number(document.getElementById('usuario-editar-id')?.value);
+    const idPersona = Number(document.getElementById('usuario-editar-id-persona')?.value);
+    const nombre = document.getElementById('usuario-editar-nombre')?.value.trim() || '';
+    const apellido1 = document.getElementById('usuario-editar-apellido1')?.value.trim() || '';
+    const correo = document.getElementById('usuario-editar-correo')?.value.trim().toLowerCase() || '';
+    const rolSelect = document.getElementById('usuario-editar-rol');
+    const contrasena = document.getElementById('usuario-editar-clave')?.value || '';
+    const button = document.getElementById('btn-actualizar-usuario');
+
+    if (!id || !nombre || !apellido1 || !correo) {
+      showToast('Completa nombre, apellido y correo.', 'error');
       return;
     }
 
-    if (!window.confirm('¿Deseas eliminar este usuario?')) return;
+    if (!isSchoolEmail(correo)) {
+      actualizarValidacionCorreoInstitucional('usuario-editar-correo', 'usuario-editar-correo-error');
+      showToast('No se acepta ese correo. Utiliza el correo institucional indicado.', 'error', 4500);
+      document.getElementById('usuario-editar-correo')?.focus();
+      return;
+    }
 
-    button.disabled = true;
+    if (contrasena && contrasena.length < 6) {
+      showToast('La nueva contraseña debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
+
+    const payload = {
+      nombre,
+      primer_apellido: apellido1,
+      correo,
+      id_persona: idPersona
+    };
+
+    if (!rolSelect?.disabled) payload.id_rol = Number(rolSelect?.value || 2);
+    if (contrasena) payload.contrasena = contrasena;
+
+    const original = button?.innerHTML;
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    }
+
     try {
-      const res = await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/usuarios/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
-      showToast('Usuario eliminado correctamente.', 'success');
+      if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo actualizar el usuario.');
+
+      if (Number(currentUser?.id_usuario) === id && data.usuario) {
+        currentUser = {
+          ...currentUser,
+          nombre: data.usuario.nombre,
+          apellido1: data.usuario.apellido1,
+          correo: data.usuario.correo,
+          rol: data.usuario.nom_rol || currentUser.rol
+        };
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+        window.EduControlCurrentUser = currentUser;
+        renderUserInfo();
+      }
+
+      window.bootstrap?.Modal.getInstance(document.getElementById('modalEditarUsuario'))?.hide();
       await loadUsuariosData();
+      showToast('Datos del usuario actualizados correctamente.', 'success');
     } catch (error) {
-      showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
-      button.disabled = false;
+      showToast(error.message || 'No se pudo actualizar el usuario.', 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = original || '<i class="bi bi-save me-1"></i> Guardar cambios';
+      }
     }
   });
 }
 
 async function loadUsuariosData() {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando usuarios...</td></tr>';
+  }
+
   try {
-    const res =
-      await apiFetch(
-        '/api/usuarios'
-      );
+    const res = await apiFetch(`/api/usuarios?_=${Date.now()}`, { cache: 'no-store' });
+    const data = await res.json().catch(() => ([]));
 
     if (!res.ok) {
-      return;
+      throw new Error(data.mensaje || data.error || 'No se pudo cargar la lista de usuarios.');
     }
 
-    const usuarios =
-      await res.json();
-
-    renderTablaUsuarios(
-      usuarios
-    );
-
+    usuariosCargados = Array.isArray(data) ? data : [];
+    renderTablaUsuarios(usuariosCargados);
+    return usuariosCargados;
   } catch (error) {
-    console.error(
-      'Error al cargar usuarios:',
-      error
-    );
+    console.error('Error al cargar usuarios:', error);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${error.message || 'No se pudieron cargar los usuarios.'}</td></tr>`;
+    }
+    throw error;
+  }
+}
+
+
+async function confirmarUsuarioEnLista(idUsuario, correoUsuario = '') {
+  if (!idUsuario && !correoUsuario) return;
+
+  for (let intento = 0; intento < 3; intento += 1) {
+    try {
+      if (intento > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (intento + 1)));
+      }
+
+      const res = await apiFetch(`/api/usuarios?_=${Date.now()}-${intento}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ([]));
+
+      if (!res.ok || !Array.isArray(data)) continue;
+
+      const yaVisible = data.some((u) =>
+        (idUsuario && Number(u.id_usuario) === Number(idUsuario)) ||
+        (correoUsuario && String(u.correo || '').toLowerCase() === String(correoUsuario).toLowerCase())
+      );
+      if (!yaVisible) continue;
+
+      usuariosCargados = data;
+      renderTablaUsuarios(usuariosCargados);
+      return;
+    } catch (error) {
+      console.warn('EduControl: sincronización diferida de usuarios:', error);
+    }
   }
 }
 
 function renderTablaUsuarios(usuarios) {
-  const tbody =
-    document.getElementById(
-      'tabla-usuarios-body'
-    );
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (!tbody) return;
 
-  if (!tbody) {
+  const usuariosPermisos = Array.isArray(usuarios)
+    ? usuarios.filter((u) => [1, 2].includes(Number(u.id_rol)))
+    : [];
+
+  if (!usuariosPermisos.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay administradores o asistentes registrados.</td></tr>';
     return;
   }
 
-  if (
-    !Array.isArray(usuarios) ||
-    usuarios.length === 0
-  ) {
-    tbody.innerHTML =
-      `<tr><td colspan="4" class="text-center text-muted py-3">No hay usuarios registrados.</td></tr>`;
+  tbody.innerHTML = usuariosPermisos.map((u) => {
+    const idUsuario = Number(u.id_usuario);
+    const esElMismo = idUsuario === Number(currentUser?.id_usuario);
+    const esAdmin = Number(u.id_rol) === 1;
+    const nombre = `${u.nombre || 'Usuario'} ${u.apellido1 || ''}`.trim();
 
-    return;
-  }
+    return `
+      <tr data-usuario-id="${idUsuario}">
+        <td><strong>${escapeHtml(nombre)}</strong>${esElMismo ? '<div class="small text-muted">Sesión actual</div>' : ''}</td>
+        <td>${escapeHtml(u.correo || '—')}</td>
+        <td>
+          <span class="badge ${esAdmin ? 'bg-dark' : 'bg-info'} text-white px-2 py-1">
+            ${esAdmin ? 'Administrador' : 'Asistente'}
+          </span>
+        </td>
+        <td class="text-end">
+          <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-usuario" data-id="${idUsuario}">
+              <i class="bi bi-pencil-square"></i> Modificar
+            </button>
+            ${esElMismo ? `
+              <span class="badge bg-light text-dark border align-self-center">Sesión Actual</span>
+            ` : `
+              <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-usuario" data-id="${idUsuario}">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
 
-  // Filtrar docentes (id_rol === 3)
-  const usuariosPermisos =
-    usuarios.filter(
-      (u) =>
-        u.id_rol === 1 ||
-        u.id_rol === 2
-    );
-
-  tbody.innerHTML =
-    usuariosPermisos
-      .map((u) => {
-        const esElMismo =
-          currentUser?.id_usuario ===
-          u.id_usuario;
-
-        const esAdmin =
-          u.id_rol === 1;
-
-        return `
-          <tr>
-            <td>
-              <strong>
-                ${u.nombre || 'Usuario'}
-                ${u.apellido1 || ''}
-              </strong>
-            </td>
-
-            <td>
-              ${u.correo || '—'}
-            </td>
-
-            <td>
-              <span class="badge ${
-                esAdmin
-                  ? 'bg-dark'
-                  : 'bg-info'
-              } text-white px-2 py-1">
-                ${
-                  esAdmin
-                    ? 'Administrador'
-                    : 'Asistente'
-                }
-              </span>
-            </td>
-
-            <td class="text-end">
-              ${
-                esElMismo
-                  ? `
-                    <span class="badge bg-light text-dark border">
-                      Sesión Actual
-                    </span>
-                  `
-                  : `
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-danger btn-eliminar-usuario"
-                      data-id="${u.id_usuario}"
-                    >
-                      <i class="bi bi-trash"></i>
-                      Eliminar
-                    </button>
-                  `
-              }
-            </td>
-          </tr>
-        `;
-      })
-      .join('');
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 window.eliminarUsuario =

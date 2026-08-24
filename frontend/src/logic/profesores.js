@@ -38,12 +38,77 @@ let profesorPendienteId = null;
 let profesorReintegrarId = null;
 let profesorFiltroEstado = 'todos';
 let profesorBusqueda = '';
+const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
+  .trim().toLowerCase().replace(/^@+/, '');
+const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
 function wireProfesoresEvents() {
+  const modalProfesor = document.getElementById('modalProfesor');
+  if (modalProfesor && !modalProfesor.dataset.cleanWired) {
+    modalProfesor.dataset.cleanWired = '1';
+
+    const limpiarCredencialesProfesor = () => {
+      const correo = document.getElementById('prof-correo');
+      const clave = document.getElementById('prof-contrasena');
+      if (correo) {
+        correo.value = '';
+        correo.setAttribute('readonly', 'readonly');
+      }
+      if (clave) {
+        clave.value = '';
+        clave.type = 'password';
+        clave.setAttribute('readonly', 'readonly');
+      }
+      const toggle = document.getElementById('toggle-prof-password');
+      const icon = toggle?.querySelector('i');
+      icon?.classList.add('bi-eye');
+      icon?.classList.remove('bi-eye-slash');
+    };
+
+    const habilitarCredencialesProfesor = () => {
+      const correo = document.getElementById('prof-correo');
+      const clave = document.getElementById('prof-contrasena');
+      if (correo) {
+        correo.value = '';
+        correo.removeAttribute('readonly');
+      }
+      if (clave) {
+        clave.value = '';
+        clave.removeAttribute('readonly');
+      }
+    };
+
+    modalProfesor.addEventListener('show.bs.modal', () => {
+      document.getElementById('profesor-form')?.reset();
+      limpiarCredencialesProfesor();
+    });
+
+    modalProfesor.addEventListener('shown.bs.modal', () => {
+      window.setTimeout(habilitarCredencialesProfesor, 80);
+      window.setTimeout(() => {
+        const correo = document.getElementById('prof-correo');
+        const clave = document.getElementById('prof-contrasena');
+        if (correo && !correo.matches(':focus')) correo.value = '';
+        if (clave && !clave.matches(':focus')) clave.value = '';
+      }, 350);
+    });
+
+    modalProfesor.addEventListener('hidden.bs.modal', () => {
+      document.getElementById('profesor-form')?.reset();
+      limpiarCredencialesProfesor();
+    });
+  }
+
   const profForm = document.getElementById('profesor-form');
   if (profForm && !profForm.dataset.wired) {
     profForm.dataset.wired = '1';
     profForm.addEventListener('submit', handleProfesorSubmit);
+  }
+
+  const editForm = document.getElementById('editar-profesor-form');
+  if (editForm && !editForm.dataset.wired) {
+    editForm.dataset.wired = '1';
+    editForm.addEventListener('submit', guardarEdicionProfesor);
   }
 
   const toggleProfPassword = document.getElementById('toggle-prof-password');
@@ -100,13 +165,34 @@ function wireProfesoresEvents() {
     });
   }
 
+  const cerrarModalYEsperar = (modalId) => new Promise((resolve) => {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl || !window.bootstrap?.Modal) { resolve(); return; }
+    const instance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    if (!modalEl.classList.contains('show')) { resolve(); return; }
+    const terminar = () => {
+      modalEl.removeEventListener('hidden.bs.modal', terminar);
+      document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
+      if (!document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+      }
+      resolve();
+    };
+    modalEl.addEventListener('hidden.bs.modal', terminar, { once: true });
+    instance.hide();
+    setTimeout(terminar, 400);
+  });
+
   const confirmarDestituirBtn = document.getElementById('confirmar-destituir-btn');
   if (confirmarDestituirBtn && !confirmarDestituirBtn.dataset.wired) {
     confirmarDestituirBtn.dataset.wired = '1';
     confirmarDestituirBtn.addEventListener('click', async () => {
       const motivo = document.getElementById('destituir-motivo')?.value.trim() || '';
-      bootstrap.Modal.getInstance(document.getElementById('modalDestituir'))?.hide();
-      await destituirProfesor(profesorPendienteId, motivo);
+      const idProfesor = profesorPendienteId;
+      await cerrarModalYEsperar('modalDestituir');
+      await destituirProfesor(idProfesor, motivo);
     });
   }
 
@@ -114,8 +200,9 @@ function wireProfesoresEvents() {
   if (confirmarEliminarBtn && !confirmarEliminarBtn.dataset.wired) {
     confirmarEliminarBtn.dataset.wired = '1';
     confirmarEliminarBtn.addEventListener('click', async () => {
-      bootstrap.Modal.getInstance(document.getElementById('modalEliminarProfesor'))?.hide();
-      await eliminarProfesor(profesorPendienteId);
+      const idProfesor = profesorPendienteId;
+      await cerrarModalYEsperar('modalEliminarProfesor');
+      await eliminarProfesor(idProfesor);
     });
   }
 
@@ -123,8 +210,9 @@ function wireProfesoresEvents() {
   if (confirmarReintegrarBtn && !confirmarReintegrarBtn.dataset.wired) {
     confirmarReintegrarBtn.dataset.wired = '1';
     confirmarReintegrarBtn.addEventListener('click', async () => {
-      bootstrap.Modal.getInstance(document.getElementById('modalReintegrar'))?.hide();
-      await reintegrarProfesor(profesorReintegrarId);
+      const idProfesor = profesorReintegrarId;
+      await cerrarModalYEsperar('modalReintegrar');
+      await reintegrarProfesor(idProfesor);
     });
   }
 
@@ -205,7 +293,8 @@ function filtrarProfesores(profesores) {
     resultado = resultado.filter((p) => {
       const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.toLowerCase();
       const materia = (p.materia ?? '').toLowerCase();
-      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda);
+      const correo = (p.correo ?? '').toLowerCase();
+      return nombreComp.includes(profesorBusqueda) || materia.includes(profesorBusqueda) || correo.includes(profesorBusqueda);
     });
   }
 
@@ -239,7 +328,7 @@ function renderProfesoresTable(profesores) {
     const mensaje = (profesorFiltroEstado !== 'todos' || profesorBusqueda)
       ? 'No hay profesores que coincidan con la búsqueda o el filtro seleccionado.'
       : 'No hay profesores registrados.';
-    profTableBody.innerHTML = `<tr><td colspan="7" class="text-muted text-center py-4">${mensaje}</td></tr>`;
+    profTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center py-4">${mensaje}</td></tr>`;
     return;
   }
 
@@ -247,53 +336,67 @@ function renderProfesoresTable(profesores) {
     const idProf = p.id_profesor ?? p.id;
     const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
     const materia = p.materia ?? 'N/A';
-    const ingreso = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : 'N/A';
+    const ingresoRaw = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : '';
+    const ingreso = ingresoRaw && /^\d{4}-\d{2}-\d{2}$/.test(ingresoRaw)
+      ? `${ingresoRaw.slice(8,10)}/${ingresoRaw.slice(5,7)}/${ingresoRaw.slice(0,4)}`
+      : (ingresoRaw || 'N/A');
     const activo = p.estado == 1 || p.estado === true;
     const grupoPendientes = Number(p.grupos_pendientes ?? 0);
 
     const badgeEstado = activo 
       ? '<span class="badge bg-success">Activo</span>' 
-      : '<span class="badge bg-danger">Incapacitado/Inactivo</span>';
+      : '<span class="badge bg-danger" title="Profesor incapacitado o inactivo">Inactivo</span>';
+
+    const gruposProfesor = String(p.grupos_asignados || '')
+      .split(/,\s*(?=[^,]+(?:·|\-|$))/)
+      .map((grupo) => grupo.trim())
+      .filter(Boolean);
 
     const celdaGrupos = activo
-      ? (p.grupos_asignados ? `<span class="small">${p.grupos_asignados}</span>` : '<span class="text-muted small">Sin grupos</span>')
+      ? (gruposProfesor.length
+          ? `<div class="profesor-groups-list">${gruposProfesor.map((grupo) => `<span class="profesor-group-pill"><i class="bi bi-calendar3"></i>${grupo}</span>`).join('')}</div>`
+          : '<span class="text-muted small">Sin grupos asignados</span>')
       : (grupoPendientes > 0
-          ? `<span class="badge bg-warning text-dark">${grupoPendientes} grupo(s) por cubrir/restaurar</span>`
+          ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Grupos pendientes por cubrir o restaurar">${grupoPendientes} grupo(s) pendiente(s)</span>`
           : '<span class="text-muted small">Sin grupos pendientes</span>');
 
     const tr = document.createElement('tr');
     if (!activo) tr.classList.add('profesor-row-inactivo');
     tr.innerHTML = `
-      <td>${idProf}</td>
-      <td>${nombreComp}</td>
+      <td><div class="profesor-name-cell"><strong>${nombreComp}</strong><small>Docente</small></div></td>
       <td><span class="badge bg-light text-dark border px-2 py-1">${materia}</span></td>
       <td>${ingreso}</td>
       <td>${celdaGrupos}</td>
       <td>${badgeEstado}</td>
       <td class="text-end">
-        <div class="profesor-actions-inline d-flex justify-content-end align-items-center gap-1 flex-wrap">
+        <div class="profesor-actions-grid">
+          ${esAdmin ? `
+            <button type="button" class="btn btn-sm btn-outline-secondary profesor-action-btn editar-profesor-btn" data-id="${idProf}">
+              <i class="bi bi-pencil-square me-1"></i>Editar
+            </button>
+          ` : ''}
           ${activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-primary asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
+            <button type="button" class="btn btn-sm btn-outline-primary profesor-action-btn asignar-grupos-btn" data-id="${idProf}" data-nombre="${nombreComp}" data-materia="${materia}">
               <i class="bi bi-diagram-3 me-1"></i>Grupos
             </button>
           ` : ''}
           ${activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-warning destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-warning profesor-action-btn destituir-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-slash me-1"></i>Destituir
             </button>
           ` : ''}
           ${!activo && esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-success reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-success profesor-action-btn reintegrar-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-check-fill me-1"></i>Reintegrar
             </button>
           ` : ''}
           ${!activo && esAdmin && grupoPendientes > 0 ? `
-            <button type="button" class="btn btn-sm btn-outline-primary sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-primary profesor-action-btn sustituto-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-person-lines-fill me-1"></i>Sustituto
             </button>
           ` : ''}
           ${esAdmin ? `
-            <button type="button" class="btn btn-sm btn-outline-danger eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
+            <button type="button" class="btn btn-sm btn-outline-danger profesor-action-btn eliminar-profesor-btn" data-id="${idProf}" data-nombre="${nombreComp}">
               <i class="bi bi-trash me-1"></i>Eliminar
             </button>
           ` : ''}
@@ -321,6 +424,11 @@ async function handleProfesorSubmit(e) {
 
   if (!correo || !contrasena) {
     showToast('Ingresa el correo y la contraseña de acceso del docente.', 'error');
+    return;
+  }
+
+  if (!isSchoolEmail(correo)) {
+    showToast(`El profesor debe utilizar un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
     return;
   }
 
@@ -376,9 +484,14 @@ function handleProfesorTableClick(e) {
   const btnReintegrar = e.target.closest('.reintegrar-btn');
   const btnSustituto = e.target.closest('.sustituto-btn');
   const btnAsignarGrupos = e.target.closest('.asignar-grupos-btn');
+  const btnEditar = e.target.closest('.editar-profesor-btn');
 
-  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto || btnAsignarGrupos) {
+  if (btnDestituir || btnEliminar || btnReintegrar || btnSustituto || btnAsignarGrupos || btnEditar) {
     e.preventDefault();
+  }
+
+  if (btnEditar) {
+    abrirEdicionProfesor(btnEditar.dataset.id);
   }
 
   if (btnDestituir) {
@@ -423,6 +536,52 @@ function handleProfesorTableClick(e) {
   }
 }
 
+function abrirEdicionProfesor(idProf) {
+  const profesor = allProfesores.find((p) => String(p.id_profesor ?? p.id) === String(idProf));
+  if (!profesor) { showToast('No se encontró el profesor seleccionado.', 'error'); return; }
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value ?? ''; };
+  set('edit-prof-id', profesor.id_profesor ?? profesor.id);
+  set('edit-prof-nombre', profesor.nombre);
+  set('edit-prof-apellido1', profesor.apellido1);
+  set('edit-prof-apellido2', profesor.apellido2);
+  set('edit-prof-materia', profesor.materia);
+  set('edit-prof-correo', profesor.correo);
+  set('edit-prof-genero', profesor.genero || 'O');
+  set('edit-prof-fecha-nac', String(profesor.fecha_nacimiento || '').slice(0, 10));
+  set('edit-prof-fecha-ingreso', String(profesor.fecha_ingreso || '').slice(0, 10));
+  const modalEl = document.getElementById('modalEditarProfesor');
+  if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+async function guardarEdicionProfesor(event) {
+  event.preventDefault();
+  const val = (id) => document.getElementById(id)?.value?.trim() || '';
+  const id = Number(val('edit-prof-id'));
+  const payload = {
+    nombre: val('edit-prof-nombre'),
+    apellido1: val('edit-prof-apellido1'),
+    apellido2: val('edit-prof-apellido2'),
+    materia: val('edit-prof-materia'),
+    correo: val('edit-prof-correo'),
+    genero: val('edit-prof-genero'),
+    fecha_nacimiento: val('edit-prof-fecha-nac'),
+    fecha_ingreso: val('edit-prof-fecha-ingreso')
+  };
+  if (!id || !payload.nombre || !payload.apellido1 || !payload.correo || !payload.fecha_nacimiento) {
+    showToast('Completa todos los datos obligatorios.', 'error'); return;
+  }
+  if (!isSchoolEmail(payload.correo)) { showToast(`Utiliza un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error'); return; }
+  try {
+    const res = await apiFetch(`/api/profesores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'No se pudo actualizar el profesor.');
+    bootstrap.Modal.getInstance(document.getElementById('modalEditarProfesor'))?.hide();
+    await loadProfesores();
+    await populateProfesoresSelects();
+    showResultModal('success', 'Profesor actualizado', 'Los datos del docente se actualizaron sin alterar sus grupos ni historial.');
+  } catch (error) { showResultModal('error', 'No se pudo actualizar', error.message || 'Ocurrió un error al actualizar.'); }
+}
+
 async function destituirProfesor(idProf, motivo) {
   if (!idProf) return;
   try {
@@ -458,12 +617,12 @@ async function eliminarProfesor(idProf) {
     const json = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      showResultModal('success', 'Profesor eliminado', 'El registro del profesor fue eliminado permanentemente del sistema.');
+      showResultModal('success', 'Profesor eliminado', 'El profesor, su acceso y los registros asociados fueron eliminados permanentemente del sistema.');
       await loadProfesores();
       await populateProfesoresSelects();
       await refreshDashboardCounts();
     } else {
-      showResultModal('error', 'No se pudo eliminar', json.error || 'Ocurrió un error al eliminar el profesor.');
+      showResultModal('error', 'No se pudo eliminar', json.error || json.mensaje || 'Ocurrió un error al eliminar el profesor.');
     }
   } catch {
     showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
@@ -519,17 +678,22 @@ async function abrirModalAsignarSustituto(idProfTitular, nombreTitular) {
       (s) => String(s.id_profesor_titular) === String(idProfTitular)
     );
     const profesores = resProfesores.ok ? await resProfesores.json() : [];
+    const titular = profesores.find((p) => String(p.id_profesor ?? p.id) === String(idProfTitular));
+    const materiaTitular = String(titular?.materia || suplencias[0]?.titular_materia || '').trim().toLowerCase();
     const profesoresActivos = profesores.filter(
-      (p) => (p.estado == 1 || p.estado === true) && String(p.id_profesor ?? p.id) !== String(idProfTitular)
+      (p) =>
+        (p.estado == 1 || p.estado === true) &&
+        String(p.id_profesor ?? p.id) !== String(idProfTitular) &&
+        String(p.materia || '').trim().toLowerCase() === materiaTitular
     );
 
-    renderListaSuplencias(suplencias, profesoresActivos, idProfTitular);
+    renderListaSuplencias(suplencias, profesoresActivos, idProfTitular, titular?.materia || suplencias[0]?.titular_materia || '');
   } catch (error) {
     if (lista) lista.innerHTML = `<p class="text-danger text-center py-3 mb-0">${error.message || 'Error al cargar los grupos pendientes.'}</p>`;
   }
 }
 
-function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
+function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular, materiaTitular = "") {
   const lista = document.getElementById('sustituto-lista');
   if (!lista) return;
 
@@ -542,10 +706,15 @@ function renderListaSuplencias(suplencias, profesoresActivos, idProfTitular) {
     .map((p) => `<option value="${p.id_profesor ?? p.id}">${p.nombre} ${p.apellido1} (${p.materia || 'General'})</option>`)
     .join('');
 
-  lista.innerHTML = suplencias.map((s) => `
+  const avisoMateria = `<div class="alert alert-light border py-2 px-3 small mb-3"><i class="bi bi-journal-bookmark me-2"></i>Solo se muestran profesores activos de <strong>${materiaTitular || 'la misma materia'}</strong>.</div>`;
+  const sinOpciones = profesoresActivos.length === 0
+    ? '<div class="alert alert-warning py-2 px-3 small">No hay otro profesor activo disponible que imparta esta materia.</div>'
+    : '';
+
+  lista.innerHTML = avisoMateria + sinOpciones + suplencias.map((s) => `
     <div class="border rounded-3 p-3 d-flex align-items-center justify-content-between gap-3 flex-wrap" data-suplencia-row="${s.id_suplencia}">
       <div>
-        <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}</div>
+        <div class="fw-semibold">${s.nombre_grupo ?? 'Grupo #' + s.id_grupo}${s.nombre_seccion ? ` · Sección ${s.nombre_seccion}` : ''}</div>
         <div class="small text-muted">
           ${s.id_profesor_suplente
             ? `Cubierto provisionalmente por: <strong>${s.suplente_nombre}</strong>`
@@ -730,8 +899,11 @@ function renderChecklistGrupos(grupos) {
   lista.innerHTML = grupos.map((g) => {
     const id = g.id_grupo ?? g.id;
     const checked = profesorGruposActualesIds.includes(Number(id)) ? 'checked' : '';
-    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}`;
-    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''}`.toLowerCase();
+    const horaInicio = g.hora_inicio ? String(g.hora_inicio).slice(0, 5) : '';
+    const horaFin = g.hora_fin ? String(g.hora_fin).slice(0, 5) : '';
+    const horario = horaInicio && horaFin ? ` · Horario ${horaInicio} - ${horaFin}` : ' · Horario no definido';
+    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}${horario}`;
+    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''} ${horaInicio} ${horaFin}`.toLowerCase();
     return `
       <label class="form-check d-flex align-items-center gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item" data-busqueda="${busqueda}">
         <input class="form-check-input mt-0 asignar-grupo-checkbox" type="checkbox" value="${id}" ${checked}>

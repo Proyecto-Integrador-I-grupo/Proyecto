@@ -48,6 +48,25 @@ function wireMatriculaEvents() {
     matForm.addEventListener('submit', handleMatriculaSubmit);
   }
 
+  const estudianteMatricula = document.getElementById('mat-persona');
+  if (estudianteMatricula && !estudianteMatricula.dataset.finWired) {
+    estudianteMatricula.dataset.finWired = '1';
+    estudianteMatricula.addEventListener('change', validarEstadoFinancieroMatricula);
+  }
+
+
+  const grupoMatricula = document.getElementById('mat-id-grupo');
+  if (grupoMatricula && !grupoMatricula.dataset.finWired) {
+    grupoMatricula.dataset.finWired = '1';
+    grupoMatricula.addEventListener('change', validarEstadoFinancieroMatricula);
+  }
+
+  const modalMatricula = document.getElementById('modalMatricula');
+  if (modalMatricula && !modalMatricula.dataset.finWired) {
+    modalMatricula.dataset.finWired = '1';
+    modalMatricula.addEventListener('shown.bs.modal', validarEstadoFinancieroMatricula);
+  }
+
   const grupoForm = document.getElementById('grupo-form');
   if (grupoForm && !grupoForm.dataset.wired) {
     grupoForm.dataset.wired = '1';
@@ -205,6 +224,7 @@ function wireMatriculaEvents() {
   if (btnAbrirModalGrupo && !btnAbrirModalGrupo.dataset.wired) {
     btnAbrirModalGrupo.dataset.wired = '1';
     btnAbrirModalGrupo.addEventListener('click', async () => {
+      await populateGruposSelects();
       await populateSeccionesSelect();
       await populateProfesoresSelects(false);
     });
@@ -283,7 +303,7 @@ function poblarSelectGruposGestionMatricula() {
     selActual.innerHTML = '<option value="" disabled selected>Seleccionar grupo</option>';
     allGrupos.forEach((g) => {
       const id = g.id_grupo ?? g.id;
-      selActual.add(new Option(`${g.nombre_grupo ?? 'Grupo'} · ${g.nivel ?? ''}`, id));
+      selActual.add(new Option(`${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : (g.nivel ? ` · ${g.nivel}` : '')}`, id));
     });
   }
 
@@ -294,7 +314,7 @@ function poblarSelectGruposGestionMatricula() {
       const ocupados = g.ocupados ?? 0;
       const capacidad = g.capacidad ?? 0;
       const lleno = ocupados >= capacidad;
-      const opt = new Option(`${g.nombre_grupo ?? 'Grupo'} · Cupo ${ocupados}/${capacidad}${lleno ? ' (LLENO)' : ''}`, id);
+      const opt = new Option(`${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : ''} · Cupo ${ocupados}/${capacidad}${lleno ? ' (LLENO)' : ''}`, id);
       opt.disabled = lleno;
       selNuevo.add(opt);
     });
@@ -421,7 +441,7 @@ async function handleGestionMatriculaSubmit(e) {
         anio,
         tipo: document.getElementById('gm-tipo')?.value || 'traslado',
         estado: 'activa',
-        observaciones: document.getElementById('gm-observaciones')?.value.trim().slice(0, 20) || null,
+        observaciones: document.getElementById('gm-observaciones')?.value.trim().slice(0, 150) || null,
         id_usuario: currentUser?.id_usuario ?? 1
       };
 
@@ -443,6 +463,7 @@ async function handleGestionMatriculaSubmit(e) {
       const modalEl = document.getElementById('modalGestionMatricula');
       if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
       await populateGruposSelects();
+      await populateSeccionesSelect();
     } else {
       showToast(json.mensaje || json.error || 'No se pudo completar la operación.', 'error');
     }
@@ -457,9 +478,9 @@ async function handleGestionMatriculaSubmit(e) {
 async function loadMatriculaData() {
   await Promise.all([
     populatePersonaSelects(),
-    populateGruposSelects(),
-    populateSeccionesSelect()
+    populateGruposSelects()
   ]);
+  await populateSeccionesSelect();
 }
 
 function setDefaultSeccionPeriodo() {
@@ -506,7 +527,7 @@ async function populateGruposSelects() {
       const ocupados = g.ocupados ?? 0;
       const capacidad = g.capacidad ?? 0;
       const lleno = ocupados >= capacidad;
-      const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nivel ?? ''} — Ocupados: ${ocupados}/${capacidad}${lleno ? ' (CUPO LLENO)' : ''}`;
+      const etiqueta = `${g.nombre_grupo ?? 'Grupo'}${g.nombre_seccion ? ` · Sección ${g.nombre_seccion}` : (g.nivel ? ` · ${g.nivel}` : '')} — Ocupados: ${ocupados}/${capacidad}${lleno ? ' (CUPO LLENO)' : ''}`;
 
       if (matGrupoSel) {
         const optMat = new Option(etiqueta, id);
@@ -609,11 +630,20 @@ async function populateSeccionesSelect() {
     const hint = document.getElementById('grupo-seccion-empty-hint');
 
     if (sel) {
-      sel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
+      sel.innerHTML = '<option value="" disabled selected>Seleccionar sección disponible</option>';
+      const seccionesOcupadas = new Map(
+        allGrupos
+          .filter((g) => Number(g.id_seccion || 0) > 0)
+          .map((g) => [Number(g.id_seccion), g])
+      );
+
       secciones.forEach((s) => {
-        const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const ocupadaPor = seccionesOcupadas.get(Number(s.id_seccion));
+        const etiquetaBase = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const etiqueta = ocupadaPor ? `${etiquetaBase} · Ocupada por ${ocupadaPor.nombre_grupo}` : etiquetaBase;
         const option = new Option(etiqueta, s.id_seccion);
-        option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''}`.toLowerCase();
+        option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''} ${ocupadaPor?.nombre_grupo ?? ''}`.toLowerCase();
+        option.disabled = Boolean(ocupadaPor);
         sel.add(option);
       });
     }
@@ -651,7 +681,7 @@ function filtrarSeccionesGrupo(termino) {
   const seleccionValida = seleccionActual && seleccionActual.value !== '' && !seleccionActual.hidden;
 
   if (!seleccionValida) {
-    const primerVisible = Array.from(select.options).find((option) => !option.hidden && option.value !== '');
+    const primerVisible = Array.from(select.options).find((option) => !option.hidden && !option.disabled && option.value !== '');
     if (primerVisible) {
       select.value = primerVisible.value;
     }
@@ -697,6 +727,8 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   const capacidadInput = document.getElementById('gestion-grupo-capacidad');
   const aulaSelect = document.getElementById('gestion-grupo-aula');
   const profSelect = document.getElementById('gestion-grupo-profesor');
+  const horaInicioInput = document.getElementById('gestion-grupo-hora-inicio');
+  const horaFinInput = document.getElementById('gestion-grupo-hora-fin');
 
   if (!grupo || !capacidadInput || !aulaSelect || !profSelect) return;
 
@@ -705,8 +737,16 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   const profClear = document.getElementById('gestion-profesor-clear');
   if (profSearch) profSearch.disabled = false;
   if (profClear) profClear.disabled = false;
+  const ocupadosActuales = Number(grupo.ocupados ?? 0);
   capacidadInput.value = grupo.capacidad ?? 30;
+  capacidadInput.min = String(Math.max(1, ocupadosActuales));
+  capacidadInput.dataset.ocupados = String(ocupadosActuales);
+  capacidadInput.title = ocupadosActuales > 0
+    ? `Este grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'}. La capacidad no puede ser menor a ${ocupadosActuales}.`
+    : 'La capacidad debe ser mayor a cero.';
   aulaSelect.value = grupo.aula ?? '';
+  if (horaInicioInput) horaInicioInput.value = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
+  if (horaFinInput) horaFinInput.value = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
 
   try {
     const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/detalle`);
@@ -732,6 +772,8 @@ async function handleGestionGrupoSubmit(e) {
   const idGrupo = Number(String(rawGrupoVal).split(':')[0].trim());
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
   const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
+  const horaInicio = document.getElementById('gestion-grupo-hora-inicio')?.value || null;
+  const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
   
   const profSelect = document.getElementById('gestion-grupo-profesor');
   const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
@@ -740,12 +782,35 @@ async function handleGestionGrupoSubmit(e) {
     showToast('Selecciona un grupo y capacidad.', 'error');
     return;
   }
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+    return;
+  }
+  if (horaInicio && horaFin && horaFin <= horaInicio) {
+    showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
+    return;
+  }
+
+  const grupoActual = allGrupos.find((g) => Number(g.id_grupo ?? g.id) === idGrupo);
+  const ocupadosActuales = Number(
+    grupoActual?.ocupados ??
+    document.getElementById('gestion-grupo-capacidad')?.dataset.ocupados ??
+    0
+  );
+
+  if (capacidad < ocupadosActuales) {
+    showToast(
+      `No puedes reducir la capacidad a ${capacidad}. Hay ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'} en este grupo.`,
+      'error'
+    );
+    return;
+  }
 
   try {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados })
+      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados, hora_inicio: horaInicio, hora_fin: horaFin })
     });
 
     const json = await res.json().catch(() => ({}));
@@ -765,6 +830,68 @@ async function handleGestionGrupoSubmit(e) {
   }
 }
 
+let estadoFinancieroMatriculaActual = null;
+
+async function validarEstadoFinancieroMatricula() {
+  const idEstudiante = Number(document.getElementById('mat-persona')?.value || 0);
+  const panel = document.getElementById('mat-estado-financiero');
+  const texto = document.getElementById('mat-estado-financiero-texto');
+  const deudasEl = document.getElementById('mat-deudas-pendientes');
+  const submit = document.getElementById('mat-submit');
+  estadoFinancieroMatriculaActual = null;
+
+  if (!idEstudiante) {
+    if (panel) panel.className = 'mat-financial-status neutral';
+    if (texto) texto.textContent = 'Selecciona un estudiante para verificar el abono mínimo de matrícula.';
+    if (deudasEl) deudasEl.innerHTML = '';
+    if (submit) submit.disabled = true;
+    return;
+  }
+
+  const grupoId = Number(document.getElementById('mat-id-grupo')?.value || 0);
+  const grupo = allGrupos.find(g => Number(g.id_grupo ?? g.id) === grupoId);
+  const anio = grupo?.periodo_lectivo || new Date().getFullYear();
+  if (texto) texto.textContent = 'Consultando pagos y saldos pendientes...';
+  if (submit) submit.disabled = true;
+
+  try {
+    const res = await apiFetch(`/api/finanzas/estudiantes/${idEstudiante}/estado-matricula?anio=${encodeURIComponent(anio)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.mensaje || 'No se pudo validar el estado financiero.');
+    estadoFinancieroMatriculaActual = data;
+    if (panel) panel.className = `mat-financial-status ${data.habilitado ? 'ok' : 'blocked'}`;
+    if (texto) {
+      const faltante = Math.max(0, Number(data.faltante_minimo ?? (Number(data.minimo_abono || 0) - Number(data.abono_matricula || 0))));
+      texto.innerHTML = `
+        <div class="mat-financial-heading">
+          <i class="bi ${data.habilitado ? 'bi-check-circle' : 'bi-wallet2'}"></i>
+          <strong>${escapeHtmlMat(data.titulo || (data.habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'))}</strong>
+        </div>
+        <div class="mat-financial-copy">${escapeHtmlMat(data.mensaje || '')}</div>
+        <div class="mat-financial-metrics">
+          <span>Abonado <strong>${monedaMat(data.abono_matricula)}</strong></span>
+          <span>Mínimo <strong>${monedaMat(data.minimo_abono)}</strong></span>
+          ${!data.habilitado ? `<span>Falta <strong>${monedaMat(faltante)}</strong></span>` : ''}
+        </div>`;
+    }
+    const deudas = Array.isArray(data.deudas) ? data.deudas : [];
+    if (deudasEl) {
+      deudasEl.innerHTML = deudas.length
+        ? `<div class="mat-debt-title"><i class="bi bi-list-check"></i> Saldos registrados (${deudas.length})</div>${deudas.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}`
+        : '<span class="mat-no-debt"><i class="bi bi-check2-circle"></i> Sin otros saldos pendientes.</span>';
+    }
+    if (submit) submit.disabled = !data.habilitado;
+  } catch (error) {
+    if (panel) panel.className = 'mat-financial-status blocked';
+    if (texto) texto.textContent = error.message;
+    if (deudasEl) deudasEl.innerHTML = '';
+    if (submit) submit.disabled = true;
+  }
+}
+
+function monedaMat(valor) { return `CRC ${new Intl.NumberFormat('es-CR', { maximumFractionDigits:0 }).format(Number(valor || 0))}`; }
+function escapeHtmlMat(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
 async function handleMatriculaSubmit(e) {
   e.preventDefault();
   const personaSelect = document.getElementById('mat-persona');
@@ -772,6 +899,12 @@ async function handleMatriculaSubmit(e) {
 
   if (!personaSelect.value || !grupoSelect.value) {
     showToast('Selecciona un estudiante y un grupo destino.', 'error');
+    return;
+  }
+
+  await validarEstadoFinancieroMatricula();
+  if (!estadoFinancieroMatriculaActual?.habilitado) {
+    showToast(estadoFinancieroMatriculaActual?.mensaje || 'Se requiere un abono mínimo de CRC 10.000 antes de continuar con la matrícula.', 'error');
     return;
   }
 
@@ -790,7 +923,7 @@ async function handleMatriculaSubmit(e) {
     anio,
     tipo: document.getElementById('mat-tipo').value,
     estado: 'activa',
-    observaciones: document.getElementById('mat-observaciones').value.trim().slice(0, 20) || null,
+    observaciones: document.getElementById('mat-observaciones').value.trim().slice(0, 150) || null,
     id_estudiante: personaId,
     id_usuario: currentUser?.id_usuario ?? 1,
     id_grupo: id_grupo
@@ -810,20 +943,28 @@ async function handleMatriculaSubmit(e) {
 
     if (res.ok) {
       showToast('¡Matrícula definitiva completada y cupo actualizado correctamente!', 'success');
-      const modalEl = document.getElementById('modalMatricula');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('matricula-form').reset();
-      
+
+      // Mantener la ventana abierta para que el administrador pueda procesar
+      // varias matrículas consecutivas. Solo se cierra cuando la persona lo decide.
+      const form = document.getElementById('matricula-form');
+      form?.reset();
+
       await populateGruposSelects();
       await populatePersonaSelects();
       await refreshDashboardCounts();
+
+      const fechaInput = document.getElementById('mat-fecha');
+      if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+      const infoGrupo = document.getElementById('mat-grupo-info');
+      if (infoGrupo) infoGrupo.textContent = 'Selecciona un grupo para ver el cupo disponible.';
+      await validarEstadoFinancieroMatricula();
     } else {
       showToast(json.error || json.mensaje || 'Error al procesar la matrícula', 'error');
     }
   } catch {
     showToast('Error de conexión al matricular', 'error');
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Completar Matrícula'; }
+    if (submitBtn) { submitBtn.disabled = !estadoFinancieroMatriculaActual?.habilitado; submitBtn.innerHTML = 'Completar Matrícula'; }
   }
 }
 
@@ -851,11 +992,14 @@ function configurarSelectoresProfesores() {
 
 async function handleGrupoSubmit(e) {
   e.preventDefault();
+  sessionStorage.setItem('educontrol_active_view', 'matricula');
 
   const nombre = document.getElementById('grupo-nombre').value.trim();
   const capacidad = parseInt(document.getElementById('grupo-capacidad').value, 10);
   const idSeccion = parseInt(document.getElementById('grupo-seccion').value, 10);
   const aula = document.getElementById('grupo-aula').value.trim() || null;
+  const horaInicio = document.getElementById('grupo-hora-inicio')?.value || null;
+  const horaFin = document.getElementById('grupo-hora-fin')?.value || null;
 
   // Validación previa en el frontend: si algo no es válido, avisamos exactamente
   // qué falta en vez de mandar la petición y dejar que el 400 del servidor
@@ -872,10 +1016,18 @@ async function handleGrupoSubmit(e) {
     showToast('Selecciona una sección académica válida de la lista (haz clic en una opción del desplegable).', 'error');
     return;
   }
+  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+    return;
+  }
+  if (horaInicio && horaFin && horaFin <= horaInicio) {
+    showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
+    return;
+  }
 
   // El grupo se crea sin profesores: la asignación docente se hace después
   // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
-  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion };
+  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion, hora_inicio: horaInicio, hora_fin: horaFin };
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando...'; }
@@ -901,11 +1053,20 @@ async function handleGrupoSubmit(e) {
           showToast('El grupo se creó, pero no se pudo guardar la asignación docente.', 'error');
         }
       }
+      sessionStorage.setItem('educontrol_active_view', 'matricula');
       showToast('Grupo creado correctamente');
-      const modalEl = document.getElementById('modalGrupo');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('grupo-form').reset();
+
+      // Mantener "Crear Grupo" abierto para registrar varios grupos seguidos.
+      document.getElementById('grupo-form')?.reset();
+      actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
+      const searchProfesor = document.getElementById('grupo-profesor-search');
+      if (searchProfesor) searchProfesor.value = '';
+      const searchSeccion = document.getElementById('grupo-seccion-search');
+      if (searchSeccion) searchSeccion.value = '';
+
       await populateGruposSelects();
+      await populateSeccionesSelect();
+      await populateProfesoresSelects(false);
     } else {
       const mensaje = json.error || json.mensaje || 'Error creando grupo';
       if (typeof showResultModal === 'function') {
@@ -941,9 +1102,10 @@ async function handleSeccionSubmit(e) {
 
     if (res.ok) {
       showToast('Sección creada correctamente');
-      const modalEl = document.getElementById('modalSeccion');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      document.getElementById('seccion-form').reset();
+
+      // Esta es una ventana de trabajo continuo: se mantiene abierta hasta
+      // que el administrador la cierre manualmente.
+      document.getElementById('seccion-form')?.reset();
       setDefaultSeccionPeriodo();
 
       await populateSeccionesSelect();

@@ -104,3 +104,161 @@
     justify-content: flex-start;
   }
 }
+
+
+.faculty-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.faculty-summary-item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.faculty-summary-item:not(:last-child) {
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.faculty-summary-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgba(37, 99, 235, 0.09);
+  color: #2563eb;
+  flex: 0 0 auto;
+}
+
+.faculty-summary-success { background: rgba(22, 163, 74, 0.1); color: #15803d; }
+.faculty-summary-muted { background: rgba(100, 116, 139, 0.1); color: #475569; }
+.faculty-summary-warning { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+
+.faculty-summary-item small {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  margin-bottom: 0.15rem;
+}
+
+.faculty-summary-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+@media (max-width: 767.98px) {
+  .faculty-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .faculty-summary-item:not(:last-child) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .faculty-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Acciones compactas y alineadas */
+#profesores-table th:nth-child(7){width:24%;min-width:230px}
+.profesor-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(96px,1fr));gap:.4rem;justify-content:end;max-width:250px;margin-left:auto}
+.profesor-actions-grid .profesor-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:32px;padding:.35rem .55rem;border-radius:8px;font-size:.75rem;font-weight:650;white-space:nowrap}
+.profesor-actions-grid .profesor-action-btn i{font-size:.82rem}
+@media(max-width:767.98px){.profesor-actions-grid{max-width:none;margin-left:0;grid-template-columns:repeat(2,minmax(105px,1fr))}}
+
+
+/* Acciones docentes: tamaño uniforme, lectura clara y sin amontonarse */
+#profesores-table th:nth-child(7) {
+  min-width: 250px;
+}
+.profesor-actions-grid {
+  width: 248px;
+  max-width: 100%;
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: .45rem;
+}
+.profesor-actions-grid .profesor-action-btn {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  padding: .38rem .58rem;
+  border-radius: .55rem;
+  font-size: .75rem;
+  font-weight: 650;
+}
+.profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 767.98px) {
+  .profesor-actions-grid {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+/* Tabla de profesores sin scroll horizontal en escritorio. */
+.profesores-table-wrap {
+  width: 100%;
+  overflow-x: visible;
+}
+#profesores-table {
+  width: 100%;
+  table-layout: fixed;
+}
+#profesores-table th,
+#profesores-table td {
+  overflow-wrap: anywhere;
+}
+#profesores-table th:nth-child(1) { width: 4%; }
+#profesores-table th:nth-child(2) { width: 16%; }
+#profesores-table th:nth-child(3) { width: 12%; }
+#profesores-table th:nth-child(4) { width: 9%; }
+#profesores-table th:nth-child(5) { width: 18%; }
+#profesores-table th:nth-child(6) { width: 13%; }
+#profesores-table th:nth-child(7) { width: 28%; min-width: 0; }
+.profesor-actions-grid {
+  width: 100%;
+  max-width: 300px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.profesor-actions-grid .profesor-action-btn {
+  min-width: 0;
+  justify-content: center;
+}
+@media (max-width: 991.98px) {
+  .profesores-table-wrap { overflow-x: auto; }
+  #profesores-table { min-width: 900px; table-layout: auto; }
+}
+
+.prof-autofill-trap {
+  position: fixed;
+  left: -10000px;
+  top: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}

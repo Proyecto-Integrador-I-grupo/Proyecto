@@ -1,0 +1,313 @@
+/* Identidad visual final por módulo. El nav mantiene su estilo original. */
+#dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
+#estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
+#matricula-view { --module-accent:#5E63B6; --module-soft:#F3F3FC; --module-border:#D9DCF2; }
+#profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
+#asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
+#pagos-view { --module-accent:#246FA8; --module-soft:#EFF7FB; --module-border:#CDE3EE; }
+#reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
+#consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
+#usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }
+#perfil-view { --module-accent:#596A73; --module-soft:#F2F5F6; --module-border:#D8E0E3; }
+
+.view .page-header .card-title-serif i,
+.view .eyebrow { color:var(--module-accent,var(--accent)); }
+
+.view .card:not(.hero-card) { border-color:var(--module-border,#e2e8f0)!important; }
+.view .card:not(.hero-card) > .card-header { background:linear-gradient(135deg,var(--module-soft,#f8fafc),#fff); border-color:var(--module-border,#e2e8f0); }
+
+.view .btn-primary { background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); box-shadow:0 5px 14px rgba(15,23,42,.08); }
+.view .btn-primary:hover,.view .btn-primary:focus { background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); filter:brightness(.91); }
+.view .btn-outline-primary { color:var(--module-accent,var(--accent)); border-color:var(--module-border,#cbd5e1); background:var(--module-soft,#fff); }
+.view .btn-outline-primary:hover,.view .btn-outline-primary:focus { color:#fff; background:var(--module-accent,var(--accent)); border-color:var(--module-accent,var(--accent)); }
+
+/* Profesores: acciones diferenciadas sin usar los azules/amarillos saturados de Bootstrap. */
+#profesores-view .profesor-actions-grid .btn-outline-primary { color:#5B4A86; border-color:#C9BDE0; background:#F7F3FA; }
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover { color:#fff; border-color:#6B5B95; background:#6B5B95; }
+#profesores-view .profesor-actions-grid .btn-outline-warning { color:#8B6534; border-color:#DCC8A7; background:#FCF7EE; }
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover { color:#fff; border-color:#2F8DA0; background:#2F8DA0; }
+#profesores-view .profesor-actions-grid .btn-outline-success { color:#32705B; border-color:#B8D9CD; background:#F0F8F5; }
+#profesores-view .profesor-actions-grid .btn-outline-success:hover { color:#fff; border-color:#32705B; background:#32705B; }
+#profesores-view .profesor-actions-grid .btn-outline-danger { color:#9E4C58; border-color:#E5C6CB; background:#FBF2F3; }
+#profesores-view .profesor-actions-grid .btn-outline-danger:hover { color:#fff; border-color:#A7505C; background:#A7505C; }
+
+/* Login: usa fondo-login.jpg si el usuario lo agrega; imagen-fondo.jpg queda como respaldo. */
+.login-screen {
+  background-color:#0f172a;
+  background-image:linear-gradient(115deg,rgba(15,23,42,.80),rgba(25,61,78,.50)),url('/images/fondo-login.jpg'),url('/images/imagen-fondo.jpg');
+  background-position:center,center,center;
+  background-size:cover,cover,cover;
+  background-repeat:no-repeat,no-repeat,no-repeat;
+  background-attachment:fixed,fixed,fixed;
+}
+.login-screen::before { background:linear-gradient(180deg,rgba(4,15,25,.04),rgba(4,15,25,.24)),radial-gradient(circle at 16% 18%,rgba(255,255,255,.10),transparent 35%); }
+
+@media(max-width:767.98px){.login-screen{background-attachment:scroll,scroll,scroll}}
+
+
+/* ===== AJUSTE FINAL SOLICITADO: botones + login + profesores ===== */
+#dashboard-view   { --module-accent:#2563EB; --module-accent-2:#0F9F8F; --module-action:#A56A2C; --module-action-soft:#FFF8EF; }
+#estudiantes-view { --module-accent:#2563EB; --module-accent-2:#0F8B8D; --module-action:#A96E2D; --module-action-soft:#FFF7ED; }
+#matricula-view   { --module-accent:#B36B26; --module-accent-2:#D19A3B; --module-action:#A9601E; --module-action-soft:#FFF7ED; }
+#profesores-view  { --module-accent:#3B67C8; --module-accent-2:#6D55B3; --module-action:#A56B2F; --module-action-soft:#FFF8EF; }
+#asistencia-view  { --module-accent:#16866B; --module-accent-2:#3478A8; --module-action:#A56C35; --module-action-soft:#FFF8EF; }
+#pagos-view       { --module-accent:#AD5B32; --module-accent-2:#D39134; --module-action:#9F632F; --module-action-soft:#FFF8F0; }
+#reportes-view    { --module-accent:#365A86; --module-accent-2:#6B5EA8; --module-action:#A36C38; --module-action-soft:#FFF8F0; }
+#consultas-view   { --module-accent:#277B8D; --module-accent-2:#3B67B2; --module-action:#9D6938; --module-action-soft:#FFF8F0; }
+#usuarios-view    { --module-accent:#7A4C76; --module-accent-2:#B35E66; --module-action:#A36B36; --module-action-soft:#FFF8EF; }
+#perfil-view      { --module-accent:#466B78; --module-accent-2:#3A7B6C; --module-action:#9D6938; --module-action-soft:#FFF8F0; }
+
+.view .btn-primary,
+.view .btn-success {
+  color:#fff!important;
+  border-color:transparent!important;
+  background-image:linear-gradient(120deg,var(--module-accent,#2563eb) 0%,var(--module-accent-2,#0f8b8d) 52%,var(--module-accent,#2563eb) 100%)!important;
+  background-size:180% 100%!important;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--module-accent,#2563eb) 22%,transparent)!important;
+  transition:background-position .25s ease,transform .16s ease,box-shadow .16s ease!important;
+}
+.view .btn-primary:hover,.view .btn-primary:focus,
+.view .btn-success:hover,.view .btn-success:focus {
+  color:#fff!important;
+  border-color:transparent!important;
+  background-position:100% 0!important;
+  filter:none!important;
+}
+
+.view .btn-outline-primary,
+.view .btn-outline-warning {
+  color:var(--module-action,#a56a2c)!important;
+  border-color:color-mix(in srgb,var(--module-action,#a56a2c) 34%,white)!important;
+  background:var(--module-action-soft,#fff8ef)!important;
+  box-shadow:none!important;
+}
+.view .btn-outline-primary:hover,.view .btn-outline-primary:focus,
+.view .btn-outline-warning:hover,.view .btn-outline-warning:focus {
+  color:#fff!important;
+  border-color:var(--module-action,#a56a2c)!important;
+  background:linear-gradient(120deg,var(--module-action,#a56a2c),color-mix(in srgb,var(--module-action,#a56a2c) 72%,#D7A157))!important;
+}
+
+.view .btn-outline-secondary,
+.view .btn-secondary {
+  color:#52667B!important;
+  border-color:#C9D4E0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.view .btn-outline-secondary:hover,.view .btn-outline-secondary:focus,
+.view .btn-secondary:hover,.view .btn-secondary:focus {
+  color:#304255!important;
+  border-color:#B7C5D3!important;
+  background:#F4F7FA!important;
+}
+
+.view .btn-danger { background:#B84B55!important;border-color:#B84B55!important; }
+.view .btn-outline-danger { color:#A74651!important;border-color:#E6C0C5!important;background:#FFF7F7!important; }
+.view .btn-outline-danger:hover { color:#fff!important;background:#A74651!important;border-color:#A74651!important; }
+
+/* Usa la imagen que realmente viene dentro de frontend/public/images. */
+.login-screen {
+  background-color:#0f172a!important;
+  background-image:linear-gradient(115deg,rgba(15,23,42,.74),rgba(19,58,77,.40)),url('/images/fondo-login.jpeg')!important;
+  background-position:center,center!important;
+  background-size:cover,cover!important;
+  background-repeat:no-repeat,no-repeat!important;
+  background-attachment:fixed,fixed!important;
+}
+@media(max-width:767.98px){.login-screen{background-attachment:scroll,scroll!important}}
+
+/* Profesores: botones con las proporciones anteriores, legibles y alineados. */
+#profesores-view .profesor-actions-grid {
+  width:100%!important;
+  max-width:330px!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(128px,1fr))!important;
+  gap:.48rem!important;
+  margin-left:auto!important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width:100%!important;
+  min-height:38px!important;
+  padding:.48rem .72rem!important;
+  border-radius:.58rem!important;
+  font-size:.82rem!important;
+  font-weight:650!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd){grid-column:1/-1!important}
+#profesores-view .profesor-actions-grid .btn-outline-success {color:#33725C!important;border-color:#B7D7CB!important;background:#F3FAF7!important}
+#profesores-view .profesor-actions-grid .btn-outline-success:hover {color:#fff!important;background:#33725C!important;border-color:#33725C!important}
+#profesores-view .profesor-actions-grid .btn-outline-danger {color:#A74651!important;border-color:#E6C0C5!important;background:#FFF7F7!important}
+#profesores-view .profesor-actions-grid .btn-outline-danger:hover {color:#fff!important;background:#A74651!important;border-color:#A74651!important}
+#profesores-view .profesor-actions-grid .btn-outline-primary,
+#profesores-view .profesor-actions-grid .btn-outline-warning {color:#176f91!important;border-color:#9fd8df!important;background:linear-gradient(118deg,#f4f9ff 0%,#eefbfb 100%)!important}
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover,
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover {color:#fff!important;background:linear-gradient(118deg,#276de8 0%,#1b9aaa 100%)!important;border-color:transparent!important}
+
+
+/* ===== CIERRE VISUAL FINAL: jerarquía uniforme de acciones ===== */
+/* Acciones principales: mismo contraste del botón Agregar Profesor. */
+.view .btn-primary,
+.view .btn-success,
+.view .btn-warning {
+  color: #fff !important;
+  border: 1px solid transparent !important;
+  background: linear-gradient(118deg, #2f68df 0%, #4f62ce 48%, #7656ba 100%) !important;
+  box-shadow: 0 8px 18px rgba(73, 88, 191, .20) !important;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+}
+.view .btn-primary:hover,
+.view .btn-primary:focus,
+.view .btn-success:hover,
+.view .btn-success:focus,
+.view .btn-warning:hover,
+.view .btn-warning:focus {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #285bc8 0%, #4657bd 48%, #684aa9 100%) !important;
+  box-shadow: 0 10px 22px rgba(73, 88, 191, .25) !important;
+  transform: translateY(-1px);
+  filter: none !important;
+}
+
+/* Acciones externas/secundarias: familia azul-turquesa de Agregar Estudiante. */
+.view .btn-outline-primary,
+.view .btn-outline-success,
+.view .btn-outline-warning,
+.view .btn-info,
+.view .btn-outline-info {
+  color: #176f91 !important;
+  border-color: #9fd8df !important;
+  background: linear-gradient(118deg, #f4f9ff 0%, #eefbfb 100%) !important;
+  box-shadow: 0 4px 12px rgba(28, 133, 155, .08) !important;
+}
+.view .btn-outline-primary:hover,
+.view .btn-outline-primary:focus,
+.view .btn-outline-success:hover,
+.view .btn-outline-success:focus,
+.view .btn-outline-warning:hover,
+.view .btn-outline-warning:focus,
+.view .btn-info:hover,
+.view .btn-info:focus,
+.view .btn-outline-info:hover,
+.view .btn-outline-info:focus {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #276de8 0%, #1b9aaa 100%) !important;
+  box-shadow: 0 8px 18px rgba(27, 134, 170, .18) !important;
+  transform: translateY(-1px);
+}
+
+/* Acciones neutras. */
+.view .btn-outline-secondary,
+.view .btn-secondary,
+.view .btn-light {
+  color: #52667b !important;
+  border-color: #c9d4e0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.view .btn-outline-secondary:hover,
+.view .btn-outline-secondary:focus,
+.view .btn-secondary:hover,
+.view .btn-secondary:focus,
+.view .btn-light:hover,
+.view .btn-light:focus {
+  color: #304255 !important;
+  border-color: #b7c5d3 !important;
+  background: #f4f7fa !important;
+}
+
+/* Acciones destructivas conservan semántica roja, sin apariencia Bootstrap antigua. */
+.view .btn-danger,
+.view .btn-outline-danger {
+  color: #a74651 !important;
+  border-color: #e3b9c0 !important;
+  background: linear-gradient(118deg, #fff8f8 0%, #fff1f3 100%) !important;
+  box-shadow: none !important;
+}
+.view .btn-danger:hover,
+.view .btn-danger:focus,
+.view .btn-outline-danger:hover,
+.view .btn-outline-danger:focus {
+  color: #fff !important;
+  border-color: #a74651 !important;
+  background: linear-gradient(118deg, #b84b55 0%, #99414b 100%) !important;
+}
+
+/* Las acciones de la tabla de profesores mantienen sus dimensiones actuales; solo heredan la nueva paleta. */
+#profesores-view .profesor-actions-grid .btn-outline-primary,
+#profesores-view .profesor-actions-grid .btn-outline-success,
+#profesores-view .profesor-actions-grid .btn-outline-warning {
+  color: #176f91 !important;
+  border-color: #9fd8df !important;
+  background: linear-gradient(118deg, #f4f9ff 0%, #eefbfb 100%) !important;
+}
+#profesores-view .profesor-actions-grid .btn-outline-primary:hover,
+#profesores-view .profesor-actions-grid .btn-outline-success:hover,
+#profesores-view .profesor-actions-grid .btn-outline-warning:hover {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(118deg, #276de8 0%, #1b9aaa 100%) !important;
+}
+
+/* Evita backdrops residuales cuando una acción de profesor abre un resultado. */
+body:not(.modal-open) .modal-backdrop { display: none !important; }
+
+
+/* ===== AJUSTE FINAL DE IDENTIDAD =====
+   Sin tonos café: matrícula y finanzas usan familias frías profesionales.
+   El nav conserva su identidad original. */
+#matricula-view {
+  --module-accent:#5E63B6 !important;
+  --module-soft:#F3F3FC !important;
+  --module-border:#D9DCF2 !important;
+}
+#pagos-view {
+  --module-accent:#246FA8 !important;
+  --module-soft:#EFF7FB !important;
+  --module-border:#CDE3EE !important;
+}
+
+/* Login con las tres imágenes disponibles en public/images.
+   App.jsx actualiza --login-bg automáticamente. */
+.login-screen {
+  background-image:
+    linear-gradient(115deg, rgba(15,23,42,.76), rgba(18,63,83,.42)),
+    var(--login-bg, url('/images/fondo-login.jpeg')) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  transition: background-image .7s ease-in-out;
+}
+
+/* Profesores: evita que estados y grupos pendientes invadan la columna de acciones. */
+#profesores-table td:nth-child(5) .badge,
+#profesores-table td:nth-child(6) .badge {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+}
+#profesores-table td:nth-child(5),
+#profesores-table td:nth-child(6),
+#profesores-table td:nth-child(7) {
+  position: relative;
+  overflow: hidden;
+}
+#profesores-table th:nth-child(5) { width: 17% !important; }
+#profesores-table th:nth-child(6) { width: 10% !important; }
+#profesores-table th:nth-child(7) { width: 31% !important; }
+
+/* Notificación de validaciones: visible como pestaña flotante y desaparece sola. */
+.toast {
+  top: 22px;
+  right: 24px;
+  bottom: auto;
+  max-width: min(430px, calc(100vw - 32px));
+  border-radius: 14px;
+  padding: .85rem 1rem;
+  z-index: 3000;
+}

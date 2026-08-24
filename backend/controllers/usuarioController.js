@@ -2,9 +2,13 @@ import bcrypt from "bcryptjs";
 import * as usuarioModel from "../models/usuarioModel.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
 import { queryConSesion } from "../config/database.js";
+import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 
 export const listarUsuarios = async (req, res) => {
     try {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.set("Pragma", "no-cache");
+        res.set("Expires", "0");
         const usuarios = await usuarioModel.obtenerUsuarios();
         res.status(200).json(usuarios);
     } catch (error) {
@@ -32,67 +36,69 @@ export const obtenerUsuario = async (req, res) => {
 export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
+        const correoNormalizado = validarCorreoInstitucional(correo);
+        const nombreNormalizado = String(nombre || "").trim();
+        const apellidoFinal = String(primer_apellido || apellido1 || "").trim();
 
-        // 1. Validar que el correo no esté registrado previamente
-        const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
+        const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoNormalizado);
         if (existente) {
             return res.status(409).json({ mensaje: "Ya existe un usuario registrado con ese correo." });
         }
 
-        const apellidoFinal = primer_apellido || apellido1 || "";
         let idPersonaFinal = req.body.id_persona;
 
-        // 2. Insertar en la tabla 'persona' incluyendo fecha_nacimiento y género por defecto
         if (!idPersonaFinal) {
             const sqlPersona = `
                 INSERT INTO persona (nombre, apellido1, apellido2, fecha_nacimiento, genero, estado)
                 VALUES (?, ?, ?, ?, ?, 1);
             `;
 
-            // Usamos '2000-01-01' como fecha por defecto y 'O' (Otro) como género
-            const fechaDefecto = '2000-01-01';
-            const generoDefecto = 'O';
-
             const resultadoPersona = await queryConSesion(
                 sqlPersona,
-                [nombre || "Usuario", apellidoFinal, "", fechaDefecto, generoDefecto],
+                [nombreNormalizado, apellidoFinal, "", "2000-01-01", "O"],
                 req.usuarioActual?.id_usuario ?? null
             );
 
             idPersonaFinal = resultadoPersona.insertId;
         }
 
-        // 3. Cifrar la contraseña e insertar el registro en la tabla 'usuario'
         const hash = await bcrypt.hash(contrasena, 10);
         const resultadoUsuario = await usuarioModel.crearUsuario({
-            correo,
+            correo: correoNormalizado,
             contrasena: hash,
             id_persona: idPersonaFinal,
-            id_rol: id_rol || 2,
+            id_rol: Number(id_rol || 2),
             estado: 1
         }, req.usuarioActual?.id_usuario ?? null);
 
-        // 4. Registrar en Auditoría
         try {
             await auditoriaModel.crearAuditoria({
                 nombre_tabla: "usuario",
                 accion_usuario: "INSERT",
                 datos_anteriores: "",
-                datos_nuevos: JSON.stringify({ correo, id_persona: idPersonaFinal, id_rol: id_rol || 2, estado: 1 })
+                datos_nuevos: JSON.stringify({
+                    correo: correoNormalizado,
+                    id_persona: idPersonaFinal,
+                    id_rol: Number(id_rol || 2),
+                    estado: 1
+                })
             }, req.usuarioActual?.id_usuario ?? null);
         } catch (e) {
             console.error("Error registrando auditoría:", e);
         }
 
+        const usuarioCreado = await usuarioModel.obtenerUsuarioPorId(resultadoUsuario.insertId);
+
         return res.status(201).json({
             mensaje: "Usuario creado correctamente.",
-            id: resultadoUsuario.insertId
+            id: resultadoUsuario.insertId,
+            usuario: usuarioCreado
         });
-
     } catch (error) {
         console.error("Error crítico en crearUsuario:", error);
-        return res.status(500).json({
-            mensaje: "Error interno en el servidor al crear el usuario.",
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        return res.status(esDominio ? 400 : 500).json({
+            mensaje: esDominio ? error.message : "Error interno en el servidor al crear el usuario.",
             detalle: error.message
         });
     }
@@ -101,45 +107,108 @@ export const crearUsuario = async (req, res) => {
 export const actualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
-        const { correo, contrasena, id_persona, id_rol, estado } = req.body;
-        const usuario = await usuarioModel.obtenerUsuarioPorId(id);
+        const {
+            nombre,
+            primer_apellido,
+            apellido1,
+            correo,
+            contrasena,
+            id_persona,
+            id_rol,
+            estado
+        } = req.body;
+
+        const usuario = await usuarioModel.obtenerUsuarioConClavePorId(id);
 
         if (!usuario) {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        if (correo && correo !== usuario.correo) {
-            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo);
-            if (existente && existente.id_usuario !== id) {
+        const correoFinal = correo ? validarCorreoInstitucional(correo) : usuario.correo;
+
+        if (correoFinal !== usuario.correo) {
+            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoFinal);
+            if (existente && Number(existente.id_usuario) !== Number(id)) {
                 return res.status(409).json({ mensaje: "Ya existe un usuario con ese correo." });
             }
         }
 
+        const idPersonaFinal = Number(id_persona || usuario.id_persona);
+        const nuevoRol = id_rol !== undefined && id_rol !== null ? Number(id_rol) : Number(usuario.id_rol);
+
+        if (Number(req.usuarioActual?.id_usuario) === Number(id) && nuevoRol !== Number(usuario.id_rol)) {
+            return res.status(400).json({
+                mensaje: "No puedes cambiar el rol del usuario con el que tienes la sesión iniciada."
+            });
+        }
+
+        const nombreFinal = nombre !== undefined ? String(nombre).trim() : usuario.nombre;
+        const apellidoFinal = (primer_apellido ?? apellido1) !== undefined
+            ? String(primer_apellido ?? apellido1).trim()
+            : usuario.apellido1;
+
+        if (!nombreFinal || !apellidoFinal || !correoFinal) {
+            return res.status(400).json({ mensaje: "Nombre, primer apellido y correo son obligatorios." });
+        }
+
+        if (nombre !== undefined || primer_apellido !== undefined || apellido1 !== undefined) {
+            await usuarioModel.actualizarPersonaUsuario(
+                idPersonaFinal,
+                { nombre: nombreFinal, apellido1: apellidoFinal },
+                req.usuarioActual?.id_usuario ?? null
+            );
+        }
+
         const datosActualizados = {
-            correo: correo ?? usuario.correo,
+            correo: correoFinal,
             contrasena: contrasena ? await bcrypt.hash(contrasena, 10) : usuario.contrasena,
-            id_persona: id_persona ?? usuario.id_persona,
-            id_rol: id_rol ?? usuario.id_rol,
-            estado: typeof estado === "boolean" ? estado : usuario.estado
+            id_persona: idPersonaFinal,
+            id_rol: nuevoRol,
+            estado: typeof estado === "boolean" ? estado : Boolean(usuario.estado)
         };
 
-        const resultado = await usuarioModel.actualizarUsuario(id, datosActualizados, req.usuarioActual?.id_usuario ?? null);
+        const resultado = await usuarioModel.actualizarUsuario(
+            id,
+            datosActualizados,
+            req.usuarioActual?.id_usuario ?? null
+        );
 
         try {
             await auditoriaModel.crearAuditoria({
-                nombre_tabla: "usuario",
+                nombre_tabla: "usuario/persona",
                 accion_usuario: "UPDATE",
-                datos_anteriores: JSON.stringify(usuario),
-                datos_nuevos: JSON.stringify(datosActualizados)
+                datos_anteriores: JSON.stringify({
+                    nombre: usuario.nombre,
+                    apellido1: usuario.apellido1,
+                    correo: usuario.correo,
+                    id_rol: usuario.id_rol
+                }),
+                datos_nuevos: JSON.stringify({
+                    nombre: nombreFinal,
+                    apellido1: apellidoFinal,
+                    correo: correoFinal,
+                    id_rol: nuevoRol,
+                    contrasena: contrasena ? "ACTUALIZADA" : "SIN CAMBIOS"
+                })
             }, req.usuarioActual?.id_usuario ?? null);
         } catch (e) {
             console.error("Error registrando auditoría:", e);
         }
 
-        res.status(200).json({ mensaje: "Usuario actualizado correctamente.", cambios: resultado.changedRows ?? 0 });
+        const usuarioActualizado = await usuarioModel.obtenerUsuarioPorId(id);
+
+        res.status(200).json({
+            mensaje: "Usuario actualizado correctamente.",
+            cambios: resultado.changedRows ?? 0,
+            usuario: usuarioActualizado
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ mensaje: "Error al actualizar el usuario." });
+        console.error("Error al actualizar usuario:", error);
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        res.status(esDominio ? 400 : 500).json({
+            mensaje: esDominio ? error.message : "Error al actualizar el usuario.",
+            detalle: error.message
+        });
     }
 };
 
@@ -222,8 +291,10 @@ export const actualizarMiPerfil = async (req, res) => {
             return res.status(404).json({ mensaje: "Usuario no encontrado." });
         }
 
-        if (correo.trim() !== usuarioActual.correo) {
-            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correo.trim());
+        const correoInstitucional = validarCorreoInstitucional(correo);
+
+        if (correoInstitucional !== usuarioActual.correo) {
+            const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoInstitucional);
             if (existente && Number(existente.id_usuario) !== Number(idUsuario)) {
                 return res.status(409).json({ mensaje: "Ya existe otro usuario con ese correo." });
             }
@@ -233,7 +304,7 @@ export const actualizarMiPerfil = async (req, res) => {
             nombre: nombre.trim(),
             apellido1: apellido1.trim(),
             apellido2: apellido2?.trim() || "",
-            correo: correo.trim()
+            correo: correoInstitucional
         };
 
         await usuarioModel.actualizarDatosPerfil(idUsuario, datosNuevos);
@@ -270,7 +341,8 @@ export const actualizarMiPerfil = async (req, res) => {
         });
     } catch (error) {
         console.error("Error al actualizar el perfil:", error);
-        res.status(500).json({ mensaje: "Error al actualizar el perfil." });
+        const esDominio = String(error.message || "").includes("correos institucionales");
+        res.status(esDominio ? 400 : 500).json({ mensaje: esDominio ? error.message : "Error al actualizar el perfil." });
     }
 };
 

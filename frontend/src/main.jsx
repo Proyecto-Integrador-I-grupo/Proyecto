@@ -12,6 +12,7 @@ import './styles/asistencia.css';
 import './styles/consultas.css';
 import './styles/matricula.css';
 import './styles/perfil.css';
+import './styles/pagos.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
 import './styles/accessibility-theme.css';

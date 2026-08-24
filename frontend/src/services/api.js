@@ -4,7 +4,7 @@ const baseUrl = import.meta.env.VITE_API_URL || (
     : 'https://proyecto-vcz6.onrender.com'
 );
 
-const REQUEST_TIMEOUT = 20000;
+const REQUEST_TIMEOUT = 90000;
 
 export async function apiFetch(path, options = {}) {
   const controller = new AbortController();
@@ -25,7 +25,9 @@ export async function apiFetch(path, options = {}) {
     ...(options.headers || {})
   };
 
-  if (sessionUser?.id_usuario) {
+  if (sessionUser?.token) {
+    headers.Authorization = `Bearer ${sessionUser.token}`;
+  } else if (sessionUser?.id_usuario) {
     headers['x-user-id'] = String(sessionUser.id_usuario);
   }
 

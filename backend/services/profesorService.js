@@ -1,6 +1,90 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
+import { validarCorreoInstitucional } from "../utils/emailDomain.js";
+
+
+let profesorHorarioSchemaPromise = null;
+async function asegurarHorarioGruposProfesor() {
+  if (profesorHorarioSchemaPromise) return profesorHorarioSchemaPromise;
+  profesorHorarioSchemaPromise = (async () => {
+    const [inicio] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'hora_inicio'");
+    if (!inicio.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_inicio TIME NULL");
+    const [fin] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'hora_fin'");
+    if (!fin.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_fin TIME NULL");
+  })().catch((error) => { profesorHorarioSchemaPromise = null; throw error; });
+  return profesorHorarioSchemaPromise;
+}
+
+const MATERIAS_BASICAS = new Map([
+  ["español", "Español"],
+  ["espanol", "Español"],
+  ["matemática", "Matemáticas"],
+  ["matematica", "Matemáticas"],
+  ["matemáticas", "Matemáticas"],
+  ["matematicas", "Matemáticas"],
+  ["ciencias", "Ciencias"],
+  ["ciencias naturales", "Ciencias"],
+  ["estudios sociales", "Estudios Sociales"],
+  ["inglés", "Inglés"],
+  ["ingles", "Inglés"],
+  ["educación física", "Educación Física"],
+  ["educacion fisica", "Educación Física"],
+  ["informática", "Informática"],
+  ["informatica", "Informática"],
+  ["artes", "Artes"]
+]);
+
+const normalizarMateriaProfesor = (materia) => {
+  const clave = String(materia ?? "").trim().toLowerCase();
+  const normalizada = MATERIAS_BASICAS.get(clave);
+  if (!normalizada) {
+    throw new Error("La materia seleccionada no es válida. Selecciona una de las 8 materias básicas disponibles.");
+  }
+  return normalizada;
+};
+
+
+const validarNombreHumano = (valor, etiqueta, obligatorio = true) => {
+  const texto = String(valor ?? "").trim();
+  if (!texto && !obligatorio) return null;
+  if (!texto) throw new Error(`${etiqueta} es obligatorio.`);
+  if (texto.length < 2 || texto.length > 60) throw new Error(`${etiqueta} debe contener entre 2 y 60 caracteres.`);
+  if (!/^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u.test(texto)) {
+    throw new Error(`${etiqueta} solo puede contener letras, espacios, apóstrofes y guiones.`);
+  }
+  return texto;
+};
+
+const validarMayorEdad = (fechaNacimiento) => {
+  const fecha = new Date(`${String(fechaNacimiento || '').slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(fecha.getTime())) throw new Error("La fecha de nacimiento no es válida.");
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - fecha.getFullYear();
+  const m = hoy.getMonth() - fecha.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) edad -= 1;
+  if (edad < 18) throw new Error("El profesor debe ser mayor de 18 años.");
+  if (edad > 100) throw new Error("La fecha de nacimiento no es válida para un profesor activo.");
+};
+
+const normalizarGeneroProfesor = (genero) => {
+  const valor = String(genero ?? "").trim().toLowerCase();
+  const mapa = {
+    m: "M",
+    masculino: "M",
+    f: "F",
+    femenino: "F",
+    o: "O",
+    otro: "O",
+    otra: "O"
+  };
+  const normalizado = mapa[valor];
+  if (!normalizado) {
+    throw new Error("El género debe ser Masculino, Femenino u Otro.");
+  }
+  return normalizado;
+};
 export const obtenerProfesoresService = async () => {
+  await asegurarHorarioGruposProfesor();
   const query = `
     SELECT 
       pr.id_profesor,
@@ -13,7 +97,23 @@ export const obtenerProfesoresService = async () => {
       pr.materia,
       pr.fecha_ingreso,
       pr.estado,
-      GROUP_CONCAT(DISTINCT g.nombre_grupo ORDER BY g.nombre_grupo SEPARATOR ', ') AS grupos_asignados,
+      (SELECT u.correo FROM usuario u WHERE u.id_persona = pr.id_persona AND u.estado = TRUE LIMIT 1) AS correo,
+      GROUP_CONCAT(
+        DISTINCT CONCAT(
+          g.nombre_grupo,
+          CASE
+            WHEN s.nombre_seccion IS NOT NULL AND s.nombre_seccion <> ''
+              THEN CONCAT(' · ', s.nombre_seccion)
+            ELSE ''
+          END,
+          CASE
+            WHEN g.hora_inicio IS NOT NULL AND g.hora_fin IS NOT NULL
+              THEN CONCAT(' · ', TIME_FORMAT(g.hora_inicio, '%H:%i'), ' - ', TIME_FORMAT(g.hora_fin, '%H:%i'))
+            ELSE ''
+          END
+        )
+        ORDER BY g.nombre_grupo SEPARATOR ', '
+      ) AS grupos_asignados,
       GROUP_CONCAT(DISTINCT g.id_grupo ORDER BY g.nombre_grupo SEPARATOR ',') AS grupos_ids,
       (
         SELECT COUNT(*) FROM profesor_suplencia ps 
@@ -23,6 +123,7 @@ export const obtenerProfesoresService = async () => {
     INNER JOIN persona p ON pr.id_persona = p.id_persona
     LEFT JOIN grupo_profesor gp ON gp.id_profesor = pr.id_profesor AND gp.estado = TRUE AND gp.fecha_fin IS NULL
     LEFT JOIN grupo g ON g.id_grupo = gp.id_grupo
+    LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
     GROUP BY pr.id_profesor
     ORDER BY pr.id_profesor DESC
   `;
@@ -44,14 +145,17 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     throw new Error("El correo y la contraseña de acceso son obligatorios para registrar al profesor.");
   }
 
-  if (contrasena.length < 6) {
-    throw new Error("La contraseña de acceso debe tener al menos 6 caracteres.");
+  if (contrasena.length < 6 || contrasena.length > 128) {
+    throw new Error("La contraseña de acceso debe tener entre 6 y 128 caracteres.");
   }
 
-  const nombreLimpio = nombre.trim();
-  const apellido1Limpio = apellido1.trim();
-  const apellido2Limpio = apellido2 ? apellido2.trim() : null;
-  const correoLimpio = correo.trim().toLowerCase();
+  const generoNormalizado = normalizarGeneroProfesor(genero);
+  const materiaNormalizada = normalizarMateriaProfesor(materia);
+  const nombreLimpio = validarNombreHumano(nombre, "El nombre");
+  const apellido1Limpio = validarNombreHumano(apellido1, "El primer apellido");
+  const apellido2Limpio = validarNombreHumano(apellido2, "El segundo apellido", false);
+  validarMayorEdad(fecha_nacimiento);
+  const correoLimpio = validarCorreoInstitucional(correo);
 
   const connection = await conexionPromise.getConnection();
 
@@ -109,7 +213,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       apellido1Limpio,
       apellido2Limpio,
       fecha_nacimiento,
-      genero
+      generoNormalizado
     ]);
 
     const id_persona = resPersona.insertId;
@@ -121,7 +225,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     `;
     const [resProfesor] = await connection.query(queryProfesor, [
       id_persona,
-      materia.trim(),
+      materiaNormalizada,
       fecha_ingreso || new Date().toISOString().split("T")[0]
     ]);
 
@@ -150,7 +254,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       nombre,
       apellido1,
       apellido2,
-      materia,
+      materia: materiaNormalizada,
       fecha_ingreso,
       correo: correoLimpio,
       estado: 1
@@ -168,6 +272,55 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       throw new Error(error.message);
     }
     throw new Error("Error interno al registrar el profesor en la base de datos.");
+  } finally {
+    connection.release();
+  }
+};
+
+export const actualizarProfesorService = async (idProfesor, datos) => {
+  const id = Number(idProfesor);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Profesor no válido.");
+
+  const nombre = validarNombreHumano(datos.nombre, "El nombre");
+  const apellido1 = validarNombreHumano(datos.apellido1, "El primer apellido");
+  const apellido2 = validarNombreHumano(datos.apellido2, "El segundo apellido", false);
+  const materia = normalizarMateriaProfesor(datos.materia);
+  const genero = normalizarGeneroProfesor(datos.genero);
+  const fechaNacimiento = String(datos.fecha_nacimiento || "").slice(0, 10);
+  const fechaIngreso = String(datos.fecha_ingreso || "").slice(0, 10);
+  const correo = validarCorreoInstitucional(datos.correo);
+  validarMayorEdad(fechaNacimiento);
+
+  const connection = await conexionPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[profesor]] = await connection.query(
+      `SELECT pr.id_profesor, pr.id_persona FROM profesor pr WHERE pr.id_profesor = ? LIMIT 1`,
+      [id]
+    );
+    if (!profesor) throw new Error("El profesor no existe.");
+
+    const [correoDuplicado] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE correo = ? AND id_persona <> ? LIMIT 1`,
+      [correo, profesor.id_persona]
+    );
+    if (correoDuplicado.length) throw new Error("Ese correo ya pertenece a otro usuario.");
+
+    await connection.query(
+      `UPDATE persona SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ? WHERE id_persona = ?`,
+      [nombre, apellido1, apellido2, fechaNacimiento, genero, profesor.id_persona]
+    );
+    await connection.query(
+      `UPDATE profesor SET materia = ?, fecha_ingreso = ? WHERE id_profesor = ?`,
+      [materia, fechaIngreso || new Date().toISOString().slice(0, 10), id]
+    );
+    await connection.query(`UPDATE usuario SET correo = ? WHERE id_persona = ?`, [correo, profesor.id_persona]);
+
+    await connection.commit();
+    return { id_profesor: id, nombre, apellido1, apellido2, materia, fecha_nacimiento: fechaNacimiento, fecha_ingreso: fechaIngreso, genero, correo };
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    throw error;
   } finally {
     connection.release();
   }
@@ -366,7 +519,11 @@ export const eliminarProfesorService = async (id_profesor) => {
     await connection.beginTransaction();
 
     const [rows] = await connection.query(
-      `SELECT id_profesor FROM profesor WHERE id_profesor = ?`,
+      `SELECT pr.id_profesor, pr.id_persona, p.nombre, p.apellido1, p.apellido2
+       FROM profesor pr
+       INNER JOIN persona p ON p.id_persona = pr.id_persona
+       WHERE pr.id_profesor = ?
+       LIMIT 1`,
       [id_profesor]
     );
 
@@ -374,27 +531,140 @@ export const eliminarProfesorService = async (id_profesor) => {
       throw new Error("El profesor no existe.");
     }
 
+    const profesor = rows[0];
+    const idPersona = profesor.id_persona;
+
+    const [usuarios] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE id_persona = ?`,
+      [idPersona]
+    );
+    const idsUsuario = usuarios.map((u) => Number(u.id_usuario)).filter(Number.isInteger);
+
     await connection.query(`SET @DISABLE_TRIGGERS = 1`);
 
-    await connection.query(`DELETE FROM profesor WHERE id_profesor = ?`, [id_profesor]);
+    // El borrado solicitado es permanente. Primero se eliminan las referencias
+    // que impiden borrar la fila principal del profesor.
+    await connection.query(
+      `DELETE FROM profesor_suplencia
+       WHERE id_profesor_titular = ? OR id_profesor_suplente = ?`,
+      [id_profesor, id_profesor]
+    );
 
-    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
+    await connection.query(
+      `DELETE FROM grupo_profesor WHERE id_profesor = ?`,
+      [id_profesor]
+    );
 
-    await connection.commit();
-    return { id_profesor, mensaje: "Profesor eliminado permanentemente" };
-  } catch (error) {
-    await connection.rollback();
-    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
+    await connection.query(
+      `DELETE FROM asistencia WHERE id_profesor = ?`,
+      [id_profesor]
+    );
 
-    // Error típico de MySQL cuando hay registros hijos (grupo_profesor, asistencia,
-    // profesor_suplencia, etc.)
-    if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
-      throw new Error(
-        "No se puede eliminar: este profesor tiene grupos, asistencias o coberturas de suplencia asociadas. " +
-        "Usa la opción 'Destituir' para inactivarlo en su lugar."
+    // Compatibilidad con instalaciones anteriores que todavía conservan
+    // id_profesor directamente en grupo o la tabla suplencia antigua.
+    const [grupoProfesorColumn] = await connection.query(
+      `SELECT 1
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'grupo'
+         AND COLUMN_NAME = 'id_profesor'
+       LIMIT 1`
+    );
+    if (grupoProfesorColumn.length) {
+      await connection.query(
+        `UPDATE grupo SET id_profesor = NULL WHERE id_profesor = ?`,
+        [id_profesor]
       );
     }
 
+    const [suplenciaTable] = await connection.query(
+      `SELECT 1
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'suplencia'
+       LIMIT 1`
+    );
+    if (suplenciaTable.length) {
+      const [suplenciaCols] = await connection.query(
+        `SELECT COLUMN_NAME
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'suplencia'
+           AND COLUMN_NAME IN ('id_profesor', 'id_profesor_titular', 'id_profesor_suplente')`
+      );
+      const columnas = new Set(suplenciaCols.map((c) => c.COLUMN_NAME));
+      const condiciones = [];
+      const valores = [];
+      ['id_profesor', 'id_profesor_titular', 'id_profesor_suplente'].forEach((columna) => {
+        if (columnas.has(columna)) {
+          condiciones.push(`${columna} = ?`);
+          valores.push(id_profesor);
+        }
+      });
+      if (condiciones.length) {
+        await connection.query(
+          `DELETE FROM suplencia WHERE ${condiciones.join(' OR ')}`,
+          valores
+        );
+      }
+    }
+
+    // Conservamos la auditoría cuando la FK permite NULL. Si una instalación
+    // antigua no lo permite, se eliminan únicamente las auditorías del usuario
+    // que está siendo borrado para que la operación pueda completarse.
+    for (const idUsuarioProfesor of idsUsuario) {
+      try {
+        await connection.query(
+          `UPDATE auditoria SET id_usuario = NULL WHERE id_usuario = ?`,
+          [idUsuarioProfesor]
+        );
+      } catch (auditError) {
+        await connection.query(
+          `DELETE FROM auditoria WHERE id_usuario = ?`,
+          [idUsuarioProfesor]
+        );
+      }
+    }
+
+    await connection.query(
+      `DELETE FROM usuario WHERE id_persona = ?`,
+      [idPersona]
+    );
+
+    await connection.query(
+      `DELETE FROM profesor WHERE id_profesor = ?`,
+      [id_profesor]
+    );
+
+    const [estudianteRelacionado] = await connection.query(
+      `SELECT id_estudiante FROM estudiante WHERE id_persona = ? LIMIT 1`,
+      [idPersona]
+    );
+    const [usuarioRelacionado] = await connection.query(
+      `SELECT id_usuario FROM usuario WHERE id_persona = ? LIMIT 1`,
+      [idPersona]
+    );
+
+    if (estudianteRelacionado.length === 0 && usuarioRelacionado.length === 0) {
+      await connection.query(
+        `DELETE FROM persona WHERE id_persona = ?`,
+        [idPersona]
+      );
+    }
+
+    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
+    await connection.commit();
+
+    return {
+      id_profesor: Number(id_profesor),
+      id_persona: idPersona,
+      nombre: `${profesor.nombre ?? ""} ${profesor.apellido1 ?? ""} ${profesor.apellido2 ?? ""}`.trim(),
+      eliminacion_permanente: true,
+      mensaje: "Profesor y datos asociados eliminados permanentemente"
+    };
+  } catch (error) {
+    await connection.rollback();
+    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
     throw new Error(error.message || "Error interno al eliminar el profesor.");
   } finally {
     connection.release();
@@ -408,7 +678,7 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     await connection.beginTransaction();
 
     const [nuevoProf] = await connection.query(
-      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      `SELECT id_profesor, estado, materia FROM profesor WHERE id_profesor = ?`,
       [id_nuevo_profesor]
     );
     if (nuevoProf.length === 0) {
@@ -416,6 +686,24 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     }
     if (nuevoProf[0].estado == 0 || nuevoProf[0].estado === false) {
       throw new Error("No se puede asignar un profesor inactivo al grupo.");
+    }
+
+    if (id_profesor_anterior) {
+      const [titularRows] = await connection.query(
+        `SELECT id_profesor, materia FROM profesor WHERE id_profesor = ? LIMIT 1`,
+        [id_profesor_anterior]
+      );
+      if (!titularRows.length) {
+        throw new Error("No se encontró el profesor titular.");
+      }
+
+      const materiaTitular = String(titularRows[0].materia || "").trim().toLowerCase();
+      const materiaSustituto = String(nuevoProf[0].materia || "").trim().toLowerCase();
+      if (!materiaTitular || !materiaSustituto || materiaTitular !== materiaSustituto) {
+        throw new Error(
+          `El sustituto debe impartir la misma materia del profesor titular (${titularRows[0].materia || "sin materia definida"}).`
+        );
+      }
     }
 
     if (id_profesor_anterior) {
@@ -560,8 +848,10 @@ export const obtenerSuplenciasPendientesService = async () => {
       ps.id_suplencia,
       ps.id_grupo,
       g.nombre_grupo,
+      s.nombre_seccion,
       ps.id_profesor_titular,
       CONCAT(pt.nombre, ' ', pt.apellido1) AS titular_nombre,
+      prt.materia AS titular_materia,
       ps.id_profesor_suplente,
       CASE WHEN ps.id_profesor_suplente IS NOT NULL 
            THEN CONCAT(psup.nombre, ' ', psup.apellido1) ELSE NULL END AS suplente_nombre,
@@ -569,6 +859,7 @@ export const obtenerSuplenciasPendientesService = async () => {
       ps.motivo
     FROM profesor_suplencia ps
     INNER JOIN grupo g ON g.id_grupo = ps.id_grupo
+    LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
     INNER JOIN profesor prt ON prt.id_profesor = ps.id_profesor_titular
     INNER JOIN persona pt ON pt.id_persona = prt.id_persona
     LEFT JOIN profesor prs ON prs.id_profesor = ps.id_profesor_suplente

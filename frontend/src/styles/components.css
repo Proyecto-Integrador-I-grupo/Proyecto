@@ -1,5 +1,43 @@
+/* ===== Tipografía EduControl ===== */
+h1, h2, h3, h4, h5, h6,
+.card-title-serif,
+.modal-title,
+.finance-panel-title h3,
+.finance-card-heading h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+p, .form-label, .form-control, .form-select, .btn, .table, .nav-link {
+  font-family: var(--font-sans);
+}
+
+.form-label {
+  font-weight: 650;
+  letter-spacing: 0.012em;
+}
+
+.form-control, .form-select {
+  font-weight: 450;
+}
+
+.btn {
+  font-weight: 650;
+  letter-spacing: -0.006em;
+}
+
+.table th {
+  font-weight: 700;
+  letter-spacing: 0.018em;
+}
+
+.text-muted {
+  line-height: 1.5;
+}
+
 h1, h2, h3, .card-title-serif {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -10,7 +48,7 @@ h1, h2, h3, .card-title-serif {
   border-radius: 8px;
   background: var(--accent);
   color: #FFFFFF;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
   display: inline-flex;
@@ -20,7 +58,7 @@ h1, h2, h3, .card-title-serif {
 }
 
 .brand-name {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 20px;
   color: #FFFFFF;
@@ -43,7 +81,7 @@ h1, h2, h3, .card-title-serif {
   background: var(--accent-soft);
   color: var(--accent);
   border: 1px solid rgba(37, 99, 235, 0.2);
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 14px;
   display: inline-flex;
@@ -215,7 +253,7 @@ h1, h2, h3, .card-title-serif {
 .dashboard-mini-panel strong {
   position: relative;
   z-index: 1;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-size: clamp(1.7rem, 1.4vw + 1.1rem, 2.3rem);
   line-height: 1.1;
   color: var(--navy);
@@ -239,7 +277,7 @@ h1, h2, h3, .card-title-serif {
 }
 
 .stat-value {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 2vw + 1.3rem, 2.6rem);
   font-weight: 700;
   line-height: 1.1;
@@ -745,3 +783,216 @@ body.high-contrast .accessibility-toggle {
     border-radius: 16px;
   }
 }
+
+
+/* ============================================================
+   Acabado visual institucional
+   ============================================================ */
+.login-screen {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background:
+    linear-gradient(115deg, rgba(15, 23, 42, .88), rgba(25, 61, 78, .68)),
+    url('/images/imagen-fondo.jpg') center / cover no-repeat fixed;
+}
+
+.login-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,.13), transparent 34%),
+    linear-gradient(180deg, rgba(15,23,42,.08), rgba(15,23,42,.3));
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(255,255,255,.52);
+  box-shadow: 0 28px 70px rgba(8, 20, 32, .32);
+  backdrop-filter: blur(10px);
+}
+
+#dashboard-view { --module-accent: #2E6F95; }
+#estudiantes-view { --module-accent: #4F6D7A; }
+#matricula-view { --module-accent: #B7791F; }
+#profesores-view { --module-accent: #6B5B95; }
+#asistencia-view { --module-accent: #2F855A; }
+#consultas-view { --module-accent: #3B7C8D; }
+#pagos-view { --module-accent: #246FA8; }
+#reportes-view { --module-accent: #415A77; }
+#usuarios-view { --module-accent: #8A5A67; }
+#perfil-view { --module-accent: #52616B; }
+
+.view {
+  color: #243447;
+}
+
+.view .page-header .card-title-serif i,
+.view .eyebrow {
+  color: var(--module-accent, var(--accent));
+}
+
+.view > .card,
+.view .container-fluid > .row > [class*="col-"] > .card {
+  border-color: rgba(93, 111, 128, .14) !important;
+}
+
+.extra-availability {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-height: 44px;
+  padding: .72rem .9rem;
+  border-radius: .75rem;
+  border: 1px solid #D9E2E8;
+  background: #F8FAFB;
+  color: #5E6D78;
+  font-size: .88rem;
+}
+.extra-availability.ok {
+  border-color: #B7D8C5;
+  background: #F0F8F3;
+  color: #276749;
+}
+.extra-availability.blocked {
+  border-color: #E8C5C9;
+  background: #FFF6F6;
+  color: #9B3742;
+}
+.finance-extra-card {
+  border-top: 3px solid #3B7C8D !important;
+}
+
+/* Lenguaje visual uniforme para acciones del sistema. */
+.btn {
+  border-radius: .62rem;
+  font-weight: 600;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease;
+}
+.btn:not(:disabled):hover { transform: translateY(-1px); }
+.btn-primary { background: var(--accent); border-color: var(--accent); box-shadow: 0 5px 14px rgba(46,111,149,.14); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-success { background: #2f855a; border-color: #2f855a; }
+.btn-danger { background: #c2414b; border-color: #c2414b; }
+.btn-warning { background: #b7791f; border-color: #b7791f; color: #fff; }
+.btn-outline-primary { color: var(--accent); border-color: rgba(46,111,149,.45); background: rgba(46,111,149,.035); }
+.btn-outline-primary:hover { background: var(--accent); border-color: var(--accent); color:#fff; }
+.btn-outline-success { color:#2f855a; border-color:rgba(47,133,90,.42); background:rgba(47,133,90,.035); }
+.btn-outline-success:hover { background:#2f855a; border-color:#2f855a; color:#fff; }
+.btn-outline-warning { color:#9a651b; border-color:rgba(183,121,31,.45); background:rgba(183,121,31,.04); }
+.btn-outline-warning:hover { background:#b7791f; border-color:#b7791f; color:#fff; }
+.btn-outline-danger { color:#b23a45; border-color:rgba(194,65,75,.42); background:rgba(194,65,75,.035); }
+.btn-outline-danger:hover { background:#c2414b; border-color:#c2414b; color:#fff; }
+.btn-outline-secondary { color:#536579; border-color:#cbd5e1; background:#fff; }
+.btn-outline-secondary:hover { background:#eef2f6; border-color:#b8c4d1; color:#26384a; }
+
+/* ============================================================
+   Ajuste final de paleta por módulo
+   Mantiene el nav sin cambios y da identidad visual a cada área.
+   ============================================================ */
+#dashboard-view { --module-accent:#2E6F95; --module-soft:#EDF6FA; --module-border:#CFE4EE; }
+#estudiantes-view { --module-accent:#287271; --module-soft:#EDF8F6; --module-border:#CBE7E3; }
+#matricula-view { --module-accent:#5E63B6; --module-soft:#F3F3FC; --module-border:#D9DCF2; }
+#profesores-view { --module-accent:#6B5B95; --module-soft:#F4F0F8; --module-border:#DDD2E8; }
+#asistencia-view { --module-accent:#2F855A; --module-soft:#EEF8F2; --module-border:#CDE7D8; }
+#pagos-view { --module-accent:#246FA8; --module-soft:#EFF7FB; --module-border:#CDE3EE; }
+#reportes-view { --module-accent:#455B7A; --module-soft:#F0F3F8; --module-border:#D4DCE7; }
+#consultas-view { --module-accent:#347A8A; --module-soft:#EDF7F8; --module-border:#CEE4E8; }
+#usuarios-view { --module-accent:#8A5969; --module-soft:#F8F0F3; --module-border:#E6D1D8; }
+#perfil-view { --module-accent:#596A73; --module-soft:#F2F5F6; --module-border:#D8E0E3; }
+
+.view .card:not(.hero-card) {
+  border-color: var(--module-border, #e2e8f0) !important;
+}
+
+.view .card:not(.hero-card) > .card-header,
+.view .section-header-soft {
+  background: linear-gradient(135deg, var(--module-soft, #f8fafc), #fff);
+  border-color: var(--module-border, #e2e8f0);
+}
+
+.view .btn-primary {
+  background-color: var(--module-accent, var(--accent));
+  border-color: var(--module-accent, var(--accent));
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--module-accent, var(--accent)) 18%, transparent);
+}
+
+.view .btn-primary:hover,
+.view .btn-primary:focus {
+  filter: brightness(.92);
+  background-color: var(--module-accent, var(--accent));
+  border-color: var(--module-accent, var(--accent));
+}
+
+.view .btn-outline-primary {
+  color: var(--module-accent, var(--accent));
+  border-color: color-mix(in srgb, var(--module-accent, var(--accent)) 52%, white);
+  background: color-mix(in srgb, var(--module-soft, #f8fafc) 70%, white);
+}
+
+.view .btn-outline-primary:hover,
+.view .btn-outline-primary:focus {
+  color:#fff;
+  background:var(--module-accent, var(--accent));
+  border-color:var(--module-accent, var(--accent));
+}
+
+.view .eyebrow,
+.view .page-header .card-title-serif i {
+  color: var(--module-accent, var(--accent));
+}
+
+/* Fondo de login: admite un archivo nuevo fondo-login.jpg y conserva
+   imagen-fondo.jpg como respaldo para no romper despliegues existentes. */
+.login-screen {
+  background-color:#0f172a;
+  background-image:
+    linear-gradient(115deg, rgba(15,23,42,.84), rgba(25,61,78,.58)),
+    url('/images/fondo-login.jpg'),
+    url('/images/imagen-fondo.jpg');
+  background-position:center, center, center;
+  background-size:cover, cover, cover;
+  background-repeat:no-repeat, no-repeat, no-repeat;
+  background-attachment:fixed, fixed, fixed;
+}
+
+.login-screen::before {
+  background:
+    linear-gradient(180deg, rgba(4,15,25,.06), rgba(4,15,25,.28)),
+    radial-gradient(circle at 16% 18%, rgba(255,255,255,.12), transparent 35%);
+}
+
+/* Mantener el control flotante de accesibilidad por encima del footer institucional. */
+.accessibility-widget {
+  bottom: 86px;
+}
+
+@media (max-width: 767.98px) {
+  .accessibility-widget {
+    right: 14px;
+    bottom: 78px;
+  }
+}
+
+@media (max-width: 480px) {
+  .accessibility-widget {
+    right: 12px;
+    bottom: 72px;
+  }
+}
+
+/* Límites visibles de campos */
+.edu-char-counter {
+  margin-top: .28rem;
+  text-align: right;
+  color: #7b8797;
+  font-size: .72rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.edu-char-counter.near-limit { color: #9a6a18; font-weight: 700; }
+.edu-char-counter.at-limit { color: #b42334; font-weight: 800; }

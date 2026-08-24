@@ -34,6 +34,28 @@ export const createProfesor = async (req, res) => {
   }
 };
 
+
+export const actualizarProfesor = async (req, res) => {
+  try {
+    const anterior = { id_profesor: req.params.id };
+    const resultado = await profesorService.actualizarProfesorService(req.params.id, req.body);
+    try {
+      await auditoriaModel.crearAuditoria({
+        nombre_tabla: "profesor",
+        accion_usuario: "UPDATE",
+        datos_anteriores: JSON.stringify(anterior),
+        datos_nuevos: JSON.stringify(resultado)
+      }, req.usuarioActual?.id_usuario ?? null);
+    } catch (e) {
+      console.error("Error registrando auditoría:", e);
+    }
+    res.json({ message: "Profesor actualizado correctamente", profesor: resultado });
+  } catch (error) {
+    console.error("Error en actualizarProfesor:", error);
+    res.status(400).json({ error: error.message || "Error al actualizar el profesor." });
+  }
+};
+
 export const destituirProfesor = async (req, res) => {
   try {
     const { id } = req.params;

@@ -148,6 +148,7 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
         pe.apellido1      AS estudiante_apellido1,
         pe.apellido2      AS estudiante_apellido2,
         g.nombre_grupo,
+        sec.nombre_seccion,
         pr.nombre         AS profesor_nombre,
         pr.apellido1      AS profesor_apellido1,
         prof.materia      AS materia_curso
@@ -155,6 +156,7 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
      INNER JOIN estudiante e   ON a.id_estudiante = e.id_estudiante
      INNER JOIN persona pe     ON e.id_persona = pe.id_persona
      INNER JOIN grupo g        ON a.id_grupo = g.id_grupo
+     INNER JOIN seccion sec     ON g.id_seccion = sec.id_seccion
      INNER JOIN profesor prof  ON a.id_profesor = prof.id_profesor
      INNER JOIN persona pr     ON prof.id_persona = pr.id_persona
      WHERE ${condiciones.join(" AND ")}
@@ -164,6 +166,47 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
   );
 
   return filas;
+}
+
+
+export async function eliminarAsistenciaProceso(idAsistencia, usuarioActual = null) {
+  const id = Number(idAsistencia);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("El identificador de asistencia no es válido.");
+  }
+
+  const rol = String(usuarioActual?.nom_rol || usuarioActual?.rol || "").toLowerCase().trim();
+  if (rol !== "administrador") {
+    throw new Error("Solo un administrador puede eliminar registros de asistencia.");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      "SELECT * FROM asistencia WHERE id_asistencia = ? FOR UPDATE",
+      [id]
+    );
+
+    if (!rows.length) {
+      throw new Error("Registro de asistencia no encontrado.");
+    }
+
+    await connection.query(
+      "DELETE FROM asistencia WHERE id_asistencia = ?",
+      [id]
+    );
+
+    await connection.commit();
+    return { mensaje: "Registro de asistencia eliminado correctamente.", registro: rows[0] };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export default registrarAsistenciaProceso;

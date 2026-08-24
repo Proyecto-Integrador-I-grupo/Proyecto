@@ -2,222 +2,224 @@ import React from 'react';
 
 export default function Asistencia() {
   return (
-    <><section id="asistencia-view" className="view hidden">
-
-<div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-<div>
-<h2 className="h3 mb-0 font-serif">Control y Registro de Asistencia</h2>
-</div>
-<div className="d-flex align-items-center gap-2">
-<button type="button" id="hist-refrescar" className="btn btn-outline-secondary btn-sm">
-<i className="bi bi-arrow-clockwise"></i> Refrescar
-      </button>
-<button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegistrarAsistencia">
-<i className="bi bi-plus-lg"></i> Registrar Asistencia
-      </button>
-</div>
-</div>
-
-<div className="card border-0 shadow-sm">
-<div className="card-body">
-<div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-<h3 className="card-title-serif h5 mb-0"><i className="bi bi-clock-history"></i> Historial de Asistencia</h3>
-<button className="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGraficosAsistencia" aria-expanded="false" aria-controls="collapseGraficosAsistencia">
-<i className="bi bi-bar-chart-fill"></i> Ver Gráficos Estadísticos
+    <section id="asistencia-view" className="view hidden">
+      <div className="attendance-page-header d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+        <div>
+          <span className="eyebrow">Seguimiento mensual</span>
+          <h2 className="h3 mb-1 font-serif">Bitácora de Asistencia</h2>
+          <p className="text-muted mb-0 small">
+            Registra la asistencia del grupo en una sola vista mensual. Los meses anteriores permanecen disponibles para consulta.
+          </p>
+        </div>
+        <button type="button" id="asis-refrescar" className="btn btn-outline-secondary">
+          <i className="bi bi-arrow-clockwise"></i> Refrescar
         </button>
-</div>
+      </div>
 
-<div className="collapse mb-4" id="collapseGraficosAsistencia">
-<div className="card card-body bg-light border-0">
-<div className="row align-items-center">
-<div className="col-12 col-md-6 mb-3 mb-md-0 text-center">
-<h6 className="text-muted mb-3 font-serif">Distribución de Estados</h6>
-<div style={{maxHeight: "220px",position: "relative"}}>
-<canvas id="chartAsistenciaEstados"></canvas>
-</div>
-</div>
-<div className="col-12 col-md-6 text-center">
-<h6 className="text-muted mb-3 font-serif">Resumen Rápido</h6>
-<div className="p-3 bg-white rounded shadow-sm text-start">
-<p className="mb-2 text-muted small">Visualiza de forma interactiva el comportamiento de la asistencia filtrada actual.</p>
-<div className="d-flex justify-content-between border-bottom py-1"><span>Total filtrado:</span> <strong id="graf-total">0</strong></div>
-<div className="d-flex justify-content-between border-bottom py-1 text-success"><span>Asistencia efectiva:</span> <strong id="graf-efectiva">0%</strong></div>
-<div className="d-flex justify-content-between py-1 text-danger"><span>Ausentismo:</span> <strong id="graf-ausentismo">0%</strong></div>
-</div>
-</div>
-</div>
-</div>
-</div>
+      <div className="attendance-control-card card border-0 shadow-sm mb-4">
+        <div className="card-body">
+          <div className="row g-3 align-items-end">
+            <div className="col-12 col-md-4">
+              <label className="form-label" htmlFor="asis-bitacora-grupo">Grupo</label>
+              <select id="asis-bitacora-grupo" className="form-select">
+                <option value="">Seleccionar grupo</option>
+              </select>
+            </div>
+            <div className="col-6 col-md-3">
+              <label className="form-label" htmlFor="asis-bitacora-mes">Mes</label>
+              <input id="asis-bitacora-mes" type="month" className="form-control" />
+            </div>
+            <div className="col-6 col-md-3" id="asis-profesor-field">
+              <label className="form-label" htmlFor="asis-bitacora-profesor">Profesor</label>
+              <select id="asis-bitacora-profesor" className="form-select" disabled>
+                <option value="">Selecciona un grupo</option>
+              </select>
+            </div>
+            <div className="col-12 col-md-2">
+              <button type="button" id="asis-guardar-mes" className="btn btn-primary w-100" disabled>
+                <i className="bi bi-cloud-check"></i> Guardar
+              </button>
+            </div>
+          </div>
 
-<div className="filter-bar mb-4">
-<div className="row g-2">
-<div className="col-12 col-md-3">
-<label className="form-label">Grupo</label>
-<select id="hist-filtro-grupo" className="form-select form-select-sm">
-<option value="">Todos los grupos</option>
-</select>
-</div>
-<div className="col-12 col-md-3">
-<label className="form-label">Estudiante Específico</label>
-<select id="hist-filtro-estudiante" className="form-select form-select-sm">
-<option value="">Todos los estudiantes</option>
-</select>
-</div>
-<div className="col-6 col-md-2">
-<label className="form-label">Materia/Curso</label>
-<select id="hist-filtro-materia" className="form-select form-select-sm">
-<option value="">Todas las materias</option>
-</select>
-</div>
-<div className="col-6 col-md-2">
-<label className="form-label">Estado</label>
-<select id="hist-filtro-estado" className="form-select form-select-sm">
-<option value="">Todos</option>
-<option value="presente">Presente</option>
-<option value="ausente">Ausente</option>
-<option value="tardia">Tardía</option>
-<option value="justificada">Justificada</option>
-</select>
-</div>
-<div className="col-6 col-md-2">
-<label className="form-label">Desde</label>
-<input id="hist-filtro-fecha-desde" type="date" className="form-control form-control-sm" />
-</div>
-<div className="col-6 col-md-2">
-<label className="form-label">Hasta</label>
-<input id="hist-filtro-fecha-hasta" type="date" className="form-control form-control-sm" />
-</div>
-<div className="col-12 col-md-8">
-<div className="input-group input-group-sm mt-1">
-<span className="input-group-text"><i className="bi bi-search"></i></span>
-<input id="hist-filtro-busqueda" type="text" className="form-control" placeholder="Buscar por nombre, apellido u observaciones..." />
-</div>
-</div>
-<div className="col-12 col-md-4 d-flex align-items-end mt-1">
-<button type="button" id="hist-limpiar-filtros" className="btn btn-outline-secondary btn-sm w-100">
-<i className="bi bi-x-circle"></i> Limpiar filtros
-            </button>
-</div>
-</div>
-</div>
+          <div className="attendance-legend mt-3" aria-label="Leyenda de estados">
+            <span><b className="legend-dot presente">P</b> Presente</span>
+            <span><b className="legend-dot ausente">A</b> Ausente</span>
+            <span><b className="legend-dot tardia">T</b> Tardía</span>
+            <span><b className="legend-dot justificada">J</b> Justificada</span>
+            <span className="text-muted"><i className="bi bi-info-circle"></i> Pulsa el estado para cambiarlo y usa el icono de comentario para agregar una observación.</span>
+          </div>
+          <div id="asis-bitacora-hint" className="form-text mt-2">
+            Selecciona un grupo para cargar sus estudiantes.
+          </div>
+        </div>
+      </div>
 
-<div className="table-responsive">
-<table id="asistencia-historial-table" className="table table-hover align-middle mb-0">
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Estudiante</th>
-<th>Grupo</th>
-<th>Profesor</th>
-<th>Materia/Curso</th>
-<th>Estado</th>
-<th>Observaciones</th>
-<th className="text-end">Acciones</th>
-</tr>
-</thead>
-<tbody id="asistencia-historial-body">
-<tr><td colSpan="8" className="text-center py-4 text-muted">Cargando historial...</td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body p-0">
+          <div className="attendance-matrix-head px-3 px-md-4 py-3 border-bottom d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div>
+              <h3 className="h5 mb-1 card-title-serif"><i className="bi bi-calendar3"></i> Registro del mes</h3>
+              <p id="asis-matrix-summary" className="text-muted small mb-0">Sin grupo seleccionado.</p>
+            </div>
+            <span id="asis-cambios-pendientes" className="badge rounded-pill text-bg-light border">Sin cambios</span>
+          </div>
+          <div className="attendance-matrix-wrap">
+            <table id="asis-matrix-table" className="table table-bordered align-middle mb-0 attendance-matrix">
+              <thead id="asis-matrix-head">
+                <tr><th className="student-sticky">Estudiante</th></tr>
+              </thead>
+              <tbody id="asis-matrix-body">
+                <tr><td className="text-center py-5 text-muted">Selecciona un grupo y un mes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-<div className="modal fade" id="modalRegistrarAsistencia" tabIndex="-1" aria-hidden="true">
-<div className="modal-dialog modal-dialog-centered">
-<div className="modal-content border-0 shadow-lg">
-<div className="modal-header bg-navy text-white">
-<h5 className="modal-title font-serif"><i className="bi bi-calendar2-check"></i> Registrar Asistencia</h5>
-<button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
-<div className="modal-body p-4">
-<form id="asistencia-form">
-<div className="row g-3">
-<div className="col-12">
-<label className="form-label">Grupo Destino</label>
-<select id="asis-id-grupo" className="form-select" required=""></select>
-<div className="form-text" id="asis-grupo-hint">Selecciona el grupo para filtrar automáticamente el roster.</div>
-</div>
-<div className="col-12">
-<label className="form-label">Estudiante</label>
-<select id="asis-persona" className="form-select" required="" disabled="">
-<option value="" disabled="" selected="">Primero selecciona un grupo</option>
-</select>
-</div>
-<div className="col-12">
-<label className="form-label">Profesor Asignado</label>
-<select id="asis-id-profesor" className="form-select" required="" disabled="">
-<option value="" disabled="" selected="">Primero selecciona un grupo</option>
-</select>
-</div>
-<div className="col-6">
-<label className="form-label">Estado</label>
-<select id="asis-estado" className="form-select">
-<option value="presente" selected="">Presente</option>
-<option value="ausente">Ausente</option>
-<option value="tardia">Tardía</option>
-<option value="justificada">Justificada</option>
-</select>
-</div>
-<div className="col-6">
-<label className="form-label">Fecha</label>
-<input id="asis-fecha" type="date" className="form-control" required="" />
-</div>
-<div className="col-12">
-<label className="form-label">Observaciones (opcional)</label>
-<input id="asis-observaciones" type="text" className="form-control" maxLength="250" placeholder="Ej. Retraso por transporte público" />
-</div>
-<div className="col-12 pt-3">
-<button type="submit" id="asis-submit" className="btn btn-primary w-100 py-2">
-<i className="bi bi-check2-circle"></i> Guardar Registro de Asistencia
+      <div className="card border-0 shadow-sm">
+        <div className="card-header bg-white border-0 pt-3 px-3 px-md-4">
+          <button
+            className="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-2"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#asis-historial-detallado"
+            aria-expanded="false"
+          >
+            <i className="bi bi-clock-history"></i>
+            Ver historial detallado
+            <i className="bi bi-chevron-down small"></i>
+          </button>
+        </div>
+        <div id="asis-historial-detallado" className="collapse">
+          <div className="card-body px-3 px-md-4">
+            <div className="row g-2 mb-3">
+              <div className="col-12 col-md-4">
+                <input id="asis-historial-busqueda" className="form-control form-control-sm" placeholder="Buscar estudiante, profesor o grupo..." />
+              </div>
+              <div className="col-6 col-md-2">
+                <select id="asis-historial-estado" className="form-select form-select-sm">
+                  <option value="">Todos los estados</option>
+                  <option value="presente">Presente</option>
+                  <option value="ausente">Ausente</option>
+                  <option value="tardia">Tardía</option>
+                  <option value="justificada">Justificada</option>
+                </select>
+              </div>
+              <div className="col-6 col-md-2">
+                <button type="button" id="asis-historial-refrescar" className="btn btn-outline-secondary btn-sm w-100">
+                  <i className="bi bi-arrow-clockwise"></i> Actualizar
                 </button>
-</div>
-</div>
-</form>
-</div>
-</div>
-</div>
-</div>
+              </div>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Estudiante</th>
+                    <th>Grupo / Sección</th>
+                    <th>Profesor</th>
+                    <th>Materia</th>
+                    <th>Estado</th>
+                    <th>Observaciones</th>
+                    <th className="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="asis-historial-body">
+                  <tr><td colSpan="8" className="text-center py-4 text-muted">Abre el historial para consultar registros anteriores.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<div className="modal fade" id="modalModificarAsistencia" tabIndex="-1" aria-hidden="true">
-<div className="modal-dialog modal-dialog-centered">
-<div className="modal-content border-0 shadow-lg">
-<div className="modal-header bg-navy text-white">
-<h5 className="modal-title font-serif"><i className="bi bi-pencil-square"></i> Modificar Estado de Asistencia</h5>
-<button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
-<div className="modal-body p-4">
-<form id="modificar-asistencia-form">
-<input type="hidden" id="mod-id-asistencia" />
-<div className="row g-3">
-<div className="col-12">
-<label className="form-label text-muted">Estudiante</label>
-<input type="text" id="mod-estudiante-nombre" className="form-control bg-light" disabled="" />
-</div>
-<div className="col-12">
-<label className="form-label">Nuevo Estado</label>
-<select id="mod-estado" className="form-select" required="">
-<option value="presente">Presente</option>
-<option value="ausente">Ausente</option>
-<option value="tardia">Tardía</option>
-<option value="justificada">Justificada</option>
-</select>
-</div>
-<div className="col-12">
-<label className="form-label">Observaciones / Motivo de Corrección</label>
-<textarea id="mod-observaciones" className="form-control" rows="3" maxLength="250" placeholder="Motivo del cambio de estado..."></textarea>
-</div>
-<div className="col-12 pt-3">
-<button type="submit" id="mod-submit" className="btn btn-primary w-100 py-2">
-<i className="bi bi-save"></i> Actualizar Registro
-                </button>
-</div>
-</div>
-</form>
-</div>
-</div>
-</div>
-</div>
-</section></>
+
+      <div className="modal fade" id="modalObservacionAsistencia" tabIndex="-1" aria-hidden="true">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow-lg">
+            <div className="modal-header bg-navy text-white">
+              <h5 className="modal-title font-serif"><i className="bi bi-chat-left-text"></i> Observación de asistencia</h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="asis-observacion-form">
+              <div className="modal-body p-4">
+                <input type="hidden" id="asis-observacion-key" />
+                <input type="hidden" id="asis-observacion-id-estudiante" />
+                <input type="hidden" id="asis-observacion-fecha" />
+                <input type="hidden" id="asis-observacion-id-asistencia" />
+                <div className="mb-3">
+                  <label className="form-label">Estudiante</label>
+                  <input id="asis-observacion-estudiante" className="form-control bg-light" disabled />
+                </div>
+                <div className="row g-3 mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Fecha</label>
+                    <input id="asis-observacion-fecha-texto" className="form-control bg-light" disabled />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Estado</label>
+                    <select id="asis-observacion-estado" className="form-select" required>
+                      <option value="">Seleccionar estado</option>
+                      <option value="presente">Presente</option>
+                      <option value="ausente">Ausente</option>
+                      <option value="tardia">Tardía</option>
+                      <option value="justificada">Justificada</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Observaciones</label>
+                  <textarea id="asis-observacion-texto" className="form-control" rows="4" maxLength="250" placeholder="Escribe una observación opcional para este día..."></textarea>
+                  
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" className="btn btn-primary">Aplicar a la bitácora</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div className="modal fade" id="modalEditarAsistencia" tabIndex="-1" aria-hidden="true">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow-lg">
+            <div className="modal-header bg-navy text-white">
+              <h5 className="modal-title font-serif"><i className="bi bi-pencil-square"></i> Editar asistencia</h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="asis-editar-form">
+              <div className="modal-body p-4">
+                <input type="hidden" id="asis-editar-id" />
+                <div className="mb-3">
+                  <label className="form-label">Estudiante</label>
+                  <input id="asis-editar-estudiante" className="form-control bg-light" disabled />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Estado</label>
+                  <select id="asis-editar-estado" className="form-select">
+                    <option value="presente">Presente</option>
+                    <option value="ausente">Ausente</option>
+                    <option value="tardia">Tardía</option>
+                    <option value="justificada">Justificada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Observaciones</label>
+                  <textarea id="asis-editar-observaciones" className="form-control" rows="3" maxLength="250"></textarea>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" className="btn btn-primary">Guardar cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

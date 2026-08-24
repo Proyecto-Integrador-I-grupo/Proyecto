@@ -1,5 +1,6 @@
 import * as estudianteService from "../services/estudianteService.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
+import * as finanzaService from "../services/finanzaService.js";
 
 export const getEstudiantes = async (req, res) => {
   try {
@@ -53,6 +54,16 @@ export const createEstudiante = async (req, res) => {
 
     const nuevoEstudiante = await estudianteService.crearEstudianteService(req.body, idUsuario);
 
+    let cargoMatricula = null;
+    try {
+      cargoMatricula = await finanzaService.asegurarCargoMatriculaPreRegistro(
+        nuevoEstudiante.id_estudiante,
+        idUsuario
+      );
+    } catch (errorCargo) {
+      console.error("No se pudo crear el cargo inicial de matrícula:", errorCargo);
+    }
+
     try {
       await auditoriaModel.crearAuditoria({
         nombre_tabla: "estudiante",
@@ -64,7 +75,10 @@ export const createEstudiante = async (req, res) => {
       console.error("Error registrando auditoría:", e);
     }
 
-    res.status(201).json(nuevoEstudiante);
+    res.status(201).json({
+      ...nuevoEstudiante,
+      cargo_matricula: cargoMatricula
+    });
   } catch (error) {
     console.error("DETALLE DEL ERROR AL CREAR ESTUDIANTE:", error);
     res.status(500).json({ error: error.message || "Error al registrar el estudiante." });

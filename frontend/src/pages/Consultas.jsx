@@ -16,13 +16,27 @@ export default function Consultas() {
             </h2>
 
             <p className="text-muted mb-0">
-              Consulta estudiantes en pre-matrícula, estudiantes matriculados,
-              profesores, matrículas y registros de asistencia.
+              Consulta estudiantes, profesores, matrículas, grupos y registros de asistencia.
             </p>
           </div>
 
           <div className="consultas-hero-icon">
             <i className="bi bi-folder2-open"></i>
+          </div>
+        </div>
+
+        <div
+          id="consulta-profesor-contexto"
+          className="consulta-profesor-contexto hidden mb-4"
+        >
+          <div className="consulta-profesor-contexto-icon">
+            <i className="bi bi-person-video3"></i>
+          </div>
+          <div>
+            <div className="fw-semibold">Consultando tus grupos asignados</div>
+            <div id="consulta-profesor-grupos" className="small text-muted mt-1">
+              Cargando grupos...
+            </div>
           </div>
         </div>
 
@@ -136,7 +150,26 @@ export default function Consultas() {
               </div>
             </div>
           </div>
+        <div className="col-6 col-lg">
+  <div className="consulta-stat h-100">
+    <div className="consulta-stat-icon">
+      <i className="bi bi-people"></i>
+    </div>
 
+    <div>
+      <span className="text-muted small">
+        Grupos
+      </span>
+
+      <div
+        id="consulta-total-grupos"
+        className="fs-3 fw-semibold mt-1"
+      >
+        0
+      </div>
+    </div>
+  </div>
+</div>
         </div>
 
 
@@ -179,6 +212,10 @@ export default function Consultas() {
                   <option value="asistencia">
                     Asistencia
                   </option>
+
+                  <option value="grupos">
+                    Grupos
+                  </option>  
                 </select>
               </div>
 
@@ -424,7 +461,7 @@ export default function Consultas() {
         aria-labelledby="consulta-detalle-titulo"
         aria-hidden="true"
       >
-        <div className="modal-dialog modal-xl modal-dialog-scrollable">
+        <div className="modal-dialog modal-xl">
           <div className="modal-content">
             <div className="modal-header">
               <div>
@@ -493,34 +530,30 @@ export default function Consultas() {
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button
-                type="button"
-                id="consulta-detalle-modificar"
-                className="btn btn-outline-primary hidden"
-              >
-                <i className="bi bi-pencil"></i> Modificar
-              </button>
+          <div className="modal-footer">
+  <button
+    type="button"
+    id="consulta-descargar-pdf"
+    className="btn btn-primary"
+  >
+    <i className="bi bi-file-earmark-pdf"></i>
+    {' '}
+    Descargar PDF
+  </button>
 
-              <button
-                type="button"
-                id="consulta-descargar-pdf"
-                className="btn btn-primary"
-              >
-                <i className="bi bi-file-earmark-pdf"></i> Descargar PDF
-              </button>
+  <button
+    type="button"
+    className="btn btn-secondary"
+    data-bs-dismiss="modal"
+  >
+    Cerrar
+  </button>
+</div>
 
-              <button
-                type="button"
-                className="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Cerrar
-              </button>
-            </div>
           </div>
         </div>
       </div>
+
     </>
   );
 }

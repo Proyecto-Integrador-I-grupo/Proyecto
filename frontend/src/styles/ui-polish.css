@@ -1,0 +1,421 @@
+/* ===== Pulido visual final EduControl ===== */
+
+/* Jerarquía de títulos consistente en superficies claras */
+body:not(.theme-dark):not(.high-contrast) .view .page-header h1,
+body:not(.theme-dark):not(.high-contrast) .view .page-header h2,
+body:not(.theme-dark):not(.high-contrast) .view .page-header h3,
+body:not(.theme-dark):not(.high-contrast) .view .card-title,
+body:not(.theme-dark):not(.high-contrast) .view .card-title-serif,
+body:not(.theme-dark):not(.high-contrast) .view .finance-panel-title h3,
+body:not(.theme-dark):not(.high-contrast) .view .finance-card-heading h3,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h1,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h2,
+body:not(.theme-dark):not(.high-contrast) .view .report-main-card h3 {
+  color: #13243a !important;
+}
+
+body:not(.theme-dark):not(.high-contrast) .view .page-header p,
+body:not(.theme-dark):not(.high-contrast) .view .card-subtitle,
+body:not(.theme-dark):not(.high-contrast) .view .text-muted,
+body:not(.theme-dark):not(.high-contrast) .view .form-text {
+  color: #627489 !important;
+}
+
+/* Encabezados oscuros siempre con texto claro */
+.modal-header.bg-navy,
+.modal-header.bg-dark,
+.modal-header.bg-primary,
+.modal-header.bg-success,
+.modal-header.bg-danger,
+.modal-header.bg-navy .modal-title,
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-success .modal-title,
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-navy .modal-title *,
+.modal-header.bg-dark .modal-title *,
+.modal-header.bg-primary .modal-title *,
+.modal-header.bg-success .modal-title *,
+.modal-header.bg-danger .modal-title * {
+  color: #fff !important;
+}
+
+/* Cabeceras de página más limpias */
+.view .page-header {
+  padding: .25rem .15rem .15rem;
+}
+.view .page-header h1,
+.view .page-header h2,
+.view .page-header h3 {
+  margin-bottom: .2rem !important;
+  font-weight: 760;
+  letter-spacing: -.025em;
+}
+
+/* Tarjetas consistentes */
+body:not(.theme-dark):not(.high-contrast) .view > .card,
+body:not(.theme-dark):not(.high-contrast) .view .card:not(.hero-card),
+body:not(.theme-dark):not(.high-contrast) .finance-panel,
+body:not(.theme-dark):not(.high-contrast) .report-main-card {
+  border-color: #e1e8f0 !important;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .055) !important;
+}
+
+/* ===== Profesores ===== */
+#profesores-view .card-body {
+  padding: 1rem 1.05rem 1.15rem;
+}
+
+#profesores-view .card-body > .d-flex:first-child {
+  padding: .15rem .1rem .85rem;
+  border-bottom: 1px solid #e8edf3;
+}
+
+#profesores-view .search-box {
+  width: min(100%, 430px);
+  min-width: 280px;
+}
+
+#profesores-view #prof-filtro-estado {
+  min-width: 235px;
+  min-height: 42px;
+  border-radius: .7rem;
+}
+
+#profesores-view .search-box .form-control,
+#profesores-view .search-box .input-group-text {
+  min-height: 42px;
+  border-color: #d9e2ec;
+  background: #fff;
+}
+
+#profesores-view .search-box .input-group-text {
+  color: #49647f;
+}
+
+#profesores-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#profesores-table thead th {
+  padding: .8rem .75rem;
+  background: #f6f8fb;
+  color: #2b4056 !important;
+  border-bottom: 1px solid #dfe7ef;
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+#profesores-table tbody td {
+  padding: .9rem .75rem;
+  border-bottom: 1px solid #e9eef4;
+  background: #fff;
+  color: #20354a;
+  line-height: 1.42;
+}
+
+#profesores-table tbody tr:nth-child(even) td {
+  background: #fbfcfe;
+}
+
+#profesores-table tbody tr:hover td {
+  background: #f5f9fc;
+}
+
+#profesores-table td:nth-child(2) {
+  font-weight: 650;
+  color: #18314a;
+}
+
+#profesores-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+#profesores-table td:nth-child(5) {
+  color: #405a73;
+  line-height: 1.5;
+}
+
+#profesores-table td:nth-child(5) br + br {
+  display: none;
+}
+
+#profesores-table .badge {
+  padding: .38rem .58rem;
+  border-radius: 999px;
+  font-size: .72rem;
+}
+
+.profesor-actions-grid {
+  max-width: 270px;
+  gap: .42rem;
+}
+
+.profesor-actions-grid .profesor-action-btn {
+  min-height: 36px;
+  border-radius: .65rem;
+  font-size: .75rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.profesor-actions-grid .profesor-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(15, 23, 42, .08);
+}
+
+@media (min-width: 992px) {
+  #profesores-table th:nth-child(1) { width: 4%; }
+  #profesores-table th:nth-child(2) { width: 16%; }
+  #profesores-table th:nth-child(3) { width: 11%; }
+  #profesores-table th:nth-child(4) { width: 9%; }
+  #profesores-table th:nth-child(5) { width: 22%; }
+  #profesores-table th:nth-child(6) { width: 10%; }
+  #profesores-table th:nth-child(7) { width: 28%; }
+}
+
+/* ===== Pagos y facturación ===== */
+#pagos-view .finance-summary {
+  gap: .9rem;
+  margin-bottom: 1.15rem;
+}
+
+#pagos-view .finance-summary-card {
+  min-height: 92px;
+  border-radius: 16px;
+  border-color: #e0e8f0;
+  box-shadow: 0 7px 20px rgba(15, 23, 42, .045);
+}
+
+#pagos-view .finance-workspace {
+  gap: 1.15rem;
+}
+
+#pagos-view .finance-panel {
+  border-radius: 18px;
+}
+
+#pagos-view .finance-panel-header {
+  padding: 1rem 1.05rem .9rem;
+  background: linear-gradient(180deg, #fff, #fbfcfe);
+}
+
+#pagos-view .finance-record-list {
+  padding: .9rem;
+  gap: .72rem;
+}
+
+#pagos-view .finance-record-card {
+  padding: .85rem .9rem;
+  border-radius: 14px;
+  background: #fff;
+}
+
+#pagos-view .finance-record-card:hover {
+  border-color: #cfd9e4;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .055);
+}
+
+#pagos-view .finance-record-money > div {
+  background: #f5f7fa;
+  border: 1px solid #e8edf3;
+}
+
+#pagos-view .finance-card-heading h3,
+#pagos-view .finance-panel-title h3,
+#pagos-view .finance-record-title,
+#pagos-view .billing-service-copy strong {
+  color: #16324a !important;
+}
+
+/* Formularios y filtros más uniformes en módulos administrativos */
+.view .form-control,
+.view .form-select,
+.view .input-group-text {
+  border-color: #d8e1eb;
+}
+.view .form-control:focus,
+.view .form-select:focus {
+  border-color: #78a9c4;
+  box-shadow: 0 0 0 .2rem rgba(46, 111, 149, .12);
+}
+
+/* Mantener dark/high contrast sin forzar paleta clara */
+body.theme-dark #profesores-table thead th,
+body.theme-dark #profesores-table tbody td,
+body.high-contrast #profesores-table thead th,
+body.high-contrast #profesores-table tbody td {
+  background: inherit;
+  color: inherit !important;
+}
+
+@media (max-width: 767.98px) {
+  #profesores-view .search-box,
+  #profesores-view #prof-filtro-estado {
+    width: 100% !important;
+    min-width: 0;
+  }
+  #profesores-view .card-body > .d-flex:first-child {
+    align-items: stretch !important;
+  }
+}
+
+
+/* ===== Presentación comercial final ===== */
+/* El rol administrativo pertenece a la identidad azul de EduControl, no a una alerta. */
+.role-badge-admin {
+  background: #eaf2f8 !important;
+  color: #245b82 !important;
+  border: 1px solid #c9deec;
+}
+.sidebar .role-badge-admin {
+  background: rgba(90, 170, 215, .16) !important;
+  color: #d9f1ff !important;
+  border-color: rgba(140, 205, 239, .32);
+}
+
+/* Perfil: contraste correcto sobre el hero azul. */
+#perfil-view .perfil-hero,
+#perfil-view .perfil-hero h1,
+#perfil-view .perfil-hero h2,
+#perfil-view .perfil-hero h3,
+#perfil-view .perfil-hero p,
+#perfil-view .perfil-hero .text-muted,
+#perfil-view .perfil-hero .perfil-eyebrow {
+  color: #fff !important;
+}
+#perfil-view .perfil-hero .perfil-eyebrow { color: rgba(255,255,255,.8) !important; }
+#perfil-view .perfil-hero p { color: rgba(255,255,255,.86) !important; }
+
+/* Pre-registro: ventana proporcionada y fácil de escanear. */
+#modalEstudiante .modal-dialog.modal-estudiante-dialog {
+  width: min(92vw, 760px) !important;
+  max-width: min(92vw, 760px) !important;
+}
+#modalEstudiante .modal-body { padding: 1rem 1.15rem !important; }
+#modalEstudiante .modal-footer { padding: .75rem 1.15rem !important; }
+#modalEstudiante .row.g-3 { --bs-gutter-y: .8rem; --bs-gutter-x: 1rem; }
+
+/* Profesores: menos columnas, grupos convertidos a bloques legibles y acciones compactas. */
+#profesores-view .profesores-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid #e4eaf0; }
+#profesores-table { min-width: 960px; }
+#profesores-table thead th { white-space: nowrap; }
+#profesores-table tbody td { vertical-align: middle; }
+#profesores-table td:first-child { min-width: 190px; }
+#profesores-table td:nth-child(2) { min-width: 115px; }
+#profesores-table td:nth-child(3) { width: 112px; min-width: 112px; }
+#profesores-table td:nth-child(4) { min-width: 260px; }
+#profesores-table td:nth-child(5) { width: 105px; }
+#profesores-table td:nth-child(6) { width: 265px; }
+.profesor-name-cell { display:flex; flex-direction:column; gap:.15rem; }
+.profesor-name-cell strong { color:#16324a; font-size:.96rem; line-height:1.25; }
+.profesor-name-cell small { color:#7a8b9b; font-size:.72rem; }
+.profesor-groups-list { display:flex; flex-direction:column; gap:.38rem; }
+.profesor-group-pill {
+  display:flex; align-items:flex-start; gap:.4rem; width:fit-content; max-width:100%;
+  padding:.36rem .55rem; border:1px solid #d9e6ee; border-radius:9px;
+  background:#f7fafc; color:#35536b; font-size:.76rem; line-height:1.32;
+}
+.profesor-group-pill i { color:#2e789d; margin-top:.06rem; }
+.profesor-actions-grid { grid-template-columns: repeat(2, minmax(92px,1fr)); max-width: 250px; }
+.profesor-actions-grid .profesor-action-btn { min-height: 34px; padding:.36rem .52rem; }
+@media (min-width: 992px) {
+  #profesores-table th:nth-child(1) { width: 17%; }
+  #profesores-table th:nth-child(2) { width: 10%; }
+  #profesores-table th:nth-child(3) { width: 9%; }
+  #profesores-table th:nth-child(4) { width: 25%; }
+  #profesores-table th:nth-child(5) { width: 9%; }
+  #profesores-table th:nth-child(6) { width: 30%; }
+}
+
+/* Usuarios: la tabla no debe parecer consola ni obligar a refrescar visualmente. */
+#usuarios-view .card { border:1px solid #e4eaf0 !important; box-shadow:0 8px 24px rgba(15,23,42,.045) !important; }
+#usuarios-view .card-header { background:#fff !important; border-bottom:1px solid #e8edf2; }
+#usuarios-view .table > :not(caption) > * > * { padding:.82rem .9rem; }
+#usuarios-view .table tbody strong { color:#17324a; font-family:inherit; }
+#usuarios-view .table tbody tr:nth-child(even) td { background:#fbfcfd; }
+#usuarios-view .badge.bg-dark { background:#203c57 !important; }
+#usuarios-view .badge.bg-info { background:#dff3f8 !important; color:#17657b !important; border:1px solid #b7e3ec; }
+
+/* Sidebar: bloque de sesión menos parecido a una alerta. */
+.sidebar-user { border-color: rgba(148,163,184,.28) !important; background: rgba(255,255,255,.025) !important; }
+#logout-btn { border-color: rgba(226,232,240,.75) !important; }
+
+/* Títulos de tarjetas claros y consistentes. */
+body:not(.theme-dark):not(.high-contrast) .view .card-header .card-title,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h4,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h5,
+body:not(.theme-dark):not(.high-contrast) .view .card-header h6 {
+  color:#172b40 !important;
+}
+
+
+/* === Ajuste definitivo de Cuerpo Docente: sin scroll horizontal, horarios legibles y todas las acciones === */
+#profesores-view .profesores-table-wrap {
+  width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  border: 1px solid #e4eaf0 !important;
+  border-radius: 14px !important;
+}
+#profesores-view #profesores-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+#profesores-view #profesores-table th,
+#profesores-view #profesores-table td {
+  min-width: 0 !important;
+  padding: .7rem .5rem !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+#profesores-view #profesores-table th:nth-child(1) { width: 18% !important; }
+#profesores-view #profesores-table th:nth-child(2) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(3) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(4) { width: 27% !important; }
+#profesores-view #profesores-table th:nth-child(5) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(6) { width: 24% !important; }
+#profesores-view #profesores-table td:first-child,
+#profesores-view #profesores-table td:nth-child(2),
+#profesores-view #profesores-table td:nth-child(3),
+#profesores-view #profesores-table td:nth-child(4),
+#profesores-view #profesores-table td:nth-child(5),
+#profesores-view #profesores-table td:nth-child(6) { min-width: 0 !important; }
+#profesores-view .profesor-name-cell strong { font-size: .91rem !important; line-height: 1.25; }
+#profesores-view .profesor-name-cell small { display:none !important; }
+#profesores-view .profesor-groups-list { gap:.28rem !important; }
+#profesores-view .profesor-group-pill {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: .3rem .42rem !important;
+  font-size: .71rem !important;
+  line-height: 1.28 !important;
+  white-space: normal !important;
+}
+#profesores-view .profesor-actions-grid {
+  width: 100% !important;
+  max-width: none !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: .32rem !important;
+  margin-left: 0 !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  padding: .29rem .3rem !important;
+  font-size: .69rem !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd) { grid-column:auto !important; }
+@media (max-width: 1100px) {
+  #profesores-view #profesores-table th,
+  #profesores-view #profesores-table td { padding:.58rem .34rem !important; font-size:.8rem !important; }
+  #profesores-view .profesor-group-pill { font-size:.67rem !important; }
+  #profesores-view .profesor-actions-grid .profesor-action-btn { font-size:.64rem !important; }
+}

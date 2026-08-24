@@ -92,21 +92,213 @@
 }
 
 .consultas-hero {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
   flex-wrap: wrap;
+
+  padding: 1.8rem 2rem;
+
+  border: 1px solid #cfe0f2;
+  border-left: 4px solid #2f80ed;
+  border-radius: 1rem;
+
+  background: linear-gradient(
+    110deg,
+    #ffffff 0%,
+    #fbfdff 48%,
+    #edf6ff 100%
+  );
+
+  box-shadow:
+    0 6px 18px rgba(15, 39, 71, 0.04);
+
+  overflow: hidden;
 }
 
-.consulta-header {
-  flex-wrap: wrap;
-  gap: 0.5rem;
+/* Forma azul suave del lado derecho */
+.consultas-hero::before {
+  content: "";
+  position: absolute;
+
+  width: 420px;
+  height: 250px;
+
+  right: -80px;
+  bottom: -150px;
+
+  border-radius: 50%;
+
+  background: rgba(76, 151, 232, 0.08);
+
+  transform: rotate(-15deg);
+
+  pointer-events: none;
+}
+
+/* Puntitos decorativos muy suaves */
+.consultas-hero::after {
+  content: "";
+  position: absolute;
+
+  width: 190px;
+  height: 150px;
+
+  right: 95px;
+  top: 20px;
+
+  background-image:
+    radial-gradient(
+      rgba(47, 128, 237, 0.18) 1px,
+      transparent 1px
+    );
+
+  background-size: 13px 13px;
+
+  opacity: 0.65;
+
+  pointer-events: none;
+}
+
+.consultas-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.consultas-eyebrow {
+  display: block;
+
+  margin-bottom: 0.45rem;
+
+  font-size: 0.75rem;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: #3374b9;
+}
+
+.consultas-hero-icon {
+  display: grid;
+  place-items: center;
+
+  width: 4.3rem;
+  height: 4.3rem;
+
+  flex: 0 0 auto;
+
+  border-radius: 1rem;
+
+  background: linear-gradient(
+    145deg,
+    #143b6d,
+    #0f2e58
+  );
+
+  color: #ffffff;
+
+  font-size: 1.6rem;
+
+  box-shadow:
+    0 8px 20px rgba(15, 46, 88, 0.12);
+}
+
+
+/* ==========================================
+   TARJETAS DE RESUMEN
+   ========================================== */
+
+.consulta-stat {
+  display: flex;
+  align-items: center;
+
+  gap: 1rem;
+
+  min-height: 105px;
+
+  padding: 1rem 1.2rem;
+
+  border: 1px solid #dfe7ef;
+  border-radius: 1rem;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 12px rgba(15, 39, 71, 0.025);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.consulta-stat:hover {
+  transform: translateY(-2px);
+
+  border-color: #c6d9ed;
+
+  box-shadow:
+    0 7px 18px rgba(15, 39, 71, 0.06);
+}
+
+.consulta-stat-icon {
+  display: grid;
+  place-items: center;
+
+  width: 3rem;
+  height: 3rem;
+
+  flex: 0 0 3rem;
+
+  border-radius: 0.85rem;
+
+  background: #edf5ff;
+
+  color: #2467aa;
+
+  font-size: 1.2rem;
+}
+
+/* Nombre de la consulta */
+.consulta-stat .text-muted {
+  color: #44556a !important;
+  font-size: 0.88rem;
+}
+
+/* Número */
+.consulta-stat .fs-3 {
+  margin-top: 0.2rem !important;
+  color: #102f55;
+  font-weight: 700 !important;
+  line-height: 1;
 }
 
 @media (max-width: 576px) {
+
+  .consultas-hero {
+    padding: 1.25rem;
+  }
+
   .consultas-hero-icon {
     display: none;
   }
 
-  .consultas-hero {
-    padding: 1rem;
+  .consultas-hero::after {
+    display: none;
+  }
+
+  .consulta-stat {
+    min-height: 90px;
+    padding: 0.85rem;
+  }
+
+  .consulta-stat-icon {
+    width: 2.7rem;
+    height: 2.7rem;
+    flex-basis: 2.7rem;
   }
 }
 
@@ -115,115 +307,171 @@
    ========================================== */
 
 .consulta-preview-area {
+  padding: 2rem;
+
   background:
     linear-gradient(
       135deg,
-      #e9ecef,
-      #f8f9fa
+      #eef3f8,
+      #f7f9fc
     );
 }
 
+/* Hoja principal */
 .consulta-documento {
   width: 100%;
-  max-width: 850px;
-  min-height: 760px;
-  padding: 3rem;
+  max-width: 920px;
+
+  min-height: 650px;
+
+  margin: 0 auto;
+  padding: 2.5rem 3rem;
+
   background: #ffffff;
-  border: 1px solid #dfe3e8;
-  border-radius: 0.25rem;
+
+  border: 1px solid #d8e2ec;
+  border-radius: 0.75rem;
+
   box-shadow:
-    0 1rem 3rem rgba(15, 23, 42, 0.15);
+    0 18px 45px rgba(15, 39, 71, 0.12);
+
   color: #1f2937;
 }
 
+/* Encabezado del documento */
 .consulta-documento-header {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
+/* Logo */
 .consulta-documento-logo {
   display: grid;
   place-items: center;
-  width: 4rem;
-  height: 4rem;
+
+  width: 3.8rem;
+  height: 3.8rem;
+
   flex: 0 0 auto;
-  border-radius: 0.75rem;
-  background: var(--navy);
+
+  border-radius: 0.9rem;
+
+  background:
+    linear-gradient(
+      145deg,
+      #173f70,
+      #0f2e58
+    );
+
   color: #ffffff;
-  font-size: 1.8rem;
+
+  font-size: 1.6rem;
+
+  box-shadow:
+    0 6px 14px rgba(15, 46, 88, 0.12);
 }
 
 .consulta-documento-institucion {
-  color: var(--navy);
-  font-size: 0.8rem;
+  color: #3374b9;
+
+  font-size: 0.75rem;
   font-weight: 800;
+
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .consulta-documento-titulo {
-  color: #111827;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.65rem;
+  margin-top: 0.15rem;
+
+  color: #102f55;
+
+  font-family: var(--font-display);
+  font-size: 1.55rem;
   font-weight: 700;
 }
 
 .consulta-documento-subtitulo {
-  color: #6b7280;
-  font-size: 0.9rem;
+  color: #64748b;
+  font-size: 0.88rem;
 }
 
+/* Fecha de emisión */
 .consulta-documento-meta {
-  color: #6b7280;
-  font-size: 0.75rem;
+  margin-left: auto;
+
+  color: #64748b;
+  font-size: 0.72rem;
+
+  text-align: right;
 }
 
 .consulta-documento-meta strong {
-  color: #1f2937;
-  font-size: 0.85rem;
+  display: block;
+
+  margin-top: 0.15rem;
+
+  color: #334155;
+  font-size: 0.82rem;
 }
 
+/* Línea divisoria */
 .consulta-documento-linea {
-  height: 2px;
-  margin: 1.5rem 0 2rem;
+  height: 1px;
+
+  margin: 1.5rem 0 1.75rem;
+
   background:
     linear-gradient(
       90deg,
-      var(--navy),
-      rgba(15, 39, 71, 0.12)
+      #2f80ed,
+      #dbe8f5
     );
 }
 
+/* Contenido */
 .consulta-documento-contenido {
-  min-height: 520px;
+  min-height: 420px;
 }
 
 .consulta-documento-seccion {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.6rem;
 }
 
 .consulta-documento-seccion-titulo {
   margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  color: var(--navy);
-  font-size: 0.8rem;
+
+  padding-bottom: 0.55rem;
+
+  border-bottom: 1px solid #e3eaf1;
+
+  color: #234f7d;
+
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
+/* Datos del registro */
 .consulta-documento-grid {
   display: grid;
+
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
-  gap: 1.25rem 2rem;
+
+  gap: 1rem 2rem;
 }
 
 .consulta-documento-campo {
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #edf0f3;
+  padding: 0.75rem 0.9rem;
+
+  border: 1px solid #e8edf3;
+  border-radius: 0.65rem;
+
+  background: #fbfcfe;
 }
 
 .consulta-documento-campo.completo {
@@ -232,37 +480,56 @@
 
 .consulta-documento-etiqueta {
   display: block;
-  margin-bottom: 0.25rem;
-  color: #6b7280;
-  font-size: 0.72rem;
+
+  margin-bottom: 0.3rem;
+
+  color: #64748b;
+
+  font-size: 0.68rem;
   font-weight: 700;
+
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .consulta-documento-valor {
-  color: #111827;
-  font-size: 0.95rem;
+  color: #172b46;
+
+  font-size: 0.92rem;
   font-weight: 600;
+
   word-break: break-word;
 }
 
+/* Pie */
 .consulta-documento-footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+
   gap: 2rem;
-  margin-top: 2.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #dfe3e8;
-  color: #6b7280;
-  font-size: 0.72rem;
+
+  margin-top: 2rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid #e0e7ef;
+
+  color: #718096;
+  font-size: 0.7rem;
 }
 
 .consulta-documento-footer strong {
-  color: var(--navy);
+  color: #234f7d;
 }
 
+
+/* Responsive */
 @media (max-width: 768px) {
+
+  .consulta-preview-area {
+    padding: 1rem;
+  }
+
   .consulta-documento {
     min-height: auto;
     padding: 1.5rem;
@@ -275,7 +542,9 @@
 
   .consulta-documento-meta {
     width: 100%;
-    text-align: left !important;
+    margin-left: 0;
+
+    text-align: left;
   }
 
   .consulta-documento-grid {
@@ -288,5 +557,64 @@
 
   .consulta-documento-footer {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
+
+.consulta-profesor-contexto {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.consulta-profesor-contexto.hidden {
+  display: none !important;
+}
+
+.consulta-profesor-contexto-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary, #2563eb);
+  font-size: 1.1rem;
+}
+
+#consulta-profesor-grupos {
+  line-height: 1.5;
+}
+
+#consulta-profesor-grupos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.consulta-profesor-grupo-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(37, 99, 235, 0.06);
+  color: var(--text-color, #334155);
+  line-height: 1.25;
+}
+
+.consulta-profesor-grupo-chip strong {
+  color: #1d4ed8;
+  font-size: 0.9rem;
+}
+
+.consulta-profesor-grupo-chip span {
+  font-size: 0.78rem;
+  color: #64748b;
+} 

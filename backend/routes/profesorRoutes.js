@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getProfesores,
   createProfesor,
+  actualizarProfesor,
   destituirProfesor,
   reintegrarProfesor,
   eliminarProfesor,
@@ -20,10 +21,11 @@ router.get("/", requireAuth, getProfesores);
 // Gestión del cuerpo docente: solo el Administrador contrata, destituye, reintegra o elimina profesores.
 router.get("/suplencias/pendientes", requireAuth, requireRole("Administrador"), getSuplenciasPendientes);
 router.post("/", requireAuth, requireRole("Administrador"), createProfesor);
+router.put("/reasignar", requireAuth, requireRole("Administrador"), reasignarGrupo);
 router.put("/:id/destituir", requireAuth, requireRole("Administrador"), destituirProfesor);
 router.put("/:id/reintegrar", requireAuth, requireRole("Administrador"), reintegrarProfesor);
 router.put("/:id/grupos", requireAuth, requireRole("Administrador"), asignarGruposProfesor);
-router.put("/reasignar", requireAuth, requireRole("Administrador"), reasignarGrupo);
+router.put("/:id", requireAuth, requireRole("Administrador"), actualizarProfesor);
 router.delete("/:id", requireAuth, requireRole("Administrador"), eliminarProfesor);
 
 export default router;

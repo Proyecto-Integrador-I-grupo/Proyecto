@@ -2,11 +2,13 @@
   /* Paleta Principal de Alto Contraste */
   --bs-primary: #1A2530;
   --bs-primary-rgb: 26, 37, 48;
-  --bs-body-font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  --bs-body-bg: #F4F6F9;
-  --bs-body-color: #1D4ED8;
-  --text-primary: #1D4ED8;
-  --text-secondary: #64748B;
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --bs-body-font-family: var(--font-sans);
+  --bs-body-bg: #F4F7F9;
+  --bs-body-color: #243447;
+  --text-primary: #243447;
+  --text-secondary: #667788;
   --bs-border-radius: 0.5rem;
   --bs-border-radius-lg: 0.75rem;
   --bs-border-color: #E2E8F0;
@@ -17,18 +19,18 @@
   --navy: #0F172A;
   --navy-2: #1E293B;
   --navy-light: #334155;
-  --accent: #2563EB;
-  --accent-hover: #1D4ED8;
-  --accent-soft: #EFF6FF;
-  --gold: #D97706;
-  --gold-soft: #FEF3C7;
-  --ink-muted: #64748B;
-  --success: #16A34A;
-  --danger: #DC2626;
+  --accent: #2E6F95;
+  --accent-hover: #245A78;
+  --accent-soft: #EAF3F7;
+  --gold: #B7791F;
+  --gold-soft: #FBF2DC;
+  --ink-muted: #6B7C8F;
+  --success: #2F855A;
+  --danger: #C2414B;
 
   /* Roles */
-  --role-admin: #991B1B;
-  --role-admin-soft: #FEE2E2;
+  --role-admin: #1E4F78;
+  --role-admin-soft: #EAF2F8;
   --role-asistente: #166534;
   --role-asistente-soft: #DCFCE7;
   --role-profesor: #6D28D9;
@@ -40,7 +42,12 @@ html {
 }
 
 body {
+  font-family: var(--font-sans);
+  font-size: 0.96rem;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: var(--bs-body-bg);
   color: var(--text-primary);
   overflow-x: hidden;

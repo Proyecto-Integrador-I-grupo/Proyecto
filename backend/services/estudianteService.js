@@ -1,5 +1,24 @@
 import conexionPromise from "../config/database.js";
 
+const normalizarGenero = (genero) => {
+  const valor = String(genero ?? "").trim().toLowerCase();
+  const mapa = {
+    m: "M",
+    masculino: "M",
+    f: "F",
+    femenino: "F",
+    o: "O",
+    otro: "O",
+    otra: "O"
+  };
+
+  const normalizado = mapa[valor];
+  if (!normalizado) {
+    throw new Error("El género debe ser Masculino, Femenino u Otro.");
+  }
+  return normalizado;
+};
+
 /**
  * Obtiene la lista de estudiantes pendientes de matrícula (pre-registro).
  * IMPORTANTE: esto consulta la tabla `estudiante`, NO la tabla `persona` completa.
@@ -155,6 +174,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
     throw new Error("Faltan campos obligatorios para registrar al estudiante.");
   }
 
+  const generoNormalizado = normalizarGenero(genero);
   const connection = await conexionPromise.getConnection();
 
   try {
@@ -173,7 +193,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
       apellido1.trim(),
       apellido2 ? apellido2.trim() : null,
       fecha_nacimiento,
-      genero
+      generoNormalizado
     ]);
 
     const id_persona = resPersona.insertId;
@@ -218,6 +238,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
  */
 export const actualizarEstudianteService = async (id_estudiante, datos, idUsuario = null) => {
   const { nombre, apellido1, apellido2, fecha_nacimiento, genero } = datos;
+  const generoNormalizado = normalizarGenero(genero);
 
   const connection = await conexionPromise.getConnection();
 
@@ -239,7 +260,7 @@ export const actualizarEstudianteService = async (id_estudiante, datos, idUsuari
       `UPDATE persona 
        SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ?
        WHERE id_persona = ?`,
-      [nombre, apellido1, apellido2 || null, fecha_nacimiento, genero, id_persona]
+      [nombre, apellido1, apellido2 || null, fecha_nacimiento, generoNormalizado, id_persona]
     );
 
     await connection.commit();
@@ -273,6 +294,21 @@ export const eliminarEstudianteService = async (id_estudiante) => {
 
     await connection.query(
       `UPDATE estudiante SET estado = FALSE WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE cargo_estudiante
+       SET estado = 'anulado', saldo = 0
+       WHERE id_estudiante = ?
+         AND estado IN ('pendiente', 'parcial')`,
+      [id_estudiante]
+    );
+
+    await connection.query(
+      `UPDATE responsable_pago
+       SET estado = FALSE, principal = FALSE
+       WHERE id_estudiante = ?`,
       [id_estudiante]
     );
 

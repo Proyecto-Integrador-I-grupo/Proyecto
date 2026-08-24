@@ -351,3 +351,71 @@ body:not(.theme-dark):not(.high-contrast) .view .card-header h5,
 body:not(.theme-dark):not(.high-contrast) .view .card-header h6 {
   color:#172b40 !important;
 }
+
+
+/* === Ajuste definitivo de Cuerpo Docente: sin scroll horizontal, horarios legibles y todas las acciones === */
+#profesores-view .profesores-table-wrap {
+  width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  border: 1px solid #e4eaf0 !important;
+  border-radius: 14px !important;
+}
+#profesores-view #profesores-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+#profesores-view #profesores-table th,
+#profesores-view #profesores-table td {
+  min-width: 0 !important;
+  padding: .7rem .5rem !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+#profesores-view #profesores-table th:nth-child(1) { width: 18% !important; }
+#profesores-view #profesores-table th:nth-child(2) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(3) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(4) { width: 27% !important; }
+#profesores-view #profesores-table th:nth-child(5) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(6) { width: 24% !important; }
+#profesores-view #profesores-table td:first-child,
+#profesores-view #profesores-table td:nth-child(2),
+#profesores-view #profesores-table td:nth-child(3),
+#profesores-view #profesores-table td:nth-child(4),
+#profesores-view #profesores-table td:nth-child(5),
+#profesores-view #profesores-table td:nth-child(6) { min-width: 0 !important; }
+#profesores-view .profesor-name-cell strong { font-size: .91rem !important; line-height: 1.25; }
+#profesores-view .profesor-name-cell small { display:none !important; }
+#profesores-view .profesor-groups-list { gap:.28rem !important; }
+#profesores-view .profesor-group-pill {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: .3rem .42rem !important;
+  font-size: .71rem !important;
+  line-height: 1.28 !important;
+  white-space: normal !important;
+}
+#profesores-view .profesor-actions-grid {
+  width: 100% !important;
+  max-width: none !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: .32rem !important;
+  margin-left: 0 !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  padding: .29rem .3rem !important;
+  font-size: .69rem !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn:last-child:nth-child(odd) { grid-column:auto !important; }
+@media (max-width: 1100px) {
+  #profesores-view #profesores-table th,
+  #profesores-view #profesores-table td { padding:.58rem .34rem !important; font-size:.8rem !important; }
+  #profesores-view .profesor-group-pill { font-size:.67rem !important; }
+  #profesores-view .profesor-actions-grid .profesor-action-btn { font-size:.64rem !important; }
+}

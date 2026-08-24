@@ -40,6 +40,9 @@ export default function Usuarios() {
                         required
                       />
                       <div className="form-text">Solo se permiten cuentas @{schoolDomain}.</div>
+                      <div id="usuario-correo-error" className="invalid-feedback">
+                        No se acepta ese correo. Usa una cuenta @{schoolDomain}.
+                      </div>
                     </div>
 
                     <div className="mb-3">
@@ -110,6 +113,30 @@ export default function Usuarios() {
         </div>
       </section>
 
+
+      <div className="modal fade" id="modalEliminarUsuario" tabIndex="-1" aria-labelledby="modalEliminarUsuarioLabel" aria-hidden="true">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow">
+            <div className="modal-header bg-dark text-white">
+              <h5 className="modal-title" id="modalEliminarUsuarioLabel">
+                <i className="bi bi-exclamation-triangle me-2"></i>¿Estás seguro?
+              </h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div className="modal-body">
+              <p className="mb-2">Vas a eliminar el acceso de <strong id="usuario-eliminar-nombre">este usuario</strong>.</p>
+              <p className="text-muted small mb-0">El usuario ya no podrá iniciar sesión con esta cuenta.</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" id="btn-confirmar-eliminar-usuario" className="btn btn-danger">
+                <i className="bi bi-trash me-1"></i> Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="modal fade" id="modalEditarUsuario" tabIndex="-1" aria-labelledby="modalEditarUsuarioLabel" aria-hidden="true">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content border-0 shadow">
@@ -139,6 +166,9 @@ export default function Usuarios() {
                   <div className="col-12">
                     <label className="form-label" htmlFor="usuario-editar-correo">Correo Electrónico</label>
                     <input type="email" id="usuario-editar-correo" className="form-control" maxLength="150" required />
+                    <div id="usuario-editar-correo-error" className="invalid-feedback">
+                      No se acepta ese correo. Usa una cuenta @{schoolDomain}.
+                    </div>
                   </div>
 
                   <div className="col-12">

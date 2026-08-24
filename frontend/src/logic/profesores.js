@@ -326,7 +326,10 @@ function renderProfesoresTable(profesores) {
     const idProf = p.id_profesor ?? p.id;
     const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
     const materia = p.materia ?? 'N/A';
-    const ingreso = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : 'N/A';
+    const ingresoRaw = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : '';
+    const ingreso = ingresoRaw && /^\d{4}-\d{2}-\d{2}$/.test(ingresoRaw)
+      ? `${ingresoRaw.slice(8,10)}/${ingresoRaw.slice(5,7)}/${ingresoRaw.slice(0,4)}`
+      : (ingresoRaw || 'N/A');
     const activo = p.estado == 1 || p.estado === true;
     const grupoPendientes = Number(p.grupos_pendientes ?? 0);
 

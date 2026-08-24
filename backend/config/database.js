@@ -7,7 +7,7 @@ const conexion = mysql.createPool({
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "sistema_escolar_db",
     port: process.env.DB_PORT || 18817,
-    ssl: {
+    ssl: { 
         rejectUnauthorized: false
     },
     charset: "utf8mb4_unicode_ci",

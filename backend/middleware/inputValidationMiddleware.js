@@ -17,7 +17,8 @@ const LIMITS = {
   numero_identificacion: 30,
   identificacion: 30,
   codigo: 50,
-  institucion_nombre: 100
+  institucion_nombre: 100,
+  logo_data: 750000
 };
 
 function keyLimit(key) {

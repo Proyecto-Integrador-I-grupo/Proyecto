@@ -14,6 +14,7 @@ let views = [];
 let appViewsReady = false;
 let appInitialized = false;
 let usuariosCargados = [];
+let usuarioPendienteEliminar = null;
 
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 
@@ -713,11 +714,38 @@ function setActiveView(viewName) {
    3. MÓDULO DE USUARIOS Y PERMISOS
    ========================================== */
 
+function actualizarValidacionCorreoInstitucional(inputId, errorId) {
+  const input = document.getElementById(inputId);
+  const error = document.getElementById(errorId);
+  if (!input) return true;
+  const correo = String(input.value || '').trim().toLowerCase();
+  const invalido = Boolean(correo) && !isSchoolEmail(correo);
+  input.classList.toggle('is-invalid', invalido);
+  input.setAttribute('aria-invalid', invalido ? 'true' : 'false');
+  if (error) error.classList.toggle('d-block', invalido);
+  return !invalido;
+}
+
+function wireValidacionCorreosUsuarios() {
+  [
+    ['usuario-correo', 'usuario-correo-error'],
+    ['usuario-editar-correo', 'usuario-editar-correo-error']
+  ].forEach(([inputId, errorId]) => {
+    const input = document.getElementById(inputId);
+    if (!input || input.dataset.domainValidationWired === 'true') return;
+    input.dataset.domainValidationWired = 'true';
+    const validar = () => actualizarValidacionCorreoInstitucional(inputId, errorId);
+    input.addEventListener('input', validar);
+    input.addEventListener('blur', validar);
+  });
+}
+
 function wireUsuariosForm() {
   const form = document.getElementById('usuario-form');
   if (!form || form.dataset.wired === 'true') return;
 
   form.dataset.wired = 'true';
+  wireValidacionCorreosUsuarios();
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -735,7 +763,9 @@ function wireUsuariosForm() {
     }
 
     if (!isSchoolEmail(correo)) {
-      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error', 5000);
+      actualizarValidacionCorreoInstitucional('usuario-correo', 'usuario-correo-error');
+      showToast('No se acepta ese correo. Utiliza el correo institucional indicado.', 'error', 4500);
+      document.getElementById('usuario-correo')?.focus();
       return;
     }
 
@@ -838,39 +868,65 @@ function wireUsuariosRefresh() {
 
 function wireUsuariosDelete() {
   const tbody = document.getElementById('tabla-usuarios-body');
-  if (!tbody || tbody.dataset.deleteWired === 'true') return;
-  tbody.dataset.deleteWired = 'true';
+  const confirmar = document.getElementById('btn-confirmar-eliminar-usuario');
 
-  tbody.addEventListener('click', async (event) => {
-    const button = event.target.closest('.btn-eliminar-usuario');
-    if (!button) return;
+  if (tbody && tbody.dataset.deleteWired !== 'true') {
+    tbody.dataset.deleteWired = 'true';
+    tbody.addEventListener('click', (event) => {
+      const button = event.target.closest('.btn-eliminar-usuario');
+      if (!button) return;
 
-    const id = Number(button.dataset.id);
-    if (!id) return;
+      const id = Number(button.dataset.id);
+      if (!id) return;
+      if (id === Number(currentUser?.id_usuario)) {
+        showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
+        return;
+      }
 
-    if (id === Number(currentUser?.id_usuario)) {
-      showToast('No puedes eliminar el usuario de la sesión actual.', 'error');
-      return;
-    }
+      const fila = button.closest('tr');
+      const nombre = fila?.querySelector('td strong')?.textContent?.trim() || 'este usuario';
+      usuarioPendienteEliminar = { id, button, nombre };
+      const nombreEl = document.getElementById('usuario-eliminar-nombre');
+      if (nombreEl) nombreEl.textContent = nombre;
 
-    if (!window.confirm('¿Deseas eliminar este usuario?')) return;
+      const modalEl = document.getElementById('modalEliminarUsuario');
+      if (modalEl && window.bootstrap?.Modal) {
+        (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+      }
+    });
+  }
 
-    button.disabled = true;
-    try {
-      const res = await apiFetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
+  if (confirmar && confirmar.dataset.wired !== 'true') {
+    confirmar.dataset.wired = 'true';
+    confirmar.addEventListener('click', async () => {
+      const pendiente = usuarioPendienteEliminar;
+      if (!pendiente?.id) return;
+      confirmar.disabled = true;
+      confirmar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Eliminando...';
+      try {
+        const res = await apiFetch(`/api/usuarios/${pendiente.id}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.mensaje || data.error || 'No se pudo eliminar el usuario.');
 
-      await loadUsuariosData();
-      showToast('Usuario eliminado correctamente.', 'success');
-    } catch (error) {
-      showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
-      button.disabled = false;
-    }
-  });
+        const modalEl = document.getElementById('modalEliminarUsuario');
+        window.bootstrap?.Modal.getInstance(modalEl)?.hide();
+        usuariosCargados = usuariosCargados.filter((u) => Number(u.id_usuario) !== Number(pendiente.id));
+        renderTablaUsuarios(usuariosCargados);
+        showToast('Usuario eliminado correctamente.', 'success');
+        usuarioPendienteEliminar = null;
+        void loadUsuariosData();
+      } catch (error) {
+        showToast(error.message || 'No se pudo eliminar el usuario.', 'error');
+      } finally {
+        confirmar.disabled = false;
+        confirmar.innerHTML = '<i class="bi bi-trash me-1"></i> Sí, eliminar';
+      }
+    });
+  }
 }
 
 function wireUsuariosEdit() {
+  wireValidacionCorreosUsuarios();
   const tbody = document.getElementById('tabla-usuarios-body');
   const form = document.getElementById('usuario-editar-form');
 
@@ -937,7 +993,9 @@ function wireUsuariosEdit() {
     }
 
     if (!isSchoolEmail(correo)) {
-      showToast(`El usuario debe utilizar el dominio institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error', 5000);
+      actualizarValidacionCorreoInstitucional('usuario-editar-correo', 'usuario-editar-correo-error');
+      showToast('No se acepta ese correo. Utiliza el correo institucional indicado.', 'error', 4500);
+      document.getElementById('usuario-editar-correo')?.focus();
       return;
     }
 

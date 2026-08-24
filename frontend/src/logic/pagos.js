@@ -1519,27 +1519,41 @@ async function convertirLogoConFondoTransparente(dataUrl) {
     const img = new Image();
     img.onload = () => {
       try {
-        const canvas = document.createElement('canvas');
-        const maxSide = 900;
-        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const px = imageData.data;
-        for (let i = 0; i < px.length; i += 4) {
-          const r = px[i], g = px[i + 1], b = px[i + 2];
-          const max = Math.max(r, g, b);
-          const min = Math.min(r, g, b);
-          // Quita únicamente fondos blancos/neutros; conserva los colores reales del logo.
-          if (r >= 238 && g >= 238 && b >= 238 && max - min <= 18) {
-            const lum = (r + g + b) / 3;
-            px[i + 3] = Math.max(0, Math.min(255, Math.round((255 - lum) * 18)));
+        const limiteDataUrl = 690000;
+        let maxSide = 760;
+
+        const render = (ladoMaximo) => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, ladoMaximo / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const px = imageData.data;
+          for (let i = 0; i < px.length; i += 4) {
+            const r = px[i], g = px[i + 1], b = px[i + 2];
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            if (r >= 238 && g >= 238 && b >= 238 && max - min <= 18) {
+              const lum = (r + g + b) / 3;
+              px[i + 3] = Math.max(0, Math.min(255, Math.round((255 - lum) * 18)));
+            }
           }
+          ctx.putImageData(imageData, 0, 0);
+          return canvas;
+        };
+
+        let canvas = render(maxSide);
+        let salida = canvas.toDataURL('image/webp', 0.9);
+        while (salida.length > limiteDataUrl && maxSide > 220) {
+          maxSide = Math.round(maxSide * 0.82);
+          canvas = render(maxSide);
+          salida = canvas.toDataURL('image/webp', 0.86);
         }
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
+
+        if (!salida.startsWith('data:image/')) salida = canvas.toDataURL('image/png');
+        resolve(salida);
       } catch {
         resolve(dataUrl);
       }
@@ -1610,8 +1624,20 @@ async function guardarConfiguracion(event) {
     logoFacturaData = verificacion?.logo_data || null;
     renderLogoFacturaPreview();
 
-    if (Boolean(logoFacturaData) !== Boolean(guardada?.logo_data)) {
-      throw new Error('La configuración se guardó, pero no fue posible verificar el logo. Inténtalo nuevamente.');
+    const esperado = {
+      institucion_nombre: value('fin-config-nombre').trim(),
+      tipo_identificacion: value('fin-config-tipo-id').trim(),
+      numero_identificacion: value('fin-config-numero-id').trim(),
+      correo: value('fin-config-correo').trim().toLowerCase()
+    };
+    const coincide =
+      String(verificacion?.institucion_nombre || '').trim() === esperado.institucion_nombre &&
+      String(verificacion?.tipo_identificacion || '').trim() === esperado.tipo_identificacion &&
+      String(verificacion?.numero_identificacion || '').trim() === esperado.numero_identificacion &&
+      String(verificacion?.correo || '').trim().toLowerCase() === esperado.correo;
+
+    if (!coincide || Boolean(logoFacturaData) !== Boolean(guardada?.logo_data)) {
+      throw new Error('No fue posible confirmar que la configuración quedara guardada. Inténtalo nuevamente.');
     }
 
     const input = document.getElementById('fin-config-logo');

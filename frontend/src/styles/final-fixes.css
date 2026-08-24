@@ -390,3 +390,69 @@ body.edu-modal-lock #content {
 .view .modal-body h1,.view .modal-body h2,.view .modal-body h3,.view .modal-body h4,.view .modal-body h5 {
   color:#17283a !important;
 }
+
+
+/* === Ajuste final: Profesores sin scroll horizontal y con todas las acciones visibles === */
+#profesores-view .profesores-table-wrap {
+  width: 100% !important;
+  overflow: visible !important;
+  border: 1px solid #e4eaf0;
+  border-radius: 14px;
+}
+#profesores-view #profesores-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+#profesores-view #profesores-table th,
+#profesores-view #profesores-table td {
+  min-width: 0 !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  padding: .72rem .58rem !important;
+}
+#profesores-view #profesores-table th:nth-child(1) { width: 18% !important; }
+#profesores-view #profesores-table th:nth-child(2) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(3) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(4) { width: 27% !important; }
+#profesores-view #profesores-table th:nth-child(5) { width: 10% !important; }
+#profesores-view #profesores-table th:nth-child(6) { width: 24% !important; }
+#profesores-view .profesor-name-cell strong { font-size: .91rem; }
+#profesores-view .profesor-name-cell small { display: none; }
+#profesores-view .profesor-groups-list { gap: .3rem; }
+#profesores-view .profesor-group-pill {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: .32rem .44rem !important;
+  font-size: .72rem !important;
+  white-space: normal;
+}
+#profesores-view .profesor-actions-grid {
+  width: 100% !important;
+  max-width: none !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: .34rem !important;
+  margin-left: 0 !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 32px !important;
+  padding: .3rem .35rem !important;
+  font-size: .71rem !important;
+  justify-content: center !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn i { margin-right: .12rem !important; }
+@media (max-width: 1100px) {
+  #profesores-view #profesores-table th,
+  #profesores-view #profesores-table td { padding: .62rem .42rem !important; font-size: .82rem; }
+  #profesores-view .profesor-actions-grid .profesor-action-btn { font-size: .68rem !important; }
+}
+
+/* Usuarios: feedback institucional claro */
+#usuarios-view .form-control.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 .18rem rgba(220,53,69,.08) !important;
+}
+#usuarios-view .invalid-feedback { font-size: .8rem; font-weight: 600; }

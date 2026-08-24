@@ -1,7 +1,19 @@
 body.theme-dark {
   color-scheme: dark;
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
   --bs-body-color: #F8FAFC;
   --bs-body-color-rgb: 248, 250, 252;
+  --bs-emphasis-color: #F8FAFC;
+  --bs-emphasis-color-rgb: 248, 250, 252;
+  --bs-secondary-color: #CBD5E1;
+  --bs-secondary-color-rgb: 203, 213, 225;
+  --bs-tertiary-color: #94A3B8;
+  --bs-tertiary-color-rgb: 148, 163, 184;
+  --bs-heading-color: #F8FAFC;
+  --bs-card-color: #F8FAFC;
+  --bs-table-color: #F8FAFC;
+  --bs-table-bg: #111827;
   --ink-muted: #CBD5E1;
   --gold: #FBBF24;
   --gold-soft: #422006;
@@ -17,8 +29,20 @@ body.theme-dark {
 
 body.high-contrast {
   color-scheme: dark;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
   --bs-body-color: #FFFFFF;
   --bs-body-color-rgb: 255, 255, 255;
+  --bs-emphasis-color: #FFFFFF;
+  --bs-emphasis-color-rgb: 255, 255, 255;
+  --bs-secondary-color: #FFFFFF;
+  --bs-secondary-color-rgb: 255, 255, 255;
+  --bs-tertiary-color: #FFFFFF;
+  --bs-tertiary-color-rgb: 255, 255, 255;
+  --bs-heading-color: #FFFFFF;
+  --bs-card-color: #FFFFFF;
+  --bs-table-color: #FFFFFF;
+  --bs-table-bg: #000000;
   --ink-muted: #FFFFFF;
   --gold: #FFD700;
   --gold-soft: #000000;
@@ -181,5 +205,62 @@ body.high-contrast .attendance-justificada {
 
 body.theme-dark .text-dark,
 body.high-contrast .text-dark {
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .text-body,
+body.theme-dark .text-black,
+body.high-contrast .text-body,
+body.high-contrast .text-black {
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .table > :not(caption) > * > *,
+body.high-contrast .table > :not(caption) > * > * {
+  color: var(--bs-table-color) !important;
+  background-color: var(--bs-table-bg);
+}
+
+body.theme-dark .report-filter-panel,
+body.theme-dark .report-preview-metric,
+body.theme-dark .report-empty-state,
+body.theme-dark .audit-detail-btn,
+body.theme-dark .audit-json,
+body.theme-dark .audit-preview-note,
+body.high-contrast .report-filter-panel,
+body.high-contrast .report-preview-metric,
+body.high-contrast .report-empty-state,
+body.high-contrast .audit-detail-btn,
+body.high-contrast .audit-json,
+body.high-contrast .audit-preview-note {
+  background: #1F2937 !important;
+  border-color: #475569 !important;
+  color: var(--text-primary) !important;
+}
+
+body.high-contrast .report-filter-panel,
+body.high-contrast .report-preview-metric,
+body.high-contrast .report-empty-state,
+body.high-contrast .audit-detail-btn,
+body.high-contrast .audit-json,
+body.high-contrast .audit-preview-note {
+  background: #000000 !important;
+  border-color: #FFFFFF !important;
+}
+
+body.theme-dark .report-table thead th,
+body.theme-dark #preview-reporte-tabla thead th,
+body.high-contrast .report-table thead th,
+body.high-contrast #preview-reporte-tabla thead th,
+body.theme-dark .report-preview-metric span,
+body.high-contrast .report-preview-metric span {
+  background: inherit !important;
+  color: var(--text-secondary) !important;
+}
+
+body.theme-dark .report-preview-metric strong,
+body.high-contrast .report-preview-metric strong,
+body.theme-dark .audit-detail-btn,
+body.high-contrast .audit-detail-btn {
   color: var(--text-primary) !important;
 }

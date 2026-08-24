@@ -10,8 +10,9 @@ import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
 import Pagos from './pages/Pagos';
 import { getCurrentUser, login, logout } from './services/auth';
-import { syncReactSession, legacyLogout } from './logic/runtime';
+import { bootLegacyRuntime, syncReactSession, legacyLogout } from './logic/runtime';
 
+<<<<<<< HEAD
 const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
   .trim()
   .toLowerCase()
@@ -26,6 +27,9 @@ const LOGIN_BACKGROUNDS = [
   '/images/imagen-2.jpg?v=20260816',
   '/images/imagen-3.jpeg?v=20260816'
 ];
+=======
+//pruebas para subir al github
+>>>>>>> de52a9a (pruebas Nailea 2)
 
 export default function App() {
   const [user, setUser] = useState(() => getCurrentUser());
@@ -42,6 +46,10 @@ export default function App() {
 
     return () => window.clearInterval(timer);
   }, [user]);
+
+  useEffect(() => {
+    bootLegacyRuntime();
+  }, []);
 
   useEffect(() => {
     if (user) {

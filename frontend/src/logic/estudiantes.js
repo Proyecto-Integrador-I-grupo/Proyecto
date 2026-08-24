@@ -158,6 +158,16 @@ function resetPersonaForm() {
   if (submitEl) submitEl.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar Estudiante';
 }
 
+function normalizeGenero(val) {
+  if (val === undefined || val === null) return null;
+  const v = String(val).trim().toLowerCase();
+  if (!v) return null;
+  if (v === 'm' || v === 'masculino') return 'M';
+  if (v === 'f' || v === 'femenino') return 'F';
+  if (v === 'o' || v === 'otro' || v === 'otros') return 'O';
+  return val;
+}
+
 async function handlePersonaSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('persona-id').value;
@@ -166,7 +176,7 @@ async function handlePersonaSubmit(e) {
     apellido1: document.getElementById('apellido1').value.trim(),
     apellido2: document.getElementById('apellido2').value.trim(),
     fecha_nacimiento: document.getElementById('fecha_nacimiento').value || null,
-    genero: document.getElementById('genero').value || null,
+    genero: normalizeGenero(document.getElementById('genero').value) || null,
     fecha_ingreso: document.getElementById('persona-fecha-ingreso')?.value || null
   };
 

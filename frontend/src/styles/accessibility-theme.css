@@ -1,0 +1,185 @@
+body.theme-dark {
+  color-scheme: dark;
+  --bs-body-color: #F8FAFC;
+  --bs-body-color-rgb: 248, 250, 252;
+  --ink-muted: #CBD5E1;
+  --gold: #FBBF24;
+  --gold-soft: #422006;
+  --success: #4ADE80;
+  --danger: #FCA5A5;
+  --role-admin: #FCA5A5;
+  --role-admin-soft: #450A0A;
+  --role-asistente: #86EFAC;
+  --role-asistente-soft: #052E16;
+  --role-profesor: #C4B5FD;
+  --role-profesor-soft: #2E1065;
+}
+
+body.high-contrast {
+  color-scheme: dark;
+  --bs-body-color: #FFFFFF;
+  --bs-body-color-rgb: 255, 255, 255;
+  --ink-muted: #FFFFFF;
+  --gold: #FFD700;
+  --gold-soft: #000000;
+  --success: #00FF66;
+  --danger: #FF8080;
+  --role-admin: #FF8080;
+  --role-admin-soft: #000000;
+  --role-asistente: #00FF66;
+  --role-asistente-soft: #000000;
+  --role-profesor: #D6B3FF;
+  --role-profesor-soft: #000000;
+}
+
+body.theme-dark #content,
+body.high-contrast #content {
+  color: var(--text-primary);
+}
+
+body.theme-dark .stat-card,
+body.theme-dark .dashboard-mini-panel,
+body.theme-dark .consulta-result-card,
+body.theme-dark .consultas-hero,
+body.theme-dark .consulta-stat,
+body.theme-dark .filter-bar,
+body.theme-dark .card-filtros-asistencia,
+body.theme-dark .profesor-picker,
+body.theme-dark #collapseGraficosAsistencia .card-body {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #F8FAFC;
+}
+
+body.theme-dark .dashboard-mini-panel strong,
+body.theme-dark .stat-value,
+body.theme-dark .consulta-documento-institucion,
+body.theme-dark .consulta-documento-titulo,
+body.theme-dark .consulta-documento-meta strong,
+body.theme-dark .consulta-documento-valor,
+body.theme-dark .consulta-documento-seccion-titulo,
+body.theme-dark .consulta-documento-footer strong,
+body.theme-dark .consulta-stat-icon {
+  color: #F8FAFC !important;
+}
+
+body.theme-dark .dashboard-meta,
+body.theme-dark .mini-label,
+body.theme-dark .stat-label,
+body.theme-dark .consulta-meta,
+body.theme-dark .consultas-eyebrow,
+body.theme-dark .consulta-documento-subtitulo,
+body.theme-dark .consulta-documento-meta,
+body.theme-dark .consulta-documento-etiqueta,
+body.theme-dark .consulta-documento-footer,
+body.theme-dark .observaciones-cell,
+body.theme-dark .card-filtros-asistencia .form-label {
+  color: #CBD5E1 !important;
+}
+
+body.theme-dark .consulta-preview-area {
+  background: linear-gradient(135deg, #1F2937, #111827) !important;
+}
+
+body.theme-dark .consulta-documento {
+  background: #1F2937 !important;
+  border-color: #475569 !important;
+  color: #F8FAFC !important;
+}
+
+body.theme-dark .consulta-documento-campo,
+body.theme-dark .consulta-documento-seccion-titulo,
+body.theme-dark .consulta-documento-footer {
+  border-color: #475569 !important;
+}
+
+body.theme-dark .form-control,
+body.theme-dark .form-select,
+body.theme-dark .profesor-select,
+body.theme-dark #modalMatricula input[type="text"],
+body.theme-dark #modalGrupo input[type="text"] {
+  background-color: #1F2937 !important;
+  border-color: #64748B !important;
+  color: #F8FAFC !important;
+}
+
+body.theme-dark .form-control::placeholder,
+body.theme-dark .form-select:disabled,
+body.theme-dark .profesor-select:disabled {
+  color: #CBD5E1 !important;
+}
+
+body.theme-dark .filter-bar,
+body.theme-dark .card-filtros-asistencia,
+body.theme-dark .profesor-picker {
+  background: #1F2937 !important;
+}
+
+body.theme-dark .attendance-presente { background: #14532D !important; }
+body.theme-dark .attendance-ausente { background: #450A0A !important; }
+body.theme-dark .attendance-tardia { background: #422006 !important; }
+body.theme-dark .attendance-justificada { background: #1E3A8A !important; }
+
+body.high-contrast .stat-card,
+body.high-contrast .dashboard-mini-panel,
+body.high-contrast .consulta-result-card,
+body.high-contrast .consultas-hero,
+body.high-contrast .consulta-stat,
+body.high-contrast .filter-bar,
+body.high-contrast .card-filtros-asistencia,
+body.high-contrast .profesor-picker,
+body.high-contrast .consulta-documento,
+body.high-contrast #collapseGraficosAsistencia .card-body,
+body.high-contrast .form-control,
+body.high-contrast .form-select,
+body.high-contrast .profesor-select {
+  background: #000000 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+body.high-contrast .dashboard-mini-panel strong,
+body.high-contrast .stat-value,
+body.high-contrast .consulta-documento,
+body.high-contrast .consulta-documento-institucion,
+body.high-contrast .consulta-documento-titulo,
+body.high-contrast .consulta-documento-meta strong,
+body.high-contrast .consulta-documento-valor,
+body.high-contrast .consulta-documento-seccion-titulo,
+body.high-contrast .consulta-documento-footer strong,
+body.high-contrast .dashboard-meta,
+body.high-contrast .mini-label,
+body.high-contrast .stat-label,
+body.high-contrast .consulta-meta,
+body.high-contrast .consultas-eyebrow,
+body.high-contrast .consulta-documento-subtitulo,
+body.high-contrast .consulta-documento-meta,
+body.high-contrast .consulta-documento-etiqueta,
+body.high-contrast .consulta-documento-footer,
+body.high-contrast .observaciones-cell,
+body.high-contrast .card-filtros-asistencia .form-label {
+  color: #FFFFFF !important;
+}
+
+body.high-contrast .consulta-preview-area {
+  background: #000000 !important;
+}
+
+body.high-contrast .consulta-documento-campo,
+body.high-contrast .consulta-documento-seccion-titulo,
+body.high-contrast .consulta-documento-footer {
+  border-color: #FFFFFF !important;
+}
+
+body.high-contrast .attendance-presente,
+body.high-contrast .attendance-ausente,
+body.high-contrast .attendance-tardia,
+body.high-contrast .attendance-justificada {
+  background: #000000 !important;
+  border: 1px solid currentColor;
+}
+
+body.theme-dark .text-dark,
+body.high-contrast .text-dark {
+  color: var(--text-primary) !important;
+}

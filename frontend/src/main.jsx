@@ -15,10 +15,7 @@ import './styles/perfil.css';
 import './styles/pagos.css';
 import './styles/profesores.css';
 import './styles/reportes.css';
-import './styles/theme.css';
-import './styles/contrast-fixes.css';
-import './styles/final-fixes.css';
-import './styles/ui-polish.css';
+import './styles/accessibility-theme.css';
 import { bootLegacyRuntime } from './logic/runtime.js';
 
 window.bootstrap = bootstrap;

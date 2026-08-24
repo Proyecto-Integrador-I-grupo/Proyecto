@@ -38,6 +38,71 @@ function applyInputGuards() {
   });
 }
 
+
+let modalScrollY = 0;
+
+function lockDocumentForModal() {
+  const body = document.body;
+  const html = document.documentElement;
+  if (!body || body.dataset.eduModalLocked === '1') return;
+
+  modalScrollY = window.scrollY || window.pageYOffset || 0;
+  const scrollbarGap = Math.max(0, window.innerWidth - html.clientWidth);
+
+  body.dataset.eduModalLocked = '1';
+  html.classList.add('edu-modal-lock');
+  body.classList.add('edu-modal-lock');
+  body.style.position = 'fixed';
+  body.style.top = `-${modalScrollY}px`;
+  body.style.left = '0';
+  body.style.right = '0';
+  body.style.width = '100%';
+  body.style.overflow = 'hidden';
+  if (scrollbarGap > 0) body.style.paddingRight = `${scrollbarGap}px`;
+}
+
+function unlockDocumentAfterModal() {
+  const body = document.body;
+  const html = document.documentElement;
+  if (!body || body.dataset.eduModalLocked !== '1') return;
+  if (document.querySelector('.modal.show')) return;
+
+  delete body.dataset.eduModalLocked;
+  html.classList.remove('edu-modal-lock');
+  body.classList.remove('edu-modal-lock');
+  body.style.removeProperty('position');
+  body.style.removeProperty('top');
+  body.style.removeProperty('left');
+  body.style.removeProperty('right');
+  body.style.removeProperty('width');
+  body.style.removeProperty('overflow');
+  body.style.removeProperty('padding-right');
+  window.scrollTo({ top: modalScrollY, left: 0, behavior: 'auto' });
+}
+
+function initGlobalModalLock() {
+  if (document.documentElement.dataset.eduModalGuard === '1') return;
+  document.documentElement.dataset.eduModalGuard = '1';
+
+  document.addEventListener('show.bs.modal', lockDocumentForModal);
+  document.addEventListener('shown.bs.modal', lockDocumentForModal);
+  document.addEventListener('hidden.bs.modal', () => window.setTimeout(unlockDocumentAfterModal, 0));
+
+  const stopScrollWhenModalOpen = (event) => {
+    if (!document.querySelector('.modal.show')) return;
+    event.preventDefault();
+  };
+
+  document.addEventListener('wheel', stopScrollWhenModalOpen, { passive: false, capture: true });
+  document.addEventListener('touchmove', stopScrollWhenModalOpen, { passive: false, capture: true });
+  document.addEventListener('keydown', (event) => {
+    if (!document.querySelector('.modal.show')) return;
+    if (['PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp', ' '].includes(event.key)) {
+      event.preventDefault();
+    }
+  }, true);
+}
+
 let booted = false;
 
 export function bootLegacyRuntime() {
@@ -47,6 +112,7 @@ export function bootLegacyRuntime() {
   // Estas funciones solo preparan elementos globales que React ya renderizó.
   restoreAccessibilitySettings();
   initAccessibilityWidget();
+  initGlobalModalLock();
 }
 
 let sessionInitFrame = null;

@@ -1,0 +1,122 @@
+/* Correcciones finales de layout, modales y contraste. */
+html, body, #root { width: 100%; min-width: 0; }
+
+/* Un solo scroll: el del navegador cuando no existe una ventana modal. */
+body:not(.edu-modal-lock) { overflow-x: hidden; overflow-y: auto; }
+#app-shell, #content { max-width: 100%; }
+
+/* Durante una ventana emergente el documento de fondo queda totalmente inmóvil. */
+html.edu-modal-lock,
+body.edu-modal-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+body.edu-modal-lock #app-shell,
+body.edu-modal-lock .topbar,
+body.edu-modal-lock .sidebar,
+body.edu-modal-lock #content {
+  overscroll-behavior: none !important;
+}
+
+/* Las ventanas no crean un segundo scroll. Se compactan según la altura disponible. */
+.modal {
+  position: fixed !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+.modal-dialog {
+  display: flex;
+  align-items: center;
+  min-height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  margin: .75rem auto !important;
+}
+.modal-dialog.modal-dialog-centered { min-height: calc(100dvh - 1.5rem); }
+.modal-content {
+  width: 100%;
+  max-height: calc(100dvh - 1.5rem);
+  overflow: hidden !important;
+}
+.modal-body,
+.modal-dialog-scrollable .modal-body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+.modal form { min-height: 0; }
+.modal .row.g-3 { --bs-gutter-y: .75rem; }
+.modal .form-text { margin-top: .25rem; line-height: 1.25; }
+.modal textarea { resize: none; }
+
+/* Contraste: nunca colocar texto oscuro sobre encabezados oscuros. */
+.modal-header.bg-navy,
+.modal-header.bg-navy .modal-title,
+.modal-header.bg-navy .modal-title *,
+.bg-navy,
+.bg-navy > h1,
+.bg-navy > h2,
+.bg-navy > h3,
+.bg-navy > h4,
+.bg-navy > h5,
+.bg-navy > h6 {
+  color: #fff !important;
+}
+.modal-header.bg-navy .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .92; }
+
+/* Títulos y texto sobre superficies claras. */
+.view .card-title,
+.view .card-title-serif,
+.view .page-header h1,
+.view .page-header h2,
+.view .page-header h3,
+.view .modal-body h1,
+.view .modal-body h2,
+.view .modal-body h3,
+.view .modal-body h4,
+.view .modal-body h5,
+.view .form-label,
+.view .table th {
+  color: #1c2c3d !important;
+}
+.view .text-muted,
+.view .form-text,
+.view small.text-muted { color: #5b6f83 !important; }
+
+/* Mantener texto blanco donde el fondo sea realmente sólido/oscuro. */
+.view .btn-primary,
+.view .btn-primary *,
+.view .btn-success,
+.view .btn-success *,
+.view .btn-danger:hover,
+.view .btn-danger:hover *,
+.sidebar,
+.sidebar * { color: inherit; }
+.sidebar .brand-name,
+.sidebar .nav-link.active,
+.sidebar .nav-link.active * { color: #fff !important; }
+
+/* Compactación vertical para evitar scroll dentro de modales en portátiles. */
+@media (max-height: 900px) {
+  .modal-dialog { min-height: calc(100dvh - .75rem); max-height: calc(100dvh - .75rem); margin: .375rem auto !important; }
+  .modal-content { max-height: calc(100dvh - .75rem); }
+  .modal-header, .modal-footer { padding: .6rem .9rem !important; }
+  .modal-body { padding: .8rem 1rem !important; }
+  .modal .row.g-3 { --bs-gutter-y: .5rem; --bs-gutter-x: .75rem; }
+  .modal .form-control, .modal .form-select { min-height: 36px; padding-top: .38rem; padding-bottom: .38rem; }
+  .modal textarea.form-control { min-height: 58px; max-height: 76px; }
+  .modal .mat-financial-status { padding: .75rem 1rem !important; }
+}
+
+@media (max-height: 720px) {
+  .modal-header, .modal-footer { padding: .45rem .75rem !important; }
+  .modal-body { padding: .55rem .8rem !important; font-size: .9rem; }
+  .modal .form-label { margin-bottom: .18rem; font-size: .82rem; }
+  .modal .form-control, .modal .form-select { min-height: 32px; padding-top: .25rem; padding-bottom: .25rem; font-size: .88rem; }
+  .modal .form-text, .modal .small { font-size: .75rem !important; }
+  .modal textarea.form-control { min-height: 46px; max-height: 56px; }
+}
+
+@media (max-width: 575.98px) {
+  .modal-dialog { width: calc(100% - .5rem); max-width: calc(100% - .5rem); }
+}

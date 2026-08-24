@@ -33,11 +33,15 @@ const validarMatricula = [
 const validarGrupo = [
   body("nombre_grupo").trim().notEmpty().withMessage("El nombre del grupo es obligatorio."),
   body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
-  body("id_seccion").isInt({ min: 1 }).withMessage("Debe seleccionar una sección académica.")
+  body("id_seccion").isInt({ min: 1 }).withMessage("Debe seleccionar una sección académica."),
+  body("hora_inicio").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
+  body("hora_fin").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
 ];
 
 const validarGrupoUpdate = [
-  body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero.")
+  body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
+  body("hora_inicio").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
+  body("hora_fin").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
 ];
 
 const validarRetiroEstudiante = [

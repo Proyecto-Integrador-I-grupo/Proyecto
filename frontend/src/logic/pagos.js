@@ -1514,7 +1514,42 @@ function renderLogoFacturaPreview() {
   remove?.classList.toggle('hidden', !logoFacturaData);
 }
 
-function manejarLogoFactura(event) {
+async function convertirLogoConFondoTransparente(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const maxSide = 900;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const px = imageData.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const r = px[i], g = px[i + 1], b = px[i + 2];
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          // Quita únicamente fondos blancos/neutros; conserva los colores reales del logo.
+          if (r >= 238 && g >= 238 && b >= 238 && max - min <= 18) {
+            const lum = (r + g + b) / 3;
+            px[i + 3] = Math.max(0, Math.min(255, Math.round((255 - lum) * 18)));
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function manejarLogoFactura(event) {
   const archivo = event.target.files?.[0];
   if (!archivo) return;
 
@@ -1531,8 +1566,9 @@ function manejarLogoFactura(event) {
   }
 
   const reader = new FileReader();
-  reader.onload = () => {
-    logoFacturaData = String(reader.result || '');
+  reader.onload = async () => {
+    const original = String(reader.result || '');
+    logoFacturaData = await convertirLogoConFondoTransparente(original);
     renderLogoFacturaPreview();
   };
   reader.onerror = () => showToast('No se pudo leer la imagen seleccionada.', 'error');

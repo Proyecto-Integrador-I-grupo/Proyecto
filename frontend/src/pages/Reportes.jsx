@@ -91,7 +91,7 @@ export default function Reportes() {
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div className="modal-header bg-navy text-white px-3 px-md-4 py-3">
               <div className="d-flex align-items-center gap-3">
-                <img id="preview-reporte-logo" src="/images/logo1.jpg" alt="Logo EduControl" className="preview-reporte-logo" loading="lazy" />
+                <img id="preview-reporte-logo" src="/images/logo1-transparent.png" alt="Logo EduControl" className="preview-reporte-logo" loading="lazy" />
                 <div>
                   <span className="small text-white-50 d-block mb-1">Vista previa del reporte</span>
                   <h5 id="preview-reporte-titulo" className="modal-title h6 text-white mb-0">Reporte académico</h5>

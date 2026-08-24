@@ -207,7 +207,6 @@ export function syncReactSession(user) {
     sessionInitFrame = null;
     renderUserInfo();
     applyInputGuards();
-    installCharacterCounters();
     initApp();
   };
 

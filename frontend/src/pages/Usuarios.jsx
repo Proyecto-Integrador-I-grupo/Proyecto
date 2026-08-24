@@ -60,7 +60,7 @@ export default function Usuarios() {
                         autoComplete="new-password"
                         required
                       />
-                      <div className="form-text">Mínimo 6 caracteres.</div>
+                      
                     </div>
 
                     <button type="submit" id="btn-guardar-usuario" className="btn btn-primary w-100 py-2">

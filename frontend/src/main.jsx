@@ -18,6 +18,7 @@ import './styles/reportes.css';
 import './styles/theme.css';
 import './styles/contrast-fixes.css';
 import './styles/final-fixes.css';
+import './styles/ui-polish.css';
 import { bootLegacyRuntime } from './logic/runtime.js';
 
 window.bootstrap = bootstrap;

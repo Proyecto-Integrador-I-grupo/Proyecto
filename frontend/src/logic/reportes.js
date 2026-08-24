@@ -15,7 +15,7 @@ const ESTADOS_ASISTENCIA = ['presente', 'ausente', 'tardia', 'justificada'];
 const ESTADOS_ACTIVO = ['activo', 'inactivo'];
 const ESTADOS_PAGO = ['pendiente', 'parcial', 'pagado', 'facturado', 'anulado'];
 const TIPOS_REPORTE = ['resumen', 'detalle', 'individual', 'grupo'];
-const REPORTE_LOGO_SRC = '/images/logo1.jpg';
+const REPORTE_LOGO_SRC = '/images/logo1-transparent.png';
 let consultaAplicada = false;
 let reporteActual = null;
 let reporteLogoDataUrlPromise = null;
@@ -737,7 +737,7 @@ async function imprimirReportePdf() {
     doc.text(textoPdfSeguro(titulo), 14, 12);
     const logo = await obtenerLogoReporteDataUrl();
     if (logo) {
-      try { doc.addImage(logo, 'JPEG', pageWidth - 28, 3, 22, 22); } catch (error) { console.warn('No se pudo incrustar el logo en el PDF:', error); }
+      try { doc.addImage(logo, 'PNG', pageWidth - 28, 3, 22, 22); } catch (error) { console.warn('No se pudo incrustar el logo en el PDF:', error); }
     }
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
@@ -967,7 +967,7 @@ async function generarBoletaEstudiante(estudiante) {
 
   const logo = await obtenerLogoReporteDataUrl();
   if (logo) {
-    try { doc.addImage(logo, 'JPEG', 178, 4, 24, 24); } catch (error) { console.warn(error); }
+    try { doc.addImage(logo, 'PNG', 178, 4, 24, 24); } catch (error) { console.warn(error); }
   }
 
   let y = 46;

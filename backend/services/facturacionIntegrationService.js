@@ -87,6 +87,42 @@ function esperar(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function sincronizarLogoFacturaRemota(idFactura) {
+  const id = String(idFactura || '').trim();
+  if (!id) return;
+
+  let config;
+  try {
+    config = await obtenerConfiguracionFacturacion();
+  } catch {
+    return;
+  }
+
+  const logo = config?.logo_data || null;
+  const firma = firmaLogo(logo);
+  if (logoSincronizadoPorFactura.get(id) === firma) return;
+
+  const root = obtenerRaizFacturacion();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(`${root}/api/facturas/${encodeURIComponent(id)}/logo`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ logoUrl: logo, logoPosicion: 'left' }),
+      signal: controller.signal
+    });
+    if (response.ok) {
+      logoSincronizadoPorFactura.set(id, firma);
+      cacheDocumentosFactura.clear();
+    }
+  } catch (error) {
+    console.warn(`Facturación: no se pudo sincronizar el logo de ${id}:`, error?.message || error);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function asegurarLogoConfiguracion() {
   if (esquemaLogoConfiguracionPromise) return esquemaLogoConfiguracionPromise;
 
@@ -796,6 +832,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
     if (documentosFacturaEnCurso.has(clave)) return documentosFacturaEnCurso.get(clave);
 
     const tarea = (async () => {
+      await sincronizarLogoFacturaRemota(idFactura);
       const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}&plantilla=educontrol`;
       const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 45000);
       const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000

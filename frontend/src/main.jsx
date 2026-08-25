@@ -25,6 +25,7 @@ import './styles/requested-fixes.css';
 import './styles/release-polish.css';
 import './styles/last-mile-fixes.css';
 import './styles/dark-mode-final.css';
+import './styles/dark-mode-polished.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

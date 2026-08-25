@@ -1,0 +1,665 @@
+/* ======================================================================
+   EDUCONTROL · DARK MODE POLISHED
+   Capa definitiva de tema oscuro. Se importa al final de la cascada.
+   No altera layout ni lógica; únicamente normaliza color/contraste.
+   ====================================================================== */
+
+html.theme-dark,
+html[data-bs-theme="dark"],
+body.theme-dark {
+  color-scheme: dark;
+  --ec-bg-0: #07111d;
+  --ec-bg-1: #0b1625;
+  --ec-surface-1: #101d2e;
+  --ec-surface-2: #14243a;
+  --ec-surface-3: #192c45;
+  --ec-surface-hover: #1d334f;
+  --ec-border: #314861;
+  --ec-border-strong: #46617e;
+  --ec-text: #eef5fc;
+  --ec-heading: #f8fbff;
+  --ec-muted: #b3c3d5;
+  --ec-muted-2: #91a5bb;
+  --ec-link: #82c9f2;
+  --ec-focus: #67b6e5;
+  --ec-primary: #347fc1;
+  --ec-primary-hover: #3d8fd5;
+  background: var(--ec-bg-0) !important;
+}
+
+body.theme-dark {
+  --bs-body-bg: var(--ec-bg-0);
+  --bs-body-color: var(--ec-text);
+  --bs-emphasis-color: #ffffff;
+  --bs-secondary-color: var(--ec-muted);
+  --bs-tertiary-color: var(--ec-muted-2);
+  --bs-border-color: var(--ec-border);
+  --bs-border-color-translucent: rgba(111, 139, 169, .28);
+  --bs-tertiary-bg: var(--ec-surface-2);
+  --bs-secondary-bg: var(--ec-surface-1);
+  --bs-primary-bg-subtle: #12314a;
+  --bs-success-bg-subtle: #123428;
+  --bs-warning-bg-subtle: #382e18;
+  --bs-danger-bg-subtle: #3a2027;
+  --bs-info-bg-subtle: #12313a;
+  background: var(--ec-bg-0) !important;
+  color: var(--ec-text) !important;
+}
+
+body.theme-dark #root,
+body.theme-dark #app-shell,
+body.theme-dark .app-main,
+body.theme-dark #content,
+body.theme-dark .view {
+  background: var(--ec-bg-0) !important;
+  color: var(--ec-text) !important;
+}
+
+/* -------------------- Texto -------------------- */
+body.theme-dark #root :is(h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.card-title,.modal-title,legend,dt,.form-label) {
+  color: var(--ec-heading) !important;
+}
+
+body.theme-dark #root :is(.text-dark,.text-black,.text-body,.text-body-emphasis,.link-dark) {
+  color: var(--ec-text) !important;
+}
+
+body.theme-dark #root :is(.text-muted,.text-secondary,.text-body-secondary,.form-text,.help-text,.card-subtitle,.finance-note) {
+  color: var(--ec-muted) !important;
+  opacity: 1 !important;
+}
+
+body.theme-dark #root a:not(.btn):not(.nav-link) {
+  color: var(--ec-link) !important;
+}
+body.theme-dark #root a:not(.btn):not(.nav-link):hover {
+  color: #b9e6ff !important;
+}
+
+/* -------------------- Superficies globales -------------------- */
+body.theme-dark #root :is(
+  .card,.card-body,.card-header,.card-footer,
+  .modal-content,.modal-body,.modal-footer,
+  .offcanvas,.offcanvas-body,.dropdown-menu,.list-group-item,
+  .accordion-item,.accordion-body,.toast,.popover
+) {
+  background-color: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+
+body.theme-dark #root :is(.bg-white,.bg-light,.bg-body,.bg-body-secondary,.bg-body-tertiary,.text-bg-light,.alert-light) {
+  background: var(--ec-surface-2) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+
+body.theme-dark #root :is(.bg-primary-subtle,.bg-info-subtle) {
+  background: #12314a !important;
+  color: #d7efff !important;
+  border-color: #35617f !important;
+}
+body.theme-dark #root .bg-success-subtle {
+  background: #123428 !important;
+  color: #cef3df !important;
+  border-color: #34765e !important;
+}
+body.theme-dark #root .bg-warning-subtle {
+  background: #382e18 !important;
+  color: #f4dc9e !important;
+  border-color: #755f32 !important;
+}
+body.theme-dark #root .bg-danger-subtle {
+  background: #3a2027 !important;
+  color: #ffc8cf !important;
+  border-color: #7f424d !important;
+}
+body.theme-dark #root :is(.text-primary-emphasis,.text-info-emphasis) { color: #b8e4ff !important; }
+body.theme-dark #root .text-success-emphasis { color: #b7ebd0 !important; }
+body.theme-dark #root .text-warning-emphasis { color: #f5dc9c !important; }
+body.theme-dark #root .text-danger-emphasis { color: #ffc0c8 !important; }
+body.theme-dark #root :is(.border-primary-subtle,.border-info-subtle,.border-success-subtle,.border-warning-subtle,.border-danger-subtle) {
+  border-color: var(--ec-border-strong) !important;
+}
+
+/* -------------------- Formularios -------------------- */
+body.theme-dark #root :is(
+  .form-control,.form-select,.input-group-text,.profesor-select,
+  input[type="text"],input[type="email"],input[type="password"],input[type="search"],
+  input[type="number"],input[type="date"],input[type="time"],input[type="month"],
+  input[type="tel"],input[type="url"],textarea
+) {
+  background: #0c1929 !important;
+  color: #f1f7fd !important;
+  border-color: #405a75 !important;
+  box-shadow: none !important;
+}
+body.theme-dark #root :is(.form-control,.form-select,.profesor-select):focus {
+  background: #0e1e31 !important;
+  color: #ffffff !important;
+  border-color: var(--ec-focus) !important;
+  box-shadow: 0 0 0 .2rem rgba(103,182,229,.15) !important;
+}
+body.theme-dark #root :is(input,textarea)::placeholder {
+  color: #91a5bb !important;
+  opacity: 1 !important;
+}
+body.theme-dark #root :is(.form-control,.form-select,.profesor-select):disabled,
+body.theme-dark #root :is(.form-control,.form-select,.profesor-select)[readonly] {
+  background: #17263a !important;
+  color: #aebfd0 !important;
+  border-color: #344b64 !important;
+  opacity: 1 !important;
+}
+body.theme-dark #root option,
+body.theme-dark #root optgroup {
+  background: #101d2e !important;
+  color: var(--ec-text) !important;
+}
+body.theme-dark #root .form-check-input {
+  background-color: #0c1929 !important;
+  border-color: #5b7590 !important;
+}
+body.theme-dark #root .form-check-input:checked {
+  background-color: #347fc1 !important;
+  border-color: #76bce5 !important;
+}
+body.theme-dark #root input[type="file"] {
+  background: #0c1929 !important;
+  color: var(--ec-text) !important;
+  border-color: #405a75 !important;
+}
+body.theme-dark #root input[type="file"]::file-selector-button {
+  background: #182a42 !important;
+  color: #e7f0f9 !important;
+  border: 0 !important;
+  border-right: 1px solid #405a75 !important;
+}
+body.theme-dark #root input[type="file"]::file-selector-button:hover {
+  background: #213952 !important;
+}
+body.theme-dark #root :is(input[type="date"],input[type="time"],input[type="month"])::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.35);
+  opacity: .9;
+}
+
+/* -------------------- Botones: nunca blancos en dark -------------------- */
+body.theme-dark #root .btn {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+body.theme-dark #root .btn-primary {
+  background: #347fc1 !important;
+  border-color: #4f96d1 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root .btn-primary:hover,
+body.theme-dark #root .btn-primary:focus-visible {
+  background: #3d8fd5 !important;
+  border-color: #70addd !important;
+}
+
+body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary) {
+  background: #16263b !important;
+  border-color: #4a6582 !important;
+  color: #e8f1fa !important;
+}
+body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):hover,
+body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):focus-visible {
+  background: #213952 !important;
+  border-color: #7390ad !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root .btn-outline-primary {
+  background: #12253a !important;
+  border-color: #4d83a8 !important;
+  color: #a8ddff !important;
+}
+body.theme-dark #root .btn-outline-primary:hover,
+body.theme-dark #root .btn-outline-primary:focus-visible {
+  background: #225d88 !important;
+  border-color: #6da8d1 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root :is(.btn-outline-info,.btn-info) {
+  background: #15303a !important;
+  border-color: #478794 !important;
+  color: #a8e6ef !important;
+}
+body.theme-dark #root :is(.btn-outline-info,.btn-info):hover,
+body.theme-dark #root :is(.btn-outline-info,.btn-info):focus-visible {
+  background: #216773 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root :is(.btn-outline-success,.btn-success) {
+  background: #163127 !important;
+  border-color: #4a876e !important;
+  color: #b8ecd1 !important;
+}
+body.theme-dark #root :is(.btn-outline-success,.btn-success):hover,
+body.theme-dark #root :is(.btn-outline-success,.btn-success):focus-visible {
+  background: #28654e !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root :is(.btn-outline-warning,.btn-warning) {
+  background: #352b18 !important;
+  border-color: #846f40 !important;
+  color: #f4dc9f !important;
+}
+body.theme-dark #root :is(.btn-outline-warning,.btn-warning):hover,
+body.theme-dark #root :is(.btn-outline-warning,.btn-warning):focus-visible {
+  background: #6c5727 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root :is(.btn-outline-danger,.btn-danger) {
+  background: #381f26 !important;
+  border-color: #97515d !important;
+  color: #ffbdc6 !important;
+}
+body.theme-dark #root :is(.btn-outline-danger,.btn-danger):hover,
+body.theme-dark #root :is(.btn-outline-danger,.btn-danger):focus-visible {
+  background: #79343f !important;
+  border-color: #bc5b68 !important;
+  color: #ffffff !important;
+}
+
+/* Botones personalizados que heredaban estilos claros. */
+body.theme-dark #root .view .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-outline-primary):not(.btn-outline-success):not(.btn-outline-danger):not(.btn-outline-warning):not(.btn-outline-info):not(.attendance-cell-btn):not(.nav-link),
+body.theme-dark #root :is(.finance-section-toggle,.audit-detail-btn,.matricula-card-action,.dashboard-refresh) {
+  background-color: #16263b !important;
+  color: #e8f1fa !important;
+  border-color: #4a6582 !important;
+}
+body.theme-dark #root .view .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-outline-primary):not(.btn-outline-success):not(.btn-outline-danger):not(.btn-outline-warning):not(.btn-outline-info):not(.attendance-cell-btn):not(.nav-link):hover,
+body.theme-dark #root :is(.finance-section-toggle,.audit-detail-btn,.matricula-card-action,.dashboard-refresh):hover {
+  background-color: #213952 !important;
+  color: #ffffff !important;
+  border-color: #7390ad !important;
+}
+
+body.theme-dark #root .action-btn.edit {
+  background:#17314a !important;
+  color:#9fd8ff !important;
+  border-color:#467da6 !important;
+}
+body.theme-dark #root .action-btn.edit:hover { background:#225d88 !important; color:#fff !important; }
+body.theme-dark #root .action-btn.del {
+  background:#381f26 !important;
+  color:#ffbdc6 !important;
+  border-color:#97515d !important;
+}
+body.theme-dark #root .action-btn.del:hover { background:#79343f !important; color:#fff !important; }
+
+body.theme-dark #root .btn:disabled,
+body.theme-dark #root .btn.disabled {
+  opacity: 1 !important;
+  background: #172438 !important;
+  color: #8fa2b7 !important;
+  border-color: #344a61 !important;
+}
+body.theme-dark #root .btn-danger:disabled,
+body.theme-dark #root .destructive-confirm:disabled {
+  background: #40242b !important;
+  color: #c49fa6 !important;
+  border-color: #66404a !important;
+}
+
+/* -------------------- Navegación -------------------- */
+body.theme-dark #root .topbar {
+  background: #0d1929 !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root .sidebar {
+  background: #081523 !important;
+  border-color: #263b53 !important;
+}
+body.theme-dark #root .sidebar-user {
+  background: #101f31 !important;
+  border-color: #304961 !important;
+}
+body.theme-dark #root .sidebar .nav-link:not(.active) {
+  background: transparent !important;
+  color: #bdccdc !important;
+}
+body.theme-dark #root .sidebar .nav-link:not(.active):hover,
+body.theme-dark #root .sidebar .nav-link:not(.active):focus-visible {
+  background: #172a40 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root .sidebar .nav-link.active {
+  background: #214f76 !important;
+  color: #ffffff !important;
+}
+
+/* -------------------- Tablas -------------------- */
+body.theme-dark #root .table,
+body.theme-dark #root .table-responsive,
+body.theme-dark #root .profesores-table-wrap,
+body.theme-dark #root .report-table-wrap,
+body.theme-dark #root .preview-table-wrap {
+  --bs-table-bg: var(--ec-surface-1);
+  --bs-table-color: var(--ec-text);
+  --bs-table-striped-bg: #13243a;
+  --bs-table-striped-color: var(--ec-text);
+  --bs-table-hover-bg: #1a304a;
+  --bs-table-hover-color: #ffffff;
+  --bs-table-border-color: #314861;
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root .table > :not(caption) > * > * {
+  background: transparent !important;
+  color: var(--ec-text) !important;
+  border-color: #314861 !important;
+  box-shadow: none !important;
+}
+body.theme-dark #root .table thead th,
+body.theme-dark #root :is(.table-light,thead.table-light,thead.table-light th,.table-light > *) {
+  --bs-table-bg: #182a42 !important;
+  --bs-table-color: #edf5fc !important;
+  background: #182a42 !important;
+  color: #edf5fc !important;
+  border-color: #3a526d !important;
+}
+
+/* -------------------- Dashboard -------------------- */
+body.theme-dark #root #dashboard-view :is(.dashboard-kpi-card,.dashboard-mini-panel,.stat-card,.dashboard-insight-bar) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #dashboard-view :is(.stat-label,.mini-label,.dashboard-meta) { color: var(--ec-muted) !important; }
+body.theme-dark #root #dashboard-view :is(.stat-value,.dashboard-kpi-value,.stat-value-status) { color: #f8fbff !important; }
+
+/* -------------------- Profesores -------------------- */
+body.theme-dark #root #profesores-view :is(.faculty-summary,.faculty-summary-item,.profesor-group-pill) {
+  background: var(--ec-surface-2) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #profesores-view .profesor-name-cell strong { color: #f8fbff !important; }
+body.theme-dark #root #profesores-view .profesor-name-cell small { color: var(--ec-muted) !important; }
+body.theme-dark #root #profesores-view .badge.bg-light {
+  background: #1a2d44 !important;
+  color: #dbe9f6 !important;
+  border-color: #405a75 !important;
+}
+
+/* -------------------- Matrícula / grupos / secciones -------------------- */
+body.theme-dark #root #matricula-view :is(
+  .matricula-card,.group-card,.section-form-card,.section-delete-card,.section-name-preview,
+  .section-format-example,.group-create-grid,.edu-section-modal,.schedule-days,.schedule-days-week
+) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #matricula-view .schedule-day {
+  background: #14243a !important;
+  color: #dce8f4 !important;
+  border-color: #405a75 !important;
+}
+body.theme-dark #root #matricula-view .schedule-day:has(input:checked) {
+  background: #1f4e70 !important;
+  color: #ffffff !important;
+  border-color: #70b3dd !important;
+}
+body.theme-dark #root #matricula-view .section-format-example {
+  background: #13283a !important;
+  color: #cae6f7 !important;
+}
+body.theme-dark #root #matricula-view .section-name-preview {
+  background: #16273b !important;
+}
+body.theme-dark #root #matricula-view :is(.mat-financial-status,.mat-financial-compact,.mat-debt-compact) {
+  background: #342b19 !important;
+  color: #f6dfaa !important;
+  border-color: #725e31 !important;
+}
+body.theme-dark #root #matricula-view .mat-no-debt {
+  background: #153027 !important;
+  color: #bcead3 !important;
+  border-color: #417b63 !important;
+}
+body.theme-dark #root #matricula-view :is(.mat-financial-heading,.mat-financial-summary,.mat-financial-inline-metrics) {
+  color: inherit !important;
+}
+
+/* -------------------- Asistencia -------------------- */
+body.theme-dark #root #asistencia-view :is(
+  .attendance-control-card,.attendance-legend,.attendance-matrix-head,.attendance-matrix-wrap,
+  .attendance-matrix,.attendance-history-panel,.attendance-history-toolbar,.attendance-summary,
+  .attendance-student-cell,.attendance-cell,.day-head
+) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #asistencia-view .day-head { background: #182a42 !important; }
+body.theme-dark #root #asistencia-view .attendance-cell-btn.is-empty,
+body.theme-dark #root #asistencia-view .attendance-cell-btn:not(.is-presente):not(.is-ausente):not(.is-tardia):not(.is-justificada) {
+  background: #13243a !important;
+  color: #b7c9da !important;
+  border-color: #405a75 !important;
+}
+body.theme-dark #root #asistencia-view .legend-dot.presente,
+body.theme-dark #root #asistencia-view .attendance-cell-btn.is-presente { background:#163b2b !important; color:#a9ebc8 !important; border-color:#3f8465 !important; }
+body.theme-dark #root #asistencia-view .legend-dot.ausente,
+body.theme-dark #root #asistencia-view .attendance-cell-btn.is-ausente { background:#41232a !important; color:#ffc1c9 !important; border-color:#8e4a55 !important; }
+body.theme-dark #root #asistencia-view .legend-dot.tardia,
+body.theme-dark #root #asistencia-view .attendance-cell-btn.is-tardia { background:#3c321b !important; color:#f8dc98 !important; border-color:#816b34 !important; }
+body.theme-dark #root #asistencia-view .legend-dot.justificada,
+body.theme-dark #root #asistencia-view .attendance-cell-btn.is-justificada { background:#1c3150 !important; color:#c6ddff !important; border-color:#4f70a0 !important; }
+
+/* -------------------- Finanzas -------------------- */
+body.theme-dark #root #pagos-view :is(
+  .finance-api-strip,.finance-summary-card,.finance-panel,.finance-payment-panel,.finance-primary-panel,
+  .finance-tool-card,.finance-tool-body,.finance-filter-row,.finance-invoice-filter-row,
+  .finance-record-card,.finance-history-record,.finance-invoice-record,.finance-payment-context,
+  .finance-record-money > div,.finance-empty-card,.finance-empty-state,.finance-term-box,.extra-availability,
+  .billing-config-intro,.billing-service-card,.billing-emitter-card,.billing-field,.billing-logo-picker,
+  .billing-logo-preview,.billing-config-note,.billing-config-footer,.finance-exemption-box
+) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #pagos-view :is(.finance-record-card,.finance-history-record,.finance-invoice-record):hover {
+  background: var(--ec-surface-hover) !important;
+  border-color: #4b6987 !important;
+}
+body.theme-dark #root #pagos-view :is(.finance-card-heading h3,.finance-panel-title h3,.finance-record-person strong,.finance-history-person,.finance-history-date,.finance-invoice-record-main strong,.finance-record-money strong) {
+  color: #f8fbff !important;
+}
+body.theme-dark #root #pagos-view :is(.finance-card-heading p,.finance-record-meta,.finance-history-meta,.finance-record-money span,.finance-invoice-record-main span,.finance-invoice-record-total span) {
+  color: var(--ec-muted) !important;
+}
+body.theme-dark #root #pagos-view .invoice-chip {
+  background: #143642 !important;
+  color: #a9e3ec !important;
+  border-color: #417984 !important;
+}
+body.theme-dark #root #pagos-view .finance-exemption-box {
+  background: #183027 !important;
+  color: #c4ecd7 !important;
+  border-color: #467d65 !important;
+}
+body.theme-dark #root #pagos-view .billing-logo-preview {
+  background: #17283c !important;
+}
+
+/* El PDF real conserva fondo de documento; solo oscurecemos el marco alrededor. */
+body.theme-dark #root #pagos-view .finance-invoice-preview-body,
+body.theme-dark #root #pagos-view .finance-invoice-preview-frame {
+  background: #081321 !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #pagos-view .finance-invoice-preview-header {
+  background: #0b2035 !important;
+  color: #ffffff !important;
+}
+
+/* -------------------- Consultas / reportes -------------------- */
+body.theme-dark #root #consultas-view :is(
+  .consultas-hero,.consultas-panel,.consultas-toolbar,.consulta-profesor-contexto,.consulta-stat,
+  .consulta-documento,.consulta-documento-header,.consulta-documento-contenido,.consulta-documento-campo,
+  .consulta-documento-seccion,.consulta-resultado,.consulta-result-card,.audit-json,.audit-preview-note
+),
+body.theme-dark #root #reportes-view :is(
+  .report-main-card,.report-filter-panel,.report-mode-switcher,.preview-reporte,.preview-reporte-body,
+  .report-preview,.report-preview-card,.report-preview-metric,.report-empty-state,.preview-table-wrap
+) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #consultas-view :is(.consulta-documento-etiqueta,.consulta-documento-meta,.consulta-documento-footer),
+body.theme-dark #root #reportes-view :is(.report-filter-field small,.preview-reporte-chip-area) {
+  color: var(--ec-muted) !important;
+}
+
+/* -------------------- Perfil / permisos / usuarios -------------------- */
+body.theme-dark #root #perfil-view :is(.perfil-card,.perfil-info,.perfil-info-item,.perfil-section,.profile-section,.perfil-field),
+body.theme-dark #root #usuarios-view :is(.card,.card-header,.permissions-view,.permissions-hero,.permission-card,.permissions-card) {
+  background: var(--ec-surface-1) !important;
+  color: var(--ec-text) !important;
+  border-color: var(--ec-border) !important;
+}
+body.theme-dark #root #perfil-view .perfil-hero,
+body.theme-dark #root #usuarios-view .permissions-hero {
+  background: linear-gradient(135deg,#153958,#1e5872) !important;
+  border-color: #37637c !important;
+}
+body.theme-dark #root #perfil-view .perfil-hero *,
+body.theme-dark #root #usuarios-view .permissions-hero * {
+  color: #ffffff !important;
+}
+
+/* -------------------- Estados y badges -------------------- */
+body.theme-dark #root :is(.badge.bg-light,.badge.text-bg-light) {
+  background: #1a2d44 !important;
+  color: #e4eef8 !important;
+  border-color: #435c76 !important;
+}
+body.theme-dark #root :is(.badge.bg-dark,.badge.text-bg-dark) {
+  background: #20364f !important;
+  color: #f0f6fc !important;
+}
+body.theme-dark #root :is(.badge.bg-success,.badge.text-bg-success,.account-status.paid) {
+  background: #176747 !important;
+  color: #effff8 !important;
+}
+body.theme-dark #root :is(.badge.bg-warning,.badge.text-bg-warning,.account-status.pending,.account-status.partial) {
+  background: #70531f !important;
+  color: #fff1c7 !important;
+}
+body.theme-dark #root :is(.badge.bg-danger,.badge.text-bg-danger,.account-status.overdue) {
+  background: #7a3540 !important;
+  color: #fff1f3 !important;
+}
+body.theme-dark #root :is(.badge.bg-info,.badge.text-bg-info) {
+  background: #1a5268 !important;
+  color: #dcf6ff !important;
+}
+body.theme-dark #root .role-badge-admin { background:#1c4a6b !important; color:#d7efff !important; border-color:#47799a !important; }
+body.theme-dark #root .role-badge-asistente { background:#19483c !important; color:#c9f2df !important; border-color:#3e7d68 !important; }
+body.theme-dark #root .role-badge-profesor { background:#433468 !important; color:#e5dbff !important; border-color:#68568f !important; }
+
+/* -------------------- Modales -------------------- */
+body.theme-dark #root .modal-content {
+  background: var(--ec-surface-1) !important;
+  border: 1px solid #3b536d !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.55) !important;
+}
+body.theme-dark #root .modal-header {
+  background: #10243a !important;
+  color: #ffffff !important;
+  border-color: #36516c !important;
+}
+body.theme-dark #root .modal-header * { color: #ffffff !important; }
+body.theme-dark #root .modal-footer {
+  background: #0e1b2c !important;
+  border-color: #314861 !important;
+}
+body.theme-dark #root .modal-backdrop.show { opacity: .75 !important; }
+body.theme-dark #root .btn-close {
+  filter: invert(1) grayscale(1) brightness(1.8) !important;
+  opacity: .92 !important;
+  background-color: transparent !important;
+  border: 0 !important;
+}
+
+/* -------------------- Login -------------------- */
+body.theme-dark #root .login-card {
+  background: rgba(10,24,40,.97) !important;
+  color: var(--ec-text) !important;
+  border: 1px solid #3b536d !important;
+  box-shadow: 0 26px 80px rgba(0,0,0,.52) !important;
+}
+body.theme-dark #root .login-card :is(h1,h2,h3,strong,.form-label) { color:#ffffff !important; }
+body.theme-dark #root .login-card :is(.text-muted,.small,small) { color:#b9c9da !important; }
+
+/* -------------------- Accesibilidad -------------------- */
+body.theme-dark #root .accessibility-widget {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body.theme-dark #root .accessibility-toggle,
+body.theme-dark #root #accessibility-toggle {
+  background: linear-gradient(135deg,#2f87aa,#2399a2) !important;
+  color: #ffffff !important;
+  border-color: #61bdce !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,.22) !important;
+}
+body.theme-dark #root .accessibility-menu {
+  background: #101d2e !important;
+  color: var(--ec-text) !important;
+  border-color: #3a526d !important;
+}
+body.theme-dark #root .accessibility-action {
+  background: #16263b !important;
+  color: #e5eef8 !important;
+  border-color: #405a75 !important;
+}
+body.theme-dark #root .accessibility-action:hover,
+body.theme-dark #root .accessibility-action:focus-visible {
+  background: #213952 !important;
+  color: #ffffff !important;
+}
+body.theme-dark #root .accessibility-action-active {
+  background: #235f89 !important;
+  color: #ffffff !important;
+  border-color: #6eadd4 !important;
+}
+
+/* -------------------- Focus -------------------- */
+body.theme-dark #root :is(button,a,input,select,textarea,[tabindex]):focus-visible {
+  outline: 2px solid #78c1ec !important;
+  outline-offset: 2px !important;
+}
+
+/* -------------------- Alto contraste: debe ganar al modo oscuro -------------------- */
+body.theme-dark.high-contrast #root,
+body.high-contrast #root {
+  --ec-bg-0:#000;
+  --ec-bg-1:#000;
+  --ec-surface-1:#000;
+  --ec-surface-2:#000;
+  --ec-surface-3:#000;
+  --ec-text:#fff;
+  --ec-heading:#fff;
+  --ec-muted:#fff;
+  --ec-border:#fff;
+}
+body.theme-dark.high-contrast #root :is(.card,.modal-content,.form-control,.form-select,.input-group-text,.table,.table-responsive,.dropdown-menu,.list-group-item),
+body.high-contrast #root :is(.card,.modal-content,.form-control,.form-select,.input-group-text,.table,.table-responsive,.dropdown-menu,.list-group-item) {
+  background:#000 !important;
+  color:#fff !important;
+  border-color:#fff !important;
+}
+
+@media (max-width: 767.98px) {
+  body.theme-dark #root .modal-content { border-color:#3b536d !important; }
+}

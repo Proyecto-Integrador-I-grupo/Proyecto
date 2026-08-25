@@ -1,0 +1,227 @@
+/* =========================================================
+   EduControl · pulido de entrega
+   Capa final: contraste oscuro, accesibilidad, movimiento,
+   scrollbars invisibles y estabilidad al abrir/cerrar modales.
+   ========================================================= */
+
+/* Mantener desplazamiento disponible sin barras visuales. */
+html, body, #root, #app-shell, .app-main, #content,
+.modal, .modal-body, .table-responsive, .attendance-matrix-wrap,
+.finance-local-scroll, .profesores-table-wrap {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar,
+#root::-webkit-scrollbar, #app-shell::-webkit-scrollbar,
+.app-main::-webkit-scrollbar, #content::-webkit-scrollbar,
+.modal::-webkit-scrollbar, .modal-body::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar, .attendance-matrix-wrap::-webkit-scrollbar,
+.finance-local-scroll::-webkit-scrollbar, .profesores-table-wrap::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+html { scrollbar-gutter: auto !important; }
+body { overflow-x: hidden !important; }
+
+/* El widget no debe adquirir una caja oscura alrededor del botón. */
+.accessibility-widget,
+body.theme-dark .accessibility-widget,
+body.high-contrast .accessibility-widget {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  padding: 0 !important;
+}
+.accessibility-toggle,
+#accessibility-toggle,
+body.theme-dark .accessibility-toggle,
+body.theme-dark #accessibility-toggle {
+  background: linear-gradient(135deg, #2086aa, #2697a3) !important;
+  border: 1px solid rgba(255,255,255,.38) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,.18) !important;
+}
+.accessibility-toggle:hover,
+#accessibility-toggle:hover { filter: brightness(1.06); }
+
+/* Reducir movimiento: el control manual debe ser absoluto, incluyendo
+   Bootstrap, tarjetas, menús, collapses, toasts y el spinner. */
+html.reduced-motion,
+html.reduced-motion:focus-within,
+body.reduced-motion { scroll-behavior: auto !important; }
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+  transform-duration: 0s !important;
+}
+body.reduced-motion .fade,
+body.reduced-motion .collapsing,
+body.reduced-motion .modal.fade .modal-dialog,
+body.reduced-motion .spinner-border,
+body.reduced-motion .spinner-grow {
+  animation: none !important;
+  transition: none !important;
+}
+body.reduced-motion .collapsing { height: auto !important; }
+
+/* -------- Modo oscuro: capa de contraste definitiva -------- */
+body.theme-dark .view,
+body.theme-dark .view :is(section,article,main) { color: #eaf2fb; }
+
+body.theme-dark .view :is(h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,
+  .card-title,.card-title-serif,.finance-panel-title h3,.finance-card-heading h3,
+  .dashboard-page-header h1,.dashboard-page-header h2,.attendance-matrix-head h3,
+  .permissions-view h1,.permissions-view h2,.permissions-view h3,
+  .perfil-section-heading h3) {
+  color: #f5f9ff !important;
+  --bs-heading-color: #f5f9ff !important;
+}
+body.theme-dark .view :is(p,.small,small,.text-muted,.text-secondary,.form-text,
+  .card-subtitle,.finance-page-subtitle,.finance-panel p,.finance-record-meta,
+  .dashboard-page-header p) { color: #b7c7d9 !important; }
+body.theme-dark .view :is(strong,.fw-bold,.fw-semibold) { color: inherit; }
+
+body.theme-dark :is(.card,.card-body,.card-header,.card-footer,
+  .finance-panel,.finance-summary-card,.finance-record-card,.finance-history-record,
+  .finance-tool-card,.finance-tool-body,.finance-filter-row,.finance-record-list,
+  .section-form-card,.section-delete-card,.section-name-preview,
+  .attendance-matrix-wrap,.attendance-matrix-head,.attendance-history-panel,
+  .attendance-history-toolbar,.permissions-view .card,.perfil-info-item,
+  .dashboard-kpi-card,.dashboard-mini-panel,.report-main-card,
+  .consulta-preview-area,.consulta-documento) {
+  background-color: #101d2f !important;
+  border-color: #2e425c !important;
+  color: #eaf2fb !important;
+}
+body.theme-dark .card-header { background-color: #14243a !important; }
+body.theme-dark .dashboard-mini-panel::before { opacity: .55; }
+
+/* Cifras que quedaban casi negras. */
+body.theme-dark :is(.dashboard-kpi-value,.dashboard-mini-panel strong,
+  .finance-summary-card strong,.finance-record-money strong,.finance-history-amount strong,
+  .finance-record-person strong,.finance-history-date strong,.finance-history-person strong,
+  .attendance-matrix-head strong) { color: #f7fbff !important; }
+
+/* Formularios y superficies auxiliares. */
+body.theme-dark :is(.form-control,.form-select,.input-group-text,.profesor-select,
+  .search-box,.dropdown-menu,.list-group-item,.accordion-item,.accordion-button) {
+  background-color: #0d1929 !important;
+  border-color: #3a506b !important;
+  color: #edf5fd !important;
+}
+body.theme-dark :is(.form-control,.form-select)::placeholder { color: #93a8be !important; opacity: 1; }
+body.theme-dark :is(.form-control,.form-select):disabled,
+body.theme-dark :is(.form-control,.form-select)[readonly] {
+  background-color: #17263a !important;
+  color: #9fb0c3 !important;
+}
+body.theme-dark .form-label { color: #dce7f3 !important; }
+
+/* Tablas: nunca texto oscuro sobre fondo oscuro ni filas claras. */
+body.theme-dark .table,
+body.theme-dark .table-responsive {
+  --bs-table-bg: #101d2f !important;
+  --bs-table-color: #e9f2fb !important;
+  --bs-table-border-color: #31465f !important;
+  --bs-table-striped-bg: #13233a !important;
+  --bs-table-striped-color: #eef6fd !important;
+  --bs-table-hover-bg: #192d47 !important;
+  --bs-table-hover-color: #fff !important;
+  background: #101d2f !important;
+  color: #e9f2fb !important;
+}
+body.theme-dark .table > :not(caption) > * > * { color: #e9f2fb !important; border-color: #31465f !important; }
+body.theme-dark .table thead th,
+body.theme-dark .table-light th { background: #182a42 !important; color: #dce8f5 !important; }
+
+/* Asistencia mensual. */
+body.theme-dark .attendance-matrix .student-sticky,
+body.theme-dark .attendance-matrix thead .student-sticky,
+body.theme-dark .day-head,
+body.theme-dark .attendance-cell { background: #101d2f !important; }
+body.theme-dark .day-head span,
+body.theme-dark .student-name-cell small { color: #9eb1c6 !important; }
+body.theme-dark .day-head strong,
+body.theme-dark .student-name { color: #eef6fd !important; }
+body.theme-dark .attendance-cell-btn.is-empty { background: #13243a !important; color: #c6d5e5 !important; border-color: #3a526d !important; }
+
+/* Finanzas: corregir tarjetas del historial que permanecían blancas. */
+body.theme-dark #pagos-view :is(.finance-history-record,.finance-record-card,
+  .finance-summary-card,.finance-tool-card,.finance-filter-row) {
+  background: #101d2f !important;
+  border-color: #304762 !important;
+}
+body.theme-dark #pagos-view :is(.finance-history-date small,.finance-history-person span,
+  .finance-history-meta small,.finance-history-amount small,.finance-record-person small,
+  .finance-record-money span,.finance-record-state small) { color: #a9bbce !important; }
+body.theme-dark #pagos-view .finance-record-money > div { background: #14243a !important; border-color: #334b67 !important; }
+body.theme-dark #pagos-view .finance-record-money .finance-record-balance { background: #2c211b !important; }
+body.theme-dark #pagos-view .finance-record-money .finance-record-balance strong { color: #ffc2a5 !important; }
+
+/* Modales: uniformes, sin superficies claras accidentales. */
+body.theme-dark .modal-content,
+body.theme-dark .modal-body,
+body.theme-dark .modal-footer { background: #101d2f !important; color: #eaf2fb !important; border-color: #30445e !important; }
+body.theme-dark .modal-header { background: #0d2c49 !important; color: #fff !important; border-color: #36516d !important; }
+body.theme-dark .modal-body :is(h1,h2,h3,h4,h5,h6,strong,label,.form-label) { color: #eef6fd !important; }
+body.theme-dark .modal-body :is(p,small,.small,.text-muted,.form-text) { color: #b5c5d7 !important; }
+body.theme-dark .modal .bg-white,
+body.theme-dark .modal .bg-light,
+body.theme-dark .modal .alert-light { background: #14243a !important; color: #eaf2fb !important; border-color: #354d68 !important; }
+
+/* El visor de PDF conserva fondo neutro; la factura sigue siendo blanca dentro del PDF. */
+body.theme-dark .finance-invoice-preview-body { background: #0b1423 !important; }
+
+/* Secciones: recuperar el ejemplo pedagógico solicitado. */
+.section-format-example {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  margin-top: .55rem;
+  padding: .58rem .7rem;
+  border-radius: 10px;
+  border: 1px solid #d8e5f0;
+  background: #f4f8fc;
+  color: #50677d;
+  font-size: .78rem;
+  line-height: 1.35;
+}
+.section-format-example i { color: #2e7da9; margin-top: .05rem; }
+body.theme-dark .section-format-example {
+  background: #14283e !important;
+  color: #c8d7e6 !important;
+  border-color: #35526d !important;
+}
+body.theme-dark .section-format-example i { color: #82d2f5 !important; }
+
+/* Botones principales de creación coherentes entre tarjetas. */
+#matricula-view [data-bs-target="#modalGrupo"].btn-primary {
+  box-shadow: 0 7px 16px rgba(37,99,235,.15);
+}
+
+/* Desktop: la matriz mensual usa mejor el ancho antes de requerir desplazamiento. */
+@media (min-width: 1200px) {
+  .attendance-matrix { width: 100% !important; min-width: 0 !important; table-layout: fixed; }
+  .attendance-matrix .student-sticky { width: 18%; min-width: 170px; max-width: 220px; }
+  .attendance-matrix .day-head,
+  .attendance-matrix .attendance-cell { min-width: 0 !important; width: auto; padding-inline: .18rem; }
+  .attendance-cell-btn { width: 30px; height: 30px; }
+}
+
+/* En móvil se mantiene el gesto horizontal cuando sea imprescindible, pero sin barra. */
+@media (max-width: 767.98px) {
+  html, body { max-width: 100%; overflow-x: hidden !important; }
+  #content { max-width: 100%; }
+  .attendance-matrix-wrap,.table-responsive,.finance-local-scroll {
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .accessibility-toggle,#accessibility-toggle { width: 52px !important; height: 52px !important; min-width: 52px !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog { margin: .5rem auto !important; }
+}

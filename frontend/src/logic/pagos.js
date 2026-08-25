@@ -11,8 +11,6 @@ let estadoCuentas = [];
 let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
 let facturaPreviewFormato = 'pdf';
-let facturaPreviewScrollY = 0;
-let facturaPreviewReturnFocus = null;
 let logoFacturaData = null;
 const documentosFacturaEnCurso = new Map();
 const pagosEnCurso = new Set();
@@ -231,11 +229,6 @@ function wirePagosEvents() {
   if (modalFacturaVisual && !modalFacturaVisual.dataset.previewWired) {
     modalFacturaVisual.dataset.previewWired = '1';
 
-    modalFacturaVisual.addEventListener('show.bs.modal', () => {
-      facturaPreviewScrollY = window.scrollY || window.pageYOffset || 0;
-      facturaPreviewReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    });
-
     modalFacturaVisual.addEventListener('hidden.bs.modal', () => {
       const frame = document.getElementById('fin-factura-preview-frame');
       if (frame) frame.src = 'about:blank';
@@ -244,14 +237,6 @@ function wirePagosEvents() {
       facturaPreviewCargoId = null;
       facturaPreviewFormato = 'pdf';
 
-      const restoreY = facturaPreviewScrollY;
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' });
-          try { facturaPreviewReturnFocus?.focus({ preventScroll: true }); } catch {}
-          facturaPreviewReturnFocus = null;
-        });
-      });
     });
   }
 

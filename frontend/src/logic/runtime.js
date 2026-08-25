@@ -40,26 +40,23 @@ function applyInputGuards() {
 
 
 let modalScrollY = 0;
+let modalReturnFocus = null;
 
-function lockDocumentForModal() {
+function lockDocumentForModal(event) {
   const body = document.body;
   const html = document.documentElement;
   if (!body || body.dataset.eduModalLocked === '1') return;
 
   modalScrollY = window.scrollY || window.pageYOffset || 0;
+  modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   body.dataset.eduModalLocked = '1';
   html.classList.add('edu-modal-lock');
   body.classList.add('edu-modal-lock');
-  body.style.position = 'fixed';
-  body.style.top = `-${modalScrollY}px`;
-  body.style.left = '0';
-  body.style.right = '0';
-  body.style.width = '100%';
+
+  // No fijamos el body ni alteramos top/left. Ese patrón era el que producía
+  // el salto perceptible al cerrar facturas y otras ventanas.
   body.style.overflow = 'hidden';
-  // Bootstrap compensa la barra de desplazamiento con padding-right. Como el
-  // documento usa scrollbar-gutter estable, esa compensación provoca un salto
-  // horizontal innecesario al abrir/cerrar una ventana.
   body.style.paddingRight = '0px';
 }
 
@@ -72,27 +69,16 @@ function unlockDocumentAfterModal() {
   delete body.dataset.eduModalLocked;
   html.classList.remove('edu-modal-lock');
   body.classList.remove('edu-modal-lock');
-  body.style.removeProperty('position');
-  body.style.removeProperty('top');
-  body.style.removeProperty('left');
-  body.style.removeProperty('right');
-  body.style.removeProperty('width');
   body.style.removeProperty('overflow');
   body.style.removeProperty('padding-right');
 
-  // Si una ventana se cerró de forma programática y Bootstrap dejó un
-  // backdrop huérfano, lo retiramos solo cuando ya no existe ningún modal
-  // abierto. Esto evita pantallas bloqueadas y botones aparentemente inactivos.
   document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
 
-  const restoreY = modalScrollY;
-  // Restaurar después de que Bootstrap termine de devolver el foco evita que
-  // el navegador desplace la página al botón que abrió el modal.
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' });
-    });
-  });
+  // Mantener exactamente la posición visual previa y devolver el foco sin
+  // permitir que el navegador desplace la página hacia el botón disparador.
+  window.scrollTo(0, modalScrollY);
+  try { modalReturnFocus?.focus({ preventScroll: true }); } catch {}
+  modalReturnFocus = null;
 }
 
 function fitModalToViewport(modal) {

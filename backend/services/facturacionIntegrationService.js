@@ -287,7 +287,21 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
 
   const totalCargo = Number(cargo.total || 0);
   const totalPagadoValidacion = Number(cargo.total_pagado || 0);
-  const cargoPagado = cargo.estado === "pagado" && Number(cargo.saldo || 0) <= 0 && totalPagadoValidacion + 0.001 >= totalCargo;
+  const baseCargo = Math.max(0, Number(cargo.monto_base || 0));
+  const descuentoCargo = Math.max(0, Number(cargo.descuento || 0));
+  const bonificacionTotalCierre =
+    baseCargo > 0 &&
+    descuentoCargo + 0.001 >= baseCargo &&
+    totalCargo <= 0.001 &&
+    Number(cargo.saldo || 0) <= 0.001 &&
+    String(cargo.estado || "").toLowerCase() === "pagado";
+
+  // Un cargo exonerado al 100% no tiene un pago monetario y, por tanto, no
+  // debe depender de SUM(pago). Es un cierre financiero válido por descuento.
+  const cargoPagado =
+    String(cargo.estado || "").toLowerCase() === "pagado" &&
+    Number(cargo.saldo || 0) <= 0.001 &&
+    (bonificacionTotalCierre || totalPagadoValidacion + 0.001 >= totalCargo);
 
   if (!cargoPagado) {
     return {
@@ -359,20 +373,22 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     condicion_venta: configGuardada?.condicion_venta || "01"
   };
 
-  // Los pagos históricos creados antes del módulo de responsables pueden no tener
-  // responsable_pago. Para no bloquear la factura, el estudiante se utiliza como
-  // receptor y el correo institucional queda como canal de entrega temporal.
+  // Para una exoneración del 100% igualmente se emite un comprobante y se
+  // requieren los datos reales de la persona responsable. No usamos datos
+  // ficticios/fallback en ese caso porque debe quedar trazabilidad de quién
+  // recibió el beneficio. Para cargos pagados de forma convencional se conserva
+  // la compatibilidad con registros históricos.
   const receptorNombre = String(
     cargo.responsable_nombre ||
-    [cargo.nombre, cargo.apellido1, cargo.apellido2].filter(Boolean).join(" ")
+    (bonificacionTotalCierre ? "" : [cargo.nombre, cargo.apellido1, cargo.apellido2].filter(Boolean).join(" "))
   ).trim();
   const receptorCorreo = String(
     cargo.responsable_correo ||
-    process.env.FACTURACION_RECEPTOR_CORREO_FALLBACK ||
-    config.correo
+    (bonificacionTotalCierre ? "" : (process.env.FACTURACION_RECEPTOR_CORREO_FALLBACK || config.correo))
   ).trim().toLowerCase();
+  const receptorNumeroId = String(cargo.responsable_numero_id || "").trim();
 
-  if (!receptorNombre || !receptorCorreo) {
+  if (!receptorNombre || !receptorCorreo || (bonificacionTotalCierre && !receptorNumeroId)) {
     await registrarEstadoFactura(
       idCargo,
       null,
@@ -383,7 +399,9 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     return {
       ok: false,
       estado: "pendiente_datos",
-      mensaje: "No fue posible determinar el receptor de la factura."
+      mensaje: bonificacionTotalCierre
+        ? "Completa nombre, correo e identificación del responsable para emitir el comprobante de exoneración."
+        : "No fue posible determinar el receptor de la factura."
     };
   }
 
@@ -391,11 +409,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const totalRegistrado = numero(cargo.total);
   const baseRegistrada = numero(cargo.monto_base);
   const descuentoRegistrado = Math.max(0, numero(cargo.descuento));
-  const bonificacionTotal =
-    baseRegistrada > 0 &&
-    descuentoRegistrado + 0.001 >= baseRegistrada &&
-    String(cargo.estado || '').toLowerCase() === 'pagado' &&
-    numero(cargo.saldo) <= 0;
+  const bonificacionTotal = bonificacionTotalCierre;
 
   // Un descuento del 100% es un cierre financiero válido. El comprobante visual
   // debe conservar la base y el descuento aunque el total a cobrar sea CRC 0.
@@ -425,7 +439,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     fecha: new Date().toISOString(),
     moneda: config.moneda || "CRC",
     condicionVenta: config.condicion_venta || "01",
-    medioPago: METODOS_FACTURA[String(metodoPago || "otro").toLowerCase()] || "99",
+    medioPago: bonificacionTotal ? "99" : (METODOS_FACTURA[String(metodoPago || "otro").toLowerCase()] || "99"),
     emisor: {
       nombre: config.institucion_nombre,
       identificacion: {
@@ -437,10 +451,10 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     },
     receptor: {
       nombre: receptorNombre,
-      identificacion: cargo.responsable_numero_id
+      identificacion: receptorNumeroId
         ? {
             tipo: cargo.responsable_tipo_id || "01",
-            numero: cargo.responsable_numero_id
+            numero: receptorNumeroId
           }
         : null,
       correo: receptorCorreo

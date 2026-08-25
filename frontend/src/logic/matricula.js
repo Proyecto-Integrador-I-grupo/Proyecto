@@ -9,11 +9,6 @@ import {
   refreshDashboardCounts
 } from './dashboard.js';
 
-import {
-  populateProfesoresSelects,
-  filtrarProfesoresGestion
-} from './profesores.js';
-
 (function () {
   const moduleName = 'matricula';
   window.EduControlModules = window.EduControlModules || {};
@@ -42,7 +37,6 @@ let allGrupos = [];
 let allSecciones = [];
 
 function wireMatriculaEvents() {
-  configurarSelectoresProfesores();
   configurarDisponibilidadAulas();
   const matForm = document.getElementById('matricula-form');
   if (matForm && !matForm.dataset.wired) {
@@ -116,12 +110,22 @@ function wireMatriculaEvents() {
     btnConfirmarBorradoGrupo.dataset.wired = '1';
     btnConfirmarBorradoGrupo.addEventListener('click', async () => {
       const idGrupo = btnConfirmarBorradoGrupo.dataset.idGrupo;
-      if (!idGrupo) return;
-
-      const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
-      if (confirmarModalEl) bootstrap.Modal.getInstance(confirmarModalEl)?.hide();
-
-      await borrarGrupo(idGrupo);
+      if (!idGrupo || btnConfirmarBorradoGrupo.dataset.busy === '1') return;
+      const original = btnConfirmarBorradoGrupo.innerHTML;
+      btnConfirmarBorradoGrupo.dataset.busy = '1';
+      btnConfirmarBorradoGrupo.disabled = true;
+      btnConfirmarBorradoGrupo.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Eliminando…';
+      try {
+        const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
+        if (confirmarModalEl) bootstrap.Modal.getInstance(confirmarModalEl)?.hide();
+        await borrarGrupo(idGrupo);
+      } finally {
+        if (btnConfirmarBorradoGrupo.isConnected) {
+          btnConfirmarBorradoGrupo.disabled = false;
+          btnConfirmarBorradoGrupo.innerHTML = original;
+          delete btnConfirmarBorradoGrupo.dataset.busy;
+        }
+      }
     });
   }
 
@@ -130,24 +134,6 @@ function wireMatriculaEvents() {
     gestionGrupoBtn.dataset.wired = '1';
     gestionGrupoBtn.addEventListener('click', async () => {
       await populateGestionGrupoModal();
-      const profSel = document.getElementById('gestion-grupo-profesor');
-      if (profSel) {
-        profSel.innerHTML = '<option value="" disabled>Selecciona un grupo para cargar profesores</option>';
-        profSel.disabled = true;
-      }
-      const profSearch = document.getElementById('gestion-profesor-search');
-      const profClear = document.getElementById('gestion-profesor-clear');
-      if (profSearch) profSearch.disabled = true;
-      if (profClear) profClear.disabled = true;
-      actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
-    });
-  }
-
-  const gestionProfSearch = document.getElementById('gestion-profesor-search');
-  if (gestionProfSearch && !gestionProfSearch.dataset.wired) {
-    gestionProfSearch.dataset.wired = '1';
-    gestionProfSearch.addEventListener('input', () => {
-      filtrarProfesoresGestion(gestionProfSearch.value);
     });
   }
 
@@ -158,15 +144,7 @@ function wireMatriculaEvents() {
       const rawValue = gestionGrupoSelect.value;
       const cleanId = String(rawValue).split(':')[0].trim();
       if (!cleanId || Number.isNaN(Number(cleanId))) return;
-      await populateProfesoresSelects(false);
-      const profSel = document.getElementById('gestion-grupo-profesor');
-      const profSearch = document.getElementById('gestion-profesor-search');
-      const profClear = document.getElementById('gestion-profesor-clear');
-      if (profSel) profSel.disabled = false;
-      if (profSearch) profSearch.disabled = false;
-      if (profClear) profClear.disabled = false;
       await cargarDetalleGestionGrupo(Number(cleanId));
-      actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
     });
   }
 
@@ -244,10 +222,22 @@ function wireMatriculaEvents() {
     btnConfirmarBorradoSeccion.dataset.wired = '1';
     btnConfirmarBorradoSeccion.addEventListener('click', async () => {
       const idSeccion = btnConfirmarBorradoSeccion.dataset.idSeccion;
-      if (!idSeccion) return;
-      const modalEl = document.getElementById('modalConfirmarEliminacionSeccion');
-      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-      await borrarSeccion(idSeccion);
+      if (!idSeccion || btnConfirmarBorradoSeccion.dataset.busy === '1') return;
+      const original = btnConfirmarBorradoSeccion.innerHTML;
+      btnConfirmarBorradoSeccion.dataset.busy = '1';
+      btnConfirmarBorradoSeccion.disabled = true;
+      btnConfirmarBorradoSeccion.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Eliminando…';
+      try {
+        const modalEl = document.getElementById('modalConfirmarEliminacionSeccion');
+        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+        await borrarSeccion(idSeccion);
+      } finally {
+        if (btnConfirmarBorradoSeccion.isConnected) {
+          btnConfirmarBorradoSeccion.disabled = false;
+          btnConfirmarBorradoSeccion.innerHTML = original;
+          delete btnConfirmarBorradoSeccion.dataset.busy;
+        }
+      }
     });
   }
 
@@ -263,7 +253,6 @@ function wireMatriculaEvents() {
     btnAbrirModalGrupo.addEventListener('click', async () => {
       await populateGruposSelects();
       await populateSeccionesSelect();
-      await populateProfesoresSelects(false);
     });
   }
 
@@ -875,17 +864,11 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   const grupo = allGrupos.find((g) => (g.id_grupo ?? g.id) === Number(idGrupo));
   const capacidadInput = document.getElementById('gestion-grupo-capacidad');
   const aulaSelect = document.getElementById('gestion-grupo-aula');
-  const profSelect = document.getElementById('gestion-grupo-profesor');
   const horaInicioInput = document.getElementById('gestion-grupo-hora-inicio');
   const horaFinInput = document.getElementById('gestion-grupo-hora-fin');
 
-  if (!grupo || !capacidadInput || !aulaSelect || !profSelect) return;
+  if (!grupo || !capacidadInput || !aulaSelect) return;
 
-  profSelect.disabled = false;
-  const profSearch = document.getElementById('gestion-profesor-search');
-  const profClear = document.getElementById('gestion-profesor-clear');
-  if (profSearch) profSearch.disabled = false;
-  if (profClear) profClear.disabled = false;
   const ocupadosActuales = Number(grupo.ocupados ?? 0);
   capacidadInput.value = grupo.capacidad ?? 30;
   capacidadInput.min = String(Math.max(1, ocupadosActuales));
@@ -894,27 +877,12 @@ async function cargarDetalleGestionGrupo(idGrupo) {
     ? `Este grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'}. La capacidad no puede ser menor a ${ocupadosActuales}.`
     : 'La capacidad debe ser mayor a cero.';
   aulaSelect.value = grupo.aula ?? '';
-  actualizarDisponibilidadAulas('gestion');
   if (horaInicioInput) horaInicioInput.value = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
   if (horaFinInput) horaFinInput.value = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
   marcarDiasSeleccionados('gestion-grupo-dias', grupo.dias_semana || '');
-
-  try {
-    const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/detalle`);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) return;
-
-    if (Array.isArray(json.profesores) && json.profesores.length > 0) {
-      const selectedIds = json.profesores.map(p => String(p.id_profesor));
-      Array.from(profSelect.options).forEach(opt => {
-        opt.selected = selectedIds.includes(String(opt.value));
-      });
-    }
-    actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
-  } catch (error) {
-    console.error('Error cargando detalle del grupo', error);
-  }
+  actualizarDisponibilidadAulas('gestion');
 }
+
 
 async function handleGestionGrupoSubmit(e) {
   e.preventDefault();
@@ -927,9 +895,6 @@ async function handleGestionGrupoSubmit(e) {
   const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
   const diasSemana = obtenerDiasSeleccionados('gestion-grupo-dias');
   
-  const profSelect = document.getElementById('gestion-grupo-profesor');
-  const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
-
   if (!idGrupo || !capacidad) {
     showToast('Selecciona un grupo y capacidad.', 'error');
     return;
@@ -962,11 +927,20 @@ async function handleGestionGrupoSubmit(e) {
     return;
   }
 
+  const submitBtn = e.currentTarget?.querySelector('button[type="submit"]');
+  const originalHtml = submitBtn?.innerHTML || 'Guardar cambios';
+  if (submitBtn?.dataset.busy === '1') return;
+  if (submitBtn) {
+    submitBtn.dataset.busy = '1';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando…';
+  }
+
   try {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados, hora_inicio: horaInicio, hora_fin: horaFin, dias_semana: diasSemana })
+      body: JSON.stringify({ capacidad, aula, hora_inicio: horaInicio, hora_fin: horaFin, dias_semana: diasSemana })
     });
 
     const json = await res.json().catch(() => ({}));
@@ -979,10 +953,15 @@ async function handleGestionGrupoSubmit(e) {
     document.getElementById('gestion-grupo-form')?.reset();
     await populateGruposSelects();
     await populateGestionGrupoModal();
-    await populateProfesoresSelects(true);
   } catch (error) {
     console.error('Error actualizando grupo', error);
-    showToast('Error al actualizar el grupo.', 'error');
+    showToast(error?.message || 'Error al actualizar el grupo.', 'error');
+  } finally {
+    if (submitBtn?.isConnected) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+      delete submitBtn.dataset.busy;
+    }
   }
 }
 
@@ -1018,15 +997,16 @@ async function validarEstadoFinancieroMatricula() {
     if (panel) panel.className = `mat-financial-status ${data.habilitado ? 'ok' : 'blocked'}`;
     if (texto) {
       const faltante = Math.max(0, Number(data.faltante_minimo ?? (Number(data.minimo_abono || 0) - Number(data.abono_matricula || 0))));
+      const exonerado = Boolean(data.exonerado_total);
       texto.innerHTML = `
         <div class="mat-financial-compact">
           <div class="mat-financial-heading">
-            <i class="bi ${data.habilitado ? 'bi-check-circle' : 'bi-wallet2'}"></i>
+            <i class="bi ${data.habilitado ? (exonerado ? 'bi-percent' : 'bi-check-circle') : 'bi-wallet2'}"></i>
             <strong>${escapeHtmlMat(data.titulo || (data.habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'))}</strong>
           </div>
           <div class="mat-financial-summary">
-            <span>${data.habilitado ? 'Requisito financiero cubierto.' : `Faltan ${monedaMat(faltante)} para habilitar la matrícula.`}</span>
-            <span class="mat-financial-inline-metrics">Abonado <strong>${monedaMat(data.abono_matricula)}</strong> · Mínimo <strong>${monedaMat(data.minimo_abono)}</strong></span>
+            <span>${exonerado ? 'Exoneración del 100% aplicada. Sin saldo pendiente.' : (data.habilitado ? 'Requisito financiero cubierto.' : `Faltan ${monedaMat(faltante)} para habilitar la matrícula.`)}</span>
+            <span class="mat-financial-inline-metrics">${exonerado ? `Exonerado <strong>${monedaMat(data.monto_exonerado)}</strong> · Total <strong>CRC 0</strong>` : `Abonado <strong>${monedaMat(data.abono_matricula)}</strong> · Mínimo <strong>${monedaMat(data.minimo_abono)}</strong>`}</span>
           </div>
         </div>`;
     }
@@ -1126,33 +1106,6 @@ async function handleMatriculaSubmit(e) {
     showToast('Error de conexión al matricular', 'error');
   } finally {
     if (submitBtn) { submitBtn.disabled = !estadoFinancieroMatriculaActual?.habilitado; submitBtn.innerHTML = 'Completar Matrícula'; }
-  }
-}
-
-function actualizarContadorProfesores(selectId, countId) {
-  const select = document.getElementById(selectId);
-  const badge = document.getElementById(countId);
-  if (!select || !badge) return;
-  const total = Array.from(select.selectedOptions || []).filter(o => o.value).length;
-  badge.textContent = total === 0 ? (selectId === 'gestion-grupo-profesor' ? 'Sin profesores' : 'Ninguno seleccionado') : `${total} ${total === 1 ? 'seleccionado' : 'seleccionados'}`;
-  badge.className = `badge border ${total ? 'text-bg-primary' : 'text-bg-light'}`;
-}
-
-function configurarSelectoresProfesores() {
-  const gestion = document.getElementById('gestion-grupo-profesor');
-  if (gestion && !gestion.dataset.selectorWired) {
-    gestion.dataset.selectorWired = '1';
-    gestion.addEventListener('change', () => actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count'));
-  }
-  const clearGestion = document.getElementById('gestion-profesor-clear');
-  if (clearGestion && !clearGestion.dataset.selectorWired) {
-    clearGestion.dataset.selectorWired = '1';
-    clearGestion.addEventListener('click', () => {
-      if (!gestion) return;
-      if (gestion.options[0]) gestion.options[0].selected = true;
-      Array.from(gestion.options).slice(1).forEach((o) => { o.selected = false; });
-      actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
-    });
   }
 }
 
@@ -1280,7 +1233,9 @@ async function handleGrupoSubmit(e) {
 
   const submitBtn = e.currentTarget?.querySelector('button[type="submit"]');
   const originalHtml = submitBtn?.innerHTML || 'Crear Grupo';
+  if (submitBtn?.dataset.busy === '1') return;
   if (submitBtn) {
+    submitBtn.dataset.busy = '1';
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creando...';
   }
@@ -1309,6 +1264,7 @@ async function handleGrupoSubmit(e) {
     if (submitBtn?.isConnected) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalHtml;
+      delete submitBtn.dataset.busy;
     }
   }
 }
@@ -1351,7 +1307,9 @@ async function handleSeccionSubmit(e) {
   };
 
   const original = submitBtn?.innerHTML || '';
+  if (submitBtn?.dataset.busy === '1') return;
   if (submitBtn) {
+    submitBtn.dataset.busy = '1';
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creando…';
   }
@@ -1384,6 +1342,7 @@ async function handleSeccionSubmit(e) {
     if (submitBtn?.isConnected) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = original || '<i class="bi bi-plus-circle me-1"></i> Crear sección';
+      delete submitBtn.dataset.busy;
     }
   }
 }

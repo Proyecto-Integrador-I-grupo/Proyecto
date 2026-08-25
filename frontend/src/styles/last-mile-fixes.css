@@ -856,3 +856,57 @@ body.theme-dark .finance-history-amount small:last-child { color:#b7c8da !import
   .mat-financial-summary { align-items: flex-start; justify-content: flex-start; }
   .mat-financial-inline-metrics { white-space: normal; }
 }
+
+/* Cierre financiero por exoneración total */
+.finance-exemption-box {
+  border: 1px solid var(--bs-border-color, #dbe4ee);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: #f8fbff;
+}
+.finance-exemption-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.finance-exemption-heading > i {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: #2e6fd8;
+}
+.finance-exemption-heading > div {
+  display: grid;
+  gap: 2px;
+}
+.finance-exemption-heading strong { color: #172b45; }
+.finance-exemption-heading small { color: #60758e; }
+.finance-history-record.is-exemption {
+  border-color: rgba(40, 151, 104, .28);
+}
+.finance-history-record.is-exemption .finance-history-icon {
+  background: #e9f8f0;
+  color: #177a52;
+}
+
+body.theme-dark .finance-exemption-box {
+  background: #102036;
+  border-color: #35506f;
+}
+body.theme-dark .finance-exemption-heading strong,
+body.theme-dark .finance-exemption-box .form-label {
+  color: #f3f7fc !important;
+}
+body.theme-dark .finance-exemption-heading small {
+  color: #b6c7dc !important;
+}
+body.theme-dark .finance-history-record.is-exemption .finance-history-icon {
+  background: #123b32;
+  color: #66ddb0;
+}
+
+/* Evita dobles envíos y deja claro cuándo una acción está procesándose. */
+.btn[data-busy="1"] {
+  cursor: wait !important;
+  opacity: .78;
+}

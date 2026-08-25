@@ -56,6 +56,12 @@ export async function getFacturas(req, res) {
 
 export async function postCargo(req, res) {
   try {
+    const descuento = Number(req.body?.descuento || 0);
+    const rol = String(req.usuarioActual?.rol || '').toLowerCase();
+    if (descuento > 0 && rol !== 'administrador') {
+      const permitido = await usuarioTienePermiso(req.usuarioActual?.id_usuario, 'finanzas.aplicar_descuento');
+      if (!permitido) return res.status(403).json({ mensaje: 'No tienes permiso para crear cargos con descuento.' });
+    }
     res.status(201).json(await finanzaService.crearCargo(req.body, req.usuarioActual?.id_usuario));
   } catch (e) { responderError(res, e); }
 }

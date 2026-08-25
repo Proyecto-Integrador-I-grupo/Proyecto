@@ -137,6 +137,11 @@ function wirePagosEvents() {
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
+  wire('fin-cargo-monto', 'input', () => actualizarResponsableExoneracion('nuevo'));
+  wire('fin-cargo-descuento', 'input', () => actualizarResponsableExoneracion('nuevo'));
+  wire('fin-cargo-estudiante', 'change', () => cargarResponsableExoneracion('nuevo'));
+  wire('fin-edit-cargo-monto', 'input', () => actualizarResponsableExoneracion('editar'));
+  wire('fin-edit-cargo-descuento', 'input', () => actualizarResponsableExoneracion('editar'));
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
   wire('fin-extra-profesor-search', 'input', (event) => renderProfesoresExtraSelect(event.target.value));
@@ -287,8 +292,10 @@ function wirePagosEvents() {
 
 function wire(id, eventName, handler) {
   const el = document.getElementById(id);
-  if (!el || el.dataset.wired) return;
-  el.dataset.wired = '1';
+  if (!el) return;
+  const key = `eduWired${eventName.replace(/[^a-z0-9]/gi, '')}`;
+  if (el.dataset[key]) return;
+  el.dataset[key] = '1';
   el.addEventListener(eventName, handler);
 }
 
@@ -368,7 +375,7 @@ function renderHistorialPagos() {
     if (desde && fecha && fecha < desde) return false;
     if (hasta && fecha && fecha > hasta) return false;
     if (!busqueda) return true;
-    const texto = [pago.estudiante_nombre, pago.concepto_nombre, pago.descripcion, pago.referencia, pago.id_factura_externa]
+    const texto = [pago.estudiante_nombre, pago.concepto_nombre, pago.descripcion, pago.referencia, pago.id_factura_externa, pago.metodo_pago]
       .join(' ');
     return textoFiltro(texto).includes(busqueda);
   });
@@ -376,8 +383,8 @@ function renderHistorialPagos() {
   if (resumen) {
     const hayFiltros = Boolean(busqueda || metodo || desde || hasta);
     resumen.textContent = hayFiltros
-      ? `${filtrados.length} de ${pagos.length} pago${pagos.length === 1 ? '' : 's'}`
-      : `${pagos.length} pago${pagos.length === 1 ? '' : 's'}`;
+      ? `${filtrados.length} de ${pagos.length} movimiento${pagos.length === 1 ? '' : 's'}`
+      : `${pagos.length} movimiento${pagos.length === 1 ? '' : 's'}`;
     resumen.classList.toggle('is-empty', filtrados.length === 0);
   }
 
@@ -385,31 +392,31 @@ function renderHistorialPagos() {
     body.innerHTML = `
       <div class="finance-empty-state finance-empty-card compact">
         <i class="bi bi-clock-history"></i>
-        <strong>${pagos.length ? 'No hay pagos con esos filtros' : 'No hay pagos registrados todavía'}</strong>
-        <span>${pagos.length ? 'Ajusta los filtros para consultar otros movimientos.' : 'Los abonos y pagos completos aparecerán aquí automáticamente.'}</span>
+        <strong>${pagos.length ? 'No hay movimientos con esos filtros' : 'No hay movimientos registrados todavía'}</strong>
+        <span>${pagos.length ? 'Ajusta los filtros para consultar otros movimientos.' : 'Los abonos, pagos completos y exoneraciones aparecerán aquí automáticamente.'}</span>
       </div>`;
     return;
   }
 
   body.innerHTML = filtrados.map((pago) => {
     const concepto = pago.concepto_nombre || pago.descripcion || `Cargo #${pago.id_cargo}`;
+    const esExoneracion = String(pago.tipo_movimiento || pago.metodo_pago || '').toLowerCase() === 'exoneracion';
     const esPagoCierre = Boolean(Number(pago.pago_cierre || 0));
     const cargoFacturado = Boolean(pago.id_factura_externa);
     const facturaDelCierre = esPagoCierre ? pago.id_factura_externa : null;
-    // Cuando existe factura final, todos los abonos que integran ese cargo quedan
-    // bloqueados para preservar la integridad del comprobante.
-    const puedeEditar = !cargoFacturado;
+    const puedeEditar = !esExoneracion && !cargoFacturado && Number.isFinite(Number(pago.id_pago));
     const referencia = pago.referencia ? esc(pago.referencia) : 'Sin referencia';
     const registradoPor = pago.registrado_por ? `Registrado por ${esc(pago.registrado_por)}` : '';
     const acumulado = Number(pago.acumulado_hasta_pago || pago.monto || 0);
+    const montoPrincipal = esExoneracion ? Number(pago.monto_exonerado || 0) : Number(pago.monto || 0);
 
     return `
-      <article class="finance-history-record">
+      <article class="finance-history-record ${esExoneracion ? 'is-exemption' : ''}">
         <div class="finance-history-date">
-          <span class="finance-history-icon"><i class="bi bi-check2-circle"></i></span>
+          <span class="finance-history-icon"><i class="bi ${esExoneracion ? 'bi-percent' : 'bi-check2-circle'}"></i></span>
           <div>
             <strong>${esc(fechaHora(pago.fecha_pago))}</strong>
-            <small>Pago #${esc(pago.id_pago)}</small>
+            <small>${esExoneracion ? 'Exoneración 100%' : `Pago #${esc(pago.id_pago)}`}</small>
           </div>
         </div>
 
@@ -425,9 +432,9 @@ function renderHistorialPagos() {
         </div>
 
         <div class="finance-history-amount">
-          <small>Monto aplicado</small>
-          <strong>${moneda(pago.monto)}</strong>
-          <small>Acumulado: ${moneda(acumulado)}</small>
+          <small>${esExoneracion ? 'Monto exonerado' : 'Monto aplicado'}</small>
+          <strong>${moneda(montoPrincipal)}</strong>
+          <small>${esExoneracion ? 'Total final: CRC 0' : `Acumulado: ${moneda(acumulado)}`}</small>
         </div>
 
         <div class="finance-history-invoice">
@@ -443,7 +450,7 @@ function renderHistorialPagos() {
         <div class="finance-history-actions">
           ${puedeEditar
             ? `<button class="btn btn-sm btn-outline-secondary" data-fin-editar-pago="${pago.id_pago}"><i class="bi bi-pencil"></i> Modificar</button>`
-            : `<span class="small text-muted">${esPagoCierre ? 'Pago de cierre facturado' : 'Abono consolidado'}</span>`}
+            : `<span class="small text-muted">${esExoneracion ? 'Cierre por exoneración' : (esPagoCierre ? 'Pago de cierre facturado' : 'Abono consolidado')}</span>`}
         </div>
       </article>`;
   }).join('');
@@ -870,14 +877,15 @@ function obtenerCargosPagados() {
   const porId = new Map();
 
   (Array.isArray(cargos) ? cargos : [])
-    .filter((c) =>
-      Number(c.total || 0) > 0 &&
-      (String(c.estado || '').toLowerCase() === 'pagado' || Number(c.saldo || 0) <= 0)
-    )
+    .filter((c) => {
+      const exonerado = esExoneracionCompleta(c.monto_base, c.descuento) && Number(c.saldo || 0) <= 0;
+      return (Number(c.total || 0) > 0 || exonerado) &&
+        (String(c.estado || '').toLowerCase() === 'pagado' || Number(c.saldo || 0) <= 0);
+    })
     .forEach((c) => porId.set(Number(c.id_cargo), { ...c, estado_cargo: c.estado_cargo || c.estado }));
 
   (Array.isArray(facturas) ? facturas : [])
-    .filter((c) => Number(c.total || 0) > 0)
+    .filter((c) => Number(c.total || 0) > 0 || esExoneracionCompleta(c.monto_base, c.descuento))
     .forEach((c) => {
       const id = Number(c.id_cargo);
       porId.set(id, { ...(porId.get(id) || {}), ...c });
@@ -1003,6 +1011,7 @@ function renderFacturacion() {
 
   body.innerHTML = registros.map((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
+    const esExoneracion = esExoneracionCompleta(c.monto_base, c.descuento) && Number(c.saldo || 0) <= 0;
     const detalleErrorFactura = !tieneFactura && c.error_mensaje
       ? `<small class="finance-invoice-error-detail">${esc(c.error_mensaje)}</small>`
       : '';
@@ -1030,8 +1039,9 @@ function renderFacturacion() {
           </div>
         </div>
         <div class="finance-invoice-record-total">
-          <span>Total pagado</span>
+          <span>${esExoneracion ? 'Total final' : 'Total pagado'}</span>
           <strong>${moneda(c.total)}</strong>
+          ${esExoneracion ? `<small>Exonerado: ${moneda(c.descuento || c.monto_base)}</small>` : ''}
         </div>
         <div class="finance-invoice-record-status">${estadoFactura}</div>
         <div class="finance-invoice-record-actions">${acciones}</div>
@@ -1106,6 +1116,78 @@ function validarDescuentoNoVencido(fecha, descuento) {
   return true;
 }
 
+function esExoneracionCompleta(base, descuento) {
+  const b = Number(base || 0);
+  const d = Number(descuento || 0);
+  return b > 0 && d + 0.001 >= b;
+}
+
+function idsResponsableExoneracion(modo) {
+  const prefijo = modo === 'editar' ? 'fin-edit-resp' : 'fin-cargo-resp';
+  return {
+    contenedor: modo === 'editar' ? 'fin-edit-exoneracion-responsable' : 'fin-cargo-exoneracion-responsable',
+    nombre: `${prefijo}-nombre`, parentesco: `${prefijo}-parentesco`, telefono: `${prefijo}-telefono`,
+    correo: `${prefijo}-correo`, tipo: `${prefijo}-tipo-id`, numero: `${prefijo}-numero-id`
+  };
+}
+
+function actualizarResponsableExoneracion(modo) {
+  const editar = modo === 'editar';
+  const base = Number(value(editar ? 'fin-edit-cargo-monto' : 'fin-cargo-monto') || 0);
+  const descuento = Number(value(editar ? 'fin-edit-cargo-descuento' : 'fin-cargo-descuento') || 0);
+  const exonerado = esExoneracionCompleta(base, descuento);
+  const ids = idsResponsableExoneracion(modo);
+  const box = document.getElementById(ids.contenedor);
+  box?.classList.toggle('hidden', !exonerado);
+  [ids.nombre, ids.correo, ids.numero].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.required = exonerado;
+    el.setAttribute('aria-required', exonerado ? 'true' : 'false');
+  });
+  return exonerado;
+}
+
+async function cargarResponsableExoneracion(modo, idEstudianteForzado = null) {
+  const editar = modo === 'editar';
+  const form = document.getElementById(editar ? 'fin-editar-cargo-form' : 'fin-cargo-form');
+  const idEstudiante = Number(idEstudianteForzado || form?.dataset.idEstudiante || value('fin-cargo-estudiante') || 0);
+  if (!idEstudiante) return;
+  const ids = idsResponsableExoneracion(modo);
+  try {
+    const r = await requestJson(`/api/finanzas/responsables/${idEstudiante}`);
+    setValue(ids.nombre, r.nombre || '');
+    setValue(ids.parentesco, r.parentesco || '');
+    setValue(ids.telefono, r.telefono || '');
+    setValue(ids.correo, r.correo || '');
+    setValue(ids.tipo, r.tipo_identificacion || '01');
+    setValue(ids.numero, r.numero_identificacion || '');
+  } catch {
+    // Si es un estudiante nuevo simplemente dejamos los campos vacíos.
+  }
+}
+
+function leerResponsableExoneracion(modo) {
+  const ids = idsResponsableExoneracion(modo);
+  const responsable = {
+    nombre: value(ids.nombre), parentesco: value(ids.parentesco), telefono: value(ids.telefono),
+    correo: value(ids.correo), tipo_identificacion: value(ids.tipo) || '01', numero_identificacion: value(ids.numero)
+  };
+  const faltantes = [];
+  if (!String(responsable.nombre || '').trim()) faltantes.push(['nombre completo', ids.nombre]);
+  if (!String(responsable.correo || '').trim()) faltantes.push(['correo', ids.correo]);
+  if (!String(responsable.numero_identificacion || '').trim()) faltantes.push(['identificación', ids.numero]);
+  if (faltantes.length) {
+    document.getElementById(faltantes[0][1])?.focus();
+    throw new Error(`Para una exoneración del 100% completa ${faltantes.map(([nombre]) => nombre).join(', ')} del responsable de facturación.`);
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(responsable.correo).trim())) {
+    document.getElementById(ids.correo)?.focus();
+    throw new Error('Indica un correo válido para el responsable de facturación.');
+  }
+  return responsable;
+}
+
 function estaVencido(cargo) {
   if (!cargo?.fecha_vencimiento) return false;
   if (!['pendiente', 'parcial'].includes(String(cargo.estado || '').toLowerCase())) return false;
@@ -1113,7 +1195,7 @@ function estaVencido(cargo) {
   return !Number.isNaN(fecha.getTime()) && fecha < new Date();
 }
 
-function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
+async function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   const c = cargos.find(x => Number(x.id_cargo) === Number(idCargo));
   if (!c) return;
   setValue('fin-edit-cargo-id', c.id_cargo);
@@ -1124,6 +1206,10 @@ function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   setValue('fin-edit-cargo-descripcion', c.descripcion || '');
   setValue('fin-edit-cargo-extension', 0);
   setValue('fin-edit-cargo-motivo-extension', '');
+  const editForm = document.getElementById('fin-editar-cargo-form');
+  if (editForm) editForm.dataset.idEstudiante = String(c.id_estudiante || '');
+  await cargarResponsableExoneracion('editar', c.id_estudiante);
+  actualizarResponsableExoneracion('editar');
   sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento');
   const ctx = document.getElementById('fin-edit-cargo-contexto');
   if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
@@ -1139,44 +1225,95 @@ function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
 
 async function guardarEdicionCargo(event) {
   event.preventDefault();
+  const form = event.currentTarget;
+  const submit = form?.querySelector('button[type="submit"]');
+  const html = submit?.innerHTML || '';
+  if (submit?.dataset.busy === '1') return;
+  if (submit) { submit.dataset.busy = '1'; submit.disabled = true; submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando…'; }
+
   const id = Number(value('fin-edit-cargo-id'));
   try {
     const fechaVencimiento = value('fin-edit-cargo-vencimiento') || null;
-    const descuento = value('fin-edit-cargo-descuento') || 0;
+    const base = Number(value('fin-edit-cargo-monto') || 0);
+    const descuento = Number(value('fin-edit-cargo-descuento') || 0);
     validarDescuentoNoVencido(fechaVencimiento, descuento);
-    await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify({
-      monto_base:value('fin-edit-cargo-monto'), descuento,
-      fecha_vencimiento:fechaVencimiento, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion'),
-      extender_plazo_dias:Number(value('fin-edit-cargo-extension') || 0), motivo_extension:value('fin-edit-cargo-motivo-extension')
-    })});
+    const exoneracionTotal = esExoneracionCompleta(base, descuento);
+    actualizarResponsableExoneracion('editar');
+
+    const payload = {
+      monto_base: base, descuento,
+      fecha_vencimiento: fechaVencimiento, periodo: value('fin-edit-cargo-periodo'), descripcion: value('fin-edit-cargo-descripcion'),
+      extender_plazo_dias: Number(value('fin-edit-cargo-extension') || 0), motivo_extension: value('fin-edit-cargo-motivo-extension')
+    };
+    if (exoneracionTotal) payload.responsable = leerResponsableExoneracion('editar');
+
+    const r = await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify(payload) });
     hideModal('modalEditarCargo');
-    showToast('Cargo actualizado correctamente.', 'success');
+    if (r.exoneracion_total) {
+      if (r.facturacion?.ok) showToast(`Exoneración del 100% aplicada. Factura ${r.facturacion.id_factura || ''} generada correctamente.`, 'success');
+      else showToast(`Exoneración aplicada. ${r.facturacion?.mensaje || 'El comprobante quedó pendiente de generación.'}`, 'warning');
+    } else {
+      showToast('Cargo actualizado correctamente.', 'success');
+    }
     await loadPagosData();
-  } catch(e) { showToast(e.message,'error'); }
+    if (r.exoneracion_total && r.facturacion?.ok) {
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      await abrirDocumentoFactura(id, 'pdf', null, true).catch(() => {});
+    }
+  } catch(e) {
+    showToast(e.message,'error');
+  } finally {
+    if (submit?.isConnected) { submit.disabled = false; submit.innerHTML = html || 'Guardar cambios'; delete submit.dataset.busy; }
+  }
 }
 
 async function guardarCargo(event) {
   event.preventDefault();
+  const form = event.currentTarget;
+  const submit = form?.querySelector('button[type="submit"]');
+  const html = submit?.innerHTML || '';
+  if (submit?.dataset.busy === '1') return;
+  if (submit) { submit.dataset.busy = '1'; submit.disabled = true; submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando…'; }
+
   try {
     const fechaVencimiento = value('fin-cargo-vencimiento') || null;
-    const descuento = value('fin-cargo-descuento') || 0;
+    const base = Number(value('fin-cargo-monto') || 0);
+    const descuento = Number(value('fin-cargo-descuento') || 0);
     validarDescuentoNoVencido(fechaVencimiento, descuento);
+    const exoneracionTotal = esExoneracionCompleta(base, descuento);
+    actualizarResponsableExoneracion('nuevo');
     const payload = {
       id_estudiante: value('fin-cargo-estudiante'),
       id_concepto: value('fin-cargo-concepto'),
-      monto_base: value('fin-cargo-monto'),
+      monto_base: base,
       descuento,
       fecha_vencimiento: fechaVencimiento,
       plazo_dias: Number(value('fin-cargo-plazo') || 0),
       periodo: value('fin-cargo-periodo'),
       descripcion: value('fin-cargo-descripcion')
     };
-    await requestJson('/api/finanzas/cargos', { method: 'POST', body: JSON.stringify(payload) });
+    if (exoneracionTotal) payload.responsable = leerResponsableExoneracion('nuevo');
+
+    const r = await requestJson('/api/finanzas/cargos', { method: 'POST', body: JSON.stringify(payload) });
     hideModal('modalNuevoCargo');
-    event.currentTarget.reset();
-    showToast('Cargo registrado correctamente.', 'success');
+    form.reset();
+    actualizarResponsableExoneracion('nuevo');
+    if (r.exoneracion_total) {
+      if (r.facturacion?.ok) showToast(`Cargo exonerado al 100%. Factura ${r.facturacion.id_factura || ''} generada correctamente.`, 'success');
+      else showToast(`Cargo exonerado al 100%. ${r.facturacion?.mensaje || 'El comprobante quedó pendiente.'}`, 'warning');
+    } else {
+      showToast('Cargo registrado correctamente.', 'success');
+    }
     await loadPagosData();
-  } catch (e) { showToast(e.message, 'error'); }
+    if (r.exoneracion_total && r.facturacion?.ok && r.id_cargo) {
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      await abrirDocumentoFactura(Number(r.id_cargo), 'pdf', null, true).catch(() => {});
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    if (submit?.isConnected) { submit.disabled = false; submit.innerHTML = html || 'Crear cargo'; delete submit.dataset.busy; }
+  }
 }
 
 function sincronizarConceptoCargo() {
@@ -1187,6 +1324,7 @@ function sincronizarConceptoCargo() {
   const desc = document.getElementById('fin-cargo-descripcion');
   if (monto) monto.value = Number(concepto.monto_base || 0);
   if (desc && !desc.value) desc.value = concepto.nombre;
+  actualizarResponsableExoneracion('nuevo');
 }
 
 async function refrescarDespuesDePago() {
@@ -1889,7 +2027,7 @@ function badgeEstado(estado, vencimiento) {
 function nombreEstudiante(e) { return `${e.nombre || ''} ${e.apellido1 || ''} ${e.apellido2 || ''}`.replace(/\s+/g,' ').trim(); }
 function moneda(v) { return `CRC ${new Intl.NumberFormat('es-CR',{minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(v||0))}`; }
 function fechaHora(v) { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString('es-CR'); }
-function etiquetaMetodo(v) { return ({efectivo:'Efectivo',tarjeta:'Tarjeta',sinpe:'SINPE',transferencia:'Transferencia',otro:'Otro'})[v] || cap(v); }
+function etiquetaMetodo(v) { return ({efectivo:'Efectivo',tarjeta:'Tarjeta',sinpe:'SINPE',transferencia:'Transferencia',otro:'Otro',exoneracion:'Exoneración 100%'})[v] || cap(v); }
 function cap(v) { const s=String(v||''); return s ? s[0].toUpperCase()+s.slice(1) : '—'; }
 function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
 function value(id) { return document.getElementById(id)?.value ?? ''; }

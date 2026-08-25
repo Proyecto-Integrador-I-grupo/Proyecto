@@ -196,6 +196,17 @@ function wireMatriculaEvents() {
     }
   });
 
+  const deleteSeccionSelect = document.getElementById('seccion-delete-select');
+  const syncDeleteSeccionButton = () => {
+    const button = document.getElementById('btn-borrar-seccion');
+    if (button) button.disabled = !String(deleteSeccionSelect?.value || '').trim();
+  };
+  if (deleteSeccionSelect && !deleteSeccionSelect.dataset.deleteWired) {
+    deleteSeccionSelect.dataset.deleteWired = '1';
+    deleteSeccionSelect.addEventListener('change', syncDeleteSeccionButton);
+  }
+  syncDeleteSeccionButton();
+
   const btnBorrarSeccion = document.getElementById('btn-borrar-seccion');
   if (btnBorrarSeccion && !btnBorrarSeccion.dataset.wired) {
     btnBorrarSeccion.dataset.wired = '1';
@@ -724,6 +735,8 @@ async function populateSeccionesSelect() {
         option.disabled = Boolean(ocupadaPor);
         deleteSel.add(option);
       });
+      const deleteButton = document.getElementById('btn-borrar-seccion');
+      if (deleteButton) deleteButton.disabled = true;
     }
     if (hint) hint.classList.toggle('hidden', secciones.length > 0);
     return secciones;
@@ -1183,7 +1196,7 @@ async function handleSeccionSubmit(e) {
     nombre,
     nivel,
     anio_lectivo: anioLectivo,
-    descripcion: normalizarParteSeccion(document.getElementById('seccion-descripcion')?.value)
+    descripcion: normalizarParteSeccion(document.getElementById('seccion-descripcion')?.value) || null
   };
 
   const original = submitBtn?.innerHTML || '';

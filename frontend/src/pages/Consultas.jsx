@@ -170,13 +170,25 @@ export default function Consultas() {
     </div>
   </div>
 </div>
+
+<div className="col-6 col-lg consulta-stat-auditoria">
+  <div className="consulta-stat h-100">
+    <div className="consulta-stat-icon">
+      <i className="bi bi-shield-check"></i>
+    </div>
+    <div>
+      <span className="text-muted small">Auditoría</span>
+      <div id="consulta-total-auditorias" className="fs-3 fw-semibold mt-1">0</div>
+    </div>
+  </div>
+</div>
         </div>
 
 
-        <div className="card border-0 shadow-sm">
-          <div className="card-body">
+        <div className="card border-0 shadow-sm consultas-panel">
+          <div className="card-body p-4">
 
-            <div className="row g-3 align-items-end mb-4">
+            <div className="row g-3 align-items-end mb-3 consultas-toolbar">
 
               <div className="col-12 col-md-4">
                 <label
@@ -215,6 +227,10 @@ export default function Consultas() {
 
                   <option value="grupos">
                     Grupos
+                  </option>
+
+                  <option value="auditoria">
+                    Auditoría del sistema
                   </option>  
                 </select>
               </div>
@@ -262,12 +278,12 @@ export default function Consultas() {
 
             <div
               id="consulta-filtros"
-              className="border rounded p-3 mb-4 bg-light"
+              className="consulta-filtros-avanzados mb-4"
             >
 
               <div className="row g-3">
 
-                <div className="col-12 col-md-4">
+                <div className="col-12 col-md-4 consulta-filtro-estado">
                   <label
                     htmlFor="consulta-estado"
                     className="form-label"

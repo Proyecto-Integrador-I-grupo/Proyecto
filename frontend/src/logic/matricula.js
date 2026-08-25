@@ -1019,24 +1019,23 @@ async function validarEstadoFinancieroMatricula() {
     if (texto) {
       const faltante = Math.max(0, Number(data.faltante_minimo ?? (Number(data.minimo_abono || 0) - Number(data.abono_matricula || 0))));
       texto.innerHTML = `
-        <div class="mat-financial-heading">
-          <i class="bi ${data.habilitado ? 'bi-check-circle' : 'bi-wallet2'}"></i>
-          <strong>${escapeHtmlMat(data.titulo || (data.habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'))}</strong>
-        </div>
-        <div class="mat-financial-copy">${escapeHtmlMat(data.mensaje || '')}</div>
-        <div class="mat-financial-metrics">
-          <span>Abonado <strong>${monedaMat(data.abono_matricula)}</strong></span>
-          <span>Mínimo <strong>${monedaMat(data.minimo_abono)}</strong></span>
-          ${!data.habilitado ? `<span>Falta <strong>${monedaMat(faltante)}</strong></span>` : ''}
+        <div class="mat-financial-compact">
+          <div class="mat-financial-heading">
+            <i class="bi ${data.habilitado ? 'bi-check-circle' : 'bi-wallet2'}"></i>
+            <strong>${escapeHtmlMat(data.titulo || (data.habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'))}</strong>
+          </div>
+          <div class="mat-financial-summary">
+            <span>${data.habilitado ? 'Requisito financiero cubierto.' : `Faltan ${monedaMat(faltante)} para habilitar la matrícula.`}</span>
+            <span class="mat-financial-inline-metrics">Abonado <strong>${monedaMat(data.abono_matricula)}</strong> · Mínimo <strong>${monedaMat(data.minimo_abono)}</strong></span>
+          </div>
         </div>`;
     }
     const deudas = Array.isArray(data.deudas) ? data.deudas : [];
     if (deudasEl) {
-      const visibles = deudas.slice(0, 3);
-      const adicionales = Math.max(0, deudas.length - visibles.length);
-      deudasEl.innerHTML = deudas.length
-        ? `<div class="mat-debt-title"><i class="bi bi-list-check"></i> Saldos registrados (${deudas.length})</div>${visibles.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}${adicionales ? `<div class="mat-debt-more">+ ${adicionales} saldo${adicionales === 1 ? '' : 's'} adicional${adicionales === 1 ? '' : 'es'}</div>` : ''}`
-        : '<span class="mat-no-debt"><i class="bi bi-check2-circle"></i> Sin otros saldos pendientes.</span>';
+      const principal = deudas[0];
+      deudasEl.innerHTML = principal
+        ? `<div class="mat-debt-compact"><span>${escapeHtmlMat(principal.concepto_nombre || principal.descripcion || 'Saldo pendiente')}</span><strong>${monedaMat(principal.saldo)}</strong>${deudas.length > 1 ? `<small>+${deudas.length - 1} cargo${deudas.length - 1 === 1 ? '' : 's'}</small>` : ''}</div>`
+        : (data.habilitado ? '' : '<span class="mat-no-debt">Sin otros cargos pendientes.</span>');
     }
     if (submit) {
       submit.disabled = !data.habilitado;

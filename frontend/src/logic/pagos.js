@@ -11,6 +11,8 @@ let estadoCuentas = [];
 let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
 let facturaPreviewFormato = 'pdf';
+let facturaPreviewScrollY = 0;
+let facturaPreviewReturnFocus = null;
 let logoFacturaData = null;
 const documentosFacturaEnCurso = new Map();
 
@@ -170,7 +172,12 @@ function wirePagosEvents() {
 
     const nueva = window.open(facturaPreviewUrl, '_blank', 'noopener,noreferrer');
     if (!nueva) {
-      showToast('El navegador bloqueó la apertura del PDF. Permite ventanas emergentes para este sitio.', 'warning');
+      showToast(
+        facturaPreviewFormato === 'html'
+          ? 'El navegador bloqueó la vista imprimible. Permite ventanas emergentes para este sitio.'
+          : 'El navegador bloqueó la apertura del PDF. Permite ventanas emergentes para este sitio.',
+        'warning'
+      );
     }
   });
   wire('fin-factura-preview-print', 'click', () => {
@@ -198,13 +205,28 @@ function wirePagosEvents() {
   const modalFacturaVisual = document.getElementById('modalFacturaVisual');
   if (modalFacturaVisual && !modalFacturaVisual.dataset.previewWired) {
     modalFacturaVisual.dataset.previewWired = '1';
+
+    modalFacturaVisual.addEventListener('show.bs.modal', () => {
+      facturaPreviewScrollY = window.scrollY || window.pageYOffset || 0;
+      facturaPreviewReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    });
+
     modalFacturaVisual.addEventListener('hidden.bs.modal', () => {
       const frame = document.getElementById('fin-factura-preview-frame');
-      if (frame) frame.removeAttribute('data');
+      if (frame) frame.src = 'about:blank';
       if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
       facturaPreviewUrl = null;
       facturaPreviewCargoId = null;
       facturaPreviewFormato = 'pdf';
+
+      const restoreY = facturaPreviewScrollY;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' });
+          try { facturaPreviewReturnFocus?.focus({ preventScroll: true }); } catch {}
+          facturaPreviewReturnFocus = null;
+        });
+      });
     });
   }
 
@@ -1236,10 +1258,13 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
   if (pdfBtn) {
     pdfBtn.classList.add('btn-light');
     pdfBtn.classList.remove('btn-outline-light');
+    pdfBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> PDF';
+    pdfBtn.title = 'Abrir el PDF en otra pestaña';
   }
 
   if (abrirModal && modalEl && window.bootstrap?.Modal) {
-    (window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl)).show();
+    const modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl, { focus: false });
+    modal.show();
   }
 
   if (loading) {
@@ -1278,30 +1303,53 @@ async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, ab
       throw new Error(mensaje);
     }
 
+    const contentType = String(res.headers.get('content-type') || '').toLowerCase();
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if (!bytes.length) throw new Error('EduControl devolvió un PDF vacío.');
+    if (!bytes.length) throw new Error('EduControl devolvió un comprobante vacío.');
 
-    const firmaPdf = String.fromCharCode(...bytes.slice(0, 5));
-    if (!firmaPdf.startsWith('%PDF')) {
-      const texto = new TextDecoder('utf-8').decode(bytes.slice(0, 300));
-      throw new Error(texto || 'La respuesta recibida no es un PDF válido.');
+    let mime = 'application/pdf';
+    let modo = 'pdf';
+
+    if (contentType.includes('text/html')) {
+      mime = 'text/html;charset=utf-8';
+      modo = 'html';
+    } else {
+      const firmaPdf = String.fromCharCode(...bytes.slice(0, 5));
+      if (!firmaPdf.startsWith('%PDF')) {
+        const texto = new TextDecoder('utf-8').decode(bytes.slice(0, 300));
+        throw new Error(texto || 'La respuesta recibida no es un comprobante válido.');
+      }
     }
 
-    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const blob = new Blob([bytes], { type: mime });
 
     if (facturaPreviewUrl) URL.revokeObjectURL(facturaPreviewUrl);
     facturaPreviewUrl = URL.createObjectURL(blob);
+    facturaPreviewFormato = modo;
+
+    if (title) title.textContent = modo === 'html' ? 'Factura · vista imprimible' : 'Factura en PDF';
+    if (pdfBtn) {
+      pdfBtn.innerHTML = modo === 'html'
+        ? '<i class="bi bi-box-arrow-up-right"></i> Abrir'
+        : '<i class="bi bi-file-earmark-pdf"></i> PDF';
+      pdfBtn.title = modo === 'html'
+        ? 'Abrir la vista imprimible en otra pestaña'
+        : 'Abrir el PDF en otra pestaña';
+    }
 
     if (frame) {
-      frame.removeAttribute('data');
-      // Forzamos una nueva carga del plugin PDF nativo del navegador.
+      frame.src = 'about:blank';
       window.requestAnimationFrame(() => {
-        frame.setAttribute('data', `${facturaPreviewUrl}#view=FitH`);
+        frame.src = modo === 'pdf' ? `${facturaPreviewUrl}#view=FitH` : facturaPreviewUrl;
         frame.classList.remove('is-loading');
         loading?.classList.add('hidden');
       });
     } else {
       loading?.classList.add('hidden');
+    }
+
+    if (modo === 'html') {
+      showToast('El PDF remoto tardó demasiado; se abrió la misma factura en vista imprimible.', 'warning');
     }
   } catch (e) {
     frame?.classList.remove('is-loading');
@@ -1382,6 +1430,7 @@ async function guardarEdicionPago(event) {
 
 function estadoServicioTexto(servicio) {
   if (!servicio?.configurado) return { texto: 'Pendiente', clase: 'pending', icono: 'bi-clock' };
+  if (String(servicio?.estado || '') === 'degradado') return { texto: 'Vista disponible', clase: 'degraded', icono: 'bi-file-earmark-text' };
   if (servicio.disponible === true) return { texto: 'Conectado', clase: 'online', icono: 'bi-check-circle' };
   if (servicio.disponible === false) return { texto: 'Sin conexión', clase: 'offline', icono: 'bi-exclamation-circle' };
   return { texto: 'Configurado', clase: 'configured', icono: 'bi-link-45deg' };
@@ -1395,10 +1444,14 @@ function pintarEstadoIntegracionPagina(estado) {
 
   const facturaOk = estado?.facturacion?.disponible === true;
   const documentosOk = estado?.documentos?.disponible === true;
+  const documentosDegradados = String(estado?.documentos?.estado || '') === 'degradado';
   const estadoFactura = String(estado?.facturacion?.estado || '');
 
   dot.className = 'finance-api-dot';
-  if (facturaOk && documentosOk) {
+  if (facturaOk && documentosOk && documentosDegradados) {
+    dot.classList.add('warning');
+    label.textContent = 'Factura Bonita conectada · vista imprimible activa';
+  } else if (facturaOk && documentosOk) {
     dot.classList.add('online');
     label.textContent = 'Factura Bonita conectada';
   } else if (facturaOk) {
@@ -1416,7 +1469,9 @@ function pintarEstadoIntegracionPagina(estado) {
   }
 
   if (detail) {
-    const detalle = estado?.facturacion?.detalle || estado?.facturacion?.url || '';
+    const detalle = documentosDegradados
+      ? (estado?.documentos?.detalle || 'La factura puede abrirse en vista imprimible mientras se prepara el motor PDF.')
+      : (estado?.facturacion?.detalle || estado?.facturacion?.url || '');
     detail.textContent = detalle;
   }
 }

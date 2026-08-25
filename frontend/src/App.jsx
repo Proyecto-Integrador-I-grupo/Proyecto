@@ -505,14 +505,21 @@ export default function App() {
           role="menu"
           aria-label="Controles de accesibilidad"
         >
-          <button type="button" id="btn-toggle-theme" className="accessibility-action" role="menuitem">
-            Modo oscuro
+          <button type="button" id="btn-toggle-theme" className="accessibility-action" role="menuitem" aria-pressed="false">
+            <i className="bi bi-moon-stars" aria-hidden="true"></i>
+            <span id="accessibility-theme-label">Modo oscuro</span>
           </button>
-          <button type="button" id="btn-toggle-contrast" className="accessibility-action" role="menuitem">
-            Alto contraste
+          <button type="button" id="btn-toggle-contrast" className="accessibility-action" role="menuitem" aria-pressed="false">
+            <i className="bi bi-circle-half" aria-hidden="true"></i>
+            <span id="accessibility-contrast-label">Alto contraste</span>
           </button>
-          <button type="button" id="btn-reset-accessibility" className="accessibility-action" role="menuitem">
-            Restablecer
+          <button type="button" id="btn-toggle-reduced-motion" className="accessibility-action" role="menuitem" aria-pressed="false">
+            <i className="bi bi-person-walking" aria-hidden="true"></i>
+            <span id="accessibility-motion-label">Reducir movimiento</span>
+          </button>
+          <button type="button" id="btn-reset-accessibility" className="accessibility-action accessibility-action-reset" role="menuitem">
+            <i className="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            <span>Restablecer</span>
           </button>
 
           <div className="accessibility-control" role="group" aria-label="Ajustar tamaño de letra">

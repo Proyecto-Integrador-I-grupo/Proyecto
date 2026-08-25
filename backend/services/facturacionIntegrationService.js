@@ -556,7 +556,7 @@ async function solicitarEstado(baseUrl, ruta, timeoutMs) {
   }
 }
 
-async function probarServicioHttp(baseUrl) {
+async function probarServicioHttp(baseUrl, ruta = '/health') {
   if (!baseUrl) {
     return {
       configurado: false,
@@ -571,8 +571,6 @@ async function probarServicioHttp(baseUrl) {
     ? timeoutConfigurado
     : 10000;
 
-  const ruta = "/health";
-
   try {
     const { response, data } = await solicitarEstado(baseUrl, ruta, timeoutMs);
 
@@ -580,13 +578,19 @@ async function probarServicioHttp(baseUrl) {
       const detalle = response.status === 429
         ? "Factura Bonita está disponible, pero aplicó límite temporal de solicitudes."
         : (typeof data === "object" && data !== null
-          ? (data.status || data.mensaje || data.id || "Respuesta correcta")
+          ? (data.detalle || data.status || data.mensaje || data.id || "Respuesta correcta")
           : "Respuesta correcta");
+
+      const estadoRemoto = typeof data === 'object' && data !== null
+        ? String(data.status || '').toLowerCase()
+        : '';
 
       return {
         configurado: true,
         disponible: true,
-        estado: response.status === 429 ? "limitado" : "disponible",
+        estado: response.status === 429
+          ? "limitado"
+          : (estadoRemoto === 'degraded' ? 'degradado' : 'disponible'),
         http_status: response.status,
         detalle,
         ruta_probada: ruta
@@ -627,18 +631,11 @@ export async function obtenerEstadoServiciosFacturacion() {
   const documentosRoot = documentosConfig.url;
 
   const [facturacion, documentos] = await Promise.all([
-    probarServicioHttp(facturacionRoot),
-    documentosRoot === facturacionRoot
-      ? Promise.resolve(null)
-      : probarServicioHttp(documentosRoot)
+    probarServicioHttp(facturacionRoot, '/health'),
+    probarServicioHttp(documentosRoot, '/health/documentos')
   ]);
 
-  const estadoDocumentos = documentos || {
-    ...facturacion,
-    detalle: facturacion.disponible
-      ? "HTML y PDF disponibles en el mismo servicio de Factura Bonita."
-      : facturacion.detalle
-  };
+  const estadoDocumentos = documentos;
 
 
   return {
@@ -833,17 +830,44 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
     const tarea = (async () => {
       await sincronizarLogoFacturaRemota(idFactura);
-      const url = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=${formatoNormalizado}&plantilla=educontrol`;
+      const baseDocumento = `${root}/api/documentos/facturas/${encodeURIComponent(idFactura)}`;
       const timeoutConfigurado = Number(process.env.DOCUMENTOS_TIMEOUT_MS || 45000);
       const timeoutMs = Number.isFinite(timeoutConfigurado) && timeoutConfigurado >= 5000
         ? timeoutConfigurado
         : 45000;
 
-      const descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
+      let descargado;
+      let formatoEntregado = formatoNormalizado;
+
+      try {
+        const url = `${baseDocumento}?formato=${formatoNormalizado}&plantilla=educontrol`;
+        descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
+      } catch (errorPdf) {
+        // Si Puppeteer/Chrome está frío o temporalmente sin capacidad, Factura Bonita
+        // puede entregar el mismo comprobante como HTML imprimible. Así el usuario
+        // no pierde acceso a la factura mientras se recupera el renderer PDF.
+        if (formatoNormalizado !== 'pdf') throw errorPdf;
+
+        console.warn(`Facturación: PDF no disponible para ${idFactura}; intentando vista HTML.`, errorPdf?.message || errorPdf);
+        try {
+          const htmlUrl = `${baseDocumento}?formato=html&plantilla=educontrol`;
+          descargado = await descargarDocumentoFactura(htmlUrl, 'html', Math.min(timeoutMs, 30000));
+          formatoEntregado = 'html';
+        } catch (errorHtml) {
+          // Para una factura inexistente conservamos el error original, porque la
+          // capa exterior sabe regenerar el vínculo y reintentar automáticamente.
+          if (/factura no encontrada|no encontrada|not found/i.test(String(errorPdf?.message || ''))) {
+            throw errorPdf;
+          }
+          throw new Error(errorHtml?.message || errorPdf?.message || 'No se pudo preparar la factura.');
+        }
+      }
+
       const documento = {
         ...descargado,
-        filename: `factura-${idFactura}.${formatoNormalizado}`,
-        idFactura
+        filename: `factura-${idFactura}.${formatoEntregado === 'html' ? 'html' : 'pdf'}`,
+        idFactura,
+        formatoEntregado
       };
 
       guardarDocumentoCache(clave, documento);

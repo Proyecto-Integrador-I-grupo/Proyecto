@@ -733,6 +733,8 @@ export async function listarFacturas() {
        c.descripcion,
        c.periodo,
        c.fecha_emision,
+       c.monto_base,
+       c.descuento,
        c.total,
        c.saldo,
        COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS total_pagado,
@@ -755,6 +757,7 @@ export async function listarFacturas() {
        AND (
          c.total > 0
          OR COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) > 0
+         OR (c.monto_base > 0 AND c.descuento >= c.monto_base AND c.saldo <= 0)
        )
        AND (
          c.estado = 'pagado'
@@ -777,7 +780,10 @@ export async function listarFacturas() {
     listo_para_facturar:
       !row.id_factura_externa &&
       String(row.estado_cargo || '').toLowerCase() !== 'anulado' &&
-      Number(row.total || row.total_pagado || 0) > 0 &&
+      (
+        Number(row.total || row.total_pagado || 0) > 0 ||
+        (Number(row.monto_base || 0) > 0 && Number(row.descuento || 0) + 0.001 >= Number(row.monto_base || 0))
+      ) &&
       (
         String(row.estado_cargo || '').toLowerCase() === 'pagado' ||
         Number(row.saldo || 0) <= 0
@@ -835,7 +841,16 @@ export async function crearCargo(datos, idUsuario) {
     ]
   );
 
-  return { id_cargo: result.insertId, total, saldo: total, estado: estadoInicial };
+  let facturacion = null;
+  if (estadoInicial === 'pagado' && descuento + 0.001 >= base && base > 0) {
+    try {
+      facturacion = await generarFacturaDeCargo(result.insertId, 'otro');
+    } catch (errorFactura) {
+      console.warn(`Finanzas: cargo ${result.insertId} cubierto al 100% por descuento; el comprobante quedará disponible para reintento:`, errorFactura?.message || errorFactura);
+    }
+  }
+
+  return { id_cargo: result.insertId, total, saldo: total, estado: estadoInicial, facturacion };
 }
 
 export async function crearCargoMatriculaSiCorresponde({ id_matricula, id_estudiante, id_usuario, anio }) {
@@ -885,6 +900,7 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
      FROM cargo_estudiante c
      INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
      WHERE c.id_estudiante = ? AND c.estado IN ('pendiente','parcial')
+       AND NOT (c.monto_base > 0 AND c.descuento >= c.monto_base AND c.saldo <= 0)
      ORDER BY (cc.codigo = 'MATRICULA') DESC, c.fecha_emision ASC`, [id]
   );
   const [matRows] = await pool.query(
@@ -973,8 +989,10 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
     let facturacion = null;
     // Si un descuento termina de cubrir el saldo después de existir abonos, el
     // cargo queda realmente liquidado y debe generar su comprobante final.
-    if (estado === 'pagado' && pagado > 0) {
+    if (estado === 'pagado') {
       try {
+        // Un cargo cubierto al 100% por descuento también debe cerrar su ciclo
+        // financiero con un comprobante: base original, descuento total y CRC 0.
         facturacion = await generarFacturaDeCargo(id, ultimoPago?.metodo_pago || 'otro');
       } catch (errorFactura) {
         console.warn(`Finanzas: cargo ${id} quedó saldado por descuento, pero la factura no pudo generarse en ese momento:`, errorFactura?.message || errorFactura);

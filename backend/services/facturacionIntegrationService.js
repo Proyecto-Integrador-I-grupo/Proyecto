@@ -389,8 +389,18 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
 
   const totalPagado = numero(cargo.total_pagado);
   const totalRegistrado = numero(cargo.total);
-  const total = totalRegistrado > 0 ? totalRegistrado : totalPagado;
-  if (total <= 0) {
+  const baseRegistrada = numero(cargo.monto_base);
+  const descuentoRegistrado = Math.max(0, numero(cargo.descuento));
+  const bonificacionTotal =
+    baseRegistrada > 0 &&
+    descuentoRegistrado + 0.001 >= baseRegistrada &&
+    String(cargo.estado || '').toLowerCase() === 'pagado' &&
+    numero(cargo.saldo) <= 0;
+
+  // Un descuento del 100% es un cierre financiero válido. El comprobante visual
+  // debe conservar la base y el descuento aunque el total a cobrar sea CRC 0.
+  const total = totalRegistrado > 0 ? totalRegistrado : (bonificacionTotal ? 0 : totalPagado);
+  if (total <= 0 && !bonificacionTotal) {
     return {
       ok: false,
       estado: 'pendiente_monto',
@@ -400,9 +410,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
 
   // Compatibilidad con cargos históricos: si el total original quedó en 0
   // pero existen pagos aplicados, se utiliza el monto efectivamente pagado.
-  const baseRegistrada = numero(cargo.monto_base);
   const base = baseRegistrada > 0 ? baseRegistrada : total;
-  const descuento = Math.min(Math.max(0, numero(cargo.descuento)), base);
+  const descuento = Math.min(descuentoRegistrado, base);
   const tarifa = Math.max(0, numero(cargo.impuesto_tarifa));
   const subtotal = Math.max(0, Math.round((base - descuento) * 100) / 100);
   // El total persistido es la fuente de verdad del cargo ya cobrado. El impuesto

@@ -770,3 +770,89 @@ body.theme-dark .finance-history-amount small:last-child { color:#b7c8da !import
   #profesores-view .faculty-summary-item small { font-size: .78rem !important; }
   #profesores-view #profesores-table td { font-size: .88rem !important; }
 }
+
+
+/* ===== Cierre financiero y modales sin desplazamiento interno ===== */
+#modalMatricula .mat-financial-status,
+.mat-financial-status {
+  padding: .55rem .72rem !important;
+  border-radius: 12px !important;
+}
+.mat-financial-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem 1rem;
+  flex-wrap: wrap;
+}
+.mat-financial-heading { margin: 0 !important; font-size: .9rem !important; white-space: nowrap; }
+.mat-financial-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem .8rem;
+  flex-wrap: wrap;
+  margin: 0 !important;
+  font-size: .82rem;
+}
+.mat-financial-inline-metrics { opacity: .92; white-space: nowrap; }
+#mat-deudas-pendientes { margin-top: .3rem !important; }
+.mat-debt-compact {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding-top: .28rem;
+  margin-top: .18rem;
+  border-top: 1px dashed rgba(100,116,139,.24);
+  font-size: .82rem;
+}
+.mat-debt-compact strong { margin-left: auto; }
+.mat-debt-compact small { opacity: .75; }
+.mat-no-debt { font-size: .8rem; opacity: .82; }
+
+/* El usuario pidió ventanas emergentes sin scroll interno. Compactamos el
+   contenido para conservar la ventana y anulamos cualquier regla previa de
+   modal-dialog-scrollable. El visor de PDF queda excluido. */
+.modal.show:not(.finance-invoice-preview-modal) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-scrollable {
+  min-height: auto !important;
+  max-height: calc(100dvh - 16px) !important;
+  height: auto !important;
+  margin: 8px auto !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-content,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-content {
+  max-height: calc(100dvh - 16px) !important;
+  overflow: hidden !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-body,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-body,
+.modal:not(.finance-invoice-preview-modal) form {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  max-height: none !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-body {
+  padding-top: .85rem !important;
+  padding-bottom: .85rem !important;
+}
+@media (max-height: 760px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-header,
+  .modal:not(.finance-invoice-preview-modal) .modal-footer { padding-block: .55rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-body { padding: .65rem .9rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .row.g-3,
+  .modal:not(.finance-invoice-preview-modal) .row.g-4 { --bs-gutter-y: .55rem; }
+  .modal:not(.finance-invoice-preview-modal) .form-control,
+  .modal:not(.finance-invoice-preview-modal) .form-select { min-height: 36px !important; }
+  .modal:not(.finance-invoice-preview-modal) textarea.form-control { min-height: 54px !important; max-height: 62px !important; }
+}
+@media (max-width: 767.98px) {
+  .mat-financial-compact,
+  .mat-financial-summary { align-items: flex-start; justify-content: flex-start; }
+  .mat-financial-inline-metrics { white-space: normal; }
+}

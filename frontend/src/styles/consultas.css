@@ -618,3 +618,147 @@
   font-size: 0.78rem;
   color: #64748b;
 } 
+/* ===== Pulido final del Centro de Consultas ===== */
+#consultas-view {
+  --consulta-navy: #102f55;
+  --consulta-blue: #2b78b8;
+  --consulta-soft: #f5f8fc;
+  --consulta-border: #dbe5ef;
+}
+
+#consultas-view .consultas-panel {
+  border: 1px solid var(--consulta-border) !important;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 39, 71, .06) !important;
+}
+
+#consultas-view .consultas-toolbar {
+  padding: 1rem;
+  margin: -0.25rem -0.25rem 0.9rem !important;
+  border-radius: 14px;
+  background: #f8fbfe;
+  border: 1px solid #e5edf5;
+}
+
+#consultas-view .form-label {
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  color: #30445b;
+  margin-bottom: .45rem;
+}
+
+#consultas-view .form-control,
+#consultas-view .form-select,
+#consultas-view .input-group-text {
+  min-height: 46px;
+  border-color: #cfdae7;
+  background-color: #fff;
+}
+
+#consultas-view .form-control:focus,
+#consultas-view .form-select:focus {
+  border-color: #6daedb;
+  box-shadow: 0 0 0 .18rem rgba(43, 120, 184, .12);
+}
+
+#consultas-view .consulta-filtros-avanzados {
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #e1e9f2;
+  background: #fbfcfe;
+}
+
+#consultas-view .table-responsive {
+  border: 1px solid #e2e9f0;
+  border-radius: 14px;
+  overflow: auto;
+}
+
+#consultas-view #consulta-tabla {
+  margin: 0;
+  min-width: 820px;
+}
+
+#consultas-view #consulta-tabla thead th {
+  padding: .9rem 1rem;
+  background: #f3f6fa;
+  border-bottom: 1px solid #dbe4ed;
+  color: #243950;
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#consultas-view #consulta-tabla tbody td {
+  padding: .95rem 1rem;
+  vertical-align: middle;
+  border-color: #edf1f5;
+  color: #20364d;
+}
+
+#consultas-view #consulta-tabla tbody tr:hover {
+  background: #f7fbff;
+}
+
+#consultas-view #consulta-tabla .btn {
+  white-space: nowrap;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+#consultas-view .consulta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  background: #edf5fd;
+  color: #245d8e;
+  border: 1px solid #d5e6f5;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+#consultas-view .consulta-date {
+  white-space: nowrap;
+  color: #52677d;
+  font-size: .9rem;
+}
+
+#consultas-view .consulta-audit-detail {
+  display: block;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #53677b;
+}
+
+#modalDetalleConsulta .consulta-json {
+  margin: .35rem 0 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: .85rem;
+  border-radius: 10px;
+  background: #f5f7fa;
+  border: 1px solid #e2e7ed;
+  color: #24364a;
+  font-size: .78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 991.98px) {
+  #consultas-view .consultas-hero {
+    padding: 1.25rem 1.35rem;
+  }
+  #consultas-view .consulta-stat {
+    min-height: 90px;
+  }
+}

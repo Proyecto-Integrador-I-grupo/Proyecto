@@ -11,10 +11,14 @@ export const obtenerAuditorias = async () => {
             datos_anteriores,
             datos_nuevos,
             fecha_creacion,
-            fecha_modificacion,
-            id_usuario
-        FROM auditoria
-        ORDER BY fecha_creacion DESC;
+            a.fecha_modificacion,
+            a.id_usuario,
+            u.correo AS usuario_correo,
+            CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS usuario_nombre
+        FROM auditoria a
+        LEFT JOIN usuario u ON u.id_usuario = a.id_usuario
+        LEFT JOIN persona p ON p.id_persona = u.id_persona
+        ORDER BY a.fecha_creacion DESC;
     `;
 
     const [rows] = await conexion.query(sql);
@@ -35,10 +39,14 @@ export const obtenerAuditoriaPorId = async (id) => {
             datos_anteriores,
             datos_nuevos,
             fecha_creacion,
-            fecha_modificacion,
-            id_usuario
-        FROM auditoria
-        WHERE id_auditoria = ?
+            a.fecha_modificacion,
+            a.id_usuario,
+            u.correo AS usuario_correo,
+            CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS usuario_nombre
+        FROM auditoria a
+        LEFT JOIN usuario u ON u.id_usuario = a.id_usuario
+        LEFT JOIN persona p ON p.id_persona = u.id_persona
+        WHERE a.id_auditoria = ?
         LIMIT 1;
     `;
 

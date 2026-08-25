@@ -14,13 +14,14 @@ let matriculas = [];
 let asistencias = [];
 let gruposAsignados = [];
 let grupos = [];
+let auditorias = [];
 
 // Registro que se está mostrando en la vista previa
 let documentoActual = null;
 let tipoDocumentoActual = null;
 
 const CONSULTAS_POR_ROL = {
-  administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia', 'grupos'],
+  administrador: ['prematriculados', 'matriculados', 'profesores', 'matriculas', 'asistencia', 'grupos', 'auditoria'],
   asistente: ['prematriculados', 'matriculados', 'matriculas'],
   profesor: ['asistencia']
 };
@@ -54,7 +55,8 @@ function aplicarPermisosConsultaUI() {
   'consulta-total-profesores': 'profesores',
   'consulta-total-matriculas': 'matriculas',
   'consulta-total-asistencias': 'asistencia',
-  'consulta-total-grupos': 'grupos'
+  'consulta-total-grupos': 'grupos',
+  'consulta-total-auditorias': 'auditoria'
   };
 
   Object.entries(statMap).forEach(([id, tipo]) => {
@@ -142,13 +144,14 @@ function aplicarPermisosConsultaUI() {
         return Array.isArray(data) ? data : [];
       };
 
-      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, grupos] = await Promise.all([
+      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, grupos, auditorias] = await Promise.all([
         pedir('prematriculados', '/api/estudiantes'),
         pedir('matriculados', '/api/estudiantes/matriculados'),
         pedir('profesores', '/api/profesores'),
         pedir('matriculas', '/api/procesos/matricula'),
         pedir('asistencia', '/api/procesos/asistencia'),
-        pedirGrupos()
+        pedirGrupos(),
+        pedir('auditoria', '/api/auditorias')
       ]);
 
       gruposAsignados = grupos;
@@ -197,6 +200,10 @@ function aplicarPermisosConsultaUI() {
       'consulta-total-grupos'
    );
 
+    const totalAuditorias = document.getElementById(
+      'consulta-total-auditorias'
+    );
+
     if (totalEstudiantes) {
       totalEstudiantes.textContent = estudiantes.length;
     }
@@ -221,6 +228,10 @@ function aplicarPermisosConsultaUI() {
     if (totalGrupos) {
       totalGrupos.textContent = grupos.length;
    }
+
+    if (totalAuditorias) {
+      totalAuditorias.textContent = auditorias.length;
+    }
   }
 
   /* ==========================================
@@ -264,13 +275,20 @@ function aplicarPermisosConsultaUI() {
       return;
     }
 
-    if (tipo === 'asistencia') {
+    if (tipo === 'auditoria' || tipo === 'grupos') {
+      select.innerHTML = '<option value="">Todos</option>';
+    } else if (tipo === 'asistencia') {
   mostrarAsistencias();
   return;
 }
 
 if (tipo === 'grupos') {
   mostrarGrupos();
+  return;
+}
+
+if (tipo === 'auditoria') {
+  mostrarAuditorias();
 }
   }
 
@@ -343,7 +361,10 @@ if (tipo === 'grupos') {
     'Buscar por estudiante, grupo o profesor...',
 
   grupos:
-    'Buscar por nombre de grupo, sección o nivel...'
+    'Buscar por nombre de grupo, sección o nivel...',
+
+  auditoria:
+    'Buscar por módulo, acción, usuario o detalle...'
     };
 
     input.placeholder =
@@ -374,7 +395,8 @@ if (tipo === 'grupos') {
 
 const usaFecha =
   tipo === 'matriculas' ||
-  tipo === 'asistencia';
+  tipo === 'asistencia' ||
+  tipo === 'auditoria';
 
 const usaInformacionAcademica =
   tipo === 'matriculados' ||
@@ -399,6 +421,9 @@ const usaInformacionAcademica =
       'hidden',
       !usaInformacionAcademica
     );
+
+    const filtroEstado = document.querySelector('.consulta-filtro-estado');
+    filtroEstado?.classList.toggle('hidden', tipo === 'auditoria' || tipo === 'grupos');
   }
 
   /* ==========================================
@@ -1316,6 +1341,131 @@ const usaInformacionAcademica =
 }
 
   /* ==========================================
+     CONSULTA DE AUDITORÍA
+     ========================================== */
+
+  function parseAuditData(value) {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    try { return JSON.parse(value); } catch { return value; }
+  }
+
+  function textoAuditoria(registro) {
+    const detalle = parseAuditData(registro.datos_nuevos);
+    if (detalle && typeof detalle === 'object') {
+      const tipo = detalle.tipo ? ` · ${detalle.tipo}` : '';
+      const accion = detalle.accion ? ` · ${detalle.accion}` : '';
+      const id = detalle.id_registro ? ` · registro #${detalle.id_registro}` : '';
+      return `${tipo}${accion}${id}`.replace(/^ · /, '');
+    }
+    return String(detalle || registro.datos_anteriores || '').slice(0, 140);
+  }
+
+  function mostrarAuditorias() {
+    const busqueda = obtenerBusqueda();
+    const fechaSeleccionada = document.getElementById('consulta-fecha')?.value || '';
+
+    const resultados = [...auditorias]
+      .filter((registro) => {
+        const detalle = textoAuditoria(registro);
+        const texto = `${registro.nombre_tabla || ''} ${registro.accion_usuario || ''} ${registro.id_usuario || ''} ${detalle}`.toLowerCase();
+        const coincideBusqueda = !busqueda || texto.includes(busqueda);
+        const fecha = limpiarFecha(registro.fecha_creacion || registro.fecha_modificacion);
+        const coincideFecha = !fechaSeleccionada || fecha === fechaSeleccionada;
+        return coincideBusqueda && coincideFecha;
+      })
+      .sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0));
+
+    actualizarTitulo('Auditoría del sistema', resultados.length);
+    cambiarEncabezado(`
+      <tr>
+        <th>Fecha</th>
+        <th>Módulo / tabla</th>
+        <th>Acción</th>
+        <th>Usuario</th>
+        <th>Detalle</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    `);
+
+    if (!resultados.length) {
+      mostrarSinResultados(6);
+      return;
+    }
+
+    const body = document.getElementById('consulta-tabla-body');
+    if (!body) return;
+    body.innerHTML = '';
+
+    resultados.forEach((registro) => {
+      const fila = document.createElement('tr');
+      const detalle = textoAuditoria(registro) || 'Sin detalle adicional';
+      fila.innerHTML = `
+        <td><span class="consulta-date">${formatearFechaHora(registro.fecha_creacion)}</span></td>
+        <td><span class="consulta-chip">${escapeHtml(registro.nombre_tabla || '-')}</span></td>
+        <td><span class="badge bg-light text-dark border">${escapeHtml(registro.accion_usuario || '-')}</span></td>
+        <td>${escapeHtml(registro.usuario_nombre || registro.usuario_correo || (registro.id_usuario ? `Usuario #${registro.id_usuario}` : 'Sistema'))}</td>
+        <td><span class="consulta-audit-detail">${escapeHtml(detalle)}</span></td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-outline-primary consulta-ver-auditoria" data-id="${registro.id_auditoria}">
+            <i class="bi bi-eye"></i> Ver detalle
+          </button>
+        </td>
+      `;
+      body.appendChild(fila);
+    });
+  }
+
+  function mostrarDetalleAuditoria(id) {
+    const registro = auditorias.find((item) => String(item.id_auditoria) === String(id));
+    const contenido = document.getElementById('consulta-detalle-contenido');
+    const titulo = document.getElementById('consulta-detalle-titulo');
+    if (!registro || !contenido || !titulo) return;
+
+    documentoActual = registro;
+    tipoDocumentoActual = 'auditoria';
+    titulo.textContent = 'Detalle de auditoría';
+    prepararEncabezadoDocumento('Registro de auditoría');
+
+    const anteriores = parseAuditData(registro.datos_anteriores);
+    const nuevos = parseAuditData(registro.datos_nuevos);
+    contenido.innerHTML = `
+      <div class="row g-3">
+        ${crearCampoDetalle('ID de auditoría', registro.id_auditoria ?? '-')}
+        ${crearCampoDetalle('Fecha', formatearFechaHora(registro.fecha_creacion))}
+        ${crearCampoDetalle('Módulo / tabla', escapeHtml(registro.nombre_tabla || '-'))}
+        ${crearCampoDetalle('Acción', escapeHtml(registro.accion_usuario || '-'))}
+        ${crearCampoDetalle('Usuario', escapeHtml(registro.usuario_nombre || registro.usuario_correo || (registro.id_usuario ? `Usuario #${registro.id_usuario}` : 'Sistema')))}
+        ${crearCampoDetalle('Datos anteriores', `<pre class="consulta-json">${escapeHtml(formatearJson(anteriores))}</pre>`, true)}
+        ${crearCampoDetalle('Datos nuevos / detalle', `<pre class="consulta-json">${escapeHtml(formatearJson(nuevos))}</pre>`, true)}
+      </div>
+    `;
+    abrirModalDetalle();
+  }
+
+  function formatearJson(value) {
+    if (value === null || value === undefined || value === '') return 'Sin datos';
+    if (typeof value === 'string') return value;
+    try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+  }
+
+  function formatearFechaHora(value) {
+    if (!value) return '-';
+    const fecha = new Date(value);
+    if (Number.isNaN(fecha.getTime())) return limpiarFecha(value);
+    return fecha.toLocaleString('es-CR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* ==========================================
      FILTROS DE GRUPO, SECCIÓN Y NIVEL
      ========================================== */
 
@@ -1553,6 +1703,9 @@ const usaInformacionAcademica =
       '.consulta-ver-grupo'
     );
 
+    const verAuditoria =
+      evento.target.closest('.consulta-ver-auditoria');
+
     if (verEstudiante) {
       await mostrarDetalleEstudiante(
         verEstudiante.dataset.id
@@ -1592,6 +1745,11 @@ const usaInformacionAcademica =
      mostrarDetalleGrupo(
        verGrupo.dataset.id
       );
+     return;
+    }
+
+    if (verAuditoria) {
+      mostrarDetalleAuditoria(verAuditoria.dataset.id);
     }
   }
 
@@ -1608,8 +1766,7 @@ const usaInformacionAcademica =
 
     if (
       !contenido ||
-      !titulo ||
-      !modificar
+      !titulo
     ) {
       return;
     }
@@ -1751,7 +1908,7 @@ prepararEncabezadoDocumento(
     'consulta-detalle-titulo'
   );
 
-  if (!contenido || !titulo || !modificar) {
+  if (!contenido || !titulo) {
     return;
   }
 
@@ -1886,8 +2043,7 @@ prepararEncabezadoDocumento(
 
     if (
       !contenido ||
-      !titulo ||
-      !modificar
+      !titulo
     ) {
       return;
     }
@@ -1993,8 +2149,7 @@ prepararEncabezadoDocumento(
 
     if (
       !contenido ||
-      !titulo ||
-      !modificar
+      !titulo
     ) {
       return;
     }
@@ -2546,7 +2701,10 @@ function obtenerTituloDocumento() {
       'Comprobante de matrícula',
 
     asistencia:
-      'Registro de asistencia'
+      'Registro de asistencia',
+
+    auditoria:
+      'Registro de auditoría'
   };
 
   return (
@@ -2558,6 +2716,18 @@ function obtenerTituloDocumento() {
 function obtenerCamposDocumentoPDF() {
   const registro =
     documentoActual || {};
+
+  if (tipoDocumentoActual === 'auditoria') {
+    return [
+      { etiqueta: 'ID de auditoría', valor: registro.id_auditoria ?? '-' },
+      { etiqueta: 'Fecha', valor: formatearFechaHora(registro.fecha_creacion) },
+      { etiqueta: 'Módulo / tabla', valor: registro.nombre_tabla ?? '-' },
+      { etiqueta: 'Acción', valor: registro.accion_usuario ?? '-' },
+      { etiqueta: 'Usuario', valor: registro.id_usuario ? `#${registro.id_usuario}` : 'Sistema' },
+      { etiqueta: 'Datos anteriores', valor: formatearJson(parseAuditData(registro.datos_anteriores)) },
+      { etiqueta: 'Datos nuevos / detalle', valor: formatearJson(parseAuditData(registro.datos_nuevos)) }
+    ];
+  }
 
   if (tipoDocumentoActual === 'estudiante') {
     const activo =
@@ -2997,7 +3167,7 @@ function prepararEncabezadoDocumento(titulo) {
   detalle = {}
 ) {
   try {
-    await apiFetch('/api/auditoria', {
+    await apiFetch('/api/auditorias', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

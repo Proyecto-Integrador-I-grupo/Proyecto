@@ -189,9 +189,9 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
       VALUES (?, ?, ?, ?, ?, TRUE)
     `;
     const [resPersona] = await connection.query(queryPersona, [
-      nombre.trim(),
-      apellido1.trim(),
-      apellido2 ? apellido2.trim() : null,
+      String(nombre).replace(/\s+/g, " ").trim(),
+      String(apellido1).replace(/\s+/g, " ").trim(),
+      apellido2 ? String(apellido2).replace(/\s+/g, " ").trim() : null,
       fecha_nacimiento,
       generoNormalizado
     ]);
@@ -260,7 +260,7 @@ export const actualizarEstudianteService = async (id_estudiante, datos, idUsuari
       `UPDATE persona 
        SET nombre = ?, apellido1 = ?, apellido2 = ?, fecha_nacimiento = ?, genero = ?
        WHERE id_persona = ?`,
-      [nombre, apellido1, apellido2 || null, fecha_nacimiento, generoNormalizado, id_persona]
+      [String(nombre).replace(/\s+/g, " ").trim(), String(apellido1).replace(/\s+/g, " ").trim(), apellido2 ? String(apellido2).replace(/\s+/g, " ").trim() : null, fecha_nacimiento, generoNormalizado, id_persona]
     );
 
     await connection.commit();

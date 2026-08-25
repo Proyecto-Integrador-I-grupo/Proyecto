@@ -239,3 +239,51 @@ export const obtenerUsuarioPerfilPorId = async (
 
     return rows[0];
 };
+
+export const usuarioTienePermiso = async (idUsuario, codigo) => {
+  const [rows] = await conexion.query(`
+    SELECT COALESCE(upa.permitido, rpa.permitido, FALSE) AS permitido
+    FROM usuario u
+    INNER JOIN permiso_accion pa ON pa.codigo = ?
+    LEFT JOIN usuario_permiso_accion upa ON upa.id_usuario = u.id_usuario AND upa.id_permiso = pa.id_permiso
+    LEFT JOIN rol_permiso_accion rpa ON rpa.id_rol = u.id_rol AND rpa.id_permiso = pa.id_permiso
+    WHERE u.id_usuario = ? AND u.estado = TRUE
+    LIMIT 1
+  `, [codigo, idUsuario]);
+  return !!rows[0]?.permitido;
+};
+
+export const obtenerPermisosUsuario = async (idUsuario) => {
+  const [rows] = await conexion.query(`
+    SELECT pa.codigo, pa.nombre, pa.descripcion, COALESCE(upa.permitido, rpa.permitido, FALSE) AS permitido
+    FROM usuario u
+    CROSS JOIN permiso_accion pa
+    LEFT JOIN usuario_permiso_accion upa ON upa.id_usuario = u.id_usuario AND upa.id_permiso = pa.id_permiso
+    LEFT JOIN rol_permiso_accion rpa ON rpa.id_rol = u.id_rol AND rpa.id_permiso = pa.id_permiso
+    WHERE u.id_usuario = ? ORDER BY pa.codigo
+  `, [idUsuario]);
+  return rows;
+};
+
+export const actualizarPermisosUsuario = async (idUsuario, permisos = []) => {
+  const connection = await conexion.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(`DELETE FROM usuario_permiso_accion WHERE id_usuario = ?`, [idUsuario]);
+    for (const item of permisos) {
+      const codigo = String(item?.codigo || '').trim();
+      if (!codigo) continue;
+      const [[permiso]] = await connection.query(`SELECT id_permiso FROM permiso_accion WHERE codigo = ? LIMIT 1`, [codigo]);
+      if (!permiso) continue;
+      await connection.query(
+        `INSERT INTO usuario_permiso_accion (id_usuario, id_permiso, permitido) VALUES (?, ?, ?)`,
+        [idUsuario, permiso.id_permiso, Boolean(item.permitido)]
+      );
+    }
+    await connection.commit();
+    return obtenerPermisosUsuario(idUsuario);
+  } catch (e) {
+    await connection.rollback();
+    throw e;
+  } finally { connection.release(); }
+};

@@ -3,10 +3,14 @@ import * as usuarioModel from "../models/usuarioModel.js";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 import { crearSessionToken } from "../utils/sessionToken.js";
 import { clearLoginAttempts } from "../middleware/loginRateLimit.js";
+import { procesarSuplenciasVencidas } from "../services/profesorService.js";
 
 export const login = async (req, res) => {
     try {
         const { correo, contrasena } = req.body;
+
+        // Si venció una incapacidad, restaurar al titular antes de validar su acceso.
+        try { await procesarSuplenciasVencidas(); } catch (e) { console.warn('Suplencias: no se pudo procesar un vencimiento automático:', e.message); }
 
         if (!correo || !contrasena) {
             return res.status(400).json({
@@ -49,6 +53,7 @@ export const login = async (req, res) => {
         }
 
         const esAdmin = rolNormalizado === "administrador";
+        const permisosAccion = await usuarioModel.obtenerPermisosUsuario(usuario.id_usuario);
         clearLoginAttempts(req);
         const token = crearSessionToken(usuario);
 
@@ -63,6 +68,7 @@ export const login = async (req, res) => {
                 apellido1: usuario.apellido1,
                 apellido2: usuario.apellido2,
                 token,
+                permisos_accion: Object.fromEntries(permisosAccion.map((p) => [p.codigo, Boolean(p.permitido)])),
                 permisos: {
                     eliminarEstudiantes: esAdmin,
                     gestionarUsuarios: esAdmin,

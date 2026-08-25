@@ -1,4 +1,5 @@
 import * as finanzaService from "../services/finanzaService.js";
+import { usuarioTienePermiso } from "../models/usuarioModel.js";
 import {
   obtenerConfiguracionFacturacion,
   actualizarConfiguracionFacturacion,
@@ -94,7 +95,14 @@ export async function getEstadoMatricula(req, res) {
 }
 
 export async function putCargo(req, res) {
-  try { res.json(await finanzaService.actualizarCargo(req.params.id, req.body)); }
+  try {
+    const rol = String(req.usuarioActual?.rol || '').toLowerCase();
+    if (req.body?.descuento !== undefined && rol !== 'administrador') {
+      const permitido = await usuarioTienePermiso(req.usuarioActual?.id_usuario, 'finanzas.aplicar_descuento');
+      if (!permitido) return res.status(403).json({ mensaje: 'No tienes permiso para aplicar o modificar descuentos.' });
+    }
+    res.json(await finanzaService.actualizarCargo(req.params.id, req.body, req.usuarioActual?.id_usuario));
+  }
   catch (e) { responderError(res, e); }
 }
 

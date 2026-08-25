@@ -285,7 +285,9 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   if (!cargoRows.length) throw new Error("No se encontró el cargo a facturar.");
   const cargo = cargoRows[0];
 
-  const cargoPagado = cargo.estado === "pagado" || Number(cargo.saldo || 0) <= 0;
+  const totalCargo = Number(cargo.total || 0);
+  const totalPagadoValidacion = Number(cargo.total_pagado || 0);
+  const cargoPagado = cargo.estado === "pagado" && Number(cargo.saldo || 0) <= 0 && totalPagadoValidacion + 0.001 >= totalCargo;
 
   if (!cargoPagado) {
     return {
@@ -293,15 +295,6 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       estado: "pendiente_pago",
       mensaje: "La factura se genera cuando el cargo queda completamente pagado."
     };
-  }
-
-  if (cargo.estado !== "pagado") {
-    await pool.query(
-      `UPDATE cargo_estudiante SET estado = 'pagado', saldo = 0 WHERE id_cargo = ?`,
-      [idCargo]
-    );
-    cargo.estado = "pagado";
-    cargo.saldo = 0;
   }
 
   const [existente] = await pool.query(
@@ -326,7 +319,10 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     // La base de EduControl conserva el identificador, pero la factura ya no existe
     // en Factura Bonita (por ejemplo, después de reiniciar/restaurar su base).
     // Se limpia únicamente el vínculo externo para volver a crearla de forma segura.
-    await pool.query(`DELETE FROM factura_cargo WHERE id_cargo = ?`, [idCargo]);
+    await pool.query(
+      `UPDATE factura_cargo SET id_factura_externa = NULL, estado_factura = 'pendiente_recrear', url_documento = NULL, error_mensaje = 'La factura remota dejó de existir; se conservará el historial local y se recreará de forma idempotente.', fecha_actualizacion = NOW() WHERE id_cargo = ?`,
+      [idCargo]
+    );
     cacheDocumentosFactura.clear();
   }
 
@@ -927,7 +923,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
     // Autorreparación: el id externo quedó obsoleto. Se vuelve a publicar la factura
     // usando la misma referencia cargo:<id>, se actualiza el vínculo local y se reintenta.
-    await pool.query(`DELETE FROM factura_cargo WHERE id_cargo = ?`, [idCargo]);
+    await pool.query(`UPDATE factura_cargo SET id_factura_externa = NULL, estado_factura = 'pendiente_recrear', error_mensaje = NULL, fecha_actualizacion = NOW() WHERE id_cargo = ?`, [idCargo]);
     cacheDocumentosFactura.clear();
 
     const regenerada = await generarFacturaDeCargo(idCargo, "otro");

@@ -8,7 +8,9 @@ import {
     eliminarUsuario,
     obtenerMiPerfil,
     actualizarMiPerfil,
-    cambiarMiClave
+    cambiarMiClave,
+    obtenerPermisosAccionUsuario,
+    actualizarPermisosAccionUsuario
 } from "../controllers/usuarioController.js";
 
 import {
@@ -54,6 +56,9 @@ router.get(
     requireRole("Administrador"),
     listarUsuarios
 );
+
+router.get("/:id/permisos-accion", requireAuth, requireRole("Administrador"), obtenerPermisosAccionUsuario);
+router.put("/:id/permisos-accion", requireAuth, requireRole("Administrador"), actualizarPermisosAccionUsuario);
 
 router.get(
     "/:id",

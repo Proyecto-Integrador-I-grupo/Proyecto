@@ -36,13 +36,19 @@ CREATE TABLE profesor(
     id_profesor INT AUTO_INCREMENT PRIMARY KEY,
     materia VARCHAR(100) NOT NULL,
     fecha_ingreso DATE NOT NULL,
+    horas_maximas_semana DECIMAL(5,2) NOT NULL DEFAULT 40.00,
+    inactivo_desde DATE NULL,
+    inactivo_hasta DATE NULL,
+    motivo_inactividad VARCHAR(250) NULL,
     estado BOOLEAN DEFAULT TRUE,
     id_persona INT NOT NULL,
+    CONSTRAINT ck_profesor_carga CHECK (horas_maximas_semana > 0 AND horas_maximas_semana <= 60),
     CONSTRAINT fk_profesor_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona)
 );
 CREATE TABLE estudiante(
     id_estudiante INT AUTO_INCREMENT PRIMARY KEY,
     fecha_ingreso DATE NOT NULL,
+    estado_academico ENUM('preinscrito','matriculado','retirado','trasladado') NOT NULL DEFAULT 'preinscrito',
     estado BOOLEAN DEFAULT TRUE,
     id_persona INT NOT NULL,
     CONSTRAINT fk_estudiante_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona)
@@ -66,6 +72,29 @@ CREATE TABLE telefono_persona(
     id_persona INT NOT NULL,
     CONSTRAINT fk_telefono_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona)
 );
+-- ===========================================
+-- PERIODOS LECTIVOS Y AULAS
+-- ===========================================
+CREATE TABLE periodo_lectivo(
+    anio YEAR PRIMARY KEY,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    estado ENUM('PLANIFICADO','ACTIVO','CERRADO') NOT NULL DEFAULT 'PLANIFICADO',
+    fecha_cierre DATETIME NULL,
+    id_usuario_cierre INT NULL,
+    CONSTRAINT ck_periodo_fechas CHECK (fecha_fin >= fecha_inicio),
+    CONSTRAINT fk_periodo_usuario_cierre FOREIGN KEY (id_usuario_cierre) REFERENCES usuario(id_usuario)
+);
+
+CREATE TABLE aula(
+    id_aula INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(40) NOT NULL UNIQUE,
+    nombre VARCHAR(80) NOT NULL,
+    capacidad_referencial INT NULL,
+    estado BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT ck_aula_capacidad CHECK (capacidad_referencial IS NULL OR capacidad_referencial > 0)
+);
+
 CREATE TABLE seccion(
     id_seccion INT AUTO_INCREMENT PRIMARY KEY,
     nombre_seccion VARCHAR(10) NOT NULL,
@@ -73,24 +102,24 @@ CREATE TABLE seccion(
     periodo_lectivo YEAR NOT NULL,
     descripcion VARCHAR(250) NULL,
     estado BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT uk_seccion_nombre_periodo UNIQUE (nombre_seccion, periodo_lectivo)
+    CONSTRAINT uk_seccion_nombre_periodo UNIQUE (nombre_seccion, periodo_lectivo),
+    CONSTRAINT fk_seccion_periodo FOREIGN KEY (periodo_lectivo) REFERENCES periodo_lectivo(anio)
 );
 CREATE TABLE grupo(
     id_grupo INT AUTO_INCREMENT PRIMARY KEY,
     nombre_grupo VARCHAR(100) NOT NULL,
     estado BOOLEAN NOT NULL DEFAULT TRUE,
     capacidad INT NOT NULL,
-    aula VARCHAR(40) NULL,
-    dias_semana VARCHAR(80) NOT NULL DEFAULT '',
-    hora_inicio TIME NULL,
-    hora_fin TIME NULL,
+    aula VARCHAR(40) NOT NULL,
+    dias_semana VARCHAR(80) NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
     id_seccion INT NOT NULL,
     CONSTRAINT ck_grupo_capacidad CHECK (capacidad > 0),
-    CONSTRAINT ck_grupo_horario CHECK (
-      (hora_inicio IS NULL AND hora_fin IS NULL) OR
-      (hora_inicio IS NOT NULL AND hora_fin IS NOT NULL AND hora_fin > hora_inicio)
-    ),
-    CONSTRAINT fk_grupo_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion)
+    CONSTRAINT ck_grupo_horario CHECK (hora_fin > hora_inicio),
+    CONSTRAINT ck_grupo_dias CHECK (TRIM(dias_semana) <> ''),
+    CONSTRAINT fk_grupo_seccion FOREIGN KEY (id_seccion) REFERENCES seccion(id_seccion),
+    CONSTRAINT fk_grupo_aula FOREIGN KEY (aula) REFERENCES aula(codigo)
 );
 CREATE INDEX idx_grupo_aula_horario ON grupo(aula, estado, hora_inicio, hora_fin);
 CREATE TABLE matricula(
@@ -100,11 +129,13 @@ CREATE TABLE matricula(
     anio_lectivo SMALLINT NOT NULL,
     tipo_matricula VARCHAR(20) NOT NULL,
     estado_matricula VARCHAR(20) NOT NULL,
+    ciclo_activo SMALLINT GENERATED ALWAYS AS (CASE WHEN LOWER(estado_matricula) IN ('activa','activo','matriculado') THEN anio_lectivo ELSE NULL END) STORED,
     observaciones VARCHAR(100),
     id_estudiante INT NOT NULL,
     id_usuario INT NOT NULL,
     CONSTRAINT fk_matricula_estudiante FOREIGN KEY (id_estudiante) REFERENCES estudiante(id_estudiante),
-    CONSTRAINT fk_matricula_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+    CONSTRAINT fk_matricula_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT uk_matricula_activa_ciclo UNIQUE (id_estudiante, ciclo_activo)
 );
 CREATE TABLE detalle_matricula(
     id_detalle_matricula INT AUTO_INCREMENT PRIMARY KEY,
@@ -142,11 +173,15 @@ CREATE TABLE asistencia(
 CREATE TABLE grupo_estudiante(
     id_grupo_estudiante INT AUTO_INCREMENT PRIMARY KEY,
     fecha_asignacion DATE NOT NULL,
+    periodo_lectivo YEAR NOT NULL,
     estado BOOLEAN DEFAULT TRUE,
+    periodo_activo YEAR GENERATED ALWAYS AS (CASE WHEN estado = TRUE THEN periodo_lectivo ELSE NULL END) STORED,
     id_grupo INT NOT NULL,
     id_estudiante INT NOT NULL,
     CONSTRAINT fk_grupo_estudiante_grupo FOREIGN KEY (id_grupo) REFERENCES grupo(id_grupo),
-    CONSTRAINT fk_grupo_estudiante_estudiante FOREIGN KEY (id_estudiante) REFERENCES estudiante(id_estudiante)
+    CONSTRAINT fk_grupo_estudiante_estudiante FOREIGN KEY (id_estudiante) REFERENCES estudiante(id_estudiante),
+    CONSTRAINT fk_grupo_estudiante_periodo FOREIGN KEY (periodo_lectivo) REFERENCES periodo_lectivo(anio),
+    CONSTRAINT uk_estudiante_grupo_activo_ciclo UNIQUE (id_estudiante, periodo_activo)
 );
 CREATE TABLE grupo_profesor(
     id_grupo_profesor INT AUTO_INCREMENT PRIMARY KEY,
@@ -175,7 +210,7 @@ CREATE TABLE profesor_suplencia(
     id_profesor_titular INT NOT NULL,
     id_profesor_suplente INT NULL,
     fecha_inicio DATE NOT NULL,
-    fecha_fin DATE NULL,
+    fecha_fin DATE NOT NULL,
     estado BOOLEAN NOT NULL DEFAULT TRUE,
     motivo VARCHAR(250) NULL,
     CONSTRAINT fk_suplencia_grupo FOREIGN KEY (id_grupo) REFERENCES grupo(id_grupo),
@@ -233,7 +268,9 @@ CREATE TABLE cargo_estudiante(
     descripcion VARCHAR(200) NOT NULL,
     periodo VARCHAR(30),
     fecha_emision DATE NOT NULL,
+    fecha_vencimiento_original DATE NULL,
     fecha_vencimiento DATE NULL,
+    plazo_dias INT NOT NULL DEFAULT 0,
     monto_base DECIMAL(12,2) NOT NULL,
     descuento DECIMAL(12,2) NOT NULL DEFAULT 0,
     impuesto DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -247,7 +284,8 @@ CREATE TABLE cargo_estudiante(
     CONSTRAINT fk_cargo_matricula FOREIGN KEY (id_matricula) REFERENCES matricula(id_matricula),
     CONSTRAINT fk_cargo_usuario FOREIGN KEY (id_usuario_crea) REFERENCES usuario(id_usuario),
     CONSTRAINT uk_cargo_matricula_concepto UNIQUE (id_matricula, id_concepto),
-    CONSTRAINT ck_cargo_montos CHECK (monto_base >= 0 AND descuento >= 0 AND descuento <= monto_base AND impuesto >= 0 AND total >= 0 AND saldo >= 0 AND saldo <= total)
+    CONSTRAINT ck_cargo_montos CHECK (monto_base >= 0 AND descuento >= 0 AND descuento <= monto_base AND impuesto >= 0 AND total >= 0 AND saldo >= 0 AND saldo <= total),
+    CONSTRAINT ck_cargo_plazo CHECK (plazo_dias >= 0 AND plazo_dias <= 3650)
 );
 CREATE INDEX idx_cargo_estado ON cargo_estudiante(estado, fecha_vencimiento);
 CREATE INDEX idx_cargo_estudiante ON cargo_estudiante(id_estudiante, estado);
@@ -279,6 +317,45 @@ CREATE TABLE factura_cargo(
     fecha_solicitud DATETIME NULL,
     fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_factura_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo)
+);
+
+CREATE TABLE historial_plazo_pago(
+    id_historial BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_cargo INT NOT NULL,
+    fecha_vencimiento_anterior DATE NULL,
+    fecha_vencimiento_nueva DATE NULL,
+    dias_extension INT NOT NULL DEFAULT 0,
+    motivo VARCHAR(250) NULL,
+    fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_usuario INT NULL,
+    CONSTRAINT fk_historial_plazo_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo),
+    CONSTRAINT fk_historial_plazo_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT ck_historial_extension CHECK (dias_extension >= 0)
+);
+CREATE INDEX idx_historial_plazo_cargo ON historial_plazo_pago(id_cargo, fecha_registro);
+
+-- Permisos por acción. Administrador recibe todos; Asistente solo los operativos base.
+CREATE TABLE permiso_accion(
+    id_permiso INT AUTO_INCREMENT PRIMARY KEY,
+    codigo VARCHAR(80) NOT NULL UNIQUE,
+    nombre VARCHAR(120) NOT NULL,
+    descripcion VARCHAR(250) NULL
+);
+CREATE TABLE rol_permiso_accion(
+    id_rol INT NOT NULL,
+    id_permiso INT NOT NULL,
+    permitido BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (id_rol, id_permiso),
+    CONSTRAINT fk_rol_permiso_rol FOREIGN KEY (id_rol) REFERENCES rol(id_rol),
+    CONSTRAINT fk_rol_permiso_permiso FOREIGN KEY (id_permiso) REFERENCES permiso_accion(id_permiso)
+);
+CREATE TABLE usuario_permiso_accion(
+    id_usuario INT NOT NULL,
+    id_permiso INT NOT NULL,
+    permitido BOOLEAN NOT NULL,
+    PRIMARY KEY (id_usuario, id_permiso),
+    CONSTRAINT fk_usuario_permiso_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_usuario_permiso_permiso FOREIGN KEY (id_permiso) REFERENCES permiso_accion(id_permiso)
 );
 
 CREATE TABLE clase_extra(
@@ -453,13 +530,18 @@ CREATE PROCEDURE sp_asignar_estudiante_grupo(
     IN p_id_grupo INT,
     IN p_id_estudiante INT
 ) BEGIN
+DECLARE v_periodo YEAR;
+SELECT s.periodo_lectivo INTO v_periodo
+FROM grupo g INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+WHERE g.id_grupo = p_id_grupo LIMIT 1;
 INSERT INTO grupo_estudiante(
         fecha_asignacion,
+        periodo_lectivo,
         estado,
         id_grupo,
         id_estudiante
     )
-VALUES(p_fecha, TRUE, p_id_grupo, p_id_estudiante);
+VALUES(p_fecha, v_periodo, TRUE, p_id_grupo, p_id_estudiante);
 END ^^
 -- ===========================================
 -- Asignar Profesor a Grupo
@@ -1664,6 +1746,7 @@ SELECT e.id_estudiante,
     p.fecha_nacimiento,
     p.genero,
     e.fecha_ingreso,
+    e.estado_academico,
     e.estado
 FROM estudiante e
     INNER JOIN persona p ON e.id_persona = p.id_persona;
@@ -1774,6 +1857,40 @@ SELECT estudiante,
 FROM vw_asistencia
 ORDER BY fecha DESC;
 -- ======================================================
+-- PERIODOS Y AULAS BASE
+-- ======================================================
+INSERT INTO periodo_lectivo (anio, fecha_inicio, fecha_fin, estado) VALUES
+    (2026, '2026-02-02', '2026-12-18', 'ACTIVO'),
+    (2027, '2027-02-01', '2027-12-17', 'PLANIFICADO');
+
+INSERT INTO aula (codigo, nombre, capacidad_referencial, estado) VALUES
+    ('Aula 01', 'Aula 01', 35, TRUE),
+    ('Aula 02', 'Aula 02', 35, TRUE),
+    ('Aula 03', 'Aula 03', 35, TRUE),
+    ('Aula 04', 'Aula 04', 35, TRUE),
+    ('Aula 05', 'Aula 05', 35, TRUE),
+    ('Aula 06', 'Aula 06', 35, TRUE),
+    ('Aula 07', 'Aula 07', 35, TRUE),
+    ('Aula 08', 'Aula 08', 35, TRUE),
+    ('Aula 09', 'Aula 09', 35, TRUE),
+    ('Aula 10', 'Aula 10', 35, TRUE),
+    ('Aula 11', 'Aula 11', 35, TRUE),
+    ('Aula 12', 'Aula 12', 35, TRUE),
+    ('Aula 13', 'Aula 13', 35, TRUE),
+    ('Aula 14', 'Aula 14', 35, TRUE),
+    ('Aula 15', 'Aula 15', 35, TRUE),
+    ('Aula 16', 'Aula 16', 35, TRUE),
+    ('Aula 17', 'Aula 17', 35, TRUE),
+    ('Aula 18', 'Aula 18', 35, TRUE),
+    ('Aula 19', 'Aula 19', 35, TRUE),
+    ('Aula 20', 'Aula 20', 35, TRUE),
+    ('Aula 21', 'Aula 21', 35, TRUE),
+    ('Aula 22', 'Aula 22', 35, TRUE),
+    ('Aula 23', 'Aula 23', 35, TRUE),
+    ('Aula 24', 'Aula 24', 35, TRUE),
+    ('Aula 25', 'Aula 25', 35, TRUE);
+
+-- ======================================================
 -- Datos base para el login de la aplicación
 -- (roles + usuario Administrador + usuario Asistente)
 -- ======================================================
@@ -1792,10 +1909,42 @@ SET @persona_admin = (SELECT id_persona FROM persona WHERE nombre = 'Sistema' AN
 SET @persona_asistente = (SELECT id_persona FROM persona WHERE nombre = 'Asistente' AND apellido1 = 'De' LIMIT 1);
 SET @rol_admin = (SELECT id_rol FROM rol WHERE nom_rol = 'Administrador' LIMIT 1);
 SET @rol_asistente = (SELECT id_rol FROM rol WHERE nom_rol = 'Asistente' LIMIT 1);
+SET @rol_profesor = (SELECT id_rol FROM rol WHERE nom_rol = 'Profesor' LIMIT 1);
 
 INSERT INTO usuario (correo, contrasena, estado, id_rol, id_persona) VALUES
     ('admin@educontrol.com', '$2b$10$a02HCSGrmwToygGu7MO1GuVFiUOIkNNbz/GDTDk0QxvNuG6w8XNiK', 1, @rol_admin, @persona_admin),
     ('asistente@educontrol.com', '$2b$10$TjZtKoFPpchOH4FfQjxtv.v8lRU3MqxkeHyPi7F8V5dWTUlqJTOZ2', 1, @rol_asistente, @persona_asistente);
+
+
+INSERT INTO permiso_accion (codigo, nombre, descripcion) VALUES
+ ('finanzas.ver','Ver finanzas','Consulta de cargos, pagos y facturas'),
+ ('finanzas.crear_cargo','Crear cargos','Registrar cargos nuevos'),
+ ('finanzas.registrar_pago','Registrar pagos','Aplicar abonos o pagos'),
+ ('finanzas.modificar_cargo','Modificar cargos','Modificar montos, descuentos o vencimientos'),
+ ('finanzas.aplicar_descuento','Aplicar descuentos','Autorizar descuentos financieros'),
+ ('finanzas.facturar_manual','Facturar manualmente','Forzar generación o conciliación de factura'),
+ ('finanzas.anular_pago','Anular pagos','Anular pagos conservando su trazabilidad'),
+ ('finanzas.configurar','Configurar facturación','Modificar emisor y configuración'),
+ ('matricula.registrar','Registrar matrícula','Matricular estudiantes'),
+ ('matricula.transferir','Transferir matrícula','Mover estudiantes entre grupos'),
+ ('grupos.crear','Crear grupos','Crear grupos académicos'),
+ ('grupos.modificar','Modificar grupos','Editar grupos y horarios'),
+ ('asistencia.registrar','Registrar asistencia','Crear asistencia'),
+ ('asistencia.modificar','Modificar asistencia','Editar asistencia propia'),
+ ('asistencia.anular','Anular asistencia','Baja lógica de una asistencia');
+
+INSERT INTO rol_permiso_accion (id_rol, id_permiso, permitido)
+SELECT @rol_admin, id_permiso, TRUE FROM permiso_accion;
+
+INSERT INTO rol_permiso_accion (id_rol, id_permiso, permitido)
+SELECT @rol_asistente, id_permiso,
+       CASE WHEN codigo IN ('finanzas.ver','finanzas.crear_cargo','finanzas.registrar_pago','matricula.registrar','matricula.transferir','grupos.crear','grupos.modificar') THEN TRUE ELSE FALSE END
+FROM permiso_accion;
+
+INSERT INTO rol_permiso_accion (id_rol, id_permiso, permitido)
+SELECT @rol_profesor, id_permiso,
+       CASE WHEN codigo IN ('asistencia.registrar','asistencia.modificar') THEN TRUE ELSE FALSE END
+FROM permiso_accion;
 
 -- Recreamos el trigger de auditoría
 DELIMITER ^^
@@ -1836,6 +1985,24 @@ VALUES(
         NULLIF(@id_usuario_sesion, 0)
     );
 END ^^
+DELIMITER ;
+
+-- ======================================================
+-- PROTECCIÓN DE HISTÓRICOS: SIN BORRADO FÍSICO
+-- ======================================================
+DELIMITER ^^
+CREATE TRIGGER trg_no_delete_estudiante BEFORE DELETE ON estudiante FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Los estudiantes se retiran mediante baja lógica; no se permite borrado físico.'; END ^^
+CREATE TRIGGER trg_no_delete_profesor BEFORE DELETE ON profesor FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Los profesores se desactivan; no se permite borrado físico.'; END ^^
+CREATE TRIGGER trg_no_delete_grupo BEFORE DELETE ON grupo FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Los grupos se desactivan; no se permite borrado físico.'; END ^^
+CREATE TRIGGER trg_no_delete_concepto BEFORE DELETE ON concepto_cobro FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Los conceptos financieros se inactivan; no se permite borrado físico.'; END ^^
+CREATE TRIGGER trg_no_delete_pago BEFORE DELETE ON pago FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Los pagos deben anularse y conservarse para auditoría.'; END ^^
+CREATE TRIGGER trg_no_delete_factura BEFORE DELETE ON factura_cargo FOR EACH ROW
+BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Las facturas se conservan para trazabilidad; no se permite borrado físico.'; END ^^
 DELIMITER ;
 -- ======================================================
 -- CONFIGURACIÓN INICIAL DEL MÓDULO FINANCIERO

@@ -184,9 +184,13 @@ function wireProfesoresEvents() {
     confirmarDestituirBtn.dataset.wired = '1';
     confirmarDestituirBtn.addEventListener('click', async () => {
       const motivo = document.getElementById('destituir-motivo')?.value.trim() || '';
+      const fechaInicio = document.getElementById('destituir-fecha-inicio')?.value || '';
+      const fechaFin = document.getElementById('destituir-fecha-fin')?.value || '';
+      if (!motivo || !fechaInicio || !fechaFin) { showToast('Indica el período de incapacidad y el motivo.', 'error'); return; }
+      if (fechaFin < fechaInicio) { showToast('La fecha final no puede ser anterior a la inicial.', 'error'); return; }
       const idProfesor = profesorPendienteId;
       await cerrarModalYEsperar('modalDestituir');
-      await destituirProfesor(idProfesor, motivo);
+      await destituirProfesor(idProfesor, motivo, fechaInicio, fechaFin);
     });
   }
 
@@ -424,7 +428,8 @@ async function handleProfesorSubmit(e) {
     materia: materia,
     fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null,
     correo: correo,
-    contrasena: contrasena
+    contrasena: contrasena,
+    horas_maximas_semana: Number(document.getElementById('prof-horas-max')?.value || 40)
   };
 
   try {
@@ -560,13 +565,13 @@ async function guardarEdicionProfesor(event) {
   } catch (error) { showResultModal('error', 'No se pudo actualizar', error.message || 'Ocurrió un error al actualizar.'); }
 }
 
-async function destituirProfesor(idProf, motivo) {
+async function destituirProfesor(idProf, motivo, fecha_inicio, fecha_fin) {
   if (!idProf) return;
   try {
     const res = await apiFetch(`/api/profesores/${idProf}/destituir`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ motivo })
+      body: JSON.stringify({ motivo, fecha_inicio, fecha_fin })
     });
 
     if (res.ok) {

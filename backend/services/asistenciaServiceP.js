@@ -1,4 +1,5 @@
 import pool from "../config/database.js";
+import { validarFechaAsistencia } from "./businessRulesService.js";
 
 const ESTADOS_VALIDOS = ["presente", "ausente", "tardia", "justificada"];
 
@@ -14,6 +15,8 @@ export async function registrarAsistenciaProceso(datos) {
 
   try {
     await connection.beginTransaction();
+
+    await validarFechaAsistencia(connection, id_grupo, fecha);
 
     const [profesorGrupo] = await connection.query(
       `SELECT id_grupo_profesor FROM grupo_profesor
@@ -194,13 +197,14 @@ export async function eliminarAsistenciaProceso(idAsistencia, usuarioActual = nu
       throw new Error("Registro de asistencia no encontrado.");
     }
 
+    await validarFechaAsistencia(connection, rows[0].id_grupo, rows[0].fecha);
     await connection.query(
-      "DELETE FROM asistencia WHERE id_asistencia = ?",
+      "UPDATE asistencia SET estado = FALSE WHERE id_asistencia = ?",
       [id]
     );
 
     await connection.commit();
-    return { mensaje: "Registro de asistencia eliminado correctamente.", registro: rows[0] };
+    return { mensaje: "Registro de asistencia anulado correctamente.", registro: rows[0] };
   } catch (error) {
     await connection.rollback();
     throw error;

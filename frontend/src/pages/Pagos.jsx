@@ -293,6 +293,10 @@ export default function Pagos() {
                 <input id="fin-cargo-vencimiento" type="date" className="form-control" />
               </div>
               <div className="col-md-4">
+                <label className="form-label">Plazo de pago</label>
+                <select id="fin-cargo-plazo" className="form-select" defaultValue="0"><option value="0">Usar fecha indicada</option><option value="15">15 días</option><option value="30">30 días</option><option value="45">45 días</option><option value="60">60 días</option><option value="90">90 días</option></select>
+              </div>
+              <div className="col-md-4">
                 <label className="form-label">Periodo</label>
                 <input id="fin-cargo-periodo" className="form-control" placeholder="Ej. Agosto 2026" maxLength="30" />
               </div>
@@ -317,7 +321,7 @@ export default function Pagos() {
             <div className="row g-3">
               <div className="col-md-4"><label className="form-label">Monto base</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-edit-cargo-monto" type="number" min="0" step="0.01" className="form-control" required /></div></div>
               <div className="col-md-4"><label className="form-label">Descuento</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-edit-cargo-descuento" type="number" min="0" step="0.01" className="form-control" required /></div></div>
-              <div className="col-md-4"><label className="form-label">Vencimiento</label><input id="fin-edit-cargo-vencimiento" type="date" className="form-control" /></div>
+              <div className="col-md-4"><label className="form-label">Vencimiento</label><input id="fin-edit-cargo-vencimiento" type="date" className="form-control" /></div><div className="col-md-4"><label className="form-label">Extender plazo</label><select id="fin-edit-cargo-extension" className="form-select" defaultValue="0"><option value="0">Sin extensión</option><option value="7">+ 7 días</option><option value="15">+ 15 días</option><option value="30">+ 30 días</option><option value="60">+ 60 días</option><option value="90">+ 90 días</option></select></div><div className="col-md-8"><label className="form-label">Motivo de extensión <span className="text-muted fw-normal">(opcional)</span></label><input id="fin-edit-cargo-motivo-extension" className="form-control" maxLength="250" placeholder="Ej.: acuerdo de pago con responsable" /></div>
               <div className="col-md-4"><label className="form-label">Periodo</label><input id="fin-edit-cargo-periodo" className="form-control" maxLength="30" /></div>
               <div className="col-md-8"><label className="form-label">Descripción</label><input id="fin-edit-cargo-descripcion" className="form-control" maxLength="200" required /></div>
               <div className="col-12"><div className="alert alert-light border small mb-0">El sistema no permite bajar el total por debajo de lo que ya fue pagado.</div></div>
@@ -336,6 +340,20 @@ export default function Pagos() {
               <div className="col-md-4"><label className="form-label">Monto</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-pago-monto" type="number" min="0.01" step="0.01" className="form-control" required /></div></div>
               <div className="col-md-4"><label className="form-label">Método</label><select id="fin-pago-metodo" className="form-select" required><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select></div>
               <div className="col-md-4"><label className="form-label">Referencia</label><input id="fin-pago-referencia" className="form-control" maxLength="100" /></div>
+              <div className="col-12">
+                <div className="finance-term-box">
+                  <div className="form-check form-switch mb-0">
+                    <input id="fin-pago-plazo-habilitado" className="form-check-input" type="checkbox" role="switch" />
+                    <label className="form-check-label fw-semibold" htmlFor="fin-pago-plazo-habilitado">Habilitar o extender plazo de pago</label>
+                  </div>
+                  <small className="text-muted">Úsalo cuando exista un acuerdo de pago. Un abono parcial mantiene el cargo pendiente y no genera factura.</small>
+                  <div id="fin-pago-plazo-campos" className="row g-2 mt-1 hidden">
+                    <div className="col-md-4"><label className="form-label">Nueva fecha</label><input id="fin-pago-plazo-fecha" type="date" className="form-control" /></div>
+                    <div className="col-md-3"><label className="form-label">O extender</label><select id="fin-pago-plazo-dias" className="form-select" defaultValue="0"><option value="0">Sin extensión</option><option value="7">+ 7 días</option><option value="15">+ 15 días</option><option value="30">+ 30 días</option><option value="60">+ 60 días</option><option value="90">+ 90 días</option></select></div>
+                    <div className="col-md-5"><label className="form-label">Motivo</label><input id="fin-pago-plazo-motivo" className="form-control" maxLength="250" placeholder="Ej.: acuerdo con responsable" /></div>
+                  </div>
+                </div>
+              </div>
             </div>
             <hr className="my-4" />
             <div className="d-flex justify-content-between align-items-center mb-2"><h6 className="mb-0">Responsable de facturación</h6><small className="text-muted">Se guarda para próximos pagos</small></div>

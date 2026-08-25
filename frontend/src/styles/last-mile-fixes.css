@@ -689,3 +689,24 @@ body.theme-dark .attendance-student-cell,
 body.theme-dark .attendance-cell {
   color: #f3f8fe !important;
 }
+
+/* Ajustes finales: crear grupo compacto y sin scroll interno. */
+#modalGrupo .modal-dialog { max-width: 820px !important; }
+#modalGrupo .modal-content { max-height: none !important; overflow: visible !important; }
+#modalGrupo .modal-content > form { overflow: visible !important; }
+#modalGrupo .modal-body { max-height: none !important; overflow: visible !important; padding: 1.1rem 1.25rem !important; }
+#modalGrupo .modal-footer { padding: .8rem 1.25rem !important; }
+#modalGrupo .group-create-grid { --bs-gutter-y: .8rem; }
+.schedule-days-week { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: .55rem !important; }
+.schedule-days-week .schedule-day { min-height: 42px; justify-content: center; padding: .55rem .45rem !important; }
+#modalGrupo .form-text { margin-top: .3rem; font-size: .78rem; }
+
+.finance-term-box { border: 1px solid var(--bs-border-color); border-radius: .8rem; padding: .85rem 1rem; background: rgba(15, 23, 42, .025); }
+body.theme-dark .finance-term-box { background: #15243a !important; border-color: #344b66 !important; color: #eaf2fb !important; }
+body.theme-dark .finance-term-box .text-muted { color: #b7c8da !important; }
+
+@media (max-width: 767.98px) {
+  .schedule-days-week { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  #modalGrupo .modal-dialog { margin: .5rem auto !important; width: min(calc(100vw - 1rem), 820px) !important; }
+  #modalGrupo .modal-body { padding: .9rem !important; }
+}

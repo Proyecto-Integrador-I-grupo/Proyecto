@@ -21,9 +21,23 @@ import './styles/final-fixes.css';
 import './styles/ui-polish.css';
 import './styles/accessibility-theme.css';
 import './styles/stability-final.css';
+import './styles/requested-fixes.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };
+
+const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
+try {
+  const saved = JSON.parse(localStorage.getItem(ACCESSIBILITY_KEY) || '{}');
+  document.body.classList.toggle('theme-dark', Boolean(saved.isDark));
+  document.body.classList.toggle('high-contrast', Boolean(saved.highContrast));
+  document.body.classList.toggle('reduced-motion', Boolean(saved.reducedMotion));
+  document.documentElement.classList.toggle('reduced-motion', Boolean(saved.reducedMotion));
+  const fontSize = Number(saved.fontSize || 100);
+  document.body.style.fontSize = `${Number.isFinite(fontSize) ? Math.min(160, Math.max(90, fontSize)) : 100}%`;
+} catch {
+  // Si el valor guardado está dañado se utilizarán los valores predeterminados.
+}
 
 const rootElement = document.getElementById('root');
 

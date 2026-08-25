@@ -39,6 +39,7 @@ import {
    ========================================== */
 
 let allGrupos = [];
+let allSecciones = [];
 
 function wireMatriculaEvents() {
   configurarSelectoresProfesores();
@@ -187,6 +188,7 @@ function wireMatriculaEvents() {
     if (input && !input.dataset.previewWired) {
       input.dataset.previewWired = '1';
       input.addEventListener('input', actualizarPreviewSeccion);
+      input.addEventListener('change', actualizarPreviewSeccion);
       input.addEventListener('blur', () => {
         input.value = normalizarParteSeccion(input.value);
         actualizarPreviewSeccion();
@@ -239,6 +241,16 @@ function wireMatriculaEvents() {
       await populateGruposSelects();
       await populateSeccionesSelect();
       await populateProfesoresSelects(false);
+    });
+  }
+
+  const btnAbrirModalSeccion = document.querySelector('[data-bs-target="#modalSeccion"]');
+  if (btnAbrirModalSeccion && !btnAbrirModalSeccion.dataset.wired) {
+    btnAbrirModalSeccion.dataset.wired = '1';
+    btnAbrirModalSeccion.addEventListener('click', async () => {
+      await populateGruposSelects();
+      await populateSeccionesSelect();
+      setDefaultSeccionPeriodo();
     });
   }
 
@@ -672,6 +684,7 @@ async function populateSeccionesSelect() {
     const res = await apiFetch('/api/procesos/secciones');
     if (!res.ok) return [];
     const secciones = await res.json();
+    allSecciones = Array.isArray(secciones) ? secciones : [];
     const sel = document.getElementById('grupo-seccion');
     const deleteSel = document.getElementById('seccion-delete-select');
     const hint = document.getElementById('grupo-seccion-empty-hint');
@@ -696,9 +709,20 @@ async function populateSeccionesSelect() {
     }
     if (deleteSel) {
       deleteSel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
+      const seccionesOcupadas = new Map(
+        allGrupos
+          .filter((g) => Number(g.id_seccion || 0) > 0)
+          .map((g) => [Number(g.id_seccion), g])
+      );
       secciones.forEach((s) => {
-        const etiqueta = formatearEtiquetaSeccion(s);
-        deleteSel.add(new Option(etiqueta, s.id_seccion));
+        const ocupadaPor = seccionesOcupadas.get(Number(s.id_seccion));
+        const etiquetaBase = formatearEtiquetaSeccion(s);
+        const option = new Option(
+          ocupadaPor ? `${etiquetaBase} · En uso por ${ocupadaPor.nombre_grupo}` : etiquetaBase,
+          s.id_seccion
+        );
+        option.disabled = Boolean(ocupadaPor);
+        deleteSel.add(option);
       });
     }
     if (hint) hint.classList.toggle('hidden', secciones.length > 0);
@@ -1127,18 +1151,45 @@ async function handleGrupoSubmit(e) {
 
 async function handleSeccionSubmit(e) {
   e.preventDefault();
+
   const nivel = normalizarParteSeccion(document.getElementById('seccion-nivel')?.value);
-  const nombreEntrada = normalizarParteSeccion(document.getElementById('seccion-nombre')?.value);
+  const nombreEntrada = normalizarParteSeccion(document.getElementById('seccion-nombre')?.value).toUpperCase();
+  const anioLectivo = parseInt(document.getElementById('seccion-periodo')?.value, 10);
+  const nombre = construirNombreSeccion(nombreEntrada, nivel);
+  const submitBtn = document.getElementById('btn-crear-seccion');
+  const hint = document.getElementById('seccion-validation-hint');
+
+  if (!/^[1-6]$/.test(nivel) || !/^[A-F]$/.test(nombreEntrada) || !Number.isInteger(anioLectivo) || anioLectivo < 2000 || anioLectivo > 2100) {
+    showToast('Selecciona un grado, una letra válida y un año lectivo correcto.', 'error');
+    return;
+  }
+
+  // La validación cliente evita el viaje innecesario; el backend repite la
+  // validación para proteger también peticiones concurrentes.
+  const duplicada = allSecciones.some((s) => {
+    const existente = construirNombreSeccion(s?.nombre, s?.nivel).toUpperCase();
+    return existente === nombre.toUpperCase() && Number(s?.anio_lectivo) === anioLectivo;
+  });
+  if (duplicada) {
+    if (hint) {
+      hint.textContent = `${nombre} (${anioLectivo}) ya está registrada.`;
+      hint.classList.add('text-danger');
+    }
+    showToast(`La sección ${nombre} (${anioLectivo}) ya existe.`, 'warning');
+    return;
+  }
+
   const payload = {
-    nombre: construirNombreSeccion(nombreEntrada, nivel),
+    nombre,
     nivel,
-    anio_lectivo: parseInt(document.getElementById('seccion-periodo')?.value, 10),
+    anio_lectivo: anioLectivo,
     descripcion: normalizarParteSeccion(document.getElementById('seccion-descripcion')?.value)
   };
 
-  if (!nivel || !nombreEntrada || !Number.isInteger(payload.anio_lectivo)) {
-    showToast('Completa nivel, sección y año lectivo.', 'error');
-    return;
+  const original = submitBtn?.innerHTML || '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creando…';
   }
 
   try {
@@ -1149,25 +1200,28 @@ async function handleSeccionSubmit(e) {
     });
 
     const json = await res.json().catch(() => ({}));
-
-    if (res.ok) {
-      showToast('Sección creada correctamente');
-
-      // Esta es una ventana de trabajo continuo: se mantiene abierta hasta
-      // que el administrador la cierre manualmente.
-      document.getElementById('seccion-form')?.reset();
-      setDefaultSeccionPeriodo();
-
-      await populateSeccionesSelect();
-      if (json.id_seccion) {
-        const sel = document.getElementById('grupo-seccion');
-        if (sel) sel.value = json.id_seccion;
-      }
-    } else {
-      showToast(json.error || json.mensaje || 'Error creando sección', 'error');
+    if (!res.ok) {
+      throw new Error(json.error || json.mensaje || 'No se pudo crear la sección.');
     }
-  } catch {
-    showToast('Error creando sección', 'error');
+
+    showToast(`Sección ${nombre} creada correctamente.`, 'success');
+    document.getElementById('seccion-form')?.reset();
+    setDefaultSeccionPeriodo();
+    if (hint) {
+      hint.textContent = 'El sistema impedirá duplicados para el mismo año lectivo.';
+      hint.classList.remove('text-danger');
+    }
+
+    await populateGruposSelects();
+    await populateSeccionesSelect();
+  } catch (error) {
+    showToast(error.message || 'Error creando sección.', 'error');
+  } finally {
+    if (submitBtn?.isConnected) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = original || '<i class="bi bi-plus-circle me-1"></i> Crear sección';
+    }
   }
 }
+
 export { loadMatriculaData, populatePersonaSelects, populateGruposSelects, allGrupos };

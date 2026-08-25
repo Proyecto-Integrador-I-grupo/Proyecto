@@ -4,8 +4,9 @@ export default function Usuarios() {
   const schoolDomain = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com').replace(/^@+/, '');
   return (
     <>
-      <section id="usuarios-view" className="view hidden">
-        <div className="container-fluid py-3">
+      <section id="usuarios-view" className="view hidden permissions-view">
+        <div className="permissions-hero mb-4"><div><span className="permissions-eyebrow">Administración de acceso</span><h2 className="h3 mb-2">Permisos y usuarios</h2><p className="mb-0">Crea cuentas institucionales y administra el nivel de acceso de cada usuario.</p></div><span className="permissions-hero-icon"><i className="bi bi-shield-lock"></i></span></div>
+        <div className="container-fluid px-0 pb-3">
           <div className="row g-3">
             <div className="col-12 col-lg-4">
               <div className="card shadow-sm border-0">

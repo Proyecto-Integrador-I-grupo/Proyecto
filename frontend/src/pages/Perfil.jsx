@@ -23,7 +23,7 @@ export default function Perfil() {
 
 <div className="col-12 col-lg-4">
 <div className="card border-0 shadow-sm perfil-card">
-<div className="card-body text-center">
+<div className="card-body text-center p-4">
 <div className="perfil-avatar">
 <img id="perfil-foto-preview" src="https://via.placeholder.com/150" alt="Perfil" />
 </div>
@@ -58,11 +58,9 @@ export default function Perfil() {
 
 <div className="col-12 col-lg-8">
 <div className="card border-0 shadow-sm">
-<div className="card-body">
+<div className="card-body p-4 p-xl-5">
 <form id="perfil-form">
-<h5 className="mb-4">
-              Información personal
-            </h5>
+<div className="perfil-section-heading"><div><h5 className="mb-1">Información personal</h5><p className="text-muted small mb-0">Mantén actualizados tus datos de contacto.</p></div><i className="bi bi-person-vcard"></i></div>
 <div className="row g-3">
 <div className="col-md-6">
 <label className="form-label">
@@ -90,9 +88,7 @@ export default function Perfil() {
 </div>
 </div>
 <hr className="my-4" />
-<h5 className="mb-4">
-              Seguridad
-            </h5>
+<div className="perfil-section-heading"><div><h5 className="mb-1">Seguridad</h5><p className="text-muted small mb-0">Completa los tres campos solo si deseas cambiar tu contraseña.</p></div><i className="bi bi-shield-lock"></i></div>
 <div className="row g-3">
 <div className="col-md-4">
 <label className="form-label">

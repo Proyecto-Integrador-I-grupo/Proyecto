@@ -27,8 +27,9 @@ export const createSeccion = async (req, res) => {
 
     res.status(201).json(nuevaSeccion);
   } catch (error) {
-    console.error("DETALLE DEL ERROR AL CREAR SECCIÓN:", error);
-    res.status(500).json({ error: error.message || "Error al crear la sección." });
+    const status = Number(error.statusCode) || 500;
+    if (status >= 500) console.error("DETALLE DEL ERROR AL CREAR SECCIÓN:", error);
+    res.status(status).json({ error: error.message || "Error al crear la sección." });
   }
 };
 
@@ -50,7 +51,8 @@ export const deleteSeccion = async (req, res) => {
 
     res.json({ mensaje: "Sección borrada correctamente.", seccion: seccionBorrada });
   } catch (error) {
-    console.error("Error al borrar sección:", error);
-    res.status(500).json({ error: error.message || "Error al borrar la sección." });
+    const status = Number(error.statusCode) || 500;
+    if (status >= 500) console.error("Error al borrar sección:", error);
+    res.status(status).json({ error: error.message || "Error al borrar la sección." });
   }
 };

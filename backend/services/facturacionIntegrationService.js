@@ -239,6 +239,21 @@ async function verificarFacturaRemota(idFactura) {
   }
 }
 
+async function buscarFacturaRemotaPorCargo(idCargo) {
+  const root = obtenerRaizFacturacion();
+  const referencia = `cargo:${Number(idCargo)}`;
+  try {
+    const data = await consumirServicio(
+      `${root}/api/facturas?origen=educontrol&referenciaExterna=${encodeURIComponent(referencia)}&limit=1`,
+      { method: "GET", timeout: 8000, retry429: 0 }
+    );
+    const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    return items[0]?.id ? items[0] : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const apiRoot = obtenerRaizFacturacion();
   const apiUrl = `${apiRoot}/api/facturas`;
@@ -315,6 +330,22 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     cacheDocumentosFactura.clear();
   }
 
+  // Aunque el vínculo local se haya perdido, la referencia `cargo:<id>` es
+  // estable. Consultarla antes de crear evita facturas dobles tras reinicios,
+  // restauraciones o respuestas lentas entre EduControl y Factura Bonita.
+  const remotaExistente = await buscarFacturaRemotaPorCargo(idCargo);
+  if (remotaExistente?.id) {
+    await registrarEstadoFactura(idCargo, remotaExistente.id, "generada", remotaExistente, null);
+    return {
+      ok: true,
+      estado: "generada",
+      id_factura: remotaExistente.id,
+      factura: remotaExistente,
+      mensaje: "La factura ya existía y fue conciliada sin duplicarla.",
+      servicio: apiRoot
+    };
+  }
+
   let configGuardada = null;
   try {
     configGuardada = await obtenerConfiguracionFacturacion();
@@ -387,9 +418,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   // pero existen pagos aplicados, se utiliza el monto efectivamente pagado.
   const baseRegistrada = numero(cargo.monto_base);
   const base = baseRegistrada > 0 ? baseRegistrada : total;
-  const descuento = Math.min(numero(cargo.descuento), base);
-  const impuesto = totalRegistrado > 0 ? numero(cargo.impuesto) : 0;
-  const tarifa = totalRegistrado > 0 ? numero(cargo.impuesto_tarifa) : 0;
+  const descuento = Math.min(Math.max(0, numero(cargo.descuento)), base);
+  const tarifa = Math.max(0, numero(cargo.impuesto_tarifa));
+  const subtotal = Math.max(0, Math.round((base - descuento) * 100) / 100);
+  // El total persistido es la fuente de verdad del cargo ya cobrado. El impuesto
+  // se deriva de ese total para que línea, descuento y total del comprobante
+  // siempre cuadren, incluso con registros históricos/redondeos.
+  const impuesto = Math.max(0, Math.round((total - subtotal) * 100) / 100);
 
   const payload = {
     origen: "educontrol",
@@ -425,13 +460,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
         precioUnitario: base,
         descuento,
         impuesto: { tarifa },
-        subtotal: Math.max(0, base - descuento),
+        subtotal,
         montoTotalLinea: total
       }
     ],
     totales: {
-      totalGravado: tarifa > 0 ? Math.max(0, base - descuento) : 0,
-      totalExento: tarifa > 0 ? 0 : Math.max(0, base - descuento),
+      totalGravado: tarifa > 0 ? subtotal : 0,
+      totalExento: tarifa > 0 ? 0 : subtotal,
       totalDescuentos: descuento,
       totalImpuesto: impuesto,
       totalComprobante: total

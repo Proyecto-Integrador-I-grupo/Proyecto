@@ -1,0 +1,430 @@
+/* ======================================================================
+   EDUCONTROL · DARK MODE MASTER
+   Última capa de contraste. No modifica layout ni comportamiento.
+   Se importa después de todas las hojas existentes para neutralizar
+   colores de modo claro que todavía tenían mayor especificidad.
+   ====================================================================== */
+
+html.theme-dark body.theme-dark {
+  --text-primary: #f3f7fc;
+  --text-secondary: #b9c8d8;
+  --ink-muted: #a8b9cb;
+  --navy: #f3f7fc;
+  --navy-2: #dce7f2;
+  --navy-light: #c4d2e1;
+  --accent: #77c7f2;
+  --accent-hover: #a8dcf8;
+  --accent-soft: #163650;
+  --gold: #f1cc7a;
+  --gold-soft: #3a2e18;
+  --success: #7eddb3;
+  --danger: #ff9eaa;
+  --role-admin: #9ddcff;
+  --role-admin-soft: #183b55;
+  --role-asistente: #a6ead0;
+  --role-asistente-soft: #17382e;
+  --role-profesor: #d2bfff;
+  --role-profesor-soft: #362b55;
+  --bs-body-color: #edf5fd;
+  --bs-secondary-color: #b5c5d6;
+  --bs-tertiary-color: #99adc2;
+  --bs-emphasis-color: #ffffff;
+  --bs-link-color: #8fd4fb;
+  --bs-link-hover-color: #c3eaff;
+  --bs-form-valid-color: #94e8c1;
+  --bs-form-invalid-color: #ffabb5;
+}
+
+html.theme-dark body.theme-dark,
+html.theme-dark body.theme-dark #root,
+html.theme-dark body.theme-dark .app-main,
+html.theme-dark body.theme-dark .view {
+  background-color: #07111d !important;
+  color: #edf5fd !important;
+}
+
+/* ---------- Tipografía global y utilidades Bootstrap ---------- */
+html.theme-dark body.theme-dark #root :is(
+  .text-body,.text-body-emphasis,.text-dark,.text-black,
+  .card-title,.card-title-serif,.page-header h1,.page-header h2,.page-header h3,
+  .modal-title,.student-name,.student-name-cell,.profesor-name-cell,
+  .finance-page-title-block .card-title-serif
+) {
+  color: #f5f9fd !important;
+}
+
+html.theme-dark body.theme-dark #root :is(
+  .text-muted,.text-secondary,.text-body-secondary,.form-text,.small,
+  .finance-page-subtitle,.finance-note,.finance-api-copy small,
+  .faculty-summary small,.app-footer-brand span:not(.app-footer-mark)
+) {
+  color: #b5c5d6 !important;
+  opacity: 1 !important;
+}
+
+html.theme-dark body.theme-dark #root .text-primary { color: #8fd4fb !important; }
+html.theme-dark body.theme-dark #root .text-info { color: #9be7f0 !important; }
+html.theme-dark body.theme-dark #root .text-success { color: #92e4be !important; }
+html.theme-dark body.theme-dark #root .text-warning { color: #f1d287 !important; }
+html.theme-dark body.theme-dark #root .text-danger { color: #ffabb5 !important; }
+html.theme-dark body.theme-dark #root .text-white-50 { color: #c3d0df !important; opacity: 1 !important; }
+html.theme-dark body.theme-dark #root .invalid-feedback { color: #ffabb5 !important; }
+html.theme-dark body.theme-dark #root .valid-feedback { color: #91e6bd !important; }
+
+/* Contadores y ayudas que antes quedaban demasiado apagados. */
+html.theme-dark body.theme-dark #root .edu-char-counter { color: #9fb2c6 !important; }
+html.theme-dark body.theme-dark #root .edu-char-counter.near-limit { color: #f0cd80 !important; }
+html.theme-dark body.theme-dark #root .edu-char-counter.at-limit { color: #ff9da9 !important; }
+
+/* ---------- Footer / encabezados ---------- */
+html.theme-dark body.theme-dark #root .app-footer {
+  background: #0a1625 !important;
+  border-color: #2f455d !important;
+  color: #dce7f2 !important;
+}
+html.theme-dark body.theme-dark #root .app-footer-brand strong { color: #f4f9fd !important; }
+html.theme-dark body.theme-dark #root .app-footer-brand span:not(.app-footer-mark) { color: #aebfd1 !important; }
+html.theme-dark body.theme-dark #root .app-footer-meta { color: #c7d5e4 !important; }
+html.theme-dark body.theme-dark #root .app-footer-divider { background: #3a526d !important; }
+
+/* ---------- Formularios: estados nativos/autofill ---------- */
+html.theme-dark body.theme-dark #root :is(input,textarea,select).form-control,
+html.theme-dark body.theme-dark #root .form-select,
+html.theme-dark body.theme-dark #root .input-group-text {
+  background-color: #0d1a2a !important;
+  color: #f1f7fd !important;
+  border-color: #46617d !important;
+}
+html.theme-dark body.theme-dark #root input:-webkit-autofill,
+html.theme-dark body.theme-dark #root input:-webkit-autofill:hover,
+html.theme-dark body.theme-dark #root input:-webkit-autofill:focus,
+html.theme-dark body.theme-dark #root textarea:-webkit-autofill,
+html.theme-dark body.theme-dark #root select:-webkit-autofill {
+  -webkit-text-fill-color: #f1f7fd !important;
+  -webkit-box-shadow: 0 0 0 1000px #0d1a2a inset !important;
+  caret-color: #ffffff !important;
+  transition: background-color 9999s ease-out 0s;
+}
+html.theme-dark body.theme-dark #root :is(.form-control,.form-select)::placeholder {
+  color: #9aadc1 !important;
+  opacity: 1 !important;
+}
+html.theme-dark body.theme-dark #root .form-label,
+html.theme-dark body.theme-dark #root .form-check-label { color: #dce7f2 !important; }
+
+/* ---------- Botones: contraste consistente ---------- */
+html.theme-dark body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary) {
+  background: #17283d !important;
+  color: #eaf2fa !important;
+  border-color: #57708a !important;
+}
+html.theme-dark body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):hover,
+html.theme-dark body.theme-dark #root :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):focus-visible {
+  background: #243c56 !important;
+  color: #ffffff !important;
+  border-color: #7f9ab5 !important;
+}
+html.theme-dark body.theme-dark #root .btn-link { color: #8fd4fb !important; }
+html.theme-dark body.theme-dark #root .btn-link:hover { color: #c6ebff !important; }
+html.theme-dark body.theme-dark #root .btn:disabled,
+html.theme-dark body.theme-dark #root .btn.disabled {
+  background: #1a2839 !important;
+  color: #9aaec2 !important;
+  border-color: #3d5268 !important;
+  opacity: 1 !important;
+}
+
+/* ---------- Dashboard ---------- */
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-icon-primary {
+  background: #153a58 !important; color: #8ed5ff !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-icon-secondary {
+  background: #30275a !important; color: #c4b2ff !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-icon-success {
+  background: #153a2e !important; color: #91e6bd !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-pill-primary {
+  background: #14324e !important; color: #8ed5ff !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-pill-secondary {
+  background: #2c2750 !important; color: #c9b9ff !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view .dashboard-status-indicator {
+  background: #15382c !important; color: #91e6bd !important;
+}
+html.theme-dark body.theme-dark #root #dashboard-view :is(.dashboard-mini-panel,.dashboard-insight-bar) :is(h1,h2,h3,h4,h5,strong) {
+  color: #f7fbff !important;
+}
+
+/* ---------- Estudiantes ---------- */
+html.theme-dark body.theme-dark #root #estudiantes-view :is(.student-name,.student-name-cell,strong) {
+  color: #f3f8fd !important;
+}
+html.theme-dark body.theme-dark #root #estudiantes-view :is(.filter-bar,.search-box) {
+  background: #101e30 !important;
+  color: #eaf2fa !important;
+  border-color: #344c66 !important;
+}
+
+/* ---------- Profesores ---------- */
+html.theme-dark body.theme-dark #root #profesores-view .faculty-summary-icon {
+  background: #173a58 !important; color: #91d7ff !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .faculty-summary-success {
+  background: #16382d !important; color: #91e3ba !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .faculty-summary-muted {
+  background: #1a2a3d !important; color: #bdccdc !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .faculty-summary-warning {
+  background: #3a2e18 !important; color: #f0ce82 !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .action-btn.restore {
+  background: #17372c !important; color: #a4e9ca !important; border-color: #417d63 !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .action-btn.warn,
+html.theme-dark body.theme-dark #root #profesores-view .profesor-actions-inline .btn-outline-warning {
+  background: #392e18 !important; color: #f2d18a !important; border-color: #836b36 !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view :is(.profesor-group-pill,.profesor-groups-list) {
+  color: #d9e8f5 !important;
+}
+
+/* ---------- Matrícula / grupos / secciones ---------- */
+html.theme-dark body.theme-dark #root #matricula-view .mat-financial-metrics span,
+html.theme-dark body.theme-dark #root #matricula-view .mat-financial-inline-metrics span {
+  background: #16263a !important;
+  color: #e3edf7 !important;
+  border-color: #405974 !important;
+}
+html.theme-dark body.theme-dark #root #matricula-view :is(.mat-financial-copy,.mat-financial-summary,.section-format-example small) {
+  color: #c0cfde !important;
+}
+html.theme-dark body.theme-dark #root #matricula-view :is(.section-form-card,.section-delete-card,.section-name-preview) :is(label,small,p,span) {
+  color: inherit;
+}
+html.theme-dark body.theme-dark #root #matricula-view .section-delete-card .text-muted { color: #b4c4d5 !important; }
+
+/* ---------- Asistencia, incluyendo badges que se usan fuera de la matriz ---------- */
+html.theme-dark body.theme-dark #root :is(.attendance-presente,.attendance-badge.attendance-presente) {
+  background: #173a2c !important; color: #a8eac9 !important; border-color: #438066 !important;
+}
+html.theme-dark body.theme-dark #root :is(.attendance-ausente,.attendance-badge.attendance-ausente) {
+  background: #40242b !important; color: #ffc1c9 !important; border-color: #8a4a54 !important;
+}
+html.theme-dark body.theme-dark #root :is(.attendance-tardia,.attendance-badge.attendance-tardia) {
+  background: #3b3019 !important; color: #f3d68e !important; border-color: #806934 !important;
+}
+html.theme-dark body.theme-dark #root :is(.attendance-justificada,.attendance-badge.attendance-justificada) {
+  background: #1b3150 !important; color: #c7ddff !important; border-color: #4d70a0 !important;
+}
+html.theme-dark body.theme-dark #root #asistencia-view :is(.attendance-page-header,.attendance-summary) :is(h1,h2,h3,strong) {
+  color: #f5f9fd !important;
+}
+
+/* ---------- Finanzas: elementos residuales claros ---------- */
+html.theme-dark body.theme-dark #root #pagos-view .finance-api-copy small,
+html.theme-dark body.theme-dark #root #pagos-view .finance-tool-eyebrow,
+html.theme-dark body.theme-dark #root #pagos-view .finance-history-amount small:last-child {
+  color: #aebfd1 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-summary-icon {
+  background: #18352d !important; color: #9ae4c1 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-summary-icon.danger {
+  background: #40242b !important; color: #ffb4be !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-summary-icon.info {
+  background: #1b3048 !important; color: #b6d6f5 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-record-card.is-overdue {
+  background: linear-gradient(90deg,#301e25 0%,#101d2e 52%) !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-record-person span:not(.finance-record-avatar),
+html.theme-dark body.theme-dark #root #pagos-view .finance-invoice-record-main span:not(.finance-record-avatar) {
+  color: #b4c5d7 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-open-section {
+  background: #12313a !important; color: #9fe4eb !important; border-color: #3f7b84 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-invoice-ready {
+  background: #16362b !important; color: #a9e9ca !important; border-color: #427a63 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-flow-help-icon {
+  background: #24305a !important; color: #c8d2ff !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-config-modal {
+  background: #0d1929 !important; color: #edf5fd !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-card.primary-service,
+html.theme-dark body.theme-dark #root #pagos-view .billing-future-grid > div {
+  background: #132238 !important; color: #e8f1fa !important; border-color: #354d68 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-icon {
+  background: #242f59 !important; color: #c8d1ff !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-status.online,
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-status.configured {
+  background: #15372c !important; color: #a6e9c8 !important; border-color: #407961 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-status.degraded {
+  background: #3b2d16 !important; color: #f2d18a !important; border-color: #7f6632 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .billing-service-status.offline {
+  background: #402229 !important; color: #ffb9c2 !important; border-color: #854650 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-history-record.is-exemption .finance-history-icon {
+  background: #153a2d !important; color: #9ce8c3 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view :is(.finance-invoice-error,.finance-invoice-error-detail) {
+  color: #ffc0c8 !important;
+}
+
+/* ---------- Consultas ---------- */
+html.theme-dark body.theme-dark #root #consultas-view :is(
+  .consulta-documento-titulo,.consulta-documento-valor,.consulta-documento-seccion-titulo,
+  .consulta-stat strong,.consulta-date,.consulta-lista-grupo strong
+) { color: #f2f7fc !important; }
+html.theme-dark body.theme-dark #root #consultas-view :is(
+  .consulta-documento-etiqueta,.consulta-documento-meta,.consulta-documento-footer,
+  .consulta-documento-subtitulo,.consulta-profesor-contexto p,.consulta-stat span
+) { color: #b3c4d5 !important; }
+html.theme-dark body.theme-dark #root #consultas-view :is(.consulta-chip,.consulta-profesor-grupo-chip) {
+  background: #173651 !important; color: #a9ddff !important; border-color: #3e6786 !important;
+}
+html.theme-dark body.theme-dark #root #consultas-view .consulta-stat-icon {
+  background: #173651 !important; color: #9ed8ff !important;
+}
+
+/* ---------- Reportes ---------- */
+html.theme-dark body.theme-dark #root #reportes-view .report-filter-error {
+  background: #402128 !important; color: #ffc2ca !important; border-color: #864650 !important;
+}
+html.theme-dark body.theme-dark #root #reportes-view :is(.audit-action-badge,.preview-reporte-chip) {
+  background: #183c5b !important; color: #b2e1ff !important; border-color: #3d6684 !important;
+}
+html.theme-dark body.theme-dark #root #reportes-view .preview-reporte-logo {
+  background: #16273b !important; border-color: #415b75 !important;
+}
+html.theme-dark body.theme-dark #root #reportes-view :is(.report-preview-metric strong,.preview-reporte-body strong) {
+  color: #f4f9fd !important;
+}
+
+/* ---------- Perfil / usuarios / permisos ---------- */
+html.theme-dark body.theme-dark #root #perfil-view .perfil-section-heading > i {
+  background: #173852 !important; color: #9ed8ff !important;
+}
+html.theme-dark body.theme-dark #root :is(#usuarios-view,#perfil-view) .role-context-notice {
+  background: #17344d !important; border-color: #416884 !important; color: #bce3fa !important;
+}
+html.theme-dark body.theme-dark #root #usuarios-view .role-context-notice.is-asistente {
+  background: #17362c !important; border-color: #417a62 !important; color: #ace8ca !important;
+}
+html.theme-dark body.theme-dark #root #usuarios-view .role-context-notice.is-profesor {
+  background: #312a50 !important; border-color: #65568e !important; color: #d6c9ff !important;
+}
+html.theme-dark body.theme-dark #root #usuarios-view :is(.permissions-eyebrow,.permissions-view small,.permission-card small) {
+  color: #b8c9da !important;
+}
+
+/* ---------- Alertas, dropdowns, pestañas y paginación ---------- */
+html.theme-dark body.theme-dark #root .alert-info,
+html.theme-dark body.theme-dark #root .alert-primary {
+  background: #17364f !important; color: #c9e8fb !important; border-color: #3c6785 !important;
+}
+html.theme-dark body.theme-dark #root .alert-warning {
+  background: #3b2e17 !important; color: #f3d690 !important; border-color: #7d6330 !important;
+}
+html.theme-dark body.theme-dark #root .alert-danger {
+  background: #402129 !important; color: #ffc2cb !important; border-color: #844650 !important;
+}
+html.theme-dark body.theme-dark #root .alert-success {
+  background: #16362b !important; color: #a8e8c9 !important; border-color: #407960 !important;
+}
+html.theme-dark body.theme-dark #root :is(.dropdown-item,.nav-tabs .nav-link,.nav-pills .nav-link,.page-link) {
+  color: #cbd9e7 !important;
+}
+html.theme-dark body.theme-dark #root :is(.dropdown-item:hover,.dropdown-item:focus,.nav-tabs .nav-link:hover,.page-link:hover) {
+  background: #1c3149 !important; color: #ffffff !important;
+}
+html.theme-dark body.theme-dark #root .nav-tabs .nav-link.active {
+  background: #1b3650 !important; color: #ffffff !important; border-color: #4b6d8d !important;
+}
+
+/* ---------- Modales: ayudas y bloques internos ---------- */
+html.theme-dark body.theme-dark #root .modal-content :is(.text-muted,.form-text,small) {
+  color: #b7c7d8 !important;
+}
+html.theme-dark body.theme-dark #root .modal-content :is(.bg-white,.bg-light,.alert-light) {
+  background: #14243a !important; color: #edf5fd !important; border-color: #3a526d !important;
+}
+
+/* Mantiene imágenes/logos claros cuando son contenido real, no superficie UI. */
+html.theme-dark body.theme-dark #root :is(img,svg) { color-scheme: normal; }
+
+/* Alto contraste continúa teniendo prioridad. */
+html.theme-dark body.theme-dark.high-contrast #root,
+html.theme-dark body.high-contrast #root {
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --ink-muted: #ffffff;
+  --accent: #ffff00;
+  --success: #ffffff;
+  --danger: #ffffff;
+  --gold: #ffffff;
+}
+
+/* ---------- Remates detectados por auditoría estática ---------- */
+html.theme-dark body.theme-dark #root :is(.eyebrow,.consultas-eyebrow,.perfil-eyebrow,.permissions-eyebrow) {
+  color: #8fd4fb !important;
+  opacity: 1 !important;
+}
+html.theme-dark body.theme-dark #root .section-header-soft {
+  background: #14243a !important;
+  color: #edf5fd !important;
+  border-color: #3a526d !important;
+}
+html.theme-dark body.theme-dark #root #asistencia-view .attendance-note-btn {
+  color: #a9bdd1 !important;
+  background: transparent !important;
+}
+html.theme-dark body.theme-dark #root #asistencia-view .attendance-note-btn:hover,
+html.theme-dark body.theme-dark #root #asistencia-view .attendance-note-btn:focus-visible {
+  background: #173651 !important;
+  color: #a9ddff !important;
+}
+html.theme-dark body.theme-dark #root #asistencia-view .attendance-note-btn.has-note {
+  background: #1b3555 !important;
+  color: #c7ddff !important;
+}
+html.theme-dark body.theme-dark #root #asistencia-view .observaciones-cell { color: #b2c3d4 !important; }
+html.theme-dark body.theme-dark #root #consultas-view .consulta-profesor-contexto-icon {
+  background: #173651 !important;
+  color: #a9ddff !important;
+}
+html.theme-dark body.theme-dark #root #consultas-view :is(.consulta-filtros-avanzados,.consulta-audit-detail,.consulta-json) {
+  background: #101f31 !important;
+  color: #dce8f4 !important;
+  border-color: #344d67 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-panel-header {
+  border-color: #344c66 !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-panel-title h3 { color: #f5f9fd !important; }
+html.theme-dark body.theme-dark #root #pagos-view .finance-panel-title p { color: #afc0d1 !important; }
+html.theme-dark body.theme-dark #root #pagos-view .finance-invoice-preview-loading {
+  background: #0c1929 !important;
+  color: #edf5fd !important;
+}
+html.theme-dark body.theme-dark #root #pagos-view .finance-invoice-preview-loading span { color: #b5c5d6 !important; }
+html.theme-dark body.theme-dark #root #pagos-view .finance-exemption-heading > i { color: #87cfff !important; }
+html.theme-dark body.theme-dark #root #pagos-view .finance-exemption-heading strong { color: #f4f9fd !important; }
+html.theme-dark body.theme-dark #root #pagos-view .finance-exemption-heading small { color: #b6c7d8 !important; }
+html.theme-dark body.theme-dark #root #perfil-view .perfil-info-item i { color: #8fd4fb !important; }
+html.theme-dark body.theme-dark #root #perfil-view .perfil-avatar img { border-color: #405a75 !important; }
+
+/* Los pills/badges neutrales nunca deben quedar blanco puro ni texto oscuro. */
+html.theme-dark body.theme-dark #root :is(.badge,.status-badge,.dashboard-pill,.finance-count-badge,.consulta-chip,.role-context-notice) {
+  text-shadow: none !important;
+}

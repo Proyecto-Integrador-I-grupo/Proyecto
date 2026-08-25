@@ -509,7 +509,7 @@ export default function Pagos() {
                 <strong>Preparando comprobante…</strong>
                 <span>EduControl está generando el PDF de solo lectura.</span>
               </div>
-              <object id="fin-factura-preview-frame" type="application/pdf" aria-label="Factura EduControl" className="finance-invoice-preview-frame"></object>
+              <iframe id="fin-factura-preview-frame" title="Factura EduControl" aria-label="Factura EduControl" className="finance-invoice-preview-frame" src="about:blank"></iframe>
             </div>
           </div>
         </div>

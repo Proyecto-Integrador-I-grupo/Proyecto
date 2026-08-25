@@ -21,6 +21,7 @@ const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 let accessibilitySettings = {
   isDark: false,
   highContrast: false,
+  reducedMotion: false,
   fontSize: 100
 };
 
@@ -1333,6 +1334,11 @@ function initAccessibilityWidget() {
       'btn-toggle-contrast'
     );
 
+  const reducedMotionBtn =
+    document.getElementById(
+      'btn-toggle-reduced-motion'
+    );
+
   const resetBtn =
     document.getElementById(
       'btn-reset-accessibility'
@@ -1353,6 +1359,7 @@ function initAccessibilityWidget() {
     !menu ||
     !themeBtn ||
     !contrastBtn ||
+    !reducedMotionBtn ||
     !resetBtn ||
     !fontRange ||
     !fontValue
@@ -1422,12 +1429,26 @@ function initAccessibilityWidget() {
     }
   );
 
+  reducedMotionBtn.addEventListener(
+    'click',
+    () => {
+      accessibilitySettings.reducedMotion =
+        !accessibilitySettings.reducedMotion;
+
+      applyAccessibilitySettings();
+
+      menu.classList.add('hidden');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+  );
+
   resetBtn.addEventListener(
     'click',
     () => {
       accessibilitySettings = {
         isDark: false,
         highContrast: false,
+        reducedMotion: false,
         fontSize: 100
       };
 
@@ -1516,6 +1537,16 @@ function applyAccessibilitySettings() {
     accessibilitySettings.highContrast
   );
 
+  document.body.classList.toggle(
+    'reduced-motion',
+    accessibilitySettings.reducedMotion
+  );
+
+  document.documentElement.classList.toggle(
+    'reduced-motion',
+    accessibilitySettings.reducedMotion
+  );
+
   document.body.style.fontSize =
     `${accessibilitySettings.fontSize}%`;
 
@@ -1566,6 +1597,15 @@ function updateAccessibilityControls() {
       'btn-toggle-contrast'
     );
 
+  const reducedMotionBtn =
+    document.getElementById(
+      'btn-toggle-reduced-motion'
+    );
+
+  const themeLabel = document.getElementById('accessibility-theme-label');
+  const contrastLabel = document.getElementById('accessibility-contrast-label');
+  const motionLabel = document.getElementById('accessibility-motion-label');
+
   const fontRange =
     document.getElementById(
       'font-size-range'
@@ -1579,21 +1619,26 @@ function updateAccessibilityControls() {
   if (
     !themeBtn ||
     !contrastBtn ||
+    !reducedMotionBtn ||
     !fontRange ||
     !fontValue
   ) {
     return;
   }
 
-  themeBtn.textContent =
-    accessibilitySettings.isDark
-      ? 'Modo claro'
-      : 'Modo oscuro';
+  if (themeLabel) {
+    themeLabel.textContent = accessibilitySettings.isDark ? 'Modo claro' : 'Modo oscuro';
+  }
+  if (contrastLabel) {
+    contrastLabel.textContent = accessibilitySettings.highContrast ? 'Contraste normal' : 'Alto contraste';
+  }
+  if (motionLabel) {
+    motionLabel.textContent = accessibilitySettings.reducedMotion ? 'Movimiento reducido' : 'Reducir movimiento';
+  }
 
-  contrastBtn.textContent =
-    accessibilitySettings.highContrast
-      ? 'Contraste normal'
-      : 'Alto contraste';
+  themeBtn.setAttribute('aria-pressed', String(accessibilitySettings.isDark));
+  contrastBtn.setAttribute('aria-pressed', String(accessibilitySettings.highContrast));
+  reducedMotionBtn.setAttribute('aria-pressed', String(accessibilitySettings.reducedMotion));
 
   fontRange.value =
     accessibilitySettings.fontSize;
@@ -1609,6 +1654,11 @@ function updateAccessibilityControls() {
   contrastBtn.classList.toggle(
     'accessibility-action-active',
     accessibilitySettings.highContrast
+  );
+
+  reducedMotionBtn.classList.toggle(
+    'accessibility-action-active',
+    accessibilitySettings.reducedMotion
   );
 }
 

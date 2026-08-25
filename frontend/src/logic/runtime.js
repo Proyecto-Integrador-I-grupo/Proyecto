@@ -81,7 +81,6 @@ function lockDocumentForModal() {
   if (!body || body.dataset.eduModalLocked === '1') return;
 
   modalScrollY = window.scrollY || window.pageYOffset || 0;
-  const scrollbarGap = Math.max(0, window.innerWidth - html.clientWidth);
 
   body.dataset.eduModalLocked = '1';
   html.classList.add('edu-modal-lock');
@@ -92,7 +91,10 @@ function lockDocumentForModal() {
   body.style.right = '0';
   body.style.width = '100%';
   body.style.overflow = 'hidden';
-  if (scrollbarGap > 0) body.style.paddingRight = `${scrollbarGap}px`;
+  // Bootstrap compensa la barra de desplazamiento con padding-right. Como el
+  // documento usa scrollbar-gutter estable, esa compensación provoca un salto
+  // horizontal innecesario al abrir/cerrar una ventana.
+  body.style.paddingRight = '0px';
 }
 
 function unlockDocumentAfterModal() {
@@ -111,7 +113,15 @@ function unlockDocumentAfterModal() {
   body.style.removeProperty('width');
   body.style.removeProperty('overflow');
   body.style.removeProperty('padding-right');
-  window.scrollTo({ top: modalScrollY, left: 0, behavior: 'auto' });
+
+  const restoreY = modalScrollY;
+  // Restaurar después de que Bootstrap termine de devolver el foco evita que
+  // el navegador desplace la página al botón que abrió el modal.
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: restoreY, left: 0, behavior: 'auto' });
+    });
+  });
 }
 
 function fitModalToViewport(modal) {
@@ -143,6 +153,8 @@ function initGlobalModalLock() {
   document.addEventListener('show.bs.modal', lockDocumentForModal);
   document.addEventListener('shown.bs.modal', (event) => {
     lockDocumentForModal();
+    // Neutraliza cualquier padding que Bootstrap haya agregado al body.
+    document.body.style.paddingRight = '0px';
     window.requestAnimationFrame(() => fitModalToViewport(event.target));
   });
   document.addEventListener('hidden.bs.modal', (event) => {

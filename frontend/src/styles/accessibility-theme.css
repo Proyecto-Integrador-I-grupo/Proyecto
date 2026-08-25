@@ -1,266 +1,486 @@
+/* =========================================================
+   EduControl · Accesibilidad y temas
+   Se importa de último para que los modos accesibles prevalezcan
+   sin alterar la paleta normal del sistema.
+   ========================================================= */
+
+/* Evita saltos horizontales al abrir/cerrar modales. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* ---------- Widget de accesibilidad ---------- */
+.accessibility-menu {
+  width: min(300px, calc(100vw - 32px));
+  padding: .8rem;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 18px;
+  background: rgba(10, 23, 42, .97);
+  box-shadow: 0 18px 45px rgba(2, 8, 23, .28);
+}
+
+.accessibility-action {
+  display: flex !important;
+  align-items: center;
+  gap: .7rem;
+  min-height: 44px;
+  margin-bottom: .45rem !important;
+  padding: .68rem .78rem !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 11px !important;
+  color: #f8fbff !important;
+  background: rgba(255,255,255,.045) !important;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.accessibility-action i {
+  width: 21px;
+  text-align: center;
+  color: #7dd3fc;
+  font-size: 1.02rem;
+}
+
+.accessibility-action:hover,
+.accessibility-action:focus-visible {
+  background: rgba(56, 189, 248, .14) !important;
+  border-color: rgba(125, 211, 252, .55) !important;
+  outline: none;
+}
+
+.accessibility-action-active {
+  background: linear-gradient(135deg, #1f6fa6, #0f8790) !important;
+  border-color: #67d4df !important;
+  color: #fff !important;
+}
+
+.accessibility-action-active i { color: #fff; }
+
+.accessibility-action-reset {
+  margin-top: .25rem;
+  color: #dce7f4 !important;
+}
+
+.accessibility-control {
+  margin-top: .65rem;
+  padding: .7rem .75rem .55rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.035);
+}
+
+.accessibility-control-label {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .42rem;
+  color: #eef6ff !important;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.accessibility-range { accent-color: #38bdf8; }
+
+/* ---------- Modo oscuro ---------- */
 body.theme-dark {
   color-scheme: dark;
-  background-color: #0F172A !important;
-  color: #F8FAFC !important;
-  --bs-body-color: #F8FAFC;
-  --bs-body-color-rgb: 248, 250, 252;
-  --bs-emphasis-color: #F8FAFC;
-  --bs-emphasis-color-rgb: 248, 250, 252;
-  --bs-secondary-color: #CBD5E1;
-  --bs-secondary-color-rgb: 203, 213, 225;
-  --bs-tertiary-color: #94A3B8;
-  --bs-tertiary-color-rgb: 148, 163, 184;
-  --bs-heading-color: #F8FAFC;
-  --bs-card-color: #F8FAFC;
-  --bs-table-color: #F8FAFC;
-  --bs-table-bg: #111827;
-  --ink-muted: #CBD5E1;
-  --gold: #FBBF24;
-  --gold-soft: #422006;
-  --success: #4ADE80;
-  --danger: #FCA5A5;
-  --role-admin: #FCA5A5;
-  --role-admin-soft: #450A0A;
-  --role-asistente: #86EFAC;
-  --role-asistente-soft: #052E16;
-  --role-profesor: #C4B5FD;
-  --role-profesor-soft: #2E1065;
+  --bs-body-bg: #09111f;
+  --bs-body-color: #edf5ff;
+  --bs-border-color: #2b3a50;
+  --bs-secondary-bg: #142033;
+  --bs-tertiary-bg: #18263b;
+  --bs-emphasis-color: #ffffff;
+  --bs-secondary-color: #b5c4d6;
+  --bs-tertiary-color: #93a4ba;
+  --bs-link-color: #78c8f4;
+  --bs-link-hover-color: #a7dcfb;
+  --text-primary: #edf5ff;
+  --text-secondary: #b5c4d6;
+  --ink-muted: #9eb0c5;
+  --accent: #3e95d1;
+  --accent-hover: #58ace4;
+  --accent-soft: #17364f;
+  --success: #58d39b;
+  --danger: #ff8f9b;
+  --warning: #ffd27a;
+  background: #09111f !important;
+  color: #edf5ff !important;
 }
 
+body.theme-dark #app-shell,
+body.theme-dark .app-main,
+body.theme-dark #content,
+body.theme-dark .view {
+  background: #0b1423 !important;
+  color: #edf5ff !important;
+}
+
+body.theme-dark .topbar {
+  background: #101c2e !important;
+  border-color: #27364b !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+body.theme-dark .sidebar {
+  background: #081121 !important;
+  border-color: #203047 !important;
+}
+
+body.theme-dark .sidebar .nav-link:not(.active) {
+  color: #c7d4e4 !important;
+}
+body.theme-dark .sidebar .nav-link:not(.active) i { color: #8ea5bf !important; }
+body.theme-dark .sidebar .nav-link:not(.active):hover {
+  background: #14243a !important;
+  color: #fff !important;
+}
+body.theme-dark .sidebar .nav-link.active {
+  background: linear-gradient(135deg, #2d6f9a, #237e91) !important;
+  color: #fff !important;
+}
+body.theme-dark .sidebar-user {
+  background: #101c2e !important;
+  border-color: #304158 !important;
+}
+
+/* Superficies principales */
+body.theme-dark :is(
+  .card,
+  .modal-content,
+  .stat-card,
+  .dashboard-mini-panel,
+  .consultas-panel,
+  .consulta-result-card,
+  .consulta-stat,
+  .filter-bar,
+  .card-filtros-asistencia,
+  .profesor-picker,
+  .report-main-card,
+  .report-filter-panel,
+  .report-preview-metric,
+  .report-empty-state,
+  .finance-panel,
+  .finance-tool-card,
+  .finance-summary-card,
+  .finance-api-strip,
+  .billing-emitter-card,
+  .billing-config-intro,
+  .billing-status-card,
+  .billing-config-note,
+  .profile-card,
+  .perfil-card
+) {
+  background: #111d2f !important;
+  border-color: #2b3b52 !important;
+  color: #edf5ff !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16) !important;
+}
+
+body.theme-dark :is(
+  .card-header,
+  .card-footer,
+  .modal-footer,
+  .finance-panel-header,
+  .finance-card-heading,
+  .report-menu-top,
+  .billing-config-footer
+) {
+  background: #111d2f !important;
+  border-color: #2b3b52 !important;
+  color: #edf5ff !important;
+}
+
+body.theme-dark .modal-header.bg-navy,
+body.theme-dark .modal-header.bg-dark,
+body.theme-dark .finance-invoice-preview-header {
+  background: #081528 !important;
+  border-color: #29405b !important;
+  color: #fff !important;
+}
+
+body.theme-dark .modal-backdrop.show {
+  opacity: .68;
+}
+
+/* Textos */
+body.theme-dark :is(
+  h1,h2,h3,h4,h5,h6,
+  .card-title,.card-title-serif,.modal-title,
+  .stat-value,.finance-panel-title h3,.finance-tool-main h3,
+  .consulta-documento-titulo,.consulta-documento-institucion,
+  .consulta-documento-valor,.report-preview-metric strong,
+  .billing-emitter-heading strong,.profile-card-title
+) {
+  color: #f4f8fd !important;
+}
+
+body.theme-dark :is(
+  p,.text-muted,.text-secondary,.small,small,
+  .dashboard-meta,.mini-label,.stat-label,.consulta-meta,.consultas-eyebrow,
+  .consulta-documento-subtitulo,.consulta-documento-meta,.consulta-documento-etiqueta,
+  .consulta-documento-footer,.observaciones-cell,.finance-page-subtitle,
+  .finance-panel-title p,.finance-tool-main p,.finance-api-copy small,.finance-api-copy span,
+  .finance-record-person small,.finance-invoice-record-main small,.billing-emitter-heading small
+) {
+  color: #aebed1 !important;
+}
+
+body.theme-dark .eyebrow { color: #78c8f4 !important; }
+body.theme-dark a { color: #7ccbf4 !important; }
+body.theme-dark a:hover { color: #b4e3fb !important; }
+
+/* Formularios */
+body.theme-dark :is(.form-control,.form-select,.input-group-text,.profesor-select,.dropdown-menu,.list-group-item) {
+  background: #152238 !important;
+  border-color: #40536d !important;
+  color: #eef5fc !important;
+}
+body.theme-dark :is(.form-control,.form-select,.profesor-select):focus {
+  background: #182840 !important;
+  border-color: #5db6e5 !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 .2rem rgba(83, 177, 226, .16) !important;
+}
+body.theme-dark .form-control::placeholder { color: #8194ab !important; opacity: 1; }
+body.theme-dark :is(.form-control,.form-select):disabled,
+body.theme-dark :is(.form-control,.form-select)[readonly] {
+  background: #101b2c !important;
+  color: #8fa1b7 !important;
+  opacity: 1;
+}
+body.theme-dark .form-label { color: #d8e3ef !important; }
+
+/* Tablas */
+body.theme-dark .table,
+body.theme-dark .table-responsive {
+  --bs-table-bg: #111d2f;
+  --bs-table-color: #e9f2fc;
+  --bs-table-border-color: #2c3c52;
+  --bs-table-striped-bg: #142238;
+  --bs-table-striped-color: #edf5ff;
+  --bs-table-hover-bg: #192a43;
+  --bs-table-hover-color: #fff;
+  background: #111d2f !important;
+  color: #e9f2fc !important;
+  border-color: #2c3c52 !important;
+}
+body.theme-dark .table thead th {
+  background: #18263b !important;
+  color: #dce8f6 !important;
+  border-color: #33455e !important;
+}
+body.theme-dark .table tbody td {
+  background: transparent !important;
+  color: #e5eef8 !important;
+  border-color: #28394f !important;
+}
+body.theme-dark .table tbody tr:nth-child(even) { background: #101b2c !important; }
+body.theme-dark .table tbody tr:hover { background: #172940 !important; }
+
+/* Botones: conservar jerarquía y no convertir todo en gris */
+body.theme-dark .btn-primary {
+  background: linear-gradient(135deg, #347fd1, #4a63d5) !important;
+  border-color: #598fe2 !important;
+  color: #fff !important;
+}
+body.theme-dark .btn-primary:hover { filter: brightness(1.08); }
+body.theme-dark :is(.btn-outline-primary,.btn-outline-info) {
+  background: #10263a !important;
+  border-color: #4aa4d6 !important;
+  color: #8ed7f6 !important;
+}
+body.theme-dark .btn-outline-secondary {
+  background: #152238 !important;
+  border-color: #52647b !important;
+  color: #d8e3ef !important;
+}
+body.theme-dark .btn-outline-danger {
+  background: #321b25 !important;
+  border-color: #a34e62 !important;
+  color: #ffb0ba !important;
+}
+body.theme-dark .btn-outline-success {
+  background: #102d27 !important;
+  border-color: #388e70 !important;
+  color: #82e4bb !important;
+}
+body.theme-dark .btn-light {
+  background: #e8f0f9 !important;
+  border-color: #e8f0f9 !important;
+  color: #102033 !important;
+}
+
+/* Estados y badges */
+body.theme-dark .badge.bg-success,
+body.theme-dark .status-badge.success,
+body.theme-dark .badge.text-bg-success { background: #176747 !important; color: #edfff8 !important; }
+body.theme-dark .badge.bg-danger,
+body.theme-dark .status-badge.danger,
+body.theme-dark .badge.text-bg-danger { background: #7c3040 !important; color: #fff2f4 !important; }
+body.theme-dark .badge.bg-warning,
+body.theme-dark .badge.text-bg-warning { background: #76551b !important; color: #fff4cd !important; }
+body.theme-dark .role-badge-admin { background: #1d4766 !important; color: #d6efff !important; }
+body.theme-dark .role-badge-asistente { background: #174a3d !important; color: #baf3df !important; }
+body.theme-dark .role-badge-profesor { background: #45336e !important; color: #e1d7ff !important; }
+
+/* Dashboard / consultas / reportes */
+body.theme-dark .consultas-hero,
+body.theme-dark .consulta-preview-area {
+  background: linear-gradient(135deg, #10253a, #121c2e) !important;
+  border-color: #31435b !important;
+}
+body.theme-dark .consulta-documento,
+body.theme-dark .consulta-documento-campo,
+body.theme-dark .audit-json,
+body.theme-dark .audit-preview-note,
+body.theme-dark .audit-detail-btn {
+  background: #162338 !important;
+  border-color: #34465f !important;
+  color: #e9f2fc !important;
+}
+body.theme-dark .consulta-documento-seccion-titulo,
+body.theme-dark .consulta-documento-footer { border-color: #34465f !important; }
+
+/* Pagos y facturación */
+body.theme-dark .finance-page-header { border-color: #2b3b52 !important; }
+body.theme-dark .finance-record-card,
+body.theme-dark .finance-invoice-record,
+body.theme-dark .finance-record-money > div,
+body.theme-dark .finance-filter-row,
+body.theme-dark .billing-field,
+body.theme-dark .billing-logo-box,
+body.theme-dark .extra-availability {
+  background: #142238 !important;
+  border-color: #31435a !important;
+  color: #e8f1fb !important;
+}
+body.theme-dark .finance-record-card:hover,
+body.theme-dark .finance-invoice-record:hover { background: #172a43 !important; border-color: #42607d !important; }
+body.theme-dark .finance-record-person strong,
+body.theme-dark .finance-invoice-record-main strong,
+body.theme-dark .finance-record-money strong,
+body.theme-dark .finance-invoice-record-total strong { color: #edf5ff !important; }
+body.theme-dark .finance-record-person span,
+body.theme-dark .finance-invoice-record-main span,
+body.theme-dark .finance-record-money span,
+body.theme-dark .finance-invoice-record-total span { color: #9fb1c6 !important; }
+body.theme-dark .finance-count-badge { background: #25345a !important; border-color: #42598b !important; color: #cbd6ff !important; }
+body.theme-dark .finance-count-badge.invoice { background: #153d43 !important; border-color: #2e6b73 !important; color: #a8eef2 !important; }
+body.theme-dark .finance-api-dot.online { background: #49d39c; }
+body.theme-dark .finance-invoice-preview-body { background: #0a111d !important; }
+
+/* Perfil */
+body.theme-dark #perfil-view .perfil-hero {
+  background: linear-gradient(135deg, #123b65, #165b7b) !important;
+  border-color: #32759a !important;
+}
+body.theme-dark #perfil-view .perfil-hero :is(h1,h2,h3,p,.perfil-eyebrow) { color: #fff !important; }
+
+/* Pie */
+body.theme-dark .app-footer {
+  background: #0d1828 !important;
+  border-color: #293a51 !important;
+  color: #aebed1 !important;
+}
+body.theme-dark .app-footer strong { color: #f3f7fc !important; }
+
+/* ---------- Alto contraste ---------- */
 body.high-contrast {
   color-scheme: dark;
-  background-color: #000000 !important;
-  color: #FFFFFF !important;
-  --bs-body-color: #FFFFFF;
-  --bs-body-color-rgb: 255, 255, 255;
-  --bs-emphasis-color: #FFFFFF;
-  --bs-emphasis-color-rgb: 255, 255, 255;
-  --bs-secondary-color: #FFFFFF;
-  --bs-secondary-color-rgb: 255, 255, 255;
-  --bs-tertiary-color: #FFFFFF;
-  --bs-tertiary-color-rgb: 255, 255, 255;
-  --bs-heading-color: #FFFFFF;
-  --bs-card-color: #FFFFFF;
-  --bs-table-color: #FFFFFF;
-  --bs-table-bg: #000000;
-  --ink-muted: #FFFFFF;
-  --gold: #FFD700;
-  --gold-soft: #000000;
-  --success: #00FF66;
-  --danger: #FF8080;
-  --role-admin: #FF8080;
-  --role-admin-soft: #000000;
-  --role-asistente: #00FF66;
-  --role-asistente-soft: #000000;
-  --role-profesor: #D6B3FF;
-  --role-profesor-soft: #000000;
+  --bs-body-bg: #000;
+  --bs-body-color: #fff;
+  --bs-border-color: #fff;
+  --text-primary: #fff;
+  --text-secondary: #fff;
+  --accent: #ffdf00;
+  --accent-hover: #fff173;
+  --success: #39ff88;
+  --danger: #ff7b88;
+  background: #000 !important;
+  color: #fff !important;
 }
 
-body.theme-dark #content,
-body.high-contrast #content {
-  color: var(--text-primary);
+body.high-contrast :is(#app-shell,.app-main,#content,.view,.topbar,.sidebar,.card,.card-body,.card-header,.card-footer,.modal-content,.modal-header,.modal-footer,.stat-card,.dashboard-mini-panel,.consultas-panel,.consulta-result-card,.consulta-stat,.consulta-documento,.consulta-preview-area,.filter-bar,.card-filtros-asistencia,.profesor-picker,.report-main-card,.report-filter-panel,.report-preview-metric,.report-empty-state,.finance-panel,.finance-tool-card,.finance-summary-card,.finance-api-strip,.finance-record-card,.finance-invoice-record,.billing-emitter-card,.billing-config-intro,.billing-status-card,.billing-config-note,.app-footer) {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: none !important;
 }
-
-body.theme-dark .stat-card,
-body.theme-dark .dashboard-mini-panel,
-body.theme-dark .consulta-result-card,
-body.theme-dark .consultas-hero,
-body.theme-dark .consulta-stat,
-body.theme-dark .filter-bar,
-body.theme-dark .card-filtros-asistencia,
-body.theme-dark .profesor-picker,
-body.theme-dark #collapseGraficosAsistencia .card-body {
-  background: #111827 !important;
-  border-color: #334155 !important;
-  color: #F8FAFC;
+body.high-contrast :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,label,.text-muted,.text-secondary,.text-dark,.text-primary,.form-label,.modal-title,.card-title,.card-title-serif) {
+  color: #fff !important;
 }
-
-body.theme-dark .dashboard-mini-panel strong,
-body.theme-dark .stat-value,
-body.theme-dark .consulta-documento-institucion,
-body.theme-dark .consulta-documento-titulo,
-body.theme-dark .consulta-documento-meta strong,
-body.theme-dark .consulta-documento-valor,
-body.theme-dark .consulta-documento-seccion-titulo,
-body.theme-dark .consulta-documento-footer strong,
-body.theme-dark .consulta-stat-icon {
-  color: #F8FAFC !important;
+body.high-contrast a { color: #ffed4a !important; text-decoration: underline; }
+body.high-contrast :is(.form-control,.form-select,.input-group-text,.profesor-select,.dropdown-menu,.list-group-item) {
+  background: #000 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
 }
-
-body.theme-dark .dashboard-meta,
-body.theme-dark .mini-label,
-body.theme-dark .stat-label,
-body.theme-dark .consulta-meta,
-body.theme-dark .consultas-eyebrow,
-body.theme-dark .consulta-documento-subtitulo,
-body.theme-dark .consulta-documento-meta,
-body.theme-dark .consulta-documento-etiqueta,
-body.theme-dark .consulta-documento-footer,
-body.theme-dark .observaciones-cell,
-body.theme-dark .card-filtros-asistencia .form-label {
-  color: #CBD5E1 !important;
+body.high-contrast .form-control::placeholder { color: #e5e5e5 !important; }
+body.high-contrast :is(.form-control,.form-select,.btn,a,button):focus-visible {
+  outline: 3px solid #ffdf00 !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
 }
-
-body.theme-dark .consulta-preview-area {
-  background: linear-gradient(135deg, #1F2937, #111827) !important;
+body.high-contrast .table {
+  --bs-table-bg: #000;
+  --bs-table-color: #fff;
+  --bs-table-border-color: #fff;
+  background: #000 !important;
+  color: #fff !important;
 }
-
-body.theme-dark .consulta-documento {
-  background: #1F2937 !important;
-  border-color: #475569 !important;
-  color: #F8FAFC !important;
+body.high-contrast .table :is(th,td) { background: #000 !important; color: #fff !important; border-color: #fff !important; }
+body.high-contrast .btn-primary,
+body.high-contrast .accessibility-action-active {
+  background: #ffdf00 !important;
+  border: 2px solid #ffdf00 !important;
+  color: #000 !important;
+  font-weight: 900;
 }
-
-body.theme-dark .consulta-documento-campo,
-body.theme-dark .consulta-documento-seccion-titulo,
-body.theme-dark .consulta-documento-footer {
-  border-color: #475569 !important;
+body.high-contrast :is(.btn-outline-primary,.btn-outline-secondary,.btn-outline-info,.btn-outline-success,.btn-outline-danger,.btn-light) {
+  background: #000 !important;
+  border: 2px solid #fff !important;
+  color: #fff !important;
 }
-
-body.theme-dark .form-control,
-body.theme-dark .form-select,
-body.theme-dark .profesor-select,
-body.theme-dark #modalMatricula input[type="text"],
-body.theme-dark #modalGrupo input[type="text"] {
-  background-color: #1F2937 !important;
-  border-color: #64748B !important;
-  color: #F8FAFC !important;
+body.high-contrast .badge,
+body.high-contrast .role-badge,
+body.high-contrast .status-badge {
+  background: #000 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
 }
-
-body.theme-dark .form-control::placeholder,
-body.theme-dark .form-select:disabled,
-body.theme-dark .profesor-select:disabled {
-  color: #CBD5E1 !important;
-}
-
-body.theme-dark .filter-bar,
-body.theme-dark .card-filtros-asistencia,
-body.theme-dark .profesor-picker {
-  background: #1F2937 !important;
-}
-
-body.theme-dark .attendance-presente { background: #14532D !important; }
-body.theme-dark .attendance-ausente { background: #450A0A !important; }
-body.theme-dark .attendance-tardia { background: #422006 !important; }
-body.theme-dark .attendance-justificada { background: #1E3A8A !important; }
-
-body.high-contrast .stat-card,
-body.high-contrast .dashboard-mini-panel,
-body.high-contrast .consulta-result-card,
-body.high-contrast .consultas-hero,
-body.high-contrast .consulta-stat,
-body.high-contrast .filter-bar,
-body.high-contrast .card-filtros-asistencia,
-body.high-contrast .profesor-picker,
-body.high-contrast .consulta-documento,
-body.high-contrast #collapseGraficosAsistencia .card-body,
-body.high-contrast .form-control,
-body.high-contrast .form-select,
-body.high-contrast .profesor-select {
-  background: #000000 !important;
-  border-color: #FFFFFF !important;
-  color: #FFFFFF !important;
-}
-
-body.high-contrast .dashboard-mini-panel strong,
-body.high-contrast .stat-value,
-body.high-contrast .consulta-documento,
-body.high-contrast .consulta-documento-institucion,
-body.high-contrast .consulta-documento-titulo,
-body.high-contrast .consulta-documento-meta strong,
-body.high-contrast .consulta-documento-valor,
-body.high-contrast .consulta-documento-seccion-titulo,
-body.high-contrast .consulta-documento-footer strong,
-body.high-contrast .dashboard-meta,
-body.high-contrast .mini-label,
-body.high-contrast .stat-label,
-body.high-contrast .consulta-meta,
-body.high-contrast .consultas-eyebrow,
-body.high-contrast .consulta-documento-subtitulo,
-body.high-contrast .consulta-documento-meta,
-body.high-contrast .consulta-documento-etiqueta,
-body.high-contrast .consulta-documento-footer,
-body.high-contrast .observaciones-cell,
-body.high-contrast .card-filtros-asistencia .form-label {
-  color: #FFFFFF !important;
-}
-
-body.high-contrast .consulta-preview-area {
-  background: #000000 !important;
-}
-
-body.high-contrast .consulta-documento-campo,
-body.high-contrast .consulta-documento-seccion-titulo,
-body.high-contrast .consulta-documento-footer {
-  border-color: #FFFFFF !important;
-}
-
 body.high-contrast .attendance-presente,
 body.high-contrast .attendance-ausente,
 body.high-contrast .attendance-tardia,
-body.high-contrast .attendance-justificada {
-  background: #000000 !important;
-  border: 1px solid currentColor;
+body.high-contrast .attendance-justificada { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }
+body.high-contrast .sidebar .nav-link.active { background: #ffdf00 !important; color: #000 !important; }
+body.high-contrast .sidebar .nav-link.active * { color: #000 !important; }
+body.high-contrast .accessibility-menu { background: #000 !important; border: 2px solid #fff !important; }
+
+/* ---------- Nueva función: reducir movimiento ---------- */
+html.reduced-motion,
+html.reduced-motion:focus-within {
+  scroll-behavior: auto !important;
+}
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+body.reduced-motion .spinner-border {
+  animation-duration: 1.4s !important;
 }
 
-body.theme-dark .text-dark,
-body.high-contrast .text-dark {
-  color: var(--text-primary) !important;
-}
-
-body.theme-dark .text-body,
-body.theme-dark .text-black,
-body.high-contrast .text-body,
-body.high-contrast .text-black {
-  color: var(--text-primary) !important;
-}
-
-body.theme-dark .table > :not(caption) > * > *,
-body.high-contrast .table > :not(caption) > * > * {
-  color: var(--bs-table-color) !important;
-  background-color: var(--bs-table-bg);
-}
-
-body.theme-dark .report-filter-panel,
-body.theme-dark .report-preview-metric,
-body.theme-dark .report-empty-state,
-body.theme-dark .audit-detail-btn,
-body.theme-dark .audit-json,
-body.theme-dark .audit-preview-note,
-body.high-contrast .report-filter-panel,
-body.high-contrast .report-preview-metric,
-body.high-contrast .report-empty-state,
-body.high-contrast .audit-detail-btn,
-body.high-contrast .audit-json,
-body.high-contrast .audit-preview-note {
-  background: #1F2937 !important;
-  border-color: #475569 !important;
-  color: var(--text-primary) !important;
-}
-
-body.high-contrast .report-filter-panel,
-body.high-contrast .report-preview-metric,
-body.high-contrast .report-empty-state,
-body.high-contrast .audit-detail-btn,
-body.high-contrast .audit-json,
-body.high-contrast .audit-preview-note {
-  background: #000000 !important;
-  border-color: #FFFFFF !important;
-}
-
-body.theme-dark .report-table thead th,
-body.theme-dark #preview-reporte-tabla thead th,
-body.high-contrast .report-table thead th,
-body.high-contrast #preview-reporte-tabla thead th,
-body.theme-dark .report-preview-metric span,
-body.high-contrast .report-preview-metric span {
-  background: inherit !important;
-  color: var(--text-secondary) !important;
-}
-
-body.theme-dark .report-preview-metric strong,
-body.high-contrast .report-preview-metric strong,
-body.theme-dark .audit-detail-btn,
-body.high-contrast .audit-detail-btn {
-  color: var(--text-primary) !important;
+/* Respeta la preferencia del sistema incluso antes de activar el control manual. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

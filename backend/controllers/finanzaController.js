@@ -156,6 +156,7 @@ export async function getDocumentoFactura(req, res) {
     res.setHeader("Content-Type", documento.contentType);
     res.setHeader("Content-Disposition", `inline; filename="${documento.filename}"`);
     res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-EduControl-Document-Mode", documento.formatoEntregado || (documento.contentType?.includes('html') ? 'html' : 'pdf'));
     res.send(documento.buffer);
   } catch (e) { responderError(res, e, 502); }
 }

@@ -7,7 +7,7 @@ export default function Matricula() {
     <section id="matricula-view" className="view hidden">
       <div className="row g-4">
         <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-journal-plus text-primary fs-1 mb-2"></i><h3 className="h5">Nueva Matrícula</h3><p className="text-muted small mb-3">Asigna un estudiante a un grupo de clase.</p><button type="button" className="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modalMatricula">Procesar Matrícula</button></div></div></div>
-        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-people text-primary fs-1 mb-2"></i><h3 className="h5">Grupos</h3><p className="text-muted small mb-3">Configura las aulas, capacidades y docentes.</p><div className="d-grid gap-2 w-100"><button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalGrupo"><i className="bi bi-plus-circle me-1"></i>Crear Grupo</button><button type="button" className="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalGestionGrupo">Gestionar Grupo</button></div></div></div></div>
+        <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-people text-primary fs-1 mb-2"></i><h3 className="h5">Grupos</h3><p className="text-muted small mb-3">Configura las aulas, capacidades y docentes.</p><div className="d-grid gap-2 w-100"><button type="button" className="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalGrupo"><i className="bi bi-plus-circle me-1"></i>Crear Grupo</button><button type="button" className="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalGestionGrupo">Gestionar Grupo</button></div></div></div></div>
         <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-person-gear text-primary fs-1 mb-2"></i><h3 className="h5">Gestionar Matrícula</h3><p className="text-muted small mb-3">Transfiere o retira estudiantes de un grupo.</p><button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalGestionMatricula">Gestionar Matrícula</button></div></div></div>
         <div className="col-6 col-md-3"><div className="card border-0 shadow-sm text-center p-3 h-100"><div className="card-body d-flex flex-column align-items-center justify-content-center"><i className="bi bi-diagram-3 text-primary fs-1 mb-2"></i><h3 className="h5">Secciones</h3><p className="text-muted small mb-3">Administra el catálogo académico y sus secciones.</p><button type="button" className="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#modalSeccion">Nueva Sección</button></div></div></div>
       </div>
@@ -54,13 +54,13 @@ export default function Matricula() {
                   <h6 className="mb-1">Crear nueva sección</h6>
                   <p className="text-muted small mb-1">Completa el grado y la letra. El sistema la mostrará en formato <strong>1-A</strong>.</p><div className="section-format-example"><i className="bi bi-lightbulb"></i><span><strong>Ejemplo:</strong> grado 1 + sección A = <strong>1-A</strong>. Grado 6 + sección B = <strong>6-B</strong>.</span></div>
                 </div>
-                <form id="seccion-form">
+                <form id="seccion-form" noValidate>
                   <div className="row g-3">
                     <div className="col-md-4"><label className="form-label">Nivel / grado</label><select id="seccion-nivel" className="form-select" defaultValue="1" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
                     <div className="col-md-4"><label className="form-label">Letra / sección</label><select id="seccion-nombre" className="form-select" defaultValue="A" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option></select></div>
                     <div className="col-md-4"><label className="form-label">Año lectivo</label><input id="seccion-periodo" type="number" min="2000" max="2100" className="form-control" placeholder="Ej.: 2026" required /></div>
                     <div className="col-12"><div id="seccion-preview" className="section-name-preview"><span>Vista previa</span><strong>1-A</strong></div></div>
-                    <div className="col-12"><label className="form-label">Descripción <span className="text-muted fw-normal">(opcional)</span></label><textarea id="seccion-descripcion" className="form-control" rows="2" maxLength="250" placeholder="Ej.: Primer grado, sección A"></textarea></div>
+                    <div className="col-12"><label className="form-label">Descripción <span className="text-muted fw-normal">(opcional)</span></label><textarea id="seccion-descripcion" className="form-control" rows="2" maxLength="250" placeholder="Ej.: Primer grado, sección A (puedes dejarlo vacío)" aria-required="false"></textarea></div>
                     <div className="col-12"><div id="seccion-validation-hint" className="form-text mb-2">El sistema impedirá duplicados para el mismo año lectivo.</div><button id="btn-crear-seccion" type="submit" className="btn btn-primary w-100"><i className="bi bi-plus-circle me-1"></i> Crear sección</button></div>
                   </div>
                 </form>
@@ -72,7 +72,7 @@ export default function Matricula() {
                 <p className="text-muted small">Selecciona una sección únicamente si necesitas eliminarla.</p>
                 <label className="form-label">Sección</label>
                 <select id="seccion-delete-select" className="form-select mb-3"><option value="" disabled>Seleccionar sección</option></select>
-                <button type="button" id="btn-borrar-seccion" className="btn btn-outline-danger w-100"><i className="bi bi-trash me-1"></i> Eliminar Sección</button>
+                <button type="button" id="btn-borrar-seccion" className="btn btn-outline-danger w-100" disabled><i className="bi bi-trash me-1"></i> Eliminar Sección</button>
               </div>
             </div>
           </div>

@@ -1,0 +1,363 @@
+/* =========================================================
+   EduControl · últimos ajustes visuales y de usabilidad
+   Esta capa se importa de último para resolver estilos heredados.
+   ========================================================= */
+
+/* Scroll disponible, barras invisibles en toda la aplicación. */
+html,
+body,
+#root,
+#app-shell,
+.app-main,
+#content,
+.modal,
+.modal-dialog,
+.modal-content,
+.modal-body,
+.table-responsive,
+.attendance-matrix-wrap,
+.finance-local-scroll,
+.profesores-table-wrap,
+.report-preview-table-wrap,
+.audit-json,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+
+/* Evita que los modales se sientan estirados sin quitarles contenido. */
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+  min-height: 0 !important;
+  height: auto !important;
+  align-items: center !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-content {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 32px) !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Tamaños más naturales para procesos frecuentes. */
+#modalRegistrarPago .modal-dialog,
+#modalClaseExtra .modal-dialog,
+#modalEditarCargo .modal-dialog,
+#modalNuevoCargo .modal-dialog {
+  width: min(calc(100vw - 32px), 820px) !important;
+  max-width: min(calc(100vw - 32px), 820px) !important;
+}
+
+#modalSeccion .modal-dialog {
+  width: min(calc(100vw - 32px), 780px) !important;
+  max-width: min(calc(100vw - 32px), 780px) !important;
+}
+
+/* Crear Grupo debe tener exactamente la misma tonalidad que Gestionar Grupo. */
+#matricula-view [data-bs-target="#modalGrupo"] {
+  background: transparent !important;
+  color: var(--bs-secondary-color, #5f6f80) !important;
+  border-color: #708096 !important;
+  box-shadow: none !important;
+}
+
+#matricula-view [data-bs-target="#modalGrupo"]:hover,
+#matricula-view [data-bs-target="#modalGrupo"]:focus-visible {
+  background: #5f6f80 !important;
+  border-color: #5f6f80 !important;
+  color: #fff !important;
+}
+
+/* Secciones: botón de eliminación más discreto y claro. */
+#btn-borrar-seccion {
+  min-height: 44px;
+  border-radius: 11px !important;
+  font-weight: 700;
+  background: transparent !important;
+  border-color: #d46875 !important;
+  color: #a83f4d !important;
+}
+
+#btn-borrar-seccion:hover:not(:disabled),
+#btn-borrar-seccion:focus-visible:not(:disabled) {
+  background: #a83f4d !important;
+  border-color: #a83f4d !important;
+  color: #fff !important;
+}
+
+#btn-borrar-seccion:disabled {
+  opacity: .48 !important;
+  cursor: not-allowed !important;
+}
+
+/* ===================== MODO OSCURO ===================== */
+body.theme-dark {
+  --edu-dark-bg: #0b1423;
+  --edu-dark-surface: #111d2f;
+  --edu-dark-surface-2: #15243a;
+  --edu-dark-surface-3: #1a2c45;
+  --edu-dark-border: #344b66;
+  --edu-dark-text: #eef6ff;
+  --edu-dark-muted: #b8c8da;
+}
+
+body.theme-dark,
+body.theme-dark #app-shell,
+body.theme-dark .app-main,
+body.theme-dark #content,
+body.theme-dark .view {
+  background: var(--edu-dark-bg) !important;
+  color: var(--edu-dark-text) !important;
+}
+
+/* Ninguna superficie de trabajo debe quedar blanca o gris muy claro. */
+body.theme-dark :is(
+  .card,.card-body,.card-header,.card-footer,
+  .modal-content,.modal-body,.modal-footer,
+  .dropdown-menu,.list-group-item,.accordion-item,.accordion-button,
+  .filter-bar,.search-box,.profesor-picker,
+  .section-form-card,.section-delete-card,.section-name-preview,
+  .attendance-history-panel,.attendance-history-toolbar,.attendance-summary,.attendance-legend,
+  .finance-panel,.finance-tool-card,.finance-summary-card,.finance-api-strip,.finance-filter-row,
+  .finance-record-card,.finance-history-record,.finance-invoice-record,.finance-payment-context,
+  .billing-emitter-card,.billing-config-intro,.billing-status-card,.billing-config-note,.billing-service-card,
+  .permissions-view .card,.perfil-info-item,.consulta-result-card,.consulta-stat,.consulta-documento,
+  .report-main-card,.report-filter-panel,.report-preview-metric,.report-empty-state
+) {
+  background: var(--edu-dark-surface) !important;
+  color: var(--edu-dark-text) !important;
+  border-color: var(--edu-dark-border) !important;
+}
+
+/* Texto general: títulos claros y secundarios visibles. */
+body.theme-dark :is(
+  .view,.modal-content,.dropdown-menu,.offcanvas
+) :is(h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.card-title,.modal-title,.form-label,legend) {
+  color: #f7fbff !important;
+}
+
+body.theme-dark :is(
+  .view,.modal-content,.dropdown-menu,.offcanvas
+) :is(p,small,.small,.text-muted,.text-secondary,.form-text,.help-text,.card-subtitle) {
+  color: var(--edu-dark-muted) !important;
+}
+
+body.theme-dark :is(.view,.modal-content) strong {
+  color: inherit;
+}
+
+/* Formularios nunca blancos en dark mode. */
+body.theme-dark :is(
+  .form-control,.form-select,.input-group-text,.profesor-select,
+  input[type="date"],input[type="time"],input[type="number"],textarea
+) {
+  background: #0d1929 !important;
+  color: #f2f7fd !important;
+  border-color: #405872 !important;
+}
+
+body.theme-dark :is(.form-control,.form-select,.input-group-text):focus {
+  background: #0e1c2e !important;
+  color: #fff !important;
+  border-color: #62a7d2 !important;
+  box-shadow: 0 0 0 .18rem rgba(79,154,205,.18) !important;
+}
+
+body.theme-dark :is(.form-control,.form-select)::placeholder {
+  color: #9bacc0 !important;
+  opacity: 1 !important;
+}
+
+body.theme-dark :is(.form-control,.form-select):disabled,
+body.theme-dark :is(.form-control,.form-select)[readonly] {
+  background: #18263a !important;
+  color: #b0bfd0 !important;
+  opacity: 1 !important;
+}
+
+body.theme-dark option {
+  background: #111d2f !important;
+  color: #eef6ff !important;
+}
+
+/* Botones outline/light: nada de rectángulos blancos en modo oscuro. */
+body.theme-dark :is(
+  .btn-light,.btn-outline-light,.btn-outline-secondary,
+  .btn-outline-primary,.btn-outline-info,.btn-outline-success,
+  .btn-outline-warning,.btn-outline-danger
+) {
+  background: #13233a !important;
+  color: #dce9f6 !important;
+  border-color: #49627e !important;
+}
+
+body.theme-dark :is(.btn-light,.btn-outline-light,.btn-outline-secondary):hover,
+body.theme-dark :is(.btn-light,.btn-outline-light,.btn-outline-secondary):focus-visible {
+  background: #213650 !important;
+  color: #fff !important;
+  border-color: #6e8aaa !important;
+}
+
+body.theme-dark .btn-outline-primary { color: #9ed8ff !important; border-color: #4c86ad !important; }
+body.theme-dark .btn-outline-primary:hover { background: #245f89 !important; color: #fff !important; }
+body.theme-dark .btn-outline-info { color: #9ee7f2 !important; border-color: #4c8f9b !important; }
+body.theme-dark .btn-outline-info:hover { background: #246d78 !important; color: #fff !important; }
+body.theme-dark .btn-outline-success { color: #a8eacb !important; border-color: #4d8b70 !important; }
+body.theme-dark .btn-outline-success:hover { background: #28664e !important; color: #fff !important; }
+body.theme-dark .btn-outline-warning { color: #f5d79a !important; border-color: #8c733d !important; }
+body.theme-dark .btn-outline-warning:hover { background: #735b26 !important; color: #fff !important; }
+body.theme-dark .btn-outline-danger { color: #ffb2bc !important; border-color: #92505a !important; }
+body.theme-dark .btn-outline-danger:hover { background: #7e3641 !important; color: #fff !important; }
+
+/* Crear/Gestionar Grupo: misma tonalidad también en oscuro. */
+body.theme-dark #matricula-view [data-bs-target="#modalGrupo"],
+body.theme-dark #matricula-view [data-bs-target="#modalGestionGrupo"] {
+  background: #13233a !important;
+  color: #dce9f6 !important;
+  border-color: #56708d !important;
+  box-shadow: none !important;
+}
+body.theme-dark #matricula-view [data-bs-target="#modalGrupo"]:hover,
+body.theme-dark #matricula-view [data-bs-target="#modalGestionGrupo"]:hover {
+  background: #213650 !important;
+  color: #fff !important;
+  border-color: #7893af !important;
+}
+
+/* Eliminar sección en dark: rojo suave, no caja clara. */
+body.theme-dark #btn-borrar-seccion {
+  background: rgba(120,42,54,.14) !important;
+  color: #ffb3bd !important;
+  border-color: #7f4650 !important;
+}
+body.theme-dark #btn-borrar-seccion:hover:not(:disabled) {
+  background: #79323d !important;
+  color: #fff !important;
+  border-color: #a45461 !important;
+}
+
+/* Tablas completas. */
+body.theme-dark .table,
+body.theme-dark .table-responsive {
+  --bs-table-bg: #111d2f !important;
+  --bs-table-color: #edf5fd !important;
+  --bs-table-border-color: #334a65 !important;
+  --bs-table-striped-bg: #14243a !important;
+  --bs-table-striped-color: #edf5fd !important;
+  --bs-table-hover-bg: #1a2e48 !important;
+  --bs-table-hover-color: #fff !important;
+  background: #111d2f !important;
+  color: #edf5fd !important;
+}
+body.theme-dark .table > :not(caption) > * > * {
+  background-color: inherit !important;
+  color: #edf5fd !important;
+  border-color: #334a65 !important;
+}
+body.theme-dark :is(.table-light,.table-light > *,thead.table-light,thead.table-light th) {
+  --bs-table-bg: #192b43 !important;
+  --bs-table-color: #eef6ff !important;
+  background: #192b43 !important;
+  color: #eef6ff !important;
+}
+
+/* Finanzas: eliminar remanentes claros y textos casi negros. */
+body.theme-dark #pagos-view :is(
+  .finance-card-heading h3,.finance-panel-title h3,.finance-record-title,
+  .finance-record-person,.finance-history-date,.finance-history-person,
+  .finance-summary-card strong,.billing-service-copy strong,.billing-emitter-heading strong,
+  .finance-flow-help strong,.finance-empty-state strong,.finance-payment-context strong
+) {
+  color: #f6faff !important;
+}
+body.theme-dark #pagos-view :is(
+  .finance-card-heading p,.finance-record-meta,.finance-record-state small,
+  .billing-service-copy p,.billing-emitter-heading small,.billing-config-intro p,
+  .billing-field .form-label,.finance-note,.finance-payment-context span
+) {
+  color: #b7c8da !important;
+}
+body.theme-dark #pagos-view :is(.finance-history-record,.finance-record-card,.finance-filter-row) {
+  background: #111d2f !important;
+}
+
+/* Badges y bloques que usan utilidades claras de Bootstrap. */
+body.theme-dark :is(.bg-white,.bg-light,.text-bg-light,.alert-light,.badge.text-bg-light) {
+  background: #18283e !important;
+  color: #eaf3fc !important;
+  border-color: #3b526d !important;
+}
+
+/* Widget accesibilidad: nunca hereda fondo rectangular. */
+.accessibility-widget,
+body.theme-dark .accessibility-widget {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  padding: 0 !important;
+}
+.accessibility-widget > :not(.accessibility-menu):not(.accessibility-toggle) {
+  background: transparent !important;
+}
+
+/* Reducir movimiento de verdad: elimina animaciones/transiciones del sistema. */
+html.reduced-motion,
+html.reduced-motion:focus-within,
+body.reduced-motion,
+body.reduced-motion:focus-within {
+  scroll-behavior: auto !important;
+}
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition: none !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .modal:not(.finance-invoice-preview-modal) .modal-content {
+    max-height: calc(100dvh - 16px) !important;
+  }
+  #modalRegistrarPago .modal-dialog,
+  #modalClaseExtra .modal-dialog,
+  #modalEditarCargo .modal-dialog,
+  #modalNuevoCargo .modal-dialog,
+  #modalSeccion .modal-dialog {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    margin: 6px auto !important;
+  }
+}

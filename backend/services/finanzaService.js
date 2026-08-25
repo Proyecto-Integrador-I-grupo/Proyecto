@@ -627,8 +627,52 @@ export async function listarCargos(filtros = {}) {
 
 
 let facturacionPendientesEnCurso = null;
+let facturacionPendientesPausadaHasta = 0;
+let conciliacionFacturasEnCurso = null;
+let conciliacionFacturasSiguienteIntento = 0;
+let ultimoAvisoLimiteFacturacion = 0;
+
+function esLimiteTemporalFacturacion(error) {
+  return /429|too many requests|límite temporal|limite temporal/i.test(String(error?.message || error || ''));
+}
+
+function avisarLimiteFacturacionUnaVez(contexto, error) {
+  const ahora = Date.now();
+  if (ahora - ultimoAvisoLimiteFacturacion < 120000) return;
+  ultimoAvisoLimiteFacturacion = ahora;
+  console.warn(`Finanzas: ${contexto}:`, error?.message || error);
+}
+
+async function conciliarFacturasConEnfriamiento() {
+  const ahora = Date.now();
+  if (ahora < conciliacionFacturasSiguienteIntento) return { conciliadas: 0, omitida: true };
+  if (conciliacionFacturasEnCurso) return conciliacionFacturasEnCurso;
+
+  conciliacionFacturasEnCurso = (async () => {
+    try {
+      const resultado = await reconciliarFacturasEduControl();
+      conciliacionFacturasSiguienteIntento = Date.now() + 5 * 60 * 1000;
+      return resultado;
+    } catch (error) {
+      if (esLimiteTemporalFacturacion(error)) {
+        conciliacionFacturasSiguienteIntento = Date.now() + 2 * 60 * 1000;
+        facturacionPendientesPausadaHasta = Math.max(facturacionPendientesPausadaHasta, Date.now() + 2 * 60 * 1000);
+        avisarLimiteFacturacionUnaVez('Factura Bonita aplicó un límite temporal; la conciliación queda pausada por 2 minutos', error);
+        return { conciliadas: 0, omitida: true, limitada: true };
+      }
+      conciliacionFacturasSiguienteIntento = Date.now() + 60 * 1000;
+      console.warn('Finanzas: no se pudo conciliar la facturación local:', error?.message || error);
+      return { conciliadas: 0, omitida: true };
+    }
+  })().finally(() => {
+    conciliacionFacturasEnCurso = null;
+  });
+
+  return conciliacionFacturasEnCurso;
+}
 
 async function facturarCargosPagadosPendientesAutomaticamente() {
+  if (Date.now() < facturacionPendientesPausadaHasta) return;
   if (facturacionPendientesEnCurso) return facturacionPendientesEnCurso;
 
   facturacionPendientesEnCurso = (async () => {
@@ -658,12 +702,17 @@ async function facturarCargosPagadosPendientesAutomaticamente() {
     if (!pendientes.length) return;
 
     let cursor = 0;
-    const workers = Array.from({ length: Math.min(2, pendientes.length) }, async () => {
+    const workers = Array.from({ length: Math.min(1, pendientes.length) }, async () => {
       while (cursor < pendientes.length) {
         const actual = pendientes[cursor++];
         try {
           await generarFacturaDeCargo(actual.id_cargo, actual.metodo_pago || 'otro');
         } catch (error) {
+          if (esLimiteTemporalFacturacion(error)) {
+            facturacionPendientesPausadaHasta = Date.now() + 2 * 60 * 1000;
+            avisarLimiteFacturacionUnaVez(`Factura Bonita aplicó un límite temporal al cargo ${actual.id_cargo}; se detienen reintentos automáticos por 2 minutos`, error);
+            break;
+          }
           console.warn(`Finanzas: no se pudo facturar automáticamente el cargo ${actual.id_cargo}:`, error?.message || error);
         }
       }
@@ -685,11 +734,7 @@ export async function listarFacturas() {
   // referencia estable `educontrol / cargo:<id>`. La conciliación es
   // no bloqueante: si el servicio externo está iniciando, la interfaz local
   // sigue mostrando los cargos pagados como pendientes de facturar.
-  try {
-    await reconciliarFacturasEduControl();
-  } catch (error) {
-    console.warn('Finanzas: no se pudo conciliar la facturación local:', error?.message || error);
-  }
+  await conciliarFacturasConEnfriamiento();
 
   // Los cargos históricos que ya estaban pagados antes de esta versión también
   // se facturan sin intervención manual. Esto mantiene el módulo y reportes

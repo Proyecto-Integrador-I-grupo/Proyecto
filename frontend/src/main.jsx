@@ -23,6 +23,7 @@ import './styles/accessibility-theme.css';
 import './styles/stability-final.css';
 import './styles/requested-fixes.css';
 import './styles/release-polish.css';
+import './styles/last-mile-fixes.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

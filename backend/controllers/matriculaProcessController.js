@@ -20,7 +20,8 @@ import { crearCargoMatriculaSiCorresponde } from "../services/finanzaService.js"
 
 export async function crearMatricula(req, res) {
   try {
-    const resultado = await procesarMatricula(req.body);
+    const payload = { ...req.body, id_usuario: req.usuarioActual?.id_usuario };
+    const resultado = await procesarMatricula(payload);
 
     try {
       await auditoriaModel.crearAuditoria(
@@ -28,7 +29,7 @@ export async function crearMatricula(req, res) {
           nombre_tabla: "matricula",
           accion_usuario: "INSERT",
           datos_anteriores: "",
-          datos_nuevos: JSON.stringify(req.body)
+          datos_nuevos: JSON.stringify(payload)
         },
         req.usuarioActual?.id_usuario ?? null
       );
@@ -43,9 +44,9 @@ export async function crearMatricula(req, res) {
     try {
       cargo = await crearCargoMatriculaSiCorresponde({
         id_matricula: resultado.id_matricula,
-        id_estudiante: req.body.id_estudiante,
+        id_estudiante: payload.id_estudiante,
         id_usuario: req.usuarioActual?.id_usuario ?? req.body.id_usuario ?? null,
-        anio: req.body.anio
+        anio: payload.anio
       });
     } catch (errorCargo) {
       console.error("No se pudo generar automáticamente el cargo de matrícula:", errorCargo);
@@ -102,6 +103,9 @@ export async function obtenerGrupos(req, res) {
           g.nombre_grupo,
           g.capacidad,
           g.aula,
+          g.dias_semana,
+          g.hora_inicio,
+          g.hora_fin,
           g.id_seccion,
           s.nombre_seccion,
           s.nivel,
@@ -280,7 +284,8 @@ export async function retirarEstudianteGrupo(req, res) {
 
 export async function transferirEstudianteGrupo(req, res) {
   try {
-    const resultado = await transferirEstudianteGrupoService(req.body);
+    const payload = { ...req.body, id_usuario: req.usuarioActual?.id_usuario };
+    const resultado = await transferirEstudianteGrupoService(payload);
 
     try {
       await auditoriaModel.crearAuditoria(

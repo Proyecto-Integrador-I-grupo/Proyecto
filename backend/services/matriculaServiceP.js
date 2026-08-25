@@ -9,11 +9,95 @@ async function asegurarCamposHorarioGrupo() {
     if (!inicio.length) await pool.query("ALTER TABLE grupo ADD COLUMN hora_inicio TIME NULL");
     const [fin] = await pool.query("SHOW COLUMNS FROM grupo LIKE 'hora_fin'");
     if (!fin.length) await pool.query("ALTER TABLE grupo ADD COLUMN hora_fin TIME NULL");
+    const [dias] = await pool.query("SHOW COLUMNS FROM grupo LIKE 'dias_semana'");
+    if (!dias.length) await pool.query("ALTER TABLE grupo ADD COLUMN dias_semana VARCHAR(80) NOT NULL DEFAULT ''");
   })().catch((error) => {
     grupoHorarioSchemaPromise = null;
     throw new Error(`No se pudo preparar el horario de grupos: ${error.message}`);
   });
   return grupoHorarioSchemaPromise;
+}
+
+
+
+const DIAS_SEMANA_VALIDOS = ['lunes','martes','miercoles','jueves','viernes','sabado'];
+
+function sinTildes(valor) {
+  return String(valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+export function normalizarDiasSemana(valor, nombreGrupo = '') {
+  let dias = [];
+  if (Array.isArray(valor)) dias = valor;
+  else if (typeof valor === 'string' && valor.trim()) dias = valor.split(',');
+  dias = [...new Set(dias.map((d) => sinTildes(d).trim()).filter((d) => DIAS_SEMANA_VALIDOS.includes(d)))];
+  if (dias.length) return dias;
+  const texto = sinTildes(nombreGrupo);
+  return DIAS_SEMANA_VALIDOS.filter((dia) => texto.includes(dia));
+}
+
+function diasComoTexto(dias) {
+  return normalizarDiasSemana(dias).join(',');
+}
+
+function horariosSeSuperponen(inicioA, finA, inicioB, finB) {
+  if (!inicioA || !finA || !inicioB || !finB) return false;
+  return String(inicioA) < String(finB) && String(finA) > String(inicioB);
+}
+
+function diasSeSuperponen(diasA, diasB) {
+  const a = new Set(normalizarDiasSemana(diasA));
+  return normalizarDiasSemana(diasB).some((dia) => a.has(dia));
+}
+
+export async function validarProfesorActivo(connection, idProfesor) {
+  const [[profesor]] = await connection.query(
+    `SELECT pr.id_profesor, pr.estado, p.estado AS persona_estado
+     FROM profesor pr
+     INNER JOIN persona p ON p.id_persona = pr.id_persona
+     WHERE pr.id_profesor = ? LIMIT 1`,
+    [idProfesor]
+  );
+  if (!profesor || !profesor.estado || !profesor.persona_estado) {
+    throw new Error('No se puede asignar un profesor inexistente o inactivo.');
+  }
+}
+
+export async function validarChoqueProfesor(connection, idProfesor, dias, horaInicio, horaFin, excluirGrupoId = null) {
+  if (!dias.length || !horaInicio || !horaFin) return;
+  const [asignaciones] = await connection.query(
+    `SELECT g.id_grupo, g.nombre_grupo, g.dias_semana, g.hora_inicio, g.hora_fin, s.nombre_seccion
+     FROM grupo_profesor gp
+     INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
+     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+     WHERE gp.id_profesor = ? AND gp.estado = TRUE
+       AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())
+       ${excluirGrupoId ? 'AND g.id_grupo <> ?' : ''}`,
+    excluirGrupoId ? [idProfesor, excluirGrupoId] : [idProfesor]
+  );
+  const choque = asignaciones.find((g) =>
+    diasSeSuperponen(dias, g.dias_semana || g.nombre_grupo) &&
+    horariosSeSuperponen(horaInicio, horaFin, g.hora_inicio, g.hora_fin)
+  );
+  if (choque) {
+    throw new Error(`El profesor ya tiene el grupo ${choque.nombre_grupo}${choque.nombre_seccion ? ` (sección ${choque.nombre_seccion})` : ''} en un horario que se superpone.`);
+  }
+}
+
+async function validarChoqueAula(connection, aula, dias, horaInicio, horaFin, excluirGrupoId = null) {
+  if (!aula || !dias.length || !horaInicio || !horaFin) return;
+  const [grupos] = await connection.query(
+    `SELECT id_grupo, nombre_grupo, aula, dias_semana, hora_inicio, hora_fin
+     FROM grupo
+     WHERE estado = TRUE AND LOWER(TRIM(aula)) = LOWER(TRIM(?))
+       ${excluirGrupoId ? 'AND id_grupo <> ?' : ''}`,
+    excluirGrupoId ? [aula, excluirGrupoId] : [aula]
+  );
+  const choque = grupos.find((g) =>
+    diasSeSuperponen(dias, g.dias_semana || g.nombre_grupo) &&
+    horariosSeSuperponen(horaInicio, horaFin, g.hora_inicio, g.hora_fin)
+  );
+  if (choque) throw new Error(`El aula ${aula} ya está ocupada por ${choque.nombre_grupo} en ese horario.`);
 }
 
 function normalizarHoraGrupo(value) {
@@ -86,7 +170,9 @@ export async function procesarMatricula(datos) {
     }
 
     const [grupoRows] = await connection.query(
-      "SELECT capacidad, estado, fn_estudiantes_grupo(id_grupo) AS ocupados FROM grupo WHERE id_grupo = ? FOR UPDATE",
+      `SELECT g.capacidad, g.estado, s.periodo_lectivo, fn_estudiantes_grupo(g.id_grupo) AS ocupados
+       FROM grupo g INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE g.id_grupo = ? FOR UPDATE`,
       [id_grupo]
     );
     if (grupoRows.length === 0) {
@@ -104,8 +190,20 @@ export async function procesarMatricula(datos) {
       "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
       [id_grupo, id_estudiante]
     );
-    if (yaEnGrupo.length > 0) {
-      throw new Error("El estudiante ya está matriculado en este grupo.");
+    if (yaEnGrupo.length > 0) throw new Error("El estudiante ya está matriculado en este grupo.");
+
+    const [otraAsignacion] = await connection.query(
+      `SELECT ge.id_grupo, g.nombre_grupo
+       FROM grupo_estudiante ge
+       INNER JOIN grupo g ON g.id_grupo = ge.id_grupo AND g.estado = TRUE
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE ge.id_estudiante = ? AND ge.estado = TRUE
+         AND s.periodo_lectivo = ? AND ge.id_grupo <> ?
+       LIMIT 1 FOR UPDATE`,
+      [id_estudiante, grupoRows[0].periodo_lectivo, id_grupo]
+    );
+    if (otraAsignacion.length) {
+      throw new Error(`El estudiante ya está asignado a ${otraAsignacion[0].nombre_grupo} en este año lectivo. Usa la opción Transferir matrícula.`);
     }
 
     const observacionesMatricula = observaciones ? observaciones.trim().slice(0, 150) : null;
@@ -162,6 +260,7 @@ export async function obtenerGruposService(usuarioActual = null) {
           g.aula,
           g.hora_inicio,
           g.hora_fin,
+          g.dias_semana,
           g.id_seccion,
           s.nombre_seccion,
           s.nivel,
@@ -171,8 +270,8 @@ export async function obtenerGruposService(usuarioActual = null) {
        INNER JOIN seccion s ON g.id_seccion = s.id_seccion
        LEFT JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo
          AND gp.id_profesor = ? AND gp.estado = TRUE
-       LEFT JOIN suplencia su ON su.id_grupo = g.id_grupo
-         AND su.id_profesor_suplente = ? AND su.activo = 1
+       LEFT JOIN profesor_suplencia su ON su.id_grupo = g.id_grupo
+         AND su.id_profesor_suplente = ? AND su.estado = TRUE
        WHERE g.estado = TRUE
          AND (gp.id_profesor = ? OR su.id_profesor_suplente = ?)
        ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`,
@@ -189,6 +288,7 @@ export async function obtenerGruposService(usuarioActual = null) {
         g.aula,
         g.hora_inicio,
         g.hora_fin,
+        g.dias_semana,
         g.id_seccion,
         s.nombre_seccion,
         s.nivel,
@@ -204,13 +304,14 @@ export async function obtenerGruposService(usuarioActual = null) {
 
 export async function crearGrupoService(datos) {
   await asegurarCamposHorarioGrupo();
-  const { nombre_grupo, capacidad, aula, profesores, id_profesor, id_seccion, hora_inicio, hora_fin } = datos;
+  const { nombre_grupo, capacidad, aula, profesores, id_profesor, id_seccion, hora_inicio, hora_fin, dias_semana } = datos;
 
   const nombreLimpio = (nombre_grupo || "").trim();
   const capacidadNum = Number(capacidad);
   const idSeccionNum = Number(id_seccion);
   const horaInicio = normalizarHoraGrupo(hora_inicio);
   const horaFin = normalizarHoraGrupo(hora_fin);
+  const diasSemana = normalizarDiasSemana(dias_semana, nombreLimpio);
 
   // Normalizar array de profesores
   let listaProfesores = [];
@@ -223,8 +324,9 @@ export async function crearGrupoService(datos) {
   if (!nombreLimpio) throw new Error("El nombre del grupo es obligatorio.");
   if (!Number.isInteger(capacidadNum) || capacidadNum <= 0) throw new Error("La capacidad debe ser un número entero mayor a cero.");
   if (!Number.isInteger(idSeccionNum) || idSeccionNum <= 0) throw new Error("Debe seleccionar una sección académica.");
-  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) throw new Error("Debe indicar hora de inicio y hora de finalización.");
-  if (horaInicio && horaFin && horaFin <= horaInicio) throw new Error("La hora de finalización debe ser posterior a la hora de inicio.");
+  if (!diasSemana.length) throw new Error("Debes seleccionar al menos un día de clase.");
+  if (!horaInicio || !horaFin) throw new Error("Debes indicar la hora de inicio y la hora de finalización del grupo.");
+  if (horaFin <= horaInicio) throw new Error("La hora de finalización debe ser posterior a la hora de inicio.");
 
   const connection = await pool.getConnection();
   try {
@@ -265,9 +367,16 @@ export async function crearGrupoService(datos) {
       throw new Error("Ya existe un grupo activo con ese nombre en la sección seleccionada.");
     }
 
+    const aulaLimpia = aula ? aula.trim() : null;
+    await validarChoqueAula(connection, aulaLimpia, diasSemana, horaInicio, horaFin);
+    for (const idProf of listaProfesores) {
+      await validarProfesorActivo(connection, idProf);
+      await validarChoqueProfesor(connection, idProf, diasSemana, horaInicio, horaFin);
+    }
+
     const [result] = await connection.query(
-      "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, hora_inicio, hora_fin, id_seccion) VALUES (?, TRUE, ?, ?, ?, ?, ?)",
-      [nombreLimpio, capacidadNum, aula ? aula.trim() : null, horaInicio, horaFin, idSeccionNum]
+      "INSERT INTO grupo (nombre_grupo, estado, capacidad, aula, hora_inicio, hora_fin, dias_semana, id_seccion) VALUES (?, TRUE, ?, ?, ?, ?, ?, ?)",
+      [nombreLimpio, capacidadNum, aulaLimpia, horaInicio, horaFin, diasComoTexto(diasSemana), idSeccionNum]
     );
     const id_grupo = result.insertId;
 
@@ -293,9 +402,10 @@ export async function crearGrupoService(datos) {
 
 export async function actualizarGrupoService(idGrupo, datos) {
   await asegurarCamposHorarioGrupo();
-  const { capacidad, aula, id_profesor, profesores, hora_inicio, hora_fin } = datos;
+  const { capacidad, aula, id_profesor, profesores, hora_inicio, hora_fin, dias_semana } = datos;
   const horaInicio = normalizarHoraGrupo(hora_inicio);
   const horaFin = normalizarHoraGrupo(hora_fin);
+  const profesoresIncluidos = Array.isArray(profesores) || id_profesor !== undefined;
   if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) throw new Error('Debe indicar hora de inicio y hora de finalización.');
   if (horaInicio && horaFin && horaFin <= horaInicio) throw new Error('La hora de finalización debe ser posterior a la hora de inicio.');
 
@@ -319,6 +429,11 @@ export async function actualizarGrupoService(idGrupo, datos) {
       `SELECT
           id_grupo,
           estado,
+          nombre_grupo,
+          aula,
+          hora_inicio,
+          hora_fin,
+          dias_semana,
           fn_estudiantes_grupo(id_grupo) AS ocupados
        FROM grupo
        WHERE id_grupo = ? AND estado = TRUE
@@ -336,14 +451,29 @@ export async function actualizarGrupoService(idGrupo, datos) {
       );
     }
 
+    const grupoActual = grupoRows[0];
+    const diasSemana = normalizarDiasSemana(dias_semana, grupoActual.nombre_grupo);
+    const aulaLimpia = aula ? aula.trim() : null;
+    const profesoresAValidar = profesoresIncluidos
+      ? listaProfesores
+      : (await connection.query(`SELECT id_profesor FROM grupo_profesor WHERE id_grupo = ? AND estado = TRUE`, [idGrupo]))[0].map((r) => Number(r.id_profesor));
+
+    if (!diasSemana.length) throw new Error('Debes seleccionar al menos un día de clase.');
+    if (!horaInicio || !horaFin) throw new Error('Debes indicar la hora de inicio y la hora de finalización del grupo.');
+    await validarChoqueAula(connection, aulaLimpia, diasSemana, horaInicio, horaFin, Number(idGrupo));
+    for (const idProf of profesoresAValidar) {
+      await validarProfesorActivo(connection, idProf);
+      await validarChoqueProfesor(connection, idProf, diasSemana, horaInicio, horaFin, Number(idGrupo));
+    }
+
     await connection.query(
       `UPDATE grupo
-       SET capacidad = ?, aula = ?, hora_inicio = ?, hora_fin = ?
+       SET capacidad = ?, aula = ?, hora_inicio = ?, hora_fin = ?, dias_semana = ?
        WHERE id_grupo = ?`,
-      [capacidadNum, aula ? aula.trim() : null, horaInicio, horaFin, idGrupo]
+      [capacidadNum, aulaLimpia, horaInicio, horaFin, diasComoTexto(diasSemana), idGrupo]
     );
 
-    if (listaProfesores.length > 0) {
+    if (profesoresIncluidos) {
       await connection.query(
         `UPDATE grupo_profesor
          SET fecha_fin = CURDATE(), estado = FALSE
@@ -621,51 +751,107 @@ export async function retirarEstudianteGrupoService(idGrupo, idEstudiante) {
  * para que se reintente la matrícula al nuevo grupo manualmente.
  */
 export async function transferirEstudianteGrupoService(datos) {
-  const { id_estudiante, id_grupo_actual, id_grupo_nuevo } = datos;
+  const {
+    id_estudiante, id_grupo_actual, id_grupo_nuevo,
+    fecha, periodo, anio, tipo, estado, observaciones, id_usuario
+  } = datos;
 
-  if (Number(id_grupo_actual) === Number(id_grupo_nuevo)) {
-    throw new Error("El grupo destino debe ser diferente al grupo actual.");
+  const idActual = Number(id_grupo_actual);
+  const idNuevo = Number(id_grupo_nuevo);
+  const idEstudiante = Number(id_estudiante);
+  const idUsuario = Number(id_usuario);
+  if (!Number.isInteger(idActual) || !Number.isInteger(idNuevo) || !Number.isInteger(idEstudiante) || !Number.isInteger(idUsuario)) {
+    throw new Error('Los datos de la transferencia no son válidos.');
   }
+  if (idActual === idNuevo) throw new Error('El grupo destino debe ser diferente al grupo actual.');
 
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
 
-    const [geActual] = await connection.query(
-      "SELECT id_grupo_estudiante FROM grupo_estudiante WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE",
-      [id_grupo_actual, id_estudiante]
+    const [[estudiante]] = await connection.query(
+      `SELECT estado FROM estudiante WHERE id_estudiante = ? FOR UPDATE`, [idEstudiante]
     );
-    if (geActual.length === 0) {
-      throw new Error("El estudiante no está activo en el grupo de origen.");
-    }
+    if (!estudiante || !estudiante.estado) throw new Error('El estudiante no existe o está inactivo.');
 
+    const [[usuario]] = await connection.query(
+      `SELECT estado FROM usuario WHERE id_usuario = ? LIMIT 1`, [idUsuario]
+    );
+    if (!usuario || !usuario.estado) throw new Error('El usuario que procesa la transferencia no es válido.');
+
+    const [[origen]] = await connection.query(
+      `SELECT ge.id_grupo_estudiante
+       FROM grupo_estudiante ge
+       INNER JOIN grupo g ON g.id_grupo = ge.id_grupo
+       WHERE ge.id_grupo = ? AND ge.id_estudiante = ? AND ge.estado = TRUE AND g.estado = TRUE
+       LIMIT 1 FOR UPDATE`,
+      [idActual, idEstudiante]
+    );
+    if (!origen) throw new Error('El estudiante no está activo en el grupo de origen.');
+
+    const [[destino]] = await connection.query(
+      `SELECT g.id_grupo, g.capacidad, g.estado, s.periodo_lectivo,
+              fn_estudiantes_grupo(g.id_grupo) AS ocupados
+       FROM grupo g
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE g.id_grupo = ? LIMIT 1 FOR UPDATE`,
+      [idNuevo]
+    );
+    if (!destino || !destino.estado) throw new Error('El grupo destino no existe o está inactivo.');
+    if (Number(destino.ocupados || 0) >= Number(destino.capacidad || 0)) throw new Error('El grupo destino ya no tiene cupo disponible.');
+    if (Number(destino.periodo_lectivo) !== Number(anio)) throw new Error('El grupo destino pertenece a un año lectivo diferente.');
+
+    const [yaDestino] = await connection.query(
+      `SELECT id_grupo_estudiante FROM grupo_estudiante
+       WHERE id_grupo = ? AND id_estudiante = ? AND estado = TRUE LIMIT 1`,
+      [idNuevo, idEstudiante]
+    );
+    if (yaDestino.length) throw new Error('El estudiante ya está activo en el grupo destino.');
+
+    // Todo ocurre dentro de la misma transacción: si falla el alta en el nuevo
+    // grupo, el estudiante permanece en su grupo original.
     await connection.query(
-      "UPDATE grupo_estudiante SET estado = FALSE WHERE id_grupo_estudiante = ?",
-      [geActual[0].id_grupo_estudiante]
+      `UPDATE grupo_estudiante SET estado = FALSE
+       WHERE id_grupo_estudiante = ?`, [origen.id_grupo_estudiante]
     );
-
     await connection.query(
       `UPDATE detalle_matricula dm
        INNER JOIN matricula m ON dm.id_matricula = m.id_matricula
        SET dm.estado = FALSE
        WHERE dm.id_grupo = ? AND m.id_estudiante = ? AND dm.estado = TRUE`,
-      [id_grupo_actual, id_estudiante]
+      [idActual, idEstudiante]
+    );
+
+    await connection.query(
+      `CALL sp_registrar_matricula(?, ?, ?, ?, ?, ?, ?, ?)`,
+      [fecha, periodo, anio, tipo, estado, String(observaciones || '').trim().slice(0,150) || null, idEstudiante, idUsuario]
+    );
+    const [[last]] = await connection.query(`SELECT LAST_INSERT_ID() AS id_matricula`);
+    const idMatricula = Number(last?.id_matricula || 0);
+    if (!idMatricula) throw new Error('No se pudo crear la matrícula de transferencia.');
+
+    await connection.query(
+      `CALL sp_registrar_detalle_matricula(?, ?, ?, ?)`,
+      [fecha, String(observaciones || '').trim().slice(0,150) || null, idMatricula, idNuevo]
+    );
+    await connection.query(
+      `CALL sp_asignar_estudiante_grupo(?, ?, ?)`,
+      [fecha, idNuevo, idEstudiante]
     );
 
     await connection.commit();
+    return {
+      mensaje: 'Transferencia completada correctamente.',
+      id_matricula: idMatricula,
+      id_estudiante: idEstudiante,
+      id_grupo_anterior: idActual,
+      id_grupo_nuevo: idNuevo
+    };
   } catch (error) {
     await connection.rollback();
     throw error;
   } finally {
     connection.release();
-  }
-
-  try {
-    return await procesarMatricula({ ...datos, id_grupo: id_grupo_nuevo, omitir_validacion_financiera: true });
-  } catch (error) {
-    throw new Error(
-      `El estudiante se retiró del grupo anterior, pero no se pudo matricular en el grupo nuevo: ${error.message}`
-    );
   }
 }
 

@@ -821,6 +821,7 @@ async function cargarDetalleGestionGrupo(idGrupo) {
   aulaSelect.value = grupo.aula ?? '';
   if (horaInicioInput) horaInicioInput.value = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
   if (horaFinInput) horaFinInput.value = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
+  marcarDiasSeleccionados('gestion-grupo-dias', grupo.dias_semana || '');
 
   try {
     const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/detalle`);
@@ -848,6 +849,7 @@ async function handleGestionGrupoSubmit(e) {
   const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
   const horaInicio = document.getElementById('gestion-grupo-hora-inicio')?.value || null;
   const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
+  const diasSemana = obtenerDiasSeleccionados('gestion-grupo-dias');
   
   const profSelect = document.getElementById('gestion-grupo-profesor');
   const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10));
@@ -856,11 +858,15 @@ async function handleGestionGrupoSubmit(e) {
     showToast('Selecciona un grupo y capacidad.', 'error');
     return;
   }
-  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
-    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+  if (!diasSemana.length) {
+    showToast('Selecciona al menos un día de clase para el grupo.', 'error');
     return;
   }
-  if (horaInicio && horaFin && horaFin <= horaInicio) {
+  if (!horaInicio || !horaFin) {
+    showToast('Indica la hora de inicio y la hora de finalización.', 'error');
+    return;
+  }
+  if (horaFin <= horaInicio) {
     showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
     return;
   }
@@ -884,7 +890,7 @@ async function handleGestionGrupoSubmit(e) {
     const res = await apiFetch(`/api/procesos/grupos/${idGrupo}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados, hora_inicio: horaInicio, hora_fin: horaFin })
+      body: JSON.stringify({ capacidad, aula, profesores: profesoresSeleccionados, hora_inicio: horaInicio, hora_fin: horaFin, dias_semana: diasSemana })
     });
 
     const json = await res.json().catch(() => ({}));
@@ -1070,6 +1076,15 @@ function configurarSelectoresProfesores() {
   });
 }
 
+function obtenerDiasSeleccionados(contenedorId) {
+  return Array.from(document.querySelectorAll(`#${contenedorId} input[type="checkbox"]:checked`)).map((el) => el.value);
+}
+
+function marcarDiasSeleccionados(contenedorId, diasValor) {
+  const dias = new Set(String(diasValor || '').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean));
+  document.querySelectorAll(`#${contenedorId} input[type="checkbox"]`).forEach((el) => { el.checked = dias.has(el.value); });
+}
+
 async function handleGrupoSubmit(e) {
   e.preventDefault();
   sessionStorage.setItem('educontrol_active_view', 'matricula');
@@ -1080,6 +1095,7 @@ async function handleGrupoSubmit(e) {
   const aula = document.getElementById('grupo-aula').value.trim() || null;
   const horaInicio = document.getElementById('grupo-hora-inicio')?.value || null;
   const horaFin = document.getElementById('grupo-hora-fin')?.value || null;
+  const diasSemana = obtenerDiasSeleccionados('grupo-dias');
 
   // Validación previa en el frontend: si algo no es válido, avisamos exactamente
   // qué falta en vez de mandar la petición y dejar que el 400 del servidor
@@ -1096,18 +1112,22 @@ async function handleGrupoSubmit(e) {
     showToast('Selecciona una sección académica válida de la lista (haz clic en una opción del desplegable).', 'error');
     return;
   }
-  if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
-    showToast('Indica tanto la hora de inicio como la hora de finalización.', 'error');
+  if (!diasSemana.length) {
+    showToast('Selecciona al menos un día de clase para el grupo.', 'error');
     return;
   }
-  if (horaInicio && horaFin && horaFin <= horaInicio) {
+  if (!horaInicio || !horaFin) {
+    showToast('Indica la hora de inicio y la hora de finalización.', 'error');
+    return;
+  }
+  if (horaFin <= horaInicio) {
     showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
     return;
   }
 
   // El grupo se crea sin profesores: la asignación docente se hace después
   // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
-  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion, hora_inicio: horaInicio, hora_fin: horaFin };
+  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion, hora_inicio: horaInicio, hora_fin: horaFin, dias_semana: diasSemana };
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando...'; }

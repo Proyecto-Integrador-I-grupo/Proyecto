@@ -8,8 +8,19 @@ import {
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
-  console.error("Finanzas:", error);
-  res.status(status).json({ mensaje: error.message || "No se pudo completar la operación." });
+  const httpStatus = Number(error?.statusCode) || status;
+  const mensaje = error?.message || "No se pudo completar la operación.";
+
+  if (httpStatus >= 500) {
+    console.error("Finanzas:", error);
+  } else if (!error?.esperado) {
+    console.warn(`Finanzas: ${mensaje}`);
+  }
+
+  res.status(httpStatus).json({
+    mensaje,
+    ...(error?.code ? { codigo: error.code } : {})
+  });
 }
 
 export async function getResumen(req, res) {

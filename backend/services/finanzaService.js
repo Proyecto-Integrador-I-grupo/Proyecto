@@ -15,7 +15,9 @@ function money(value, field, allowZero = false) {
   return Math.round(n * 100) / 100;
 }
 
-async function normalizarDescuentosVencidos(db = pool) {
+async function normalizarDescuentosVencidos(db = pool, idCargo = null) {
+  const filtroCargo = idCargo ? " AND c.id_cargo = ?" : "";
+  const params = idCargo ? [positiveInt(idCargo, "El cargo")] : [];
   await db.query(`
     UPDATE cargo_estudiante c
     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
@@ -38,8 +40,8 @@ async function normalizarDescuentosVencidos(db = pool) {
     WHERE c.estado IN ('pendiente', 'parcial')
       AND c.fecha_vencimiento IS NOT NULL
       AND c.fecha_vencimiento < CURDATE()
-      AND c.descuento > 0
-  `);
+      AND c.descuento > 0${filtroCargo}
+  `, params);
 }
 
 async function validarDescuentoVigente(fechaVencimiento, descuento, db = pool) {
@@ -972,8 +974,8 @@ export async function listarPagos(filtros = {}) {
 }
 
 export async function registrarPago(idCargo, datos, idUsuario) {
-  await normalizarDescuentosVencidos();
   const cargoId = positiveInt(idCargo, "El cargo");
+  await normalizarDescuentosVencidos(pool, cargoId);
   const montoPago = money(datos.monto, "El monto del pago");
   const metodo = String(datos.metodo_pago || "").trim().toLowerCase();
   if (!["efectivo", "tarjeta", "transferencia", "sinpe", "otro"].includes(metodo)) {
@@ -995,7 +997,13 @@ export async function registrarPago(idCargo, datos, idUsuario) {
     if (!cargoRows.length) throw new Error("Cargo no encontrado.");
     const cargo = cargoRows[0];
     if (cargo.estado === "anulado") throw new Error("El cargo está anulado.");
-    if (cargo.estado === "pagado" || Number(cargo.saldo) <= 0) throw new Error("El cargo ya está pagado.");
+    if (cargo.estado === "pagado" || Number(cargo.saldo) <= 0) {
+      const error = new Error("El cargo ya está pagado.");
+      error.statusCode = 409;
+      error.code = "CARGO_YA_PAGADO";
+      error.esperado = true;
+      throw error;
+    }
     if (montoPago > Number(cargo.saldo) + 0.001) {
       throw new Error(`El pago no puede superar el saldo pendiente de CRC ${Number(cargo.saldo).toLocaleString("es-CR")}.`);
     }

@@ -15,6 +15,7 @@ let facturaPreviewScrollY = 0;
 let facturaPreviewReturnFocus = null;
 let logoFacturaData = null;
 const documentosFacturaEnCurso = new Map();
+const pagosEnCurso = new Set();
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -1131,9 +1132,34 @@ function sincronizarConceptoCargo() {
   if (desc && !desc.value) desc.value = concepto.nombre;
 }
 
+async function refrescarDespuesDePago() {
+  const resultados = await Promise.allSettled([
+    cargarResumen(),
+    cargarEstudiantes(),
+    cargarCargos(),
+    cargarFacturas(),
+    cargarPagos(),
+    cargarEstadoCuentas()
+  ]);
+
+  const fallos = resultados.filter((resultado) => resultado.status === 'rejected');
+  if (fallos.length) {
+    console.warn('EduControl Finanzas: recarga parcial después del pago:', fallos.map((f) => f.reason));
+  }
+}
+
 async function abrirPago(idCargo) {
   const cargo = cargos.find((c) => Number(c.id_cargo) === Number(idCargo));
   if (!cargo) return;
+  if (pagosEnCurso.has(Number(idCargo))) {
+    showToast('Este pago ya se está procesando.', 'warning');
+    return;
+  }
+  if (String(cargo.estado || '').toLowerCase() === 'pagado' || Number(cargo.saldo || 0) <= 0) {
+    showToast('Este cargo ya está pagado.', 'warning');
+    await cargarCargos().catch(() => {});
+    return;
+  }
   setValue('fin-pago-cargo-id', cargo.id_cargo);
   setValue('fin-pago-monto', Number(cargo.saldo || 0));
   setValue('fin-pago-referencia', '');
@@ -1155,7 +1181,31 @@ async function abrirPago(idCargo) {
 
 async function guardarPago(event) {
   event.preventDefault();
+
+  const form = event.currentTarget;
   const idCargo = Number(value('fin-pago-cargo-id'));
+  const submit = form?.querySelector('button[type="submit"]');
+  const submitHtml = submit?.innerHTML || '';
+
+  if (!idCargo || pagosEnCurso.has(idCargo)) {
+    showToast('Este pago ya se está procesando.', 'warning');
+    return;
+  }
+
+  const cargoLocal = cargos.find((c) => Number(c.id_cargo) === idCargo);
+  if (cargoLocal && (String(cargoLocal.estado || '').toLowerCase() === 'pagado' || Number(cargoLocal.saldo || 0) <= 0)) {
+    hideModal('modalRegistrarPago');
+    showToast('Este cargo ya está pagado.', 'warning');
+    await cargarCargos().catch(() => {});
+    return;
+  }
+
+  pagosEnCurso.add(idCargo);
+  if (submit) {
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Procesando…';
+  }
+
   try {
     const payload = {
       monto: value('fin-pago-monto'),
@@ -1170,18 +1220,46 @@ async function guardarPago(event) {
         numero_identificacion: value('fin-resp-numero-id')
       }
     };
-    const r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, { method: 'POST', body: JSON.stringify(payload) });
+
+    const r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    const cargo = cargos.find((c) => Number(c.id_cargo) === idCargo);
+    if (cargo) {
+      cargo.saldo = Number(r.saldo || 0);
+      cargo.estado = r.estado_cargo || (Number(r.saldo || 0) <= 0 ? 'pagado' : 'parcial');
+      renderCargos();
+    }
+
     hideModal('modalRegistrarPago');
     const fact = r.facturacion;
     if (fact?.ok) showToast(`Pago aplicado. Factura ${fact.id_factura || ''} generada correctamente.`, 'success');
     else if (r.estado_cargo === 'pagado') showToast(`Pago aplicado. ${fact?.mensaje || 'La factura se generará automáticamente.'}`, 'warning');
     else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, 'success');
-    await loadPagosData();
+
+    await refrescarDespuesDePago();
+
     if (fact?.ok && r.estado_cargo === 'pagado') {
       await new Promise((resolve) => window.setTimeout(resolve, 260));
       await abrirDocumentoFactura(idCargo, 'pdf', null, true);
     }
-  } catch (e) { showToast(e.message, 'error'); }
+  } catch (e) {
+    if (/cargo ya está pagado/i.test(String(e.message || ''))) {
+      hideModal('modalRegistrarPago');
+      showToast('El cargo ya había sido pagado. La información se actualizó.', 'warning');
+      await refrescarDespuesDePago();
+    } else {
+      showToast(e.message, 'error');
+    }
+  } finally {
+    pagosEnCurso.delete(idCargo);
+    if (submit?.isConnected) {
+      submit.disabled = false;
+      submit.innerHTML = submitHtml;
+    }
+  }
 }
 
 function limpiarFiltrosFacturas() {

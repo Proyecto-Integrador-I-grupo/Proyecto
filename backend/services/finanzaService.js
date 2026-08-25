@@ -23,6 +23,38 @@ function money(value, field, allowZero = false) {
   return Math.round(n * 100) / 100;
 }
 
+function esExoneracionTotal(montoBase, descuento, total = null) {
+  const base = Number(montoBase || 0);
+  const desc = Number(descuento || 0);
+  const totalCalculado = total === null || total === undefined ? Math.max(0, base - desc) : Number(total || 0);
+  return base > 0 && desc + 0.001 >= base && totalCalculado <= 0.001;
+}
+
+function validarResponsableExoneracion(datos) {
+  const responsable = datos && typeof datos === 'object' ? datos : {};
+  const nombre = String(responsable.nombre || '').trim();
+  const correo = String(responsable.correo || '').trim();
+  const identificacion = String(responsable.numero_identificacion || '').trim();
+  if (!nombre || !correo || !identificacion) {
+    throw new Error('Para una exoneración del 100% debes indicar nombre, correo e identificación del responsable de facturación.');
+  }
+  return responsable;
+}
+
+async function generarFacturaCierreConReintento(idCargo, metodoPago = 'otro') {
+  let ultimo = null;
+  for (let intento = 0; intento < 2; intento += 1) {
+    ultimo = await generarFacturaDeCargo(idCargo, metodoPago);
+    if (ultimo?.ok || ['pendiente_datos', 'pendiente_pago', 'pendiente_monto'].includes(String(ultimo?.estado || ''))) {
+      return ultimo;
+    }
+    if (intento === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  }
+  return ultimo;
+}
+
 async function normalizarDescuentosVencidos(db = pool, idCargo = null) {
   // Un descuento confirmado forma parte del cargo y no debe desaparecer al
   // alcanzar la fecha de vencimiento. Antes esta rutina lo llevaba a cero,
@@ -674,8 +706,10 @@ async function facturarCargosPagadosPendientesAutomaticamente() {
        LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
        WHERE c.estado = 'pagado'
          AND c.saldo <= 0
-         AND COALESCE((SELECT SUM(pg2.monto) FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado'), 0) + 0.001 >= c.total
-         AND c.total > 0
+         AND (
+           (c.total > 0 AND COALESCE((SELECT SUM(pg2.monto) FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado'), 0) + 0.001 >= c.total)
+           OR (c.monto_base > 0 AND c.descuento + 0.001 >= c.monto_base AND c.total <= 0.001)
+         )
          AND fc.id_factura_externa IS NULL
        ORDER BY c.fecha_emision ASC, c.id_cargo ASC
        LIMIT 30`
@@ -718,9 +752,13 @@ export async function listarFacturas() {
   // sigue mostrando los cargos pagados como pendientes de facturar.
   await conciliarFacturasConEnfriamiento();
 
-  // La creación de la factura ocurre al liquidar el cargo. Aquí solo se
-  // concilian referencias ya existentes; así evitamos dos procesos intentando
-  // crear el mismo comprobante mientras el pago aún está terminando.
+  // Respaldo idempotente: si un cargo ya quedó liquidado (incluida una
+  // exoneración del 100%) y por cualquier motivo la primera emisión no dejó
+  // vínculo local, se reintenta en segundo plano. Factura Bonita usa la
+  // referencia estable cargo:<id>, por lo que este respaldo no crea duplicados.
+  void facturarCargosPagadosPendientesAutomaticamente().catch((error) => {
+    console.warn('Finanzas: no se pudo iniciar la facturación pendiente en segundo plano:', error?.message || error);
+  });
 
   // Se consideran facturables tanto los cargos marcados como pagados como los
   // registros históricos cuyo saldo ya llegó a cero. Esto evita ocultar cargos
@@ -828,29 +866,48 @@ export async function crearCargo(datos, idUsuario) {
   await validarDescuentoVigente(fechaVencimiento, descuento);
 
   const estadoInicial = total <= 0 ? 'pagado' : 'pendiente';
-  const [result] = await pool.query(
-    `INSERT INTO cargo_estudiante
-      (id_estudiante, id_concepto, id_matricula, descripcion, periodo,
-       fecha_emision, fecha_vencimiento_original, fecha_vencimiento, plazo_dias, monto_base, descuento, impuesto, total, saldo,
-       estado, id_usuario_crea)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      idEstudiante, idConcepto, datos.id_matricula || null, descripcion, periodo,
-      fechaEmision, fechaVencimiento, fechaVencimiento, plazoDias, base, descuento, impuesto, total, total,
-      estadoInicial, idUsuario || null
-    ]
-  );
+  const exoneracionTotal = esExoneracionTotal(base, descuento, total);
+  const responsableExoneracion = exoneracionTotal ? validarResponsableExoneracion(datos.responsable) : null;
+
+  const connection = await pool.getConnection();
+  let idCargoCreado = null;
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      `INSERT INTO cargo_estudiante
+        (id_estudiante, id_concepto, id_matricula, descripcion, periodo,
+         fecha_emision, fecha_vencimiento_original, fecha_vencimiento, plazo_dias, monto_base, descuento, impuesto, total, saldo,
+         estado, id_usuario_crea)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        idEstudiante, idConcepto, datos.id_matricula || null, descripcion, periodo,
+        fechaEmision, fechaVencimiento, fechaVencimiento, plazoDias, base, descuento, impuesto, total, total,
+        estadoInicial, idUsuario || null
+      ]
+    );
+    idCargoCreado = result.insertId;
+    if (responsableExoneracion) {
+      await upsertResponsable(connection, idEstudiante, responsableExoneracion);
+    }
+    await connection.commit();
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    throw error;
+  } finally {
+    connection.release();
+  }
 
   let facturacion = null;
-  if (estadoInicial === 'pagado' && descuento + 0.001 >= base && base > 0) {
+  if (exoneracionTotal) {
     try {
-      facturacion = await generarFacturaDeCargo(result.insertId, 'otro');
+      facturacion = await generarFacturaCierreConReintento(idCargoCreado, 'otro');
     } catch (errorFactura) {
-      console.warn(`Finanzas: cargo ${result.insertId} cubierto al 100% por descuento; el comprobante quedará disponible para reintento:`, errorFactura?.message || errorFactura);
+      console.warn(`Finanzas: cargo ${idCargoCreado} cubierto al 100% por descuento; el comprobante quedará disponible para reintento:`, errorFactura?.message || errorFactura);
+      facturacion = { ok: false, estado: 'error', mensaje: errorFactura?.message || 'No se pudo generar el comprobante de exoneración.' };
     }
   }
 
-  return { id_cargo: result.insertId, total, saldo: total, estado: estadoInicial, facturacion };
+  return { id_cargo: idCargoCreado, total, saldo: total, estado: estadoInicial, exoneracion_total: exoneracionTotal, facturacion };
 }
 
 export async function crearCargoMatriculaSiCorresponde({ id_matricula, id_estudiante, id_usuario, anio }) {
@@ -904,7 +961,7 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
      ORDER BY (cc.codigo = 'MATRICULA') DESC, c.fecha_emision ASC`, [id]
   );
   const [matRows] = await pool.query(
-    `SELECT c.id_cargo, c.total, c.saldo, c.estado,
+    `SELECT c.id_cargo, c.monto_base, c.descuento, c.total, c.saldo, c.estado,
             COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS pagado
      FROM cargo_estudiante c
      INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
@@ -916,8 +973,9 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
   const cargoMatricula = matRows[0] || null;
   const abonado = Number(cargoMatricula?.pagado || 0);
   const minimo = 10000;
-  const faltante = Math.max(0, minimo - abonado);
-  const habilitado = !!cargoMatricula && (cargoMatricula.estado === 'pagado' || abonado >= minimo);
+  const exoneradoTotal = !!cargoMatricula && esExoneracionTotal(cargoMatricula.monto_base, cargoMatricula.descuento, cargoMatricula.total) && String(cargoMatricula.estado || '').toLowerCase() === 'pagado';
+  const faltante = exoneradoTotal ? 0 : Math.max(0, minimo - abonado);
+  const habilitado = !!cargoMatricula && (exoneradoTotal || cargoMatricula.estado === 'pagado' || abonado >= minimo);
   return {
     id_estudiante: id,
     anio: Number(anio || new Date().getFullYear()),
@@ -925,13 +983,17 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
     faltante_minimo: faltante,
     habilitado,
     abono_matricula: abonado,
+    exonerado_total: exoneradoTotal,
+    monto_exonerado: exoneradoTotal ? Number(cargoMatricula?.descuento || cargoMatricula?.monto_base || 0) : 0,
     cargo_matricula: cargoMatricula,
     deudas,
-    titulo: habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente',
+    titulo: exoneradoTotal ? 'Matrícula exonerada' : (habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'),
     mensaje: habilitado
-      ? (deudas.length
-          ? 'El abono mínimo ya está registrado. Puedes continuar; los saldos pendientes seguirán visibles en Pagos.'
-          : 'El requisito de pago está al día y puedes continuar con la matrícula.')
+      ? (exoneradoTotal
+          ? 'La matrícula fue exonerada al 100%. No existe saldo pendiente y puedes continuar.'
+          : (deudas.length
+              ? 'El abono mínimo ya está registrado. Puedes continuar; los saldos pendientes seguirán visibles en Pagos.'
+              : 'El requisito de pago está al día y puedes continuar con la matrícula.'))
       : (!cargoMatricula
           ? 'Aún no hay un cargo de matrícula disponible para este estudiante.'
           : `Para continuar faltan CRC ${faltante.toLocaleString('es-CR')} del abono mínimo.`)
@@ -967,6 +1029,14 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
     const subtotal = base - descuento;
     const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
     const total = Math.round((subtotal + impuesto) * 100) / 100;
+    const exoneracionTotal = esExoneracionTotal(base, descuento, total);
+    // Una exoneración total es un cierre por beneficio, no un pago en efectivo.
+    // Para mantener el comprobante identificable pedimos y persistimos el
+    // responsable antes de liquidar el cargo.
+    if (exoneracionTotal) {
+      const responsable = validarResponsableExoneracion(datos.responsable);
+      await upsertResponsable(connection, cargo.id_estudiante, responsable);
+    }
     if (total < pagado) throw new Error(`El total no puede ser menor a lo ya pagado (CRC ${pagado.toLocaleString('es-CR')}).`);
     const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
     const estado = saldo <= 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
@@ -993,13 +1063,14 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
       try {
         // Un cargo cubierto al 100% por descuento también debe cerrar su ciclo
         // financiero con un comprobante: base original, descuento total y CRC 0.
-        facturacion = await generarFacturaDeCargo(id, ultimoPago?.metodo_pago || 'otro');
+        facturacion = await generarFacturaCierreConReintento(id, ultimoPago?.metodo_pago || 'otro');
       } catch (errorFactura) {
         console.warn(`Finanzas: cargo ${id} quedó saldado por descuento, pero la factura no pudo generarse en ese momento:`, errorFactura?.message || errorFactura);
+        facturacion = { ok: false, estado: 'error', mensaje: errorFactura?.message || 'El cargo quedó exonerado, pero no se pudo emitir el comprobante en ese instante.' };
       }
     }
 
-    return { id_cargo:id, total, saldo, estado, pagado, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias, facturacion };
+    return { id_cargo:id, total, saldo, estado, pagado, exoneracion_total: exoneracionTotal, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias, facturacion };
   } catch (e) { await connection.rollback(); throw e; } finally { connection.release(); }
 }
 
@@ -1019,14 +1090,18 @@ export async function actualizarPago(idPago, datos) {
 export async function listarPagos(filtros = {}) {
   const values = [];
   let where = "WHERE pg.estado = 'aplicado'";
+  let whereExoneracion = "WHERE c.estado = 'pagado' AND c.monto_base > 0 AND c.descuento + 0.001 >= c.monto_base AND c.total <= 0.001 AND c.saldo <= 0.001";
   if (filtros.id_estudiante) {
+    const idEstudiante = positiveInt(filtros.id_estudiante, "El estudiante");
     where += " AND c.id_estudiante = ?";
-    values.push(positiveInt(filtros.id_estudiante, "El estudiante"));
+    whereExoneracion += " AND c.id_estudiante = ?";
+    values.push(idEstudiante);
   }
 
   const [rows] = await pool.query(
     `SELECT
        pg.id_pago, pg.id_cargo, pg.fecha_pago, pg.monto, pg.metodo_pago, pg.referencia, pg.id_usuario,
+       'pago' AS tipo_movimiento, 0 AS monto_exonerado,
        c.descripcion, c.total AS total_cargo, c.saldo, c.estado AS estado_cargo,
        cc.nombre AS concepto_nombre, cc.codigo AS concepto_codigo,
        CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
@@ -1057,8 +1132,41 @@ export async function listarPagos(filtros = {}) {
      LIMIT 1000`,
     values
   );
-  return rows;
+
+  // Una exoneración del 100% no representa entrada de efectivo. Sin embargo,
+  // sí es un movimiento financiero que liquida el cargo y debe quedar visible
+  // en el historial. Lo exponemos como movimiento de exoneración sin inventar
+  // un pago monetario ni alterar los totales de caja.
+  const valoresExoneracion = filtros.id_estudiante ? [values[0]] : [];
+  const [exoneraciones] = await pool.query(
+    `SELECT
+       CONCAT('EXO-', c.id_cargo) AS id_pago, c.id_cargo,
+       COALESCE(fc.fecha_solicitud, fc.fecha_actualizacion, c.fecha_creacion) AS fecha_pago,
+       0 AS monto, 'exoneracion' AS metodo_pago, 'Exoneración 100%' AS referencia, NULL AS id_usuario,
+       'exoneracion' AS tipo_movimiento, c.descuento AS monto_exonerado,
+       c.descripcion, c.total AS total_cargo, c.saldo, c.estado AS estado_cargo,
+       cc.nombre AS concepto_nombre, cc.codigo AS concepto_codigo,
+       CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
+       NULL AS registrado_por, 0 AS acumulado_hasta_pago, 1 AS pago_cierre,
+       fc.id_factura_externa, fc.estado_factura
+     FROM cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
+     INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
+     INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
+     ${whereExoneracion}
+     ORDER BY COALESCE(fc.fecha_solicitud, fc.fecha_actualizacion, c.fecha_creacion) DESC
+     LIMIT 1000`,
+    valoresExoneracion
+  );
+
+  return [...rows, ...exoneraciones].sort((a, b) => {
+    const fa = new Date(a.fecha_pago || 0).getTime();
+    const fb = new Date(b.fecha_pago || 0).getTime();
+    return fb - fa || String(b.id_pago).localeCompare(String(a.id_pago));
+  }).slice(0, 1000);
 }
+
 
 export async function registrarPago(idCargo, datos, idUsuario) {
   const cargoId = positiveInt(idCargo, "El cargo");
@@ -1155,7 +1263,7 @@ export async function registrarPago(idCargo, datos, idUsuario) {
 
   if (cargoPagado) {
     try {
-      facturacion = await generarFacturaDeCargo(cargoId, metodo);
+      facturacion = await generarFacturaCierreConReintento(cargoId, metodo);
       if (!facturacion?.ok) {
         facturacion = {
           ...facturacion,
@@ -1561,5 +1669,5 @@ export async function listarClasesExtra() {
 }
 
 export async function reintentarFactura(idCargo, metodoPago = 'otro') {
-  return generarFacturaDeCargo(positiveInt(idCargo, "El cargo"), metodoPago);
+  return generarFacturaCierreConReintento(positiveInt(idCargo, "El cargo"), metodoPago);
 }

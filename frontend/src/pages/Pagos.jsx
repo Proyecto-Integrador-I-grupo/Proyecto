@@ -193,7 +193,7 @@ export default function Pagos() {
             <div className="finance-tool-body">
               <div className="finance-filter-row mb-3">
                 <div className="input-group input-group-sm finance-search"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="fin-pagos-busqueda" className="form-control" maxLength="120" placeholder="Estudiante, concepto o referencia" /></div>
-                <select id="fin-pagos-metodo" className="form-select form-select-sm finance-state-filter"><option value="">Todos los métodos</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select>
+                <select id="fin-pagos-metodo" className="form-select form-select-sm finance-state-filter"><option value="">Todos los métodos</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option><option value="exoneracion">Exoneración 100%</option></select>
                 <input id="fin-pagos-desde" type="date" className="form-control form-control-sm finance-date-filter" title="Desde" />
                 <input id="fin-pagos-hasta" type="date" className="form-control form-control-sm finance-date-filter" title="Hasta" />
                 <button id="fin-pagos-limpiar" type="button" className="btn btn-sm btn-outline-secondary"><i className="bi bi-eraser"></i> Limpiar</button>
@@ -304,6 +304,20 @@ export default function Pagos() {
                 <label className="form-label">Descripción</label>
                 <input id="fin-cargo-descripcion" className="form-control" maxLength="200" placeholder="Detalle del servicio educativo" />
               </div>
+
+              <div id="fin-cargo-exoneracion-responsable" className="col-12 hidden">
+                <div className="finance-exemption-box">
+                  <div className="finance-exemption-heading"><i className="bi bi-person-vcard"></i><div><strong>Responsable para comprobante de exoneración</strong><small>Un descuento del 100% liquida el cargo sin cobro, pero igualmente genera factura por CRC 0.</small></div></div>
+                  <div className="row g-2 mt-1">
+                    <div className="col-md-6"><label className="form-label">Nombre completo</label><input id="fin-cargo-resp-nombre" className="form-control" maxLength="100" /></div>
+                    <div className="col-md-3"><label className="form-label">Parentesco</label><input id="fin-cargo-resp-parentesco" className="form-control" maxLength="40" placeholder="Madre, padre..." /></div>
+                    <div className="col-md-3"><label className="form-label">Teléfono</label><input id="fin-cargo-resp-telefono" className="form-control" maxLength="25" /></div>
+                    <div className="col-md-5"><label className="form-label">Correo</label><input id="fin-cargo-resp-correo" type="email" className="form-control" maxLength="150" /></div>
+                    <div className="col-md-3"><label className="form-label">Tipo ID</label><select id="fin-cargo-resp-tipo-id" className="form-select" defaultValue="01"><option value="01">Física</option><option value="02">Jurídica</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
+                    <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-cargo-resp-numero-id" className="form-control" maxLength="30" /></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div className="modal-footer">
@@ -324,6 +338,20 @@ export default function Pagos() {
               <div className="col-md-4"><label className="form-label">Vencimiento</label><input id="fin-edit-cargo-vencimiento" type="date" className="form-control" /></div><div className="col-md-4"><label className="form-label">Extender plazo</label><select id="fin-edit-cargo-extension" className="form-select" defaultValue="0"><option value="0">Sin extensión</option><option value="7">+ 7 días</option><option value="15">+ 15 días</option><option value="30">+ 30 días</option><option value="60">+ 60 días</option><option value="90">+ 90 días</option></select></div><div className="col-md-8"><label className="form-label">Motivo de extensión <span className="text-muted fw-normal">(opcional)</span></label><input id="fin-edit-cargo-motivo-extension" className="form-control" maxLength="250" placeholder="Ej.: acuerdo de pago con responsable" /></div>
               <div className="col-md-4"><label className="form-label">Periodo</label><input id="fin-edit-cargo-periodo" className="form-control" maxLength="30" /></div>
               <div className="col-md-8"><label className="form-label">Descripción <span className="text-muted fw-normal">(opcional)</span></label><input id="fin-edit-cargo-descripcion" className="form-control" maxLength="200" /></div>
+
+              <div id="fin-edit-exoneracion-responsable" className="col-12 hidden">
+                <div className="finance-exemption-box">
+                  <div className="finance-exemption-heading"><i className="bi bi-person-vcard"></i><div><strong>Datos para la factura de exoneración</strong><small>Al cubrir el 100% con descuento se pedirá igualmente un responsable y se emitirá un comprobante con total CRC 0.</small></div></div>
+                  <div className="row g-2 mt-1">
+                    <div className="col-md-6"><label className="form-label">Nombre completo</label><input id="fin-edit-resp-nombre" className="form-control" maxLength="100" /></div>
+                    <div className="col-md-3"><label className="form-label">Parentesco</label><input id="fin-edit-resp-parentesco" className="form-control" maxLength="40" placeholder="Madre, padre..." /></div>
+                    <div className="col-md-3"><label className="form-label">Teléfono</label><input id="fin-edit-resp-telefono" className="form-control" maxLength="25" /></div>
+                    <div className="col-md-5"><label className="form-label">Correo</label><input id="fin-edit-resp-correo" type="email" className="form-control" maxLength="150" /></div>
+                    <div className="col-md-3"><label className="form-label">Tipo ID</label><select id="fin-edit-resp-tipo-id" className="form-select" defaultValue="01"><option value="01">Física</option><option value="02">Jurídica</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
+                    <div className="col-md-4"><label className="form-label">Identificación</label><input id="fin-edit-resp-numero-id" className="form-control" maxLength="30" /></div>
+                  </div>
+                </div>
+              </div>
               <div className="col-12"><div className="alert alert-light border small mb-0">El sistema no permite bajar el total por debajo de lo que ya fue pagado.</div></div>
             </div>
           </div>

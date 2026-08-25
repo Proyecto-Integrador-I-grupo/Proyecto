@@ -1,6 +1,7 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
+import { normalizarDiasSemana, validarChoqueProfesor } from "./matriculaServiceP.js";
 
 
 let profesorHorarioSchemaPromise = null;
@@ -11,6 +12,8 @@ async function asegurarHorarioGruposProfesor() {
     if (!inicio.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_inicio TIME NULL");
     const [fin] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'hora_fin'");
     if (!fin.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN hora_fin TIME NULL");
+    const [dias] = await conexionPromise.query("SHOW COLUMNS FROM grupo LIKE 'dias_semana'");
+    if (!dias.length) await conexionPromise.query("ALTER TABLE grupo ADD COLUMN dias_semana VARCHAR(80) NOT NULL DEFAULT ''");
   })().catch((error) => { profesorHorarioSchemaPromise = null; throw error; });
   return profesorHorarioSchemaPromise;
 }
@@ -432,7 +435,8 @@ export const reintegrarProfesorService = async (id_profesor) => {
     );
 
     const [pendientes] = await connection.query(
-      `SELECT ps.id_suplencia, ps.id_grupo, ps.id_profesor_suplente, ps.fecha_inicio, g.estado AS grupo_activo
+      `SELECT ps.id_suplencia, ps.id_grupo, ps.id_profesor_suplente, ps.fecha_inicio,
+              g.estado AS grupo_activo, g.nombre_grupo, g.dias_semana, g.hora_inicio, g.hora_fin
        FROM profesor_suplencia ps
        INNER JOIN grupo g ON g.id_grupo = ps.id_grupo
        WHERE ps.id_profesor_titular = ? AND ps.estado = TRUE`,
@@ -441,7 +445,6 @@ export const reintegrarProfesorService = async (id_profesor) => {
 
     const gruposRestaurados = [];
     const gruposOmitidos = [];
-    let asistenciasReasignadas = 0;
 
     for (const p of pendientes) {
       // El grupo ya no existe / fue desactivado: no hay a dónde restaurarlo.
@@ -463,24 +466,16 @@ export const reintegrarProfesorService = async (id_profesor) => {
           [p.id_grupo, p.id_profesor_suplente]
         );
 
-        // NUEVO: reasignar al titular las asistencias que tomó el suplente
-        // durante la ventana real de esta suplencia (fecha_inicio -> hoy).
-        // El trigger trg_asistencia_after_update ya registra esto en `auditoria`
-        // fila por fila (OLD.id_profesor = suplente, NEW.id_profesor = titular),
-        // así que no hace falta auditar esto manualmente aquí.
-        const [reasignadas] = await connection.query(
-          `UPDATE asistencia
-           SET id_profesor = ?
-           WHERE id_grupo = ? 
-             AND id_profesor = ? 
-             AND fecha BETWEEN ? AND CURDATE()
-             AND estado = TRUE`,
-          [id_profesor, p.id_grupo, p.id_profesor_suplente, p.fecha_inicio]
-        );
-        asistenciasReasignadas += reasignadas.affectedRows;
+        // Las asistencias históricas permanecen asociadas al profesor que realmente
+        // las registró. Cambiarlas al titular rompería la trazabilidad académica.
       }
 
-      // Se restaura al titular en su grupo original.
+      // Se restaura al titular solo si el horario sigue siendo compatible.
+      const diasGrupo = normalizarDiasSemana(p.dias_semana, p.nombre_grupo);
+      if (!diasGrupo.length || !p.hora_inicio || !p.hora_fin) {
+        throw new Error(`No se puede restaurar ${p.nombre_grupo || 'el grupo'} porque no tiene días y horario completos.`);
+      }
+      await validarChoqueProfesor(connection, Number(id_profesor), diasGrupo, p.hora_inicio, p.hora_fin, Number(p.id_grupo));
       await connection.query(
         `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
          VALUES (?, ?, CURDATE(), TRUE)`,
@@ -500,7 +495,8 @@ export const reintegrarProfesorService = async (id_profesor) => {
       id_profesor,
       grupos_restaurados: gruposRestaurados,
       grupos_omitidos: gruposOmitidos,
-      asistencias_reasignadas: asistenciasReasignadas,
+      asistencias_reasignadas: 0,
+      historial_asistencia_preservado: true,
       acceso_restaurado: true,
       mensaje: "Profesor reintegrado exitosamente"
     };
@@ -688,6 +684,18 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
       throw new Error("No se puede asignar un profesor inactivo al grupo.");
     }
 
+    const [[grupoDestino]] = await connection.query(
+      `SELECT id_grupo, nombre_grupo, dias_semana, hora_inicio, hora_fin, estado
+       FROM grupo WHERE id_grupo = ? LIMIT 1 FOR UPDATE`,
+      [id_grupo]
+    );
+    if (!grupoDestino || !grupoDestino.estado) throw new Error('El grupo no existe o está inactivo.');
+    const diasDestino = normalizarDiasSemana(grupoDestino.dias_semana, grupoDestino.nombre_grupo);
+    if (!diasDestino.length || !grupoDestino.hora_inicio || !grupoDestino.hora_fin) {
+      throw new Error('El grupo debe tener días y horario definidos antes de asignar un profesor o sustituto.');
+    }
+    await validarChoqueProfesor(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
+
     if (id_profesor_anterior) {
       const [titularRows] = await connection.query(
         `SELECT id_profesor, materia FROM profesor WHERE id_profesor = ? LIMIT 1`,
@@ -791,11 +799,19 @@ export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) 
     if (listaGrupos.length > 0) {
       const placeholders = listaGrupos.map(() => '?').join(',');
       const [gruposValidos] = await connection.query(
-        `SELECT id_grupo FROM grupo WHERE id_grupo IN (${placeholders}) AND estado = TRUE`,
+        `SELECT id_grupo, nombre_grupo, dias_semana, hora_inicio, hora_fin
+         FROM grupo WHERE id_grupo IN (${placeholders}) AND estado = TRUE`,
         listaGrupos
       );
       if (gruposValidos.length !== listaGrupos.length) {
         throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
+      }
+      for (const grupo of gruposValidos) {
+        const dias = normalizarDiasSemana(grupo.dias_semana, grupo.nombre_grupo);
+        if (!dias.length || !grupo.hora_inicio || !grupo.hora_fin) {
+          throw new Error(`El grupo ${grupo.nombre_grupo} no tiene días y horario completos. Defínelos antes de asignar profesores.`);
+        }
+        await validarChoqueProfesor(connection, Number(id_profesor), dias, grupo.hora_inicio, grupo.hora_fin, Number(grupo.id_grupo));
       }
     }
 

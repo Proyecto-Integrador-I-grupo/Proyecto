@@ -47,13 +47,13 @@ export const crearSeccionService = async (datos) => {
         `UPDATE seccion
          SET nivel = ?, descripcion = ?, estado = TRUE
          WHERE id_seccion = ?`,
-        [nivel, descripcionTexto, idSeccion]
+        [nivel, descripcion, idSeccion]
       );
     } else {
       const [resultado] = await connection.query(
         `INSERT INTO seccion (nombre_seccion, nivel, periodo_lectivo, descripcion, estado)
          VALUES (?, ?, ?, ?, TRUE)`,
-        [nombre, nivel, anioLectivo, descripcionTexto]
+        [nombre, nivel, anioLectivo, descripcion]
       );
       idSeccion = resultado.insertId;
     }

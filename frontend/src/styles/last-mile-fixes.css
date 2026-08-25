@@ -470,3 +470,222 @@ html::-webkit-scrollbar, body::-webkit-scrollbar, #root::-webkit-scrollbar,
   height: 0 !important;
   display: none !important;
 }
+
+/* ===================== CIERRE VISUAL DEFINITIVO ===================== */
+/* La acción principal de matrícula usa la misma familia visual que las otras tarjetas. */
+#matricula-view .matricula-card-action {
+  background: #ffffff !important;
+  color: #23364d !important;
+  border: 1px solid #9fb0c2 !important;
+  box-shadow: none !important;
+}
+#matricula-view .matricula-card-action:hover,
+#matricula-view .matricula-card-action:focus-visible {
+  background: #eef3f8 !important;
+  color: #14263b !important;
+  border-color: #71869d !important;
+}
+body.theme-dark #matricula-view .matricula-card-action {
+  background: #13233a !important;
+  color: #e5eff9 !important;
+  border-color: #56708d !important;
+}
+body.theme-dark #matricula-view .matricula-card-action:hover,
+body.theme-dark #matricula-view .matricula-card-action:focus-visible {
+  background: #213650 !important;
+  color: #ffffff !important;
+  border-color: #7893af !important;
+}
+
+/* Confirmaciones destructivas: nunca texto blanco sobre un fondo casi blanco. */
+#modalConfirmarEliminacion .destructive-confirm,
+#modalConfirmarEliminacionSeccion .destructive-confirm {
+  background: #b83d4b !important;
+  border-color: #b83d4b !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  min-width: 150px;
+}
+#modalConfirmarEliminacion .destructive-confirm:hover,
+#modalConfirmarEliminacionSeccion .destructive-confirm:hover,
+#modalConfirmarEliminacion .destructive-confirm:focus-visible,
+#modalConfirmarEliminacionSeccion .destructive-confirm:focus-visible {
+  background: #982f3b !important;
+  border-color: #982f3b !important;
+  color: #ffffff !important;
+}
+body.theme-dark #modalConfirmarEliminacion .destructive-confirm,
+body.theme-dark #modalConfirmarEliminacionSeccion .destructive-confirm {
+  background: #8f3340 !important;
+  border-color: #bf5965 !important;
+  color: #fff5f6 !important;
+}
+
+/* Selector de días de grupo. */
+.schedule-days {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem;
+}
+.schedule-day {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 42px;
+  padding: .55rem .7rem;
+  border: 1px solid #cad5e0;
+  border-radius: .7rem;
+  background: #f8fafc;
+  color: #26384d;
+  cursor: pointer;
+}
+.schedule-day input { margin: 0; }
+.schedule-day:has(input:checked) {
+  background: #e8f2fb;
+  border-color: #6d9fc4;
+  color: #174a70;
+}
+body.theme-dark .schedule-day {
+  background: #101e31 !important;
+  color: #dce8f5 !important;
+  border-color: #405974 !important;
+}
+body.theme-dark .schedule-day:has(input:checked) {
+  background: #1b3952 !important;
+  color: #ffffff !important;
+  border-color: #69a5cf !important;
+}
+
+/* Dark mode: ninguna superficie interactiva importante debe convertirse en blanco. */
+body.theme-dark :is(
+  .card,.modal-content,.dropdown-menu,.list-group-item,.accordion-item,.accordion-button,
+  .nav-tabs,.popover,.toast,.alert,.table-responsive,.section-form-card,.section-delete-card,
+  .profesor-picker,.mat-financial-status,.finance-toolbar,.finance-tool-card,.finance-flow-panel,
+  .perfil-card,.permission-card,.permissions-card,.consulta-card,.report-card
+) {
+  background-color: #111d2f !important;
+  color: #eaf2fb !important;
+  border-color: #344b66 !important;
+}
+body.theme-dark .accordion-button:not(.collapsed),
+body.theme-dark .dropdown-item:hover,
+body.theme-dark .dropdown-item:focus {
+  background-color: #1a2b43 !important;
+  color: #ffffff !important;
+}
+body.theme-dark :is(.dropdown-item,.nav-link,.accordion-button,.list-group-item-action) {
+  color: #dbe7f3 !important;
+}
+
+/* Botones que Bootstrap o reglas antiguas dejaban demasiado claros. */
+body.theme-dark :is(.btn-light,.btn-outline-light,.btn-outline-secondary,.btn-secondary,.btn-close:not(.btn-close-white)) {
+  background-color: #15243a !important;
+  color: #e6eff8 !important;
+  border-color: #506985 !important;
+}
+body.theme-dark :is(.btn-light,.btn-outline-light,.btn-outline-secondary,.btn-secondary):hover,
+body.theme-dark :is(.btn-light,.btn-outline-light,.btn-outline-secondary,.btn-secondary):focus-visible {
+  background-color: #223851 !important;
+  color: #ffffff !important;
+  border-color: #7590ad !important;
+}
+body.theme-dark .btn-danger,
+body.theme-dark .view .btn-danger {
+  background-color: #8f3340 !important;
+  border-color: #b55360 !important;
+  color: #fff6f7 !important;
+}
+body.theme-dark .btn-danger:hover,
+body.theme-dark .view .btn-danger:hover {
+  background-color: #a83c4b !important;
+  border-color: #ce6672 !important;
+  color: #ffffff !important;
+}
+body.theme-dark .btn-danger:disabled,
+body.theme-dark .view .btn-danger:disabled {
+  background-color: #422b34 !important;
+  border-color: #61404a !important;
+  color: #bda7ad !important;
+  opacity: .78 !important;
+}
+
+/* Textos residuales que venían de reglas de modo claro. */
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,#profesores-view,
+  #consultas-view,#reportes-view,#perfil-view,#usuarios-view,.modal-content
+) :is(.text-dark,.text-black,.text-body,.text-body-emphasis,[style*="color: #0"],[style*="color:#0"]) {
+  color: #eef6ff !important;
+}
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,#profesores-view,
+  #consultas-view,#reportes-view,#perfil-view,#usuarios-view,.modal-content
+) :is(.text-muted,.text-secondary,.text-body-secondary,.form-text) {
+  color: #b7c8da !important;
+}
+
+/* El fondo del modal de confirmación permanece compacto y legible. */
+#modalConfirmarEliminacion .modal-dialog,
+#modalConfirmarEliminacionSeccion .modal-dialog {
+  max-width: 520px !important;
+}
+#modalConfirmarEliminacion .modal-body,
+#modalConfirmarEliminacionSeccion .modal-body {
+  min-height: auto !important;
+}
+
+@media (max-width: 575.98px) {
+  .schedule-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Cobertura de superficies residuales del modo oscuro. */
+body.theme-dark :is(
+  #usuarios-view .card-header,
+  .finance-summary-card,.finance-panel,.finance-record-card,.finance-history-record,.finance-invoice-record,
+  .finance-filter-row,.finance-tool-card,.billing-service-card,.billing-emitter-card,.billing-future-details,
+  .billing-config-footer,.billing-logo-card,.billing-config-card,.finance-empty-state,.finance-payment-context,
+  .profesor-picker .input-group-text,.profesor-select,.matricula-history-table,.mat-financial-status,
+  .section-form-card,.section-delete-card,.section-name-preview,
+  .consulta-card,.consulta-documento,.consulta-resultado,.consulta-result-card,.consulta-stat,
+  .card-filtros-asistencia,.attendance-student-cell,.attendance-cell,
+  .report-main-card,.report-preview-metric,.report-filter-panel
+) {
+  background: #111d2f !important;
+  background-color: #111d2f !important;
+  color: #eaf2fb !important;
+  border-color: #344b66 !important;
+}
+body.theme-dark .mat-financial-status.ok {
+  background: #123428 !important;
+  border-color: #2e765b !important;
+  color: #c8f5df !important;
+}
+body.theme-dark .mat-financial-status.blocked {
+  background: #3a2d15 !important;
+  border-color: #7e632d !important;
+  color: #ffe2a6 !important;
+}
+body.theme-dark .finance-record-money .finance-record-balance {
+  background: #36251f !important;
+  color: #ffd3be !important;
+}
+body.theme-dark :is(.billing-service-status.online,.billing-service-status.configured) {
+  background: #123428 !important;
+  color: #bdf1d7 !important;
+  border-color: #2f7058 !important;
+}
+body.theme-dark .billing-service-status.offline {
+  background: #3d2026 !important;
+  color: #ffc1ca !important;
+  border-color: #7b3f49 !important;
+}
+body.theme-dark .billing-service-status.pending {
+  background: #3a3017 !important;
+  color: #ffe2a0 !important;
+  border-color: #806a31 !important;
+}
+body.theme-dark .report-preview-metric strong,
+body.theme-dark #usuarios-view .table tbody strong,
+body.theme-dark .attendance-student-cell,
+body.theme-dark .attendance-cell {
+  color: #f3f8fe !important;
+}

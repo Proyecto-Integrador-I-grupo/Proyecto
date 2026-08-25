@@ -12,7 +12,7 @@ import {
   transferirEstudianteGrupo
 } from "../controllers/matriculaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
+import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -26,7 +26,6 @@ const validarMatricula = [
   body("observaciones").optional({ nullable: true }).isLength({ max: 150 })
     .withMessage("Las observaciones no pueden superar 150 caracteres."),
   body("id_estudiante").isInt({ min: 1 }).withMessage("Debe seleccionar un estudiante."),
-  body("id_usuario").isInt({ min: 1 }).withMessage("Falta el usuario que procesa la matrícula."),
   body("id_grupo").isInt({ min: 1 }).withMessage("Debe seleccionar un grupo.")
 ];
 
@@ -34,14 +33,16 @@ const validarGrupo = [
   body("nombre_grupo").trim().notEmpty().withMessage("El nombre del grupo es obligatorio."),
   body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
   body("id_seccion").isInt({ min: 1 }).withMessage("Debe seleccionar una sección académica."),
-  body("hora_inicio").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
-  body("hora_fin").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
+  body("dias_semana").isArray({ min: 1, max: 6 }).withMessage("Selecciona al menos un día de clase."),
+  body("hora_inicio").notEmpty().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
+  body("hora_fin").notEmpty().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
 ];
 
 const validarGrupoUpdate = [
   body("capacidad").isInt({ min: 1 }).withMessage("La capacidad debe ser un número entero mayor a cero."),
-  body("hora_inicio").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
-  body("hora_fin").optional({ nullable: true, checkFalsy: true }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
+  body("dias_semana").isArray({ min: 1, max: 6 }).withMessage("Selecciona al menos un día de clase."),
+  body("hora_inicio").notEmpty().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de inicio no es válida."),
+  body("hora_fin").notEmpty().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage("La hora de finalización no es válida.")
 ];
 
 const validarRetiroEstudiante = [
@@ -58,22 +59,21 @@ const validarTransferenciaEstudiante = [
   body("observaciones").optional({ nullable: true }).isLength({ max: 150 })
     .withMessage("Las observaciones no pueden superar 150 caracteres."),
   body("id_estudiante").isInt({ min: 1 }).withMessage("Debe indicar el estudiante."),
-  body("id_usuario").isInt({ min: 1 }).withMessage("Falta el usuario que procesa la transferencia."),
   body("id_grupo_actual").isInt({ min: 1 }).withMessage("Debe indicar el grupo de origen."),
   body("id_grupo_nuevo").isInt({ min: 1 }).withMessage("Debe seleccionar el grupo destino.")
 ];
 
 // Matrícula
 router.get("/matricula", requireAuth, obtenerMatriculas);
-router.post("/matricula", requireAuth, validarMatricula, validarCampos, crearMatricula);
-router.post("/matricula/transferir", requireAuth, validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
+router.post("/matricula", requireAuth, requireRole("Administrador", "Asistente"), validarMatricula, validarCampos, crearMatricula);
+router.post("/matricula/transferir", requireAuth, requireRole("Administrador", "Asistente"), validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
 
 // Grupos
 router.get("/grupos", requireAuth, obtenerGrupos);
-router.post("/grupos", requireAuth, validarGrupo, validarCampos, crearGrupo);
-router.put("/grupos/:id", requireAuth, validarGrupoUpdate, validarCampos, actualizarGrupo);
-router.delete("/grupos/:id", eliminarGrupo);
+router.post("/grupos", requireAuth, requireRole("Administrador", "Asistente"), validarGrupo, validarCampos, crearGrupo);
+router.put("/grupos/:id", requireAuth, requireRole("Administrador", "Asistente"), validarGrupoUpdate, validarCampos, actualizarGrupo);
+router.delete("/grupos/:id", requireAuth, requireRole("Administrador"), eliminarGrupo);
 router.get("/grupos/:id/detalle", requireAuth, obtenerDetalleGrupo);
-router.put("/grupos/:id/retirar-estudiante", requireAuth, validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
+router.put("/grupos/:id/retirar-estudiante", requireAuth, requireRole("Administrador", "Asistente"), validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
 
 export default router;

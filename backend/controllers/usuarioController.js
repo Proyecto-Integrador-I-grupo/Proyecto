@@ -37,8 +37,8 @@ export const crearUsuario = async (req, res) => {
     try {
         const { nombre, primer_apellido, apellido1, correo, contrasena, id_rol } = req.body;
         const correoNormalizado = validarCorreoInstitucional(correo);
-        const nombreNormalizado = String(nombre || "").trim();
-        const apellidoFinal = String(primer_apellido || apellido1 || "").trim();
+        const nombreNormalizado = String(nombre || "").replace(/\s+/g, " ").trim();
+        const apellidoFinal = String(primer_apellido || apellido1 || "").replace(/\s+/g, " ").trim();
 
         const existente = await usuarioModel.obtenerUsuarioPorCorreo(correoNormalizado);
         if (existente) {
@@ -88,11 +88,22 @@ export const crearUsuario = async (req, res) => {
         }
 
         const usuarioCreado = await usuarioModel.obtenerUsuarioPorId(resultadoUsuario.insertId);
+        const usuarioRespuesta = usuarioCreado || {
+            id_usuario: resultadoUsuario.insertId,
+            id_persona: idPersonaFinal,
+            id_rol: Number(id_rol || 2),
+            nom_rol: Number(id_rol || 2) === 1 ? "Administrador" : "Asistente",
+            nombre: nombreNormalizado,
+            apellido1: apellidoFinal,
+            apellido2: "",
+            correo: correoNormalizado,
+            estado: 1
+        };
 
         return res.status(201).json({
             mensaje: "Usuario creado correctamente.",
             id: resultadoUsuario.insertId,
-            usuario: usuarioCreado
+            usuario: usuarioRespuesta
         });
     } catch (error) {
         console.error("Error crítico en crearUsuario:", error);
@@ -142,9 +153,9 @@ export const actualizarUsuario = async (req, res) => {
             });
         }
 
-        const nombreFinal = nombre !== undefined ? String(nombre).trim() : usuario.nombre;
+        const nombreFinal = nombre !== undefined ? String(nombre).replace(/\s+/g, " ").trim() : usuario.nombre;
         const apellidoFinal = (primer_apellido ?? apellido1) !== undefined
-            ? String(primer_apellido ?? apellido1).trim()
+            ? String(primer_apellido ?? apellido1).replace(/\s+/g, " ").trim()
             : usuario.apellido1;
 
         if (!nombreFinal || !apellidoFinal || !correoFinal) {

@@ -495,6 +495,7 @@ export default function App() {
           aria-expanded="false"
           aria-controls="accessibility-menu"
           aria-label="Abrir opciones de accesibilidad"
+          title="Accesibilidad"
         >
           <i className="bi bi-universal-access"></i>
         </button>

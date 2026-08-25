@@ -182,6 +182,18 @@ function wireMatriculaEvents() {
     seccionForm.addEventListener('submit', handleSeccionSubmit);
   }
 
+  ['seccion-nivel', 'seccion-nombre'].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input && !input.dataset.previewWired) {
+      input.dataset.previewWired = '1';
+      input.addEventListener('input', actualizarPreviewSeccion);
+      input.addEventListener('blur', () => {
+        input.value = normalizarParteSeccion(input.value);
+        actualizarPreviewSeccion();
+      });
+    }
+  });
+
   const btnBorrarSeccion = document.getElementById('btn-borrar-seccion');
   if (btnBorrarSeccion && !btnBorrarSeccion.dataset.wired) {
     btnBorrarSeccion.dataset.wired = '1';
@@ -483,9 +495,44 @@ async function loadMatriculaData() {
   await populateSeccionesSelect();
 }
 
+function normalizarParteSeccion(valor) {
+  return String(valor ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function construirNombreSeccion(nombre, nivel) {
+  const parteNivel = normalizarParteSeccion(nivel);
+  const parteNombre = normalizarParteSeccion(nombre).toUpperCase();
+  if (!parteNivel) return parteNombre;
+  if (!parteNombre) return parteNivel;
+
+  const nivelMayuscula = parteNivel.toUpperCase();
+  const nombreNormalizado = parteNombre.replace(/[–—]/g, '-').replace(/\s*-\s*/g, '-');
+  const yaIncluyeNivel = nombreNormalizado === nivelMayuscula ||
+    nombreNormalizado.startsWith(`${nivelMayuscula}-`) ||
+    nombreNormalizado.startsWith(`${nivelMayuscula} `);
+  return yaIncluyeNivel ? nombreNormalizado : `${parteNivel}-${nombreNormalizado}`;
+}
+
+function formatearEtiquetaSeccion(seccion) {
+  const base = construirNombreSeccion(seccion?.nombre, seccion?.nivel);
+  const anio = seccion?.anio_lectivo ? ` (${seccion.anio_lectivo})` : '';
+  return `${base || 'Sección'}${anio}`;
+}
+
+function actualizarPreviewSeccion() {
+  const preview = document.getElementById('seccion-preview');
+  if (!preview) return;
+  const nivel = document.getElementById('seccion-nivel')?.value || '1';
+  const nombre = document.getElementById('seccion-nombre')?.value || 'A';
+  const etiqueta = construirNombreSeccion(nombre, nivel) || '1-A';
+  const strong = preview.querySelector('strong');
+  if (strong) strong.textContent = etiqueta;
+}
+
 function setDefaultSeccionPeriodo() {
   const input = document.getElementById('seccion-periodo');
   if (input && !input.value) input.value = new Date().getFullYear();
+  actualizarPreviewSeccion();
 }
 
 async function populatePersonaSelects() {
@@ -639,7 +686,7 @@ async function populateSeccionesSelect() {
 
       secciones.forEach((s) => {
         const ocupadaPor = seccionesOcupadas.get(Number(s.id_seccion));
-        const etiquetaBase = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const etiquetaBase = formatearEtiquetaSeccion(s);
         const etiqueta = ocupadaPor ? `${etiquetaBase} · Ocupada por ${ocupadaPor.nombre_grupo}` : etiquetaBase;
         const option = new Option(etiqueta, s.id_seccion);
         option.dataset.busqueda = `${s.nombre ?? ''} ${s.nivel ?? ''} ${s.anio_lectivo ?? ''} ${ocupadaPor?.nombre_grupo ?? ''}`.toLowerCase();
@@ -650,7 +697,7 @@ async function populateSeccionesSelect() {
     if (deleteSel) {
       deleteSel.innerHTML = '<option value="" disabled selected>Seleccionar sección</option>';
       secciones.forEach((s) => {
-        const etiqueta = `${s.nombre} — ${s.nivel} (${s.anio_lectivo})`;
+        const etiqueta = formatearEtiquetaSeccion(s);
         deleteSel.add(new Option(etiqueta, s.id_seccion));
       });
     }
@@ -672,20 +719,10 @@ function filtrarSeccionesGrupo(termino) {
     option.hidden = !!busqueda && !texto.includes(busqueda);
   });
 
-  // Si la opción actualmente seleccionada quedó oculta por el filtro (o no había
-  // ninguna seleccionada todavía), forzamos la selección a la primera visible.
-  // Sin esto, el <select> puede "verse" seleccionado visualmente en algunos
-  // navegadores mientras su .value real sigue vacío, y el backend rechaza
-  // la creación del grupo con "Debe seleccionar una sección académica."
-  const seleccionActual = select.options[select.selectedIndex];
-  const seleccionValida = seleccionActual && seleccionActual.value !== '' && !seleccionActual.hidden;
-
-  if (!seleccionValida) {
-    const primerVisible = Array.from(select.options).find((option) => !option.hidden && !option.disabled && option.value !== '');
-    if (primerVisible) {
-      select.value = primerVisible.value;
-    }
-  }
+  // El filtro solo oculta opciones. La sección debe elegirse explícitamente para
+  // evitar que se cree un grupo con una sección seleccionada accidentalmente.
+  const actual = select.options[select.selectedIndex];
+  if (actual?.hidden) select.value = '';
 }
 
 async function borrarSeccion(idSeccion) {
@@ -844,7 +881,7 @@ async function validarEstadoFinancieroMatricula() {
     if (panel) panel.className = 'mat-financial-status neutral';
     if (texto) texto.textContent = 'Selecciona un estudiante para verificar el abono mínimo de matrícula.';
     if (deudasEl) deudasEl.innerHTML = '';
-    if (submit) submit.disabled = true;
+    if (submit) { submit.disabled = true; submit.textContent = 'Completar Matrícula'; }
     return;
   }
 
@@ -852,7 +889,7 @@ async function validarEstadoFinancieroMatricula() {
   const grupo = allGrupos.find(g => Number(g.id_grupo ?? g.id) === grupoId);
   const anio = grupo?.periodo_lectivo || new Date().getFullYear();
   if (texto) texto.textContent = 'Consultando pagos y saldos pendientes...';
-  if (submit) submit.disabled = true;
+  if (submit) { submit.disabled = true; submit.textContent = 'Validando...'; }
 
   try {
     const res = await apiFetch(`/api/finanzas/estudiantes/${idEstudiante}/estado-matricula?anio=${encodeURIComponent(anio)}`);
@@ -876,16 +913,22 @@ async function validarEstadoFinancieroMatricula() {
     }
     const deudas = Array.isArray(data.deudas) ? data.deudas : [];
     if (deudasEl) {
+      const visibles = deudas.slice(0, 3);
+      const adicionales = Math.max(0, deudas.length - visibles.length);
       deudasEl.innerHTML = deudas.length
-        ? `<div class="mat-debt-title"><i class="bi bi-list-check"></i> Saldos registrados (${deudas.length})</div>${deudas.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}`
+        ? `<div class="mat-debt-title"><i class="bi bi-list-check"></i> Saldos registrados (${deudas.length})</div>${visibles.map(d => `<div class="mat-debt-row"><span>${escapeHtmlMat(d.concepto_nombre || d.descripcion || 'Cargo')}</span><strong>${monedaMat(d.saldo)}</strong></div>`).join('')}${adicionales ? `<div class="mat-debt-more">+ ${adicionales} saldo${adicionales === 1 ? '' : 's'} adicional${adicionales === 1 ? '' : 'es'}</div>` : ''}`
         : '<span class="mat-no-debt"><i class="bi bi-check2-circle"></i> Sin otros saldos pendientes.</span>';
     }
-    if (submit) submit.disabled = !data.habilitado;
+    if (submit) {
+      submit.disabled = !data.habilitado;
+      submit.textContent = data.habilitado ? 'Completar Matrícula' : 'Pago pendiente';
+      submit.title = data.habilitado ? '' : 'El estudiante debe cumplir el abono mínimo antes de matricularse.';
+    }
   } catch (error) {
     if (panel) panel.className = 'mat-financial-status blocked';
     if (texto) texto.textContent = error.message;
     if (deudasEl) deudasEl.innerHTML = '';
-    if (submit) submit.disabled = true;
+    if (submit) { submit.disabled = true; submit.textContent = 'Completar Matrícula'; }
   }
 }
 
@@ -1084,12 +1127,19 @@ async function handleGrupoSubmit(e) {
 
 async function handleSeccionSubmit(e) {
   e.preventDefault();
+  const nivel = normalizarParteSeccion(document.getElementById('seccion-nivel')?.value);
+  const nombreEntrada = normalizarParteSeccion(document.getElementById('seccion-nombre')?.value);
   const payload = {
-    nombre: document.getElementById('seccion-nombre').value.trim(),
-    nivel: document.getElementById('seccion-nivel').value.trim(),
-    anio_lectivo: parseInt(document.getElementById('seccion-periodo').value, 10),
-    descripcion: document.getElementById('seccion-descripcion').value.trim()
+    nombre: construirNombreSeccion(nombreEntrada, nivel),
+    nivel,
+    anio_lectivo: parseInt(document.getElementById('seccion-periodo')?.value, 10),
+    descripcion: normalizarParteSeccion(document.getElementById('seccion-descripcion')?.value)
   };
+
+  if (!nivel || !nombreEntrada || !Number.isInteger(payload.anio_lectivo)) {
+    showToast('Completa nivel, sección y año lectivo.', 'error');
+    return;
+  }
 
   try {
     const res = await apiFetch('/api/procesos/secciones', {

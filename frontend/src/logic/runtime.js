@@ -38,40 +38,6 @@ function applyInputGuards() {
   });
 }
 
-function installCharacterCounters() {
-  const selector = 'input[maxlength]:not([type="password"]):not([type="search"]), textarea[maxlength]';
-  document.querySelectorAll(selector).forEach((el) => {
-    if (el.dataset.eduCounterWired === '1' || el.dataset.noCounter === '1') return;
-    const key = `${el.id || ''} ${el.name || ''}`.toLowerCase();
-    if (/(search|busqueda|búsqueda|filtro|filter)/.test(key)) return;
-    const limit = Number(el.getAttribute('maxlength'));
-    if (!Number.isFinite(limit) || limit <= 0) return;
-
-    el.dataset.eduCounterWired = '1';
-    const counter = document.createElement('div');
-    counter.className = 'edu-char-counter';
-    counter.setAttribute('aria-live', 'polite');
-    const id = el.id ? `${el.id}-counter` : `edu-counter-${Math.random().toString(36).slice(2)}`;
-    counter.id = id;
-
-    const update = () => {
-      const used = String(el.value || '').length;
-      counter.textContent = `${used}/${limit}`;
-      counter.classList.toggle('near-limit', used >= Math.ceil(limit * 0.85));
-      counter.classList.toggle('at-limit', used >= limit);
-    };
-
-    const group = el.closest('.input-group');
-    const anchor = group || el;
-    anchor.insertAdjacentElement('afterend', counter);
-    const describedBy = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-    if (!describedBy.includes(id)) describedBy.push(id);
-    el.setAttribute('aria-describedby', describedBy.join(' '));
-    el.addEventListener('input', update);
-    update();
-  });
-}
-
 
 let modalScrollY = 0;
 
@@ -114,6 +80,11 @@ function unlockDocumentAfterModal() {
   body.style.removeProperty('overflow');
   body.style.removeProperty('padding-right');
 
+  // Si una ventana se cerró de forma programática y Bootstrap dejó un
+  // backdrop huérfano, lo retiramos solo cuando ya no existe ningún modal
+  // abierto. Esto evita pantallas bloqueadas y botones aparentemente inactivos.
+  document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+
   const restoreY = modalScrollY;
   // Restaurar después de que Bootstrap termine de devolver el foco evita que
   // el navegador desplace la página al botón que abrió el modal.
@@ -127,19 +98,14 @@ function unlockDocumentAfterModal() {
 function fitModalToViewport(modal) {
   if (!modal || modal.classList.contains('finance-invoice-preview-modal')) return;
   const dialog = modal.querySelector('.modal-dialog');
-  const content = modal.querySelector('.modal-content');
-  if (!dialog || !content) return;
+  if (!dialog) return;
 
+  // No escalamos/encogemos modales con zoom. El layout CSS mantiene header y
+  // footer visibles y permite desplazar solamente el contenido cuando la
+  // altura de la pantalla realmente lo exige.
   dialog.style.removeProperty('zoom');
   dialog.style.removeProperty('--edu-modal-fit');
-
-  const available = Math.max(320, window.innerHeight - 16);
-  const height = Math.max(content.scrollHeight, content.getBoundingClientRect().height);
-  if (!height || height <= available) return;
-
-  const scale = Math.max(0.62, Math.min(0.98, available / height));
-  dialog.style.zoom = String(scale);
-  dialog.style.setProperty('--edu-modal-fit', String(scale));
+  modal.classList.toggle('edu-modal-compact-height', window.innerHeight < 760);
 }
 
 function fitOpenModals() {
@@ -153,29 +119,55 @@ function initGlobalModalLock() {
   document.addEventListener('show.bs.modal', lockDocumentForModal);
   document.addEventListener('shown.bs.modal', (event) => {
     lockDocumentForModal();
-    // Neutraliza cualquier padding que Bootstrap haya agregado al body.
     document.body.style.paddingRight = '0px';
     window.requestAnimationFrame(() => fitModalToViewport(event.target));
   });
   document.addEventListener('hidden.bs.modal', (event) => {
-    event.target?.querySelector('.modal-dialog')?.style.removeProperty('zoom');
+    event.target?.classList.remove('edu-modal-compact-height');
     window.setTimeout(unlockDocumentAfterModal, 0);
   });
   window.addEventListener('resize', () => window.requestAnimationFrame(fitOpenModals));
 
-  const stopScrollWhenModalOpen = (event) => {
-    if (!document.querySelector('.modal.show')) return;
+  // La página de fondo queda inmóvil, pero el usuario sí puede usar rueda,
+  // touch y teclado dentro de la ventana emergente. Antes se bloqueaba la
+  // barra espaciadora incluso al escribir nombres como "Juana Perez".
+  const stopBackgroundScroll = (event) => {
+    const modal = document.querySelector('.modal.show');
+    if (!modal) return;
+    if (modal.contains(event.target)) return;
     event.preventDefault();
   };
 
-  document.addEventListener('wheel', stopScrollWhenModalOpen, { passive: false, capture: true });
-  document.addEventListener('touchmove', stopScrollWhenModalOpen, { passive: false, capture: true });
+  document.addEventListener('wheel', stopBackgroundScroll, { passive: false, capture: true });
+  document.addEventListener('touchmove', stopBackgroundScroll, { passive: false, capture: true });
   document.addEventListener('keydown', (event) => {
-    if (!document.querySelector('.modal.show')) return;
+    const modal = document.querySelector('.modal.show');
+    if (!modal) return;
+    if (modal.contains(event.target)) return;
     if (['PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp', ' '].includes(event.key)) {
       event.preventDefault();
     }
   }, true);
+}
+
+function installHumanNameNormalization() {
+  const selector = [
+    '#nombre', '#apellido1', '#apellido2',
+    '#prof-nombre', '#prof-apellido1', '#prof-apellido2',
+    '#edit-prof-nombre', '#edit-prof-apellido1', '#edit-prof-apellido2',
+    '#usuario-nombre', '#usuario-apellido1',
+    '#usuario-editar-nombre', '#usuario-editar-apellido1',
+    '#perfil-nombre', '#perfil-apellido1', '#perfil-apellido2'
+  ].join(',');
+
+  document.querySelectorAll(selector).forEach((input) => {
+    if (input.dataset.eduHumanName === '1') return;
+    input.dataset.eduHumanName = '1';
+    input.addEventListener('blur', () => {
+      // Conserva los espacios internos y solo corrige espacios repetidos.
+      input.value = String(input.value || '').replace(/\\s+/g, ' ').trim();
+    });
+  });
 }
 
 let booted = false;
@@ -219,6 +211,7 @@ export function syncReactSession(user) {
     sessionInitFrame = null;
     renderUserInfo();
     applyInputGuards();
+    installHumanNameNormalization();
     initApp();
   };
 

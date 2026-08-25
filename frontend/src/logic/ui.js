@@ -691,6 +691,13 @@ function setActiveView(viewName) {
         );
       });
   } else if (viewName === 'usuarios') {
+    // React puede volver a montar esta vista; revalidamos listeners de forma
+    // idempotente para que Guardar/Modificar/Eliminar respondan siempre.
+    wireUsuariosForm();
+    wireUsuariosDelete();
+    wireUsuariosEdit();
+    wireUsuariosRefresh();
+    wireValidacionCorreosUsuarios();
     Promise.resolve(loadUsuariosData()).catch((error) => {
       console.error('EduControl: error cargando usuarios:', error);
     });
@@ -741,6 +748,10 @@ function wireValidacionCorreosUsuarios() {
   });
 }
 
+function normalizarNombreUsuario(valor) {
+  return String(valor || '').replace(/\s+/g, ' ').trim();
+}
+
 function wireUsuariosForm() {
   const form = document.getElementById('usuario-form');
   if (!form || form.dataset.wired === 'true') return;
@@ -750,10 +761,12 @@ function wireUsuariosForm() {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (form.dataset.saving === '1') return;
+    form.dataset.saving = '1';
 
     const submitBtn = document.getElementById('btn-guardar-usuario');
-    const nombre = document.getElementById('usuario-nombre')?.value.trim() || '';
-    const apellido1 = document.getElementById('usuario-apellido1')?.value.trim() || '';
+    const nombre = normalizarNombreUsuario(document.getElementById('usuario-nombre')?.value);
+    const apellido1 = normalizarNombreUsuario(document.getElementById('usuario-apellido1')?.value);
     const correo = document.getElementById('usuario-correo')?.value.trim().toLowerCase() || '';
     const rolTexto = document.getElementById('usuario-rol')?.value || 'Asistente';
     const contrasena = document.getElementById('usuario-clave')?.value || '';
@@ -840,6 +853,7 @@ function wireUsuariosForm() {
     } catch (error) {
       showToast(error.message || 'No se pudo registrar el usuario.', 'error');
     } finally {
+      form.dataset.saving = '0';
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = textoOriginal || '<i class="bi bi-person-check me-1"></i> Guardar Usuario';
@@ -981,8 +995,8 @@ function wireUsuariosEdit() {
 
     const id = Number(document.getElementById('usuario-editar-id')?.value);
     const idPersona = Number(document.getElementById('usuario-editar-id-persona')?.value);
-    const nombre = document.getElementById('usuario-editar-nombre')?.value.trim() || '';
-    const apellido1 = document.getElementById('usuario-editar-apellido1')?.value.trim() || '';
+    const nombre = normalizarNombreUsuario(document.getElementById('usuario-editar-nombre')?.value);
+    const apellido1 = normalizarNombreUsuario(document.getElementById('usuario-editar-apellido1')?.value);
     const correo = document.getElementById('usuario-editar-correo')?.value.trim().toLowerCase() || '';
     const rolSelect = document.getElementById('usuario-editar-rol');
     const contrasena = document.getElementById('usuario-editar-clave')?.value || '';
@@ -1086,20 +1100,40 @@ async function loadUsuariosData() {
 async function confirmarUsuarioEnLista(idUsuario, correoUsuario = '') {
   if (!idUsuario && !correoUsuario) return;
 
-  for (let intento = 0; intento < 3; intento += 1) {
+  const correoClave = String(correoUsuario || '').toLowerCase();
+  const optimista = usuariosCargados.find((u) =>
+    (idUsuario && Number(u.id_usuario) === Number(idUsuario)) ||
+    (correoClave && String(u.correo || '').toLowerCase() === correoClave)
+  );
+
+  for (let intento = 0; intento < 6; intento += 1) {
     try {
       if (intento > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 250 * (intento + 1)));
+        await new Promise((resolve) => setTimeout(resolve, Math.min(1200, 220 * (intento + 1))));
+      }
+
+      // El endpoint individual confirma primero que el INSERT fue persistido.
+      if (idUsuario) {
+        const detailRes = await apiFetch(`/api/usuarios/${idUsuario}?_=${Date.now()}-${intento}`, { cache: 'no-store' });
+        if (detailRes.ok) {
+          const detalle = await detailRes.json().catch(() => null);
+          if (detalle?.id_usuario) {
+            usuariosCargados = [
+              ...usuariosCargados.filter((u) => Number(u.id_usuario) !== Number(detalle.id_usuario) && String(u.correo || '').toLowerCase() !== String(detalle.correo || '').toLowerCase()),
+              detalle
+            ];
+            renderTablaUsuarios(usuariosCargados);
+          }
+        }
       }
 
       const res = await apiFetch(`/api/usuarios?_=${Date.now()}-${intento}`, { cache: 'no-store' });
       const data = await res.json().catch(() => ([]));
-
       if (!res.ok || !Array.isArray(data)) continue;
 
       const yaVisible = data.some((u) =>
         (idUsuario && Number(u.id_usuario) === Number(idUsuario)) ||
-        (correoUsuario && String(u.correo || '').toLowerCase() === String(correoUsuario).toLowerCase())
+        (correoClave && String(u.correo || '').toLowerCase() === correoClave)
       );
       if (!yaVisible) continue;
 
@@ -1109,6 +1143,17 @@ async function confirmarUsuarioEnLista(idUsuario, correoUsuario = '') {
     } catch (error) {
       console.warn('EduControl: sincronización diferida de usuarios:', error);
     }
+  }
+
+  // Nunca borrar de la UI la fila optimista si el servidor demoró en reflejar
+  // la consulta. El usuario ya fue creado por el POST exitoso.
+  if (optimista) {
+    const existe = usuariosCargados.some((u) =>
+      (idUsuario && Number(u.id_usuario) === Number(idUsuario)) ||
+      (correoClave && String(u.correo || '').toLowerCase() === correoClave)
+    );
+    if (!existe) usuariosCargados.push(optimista);
+    renderTablaUsuarios(usuariosCargados);
   }
 }
 

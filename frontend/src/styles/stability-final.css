@@ -1,0 +1,435 @@
+/* =========================================================
+   EduControl · estabilidad visual y accesibilidad final
+   Este archivo se carga de último para resolver conflictos de
+   estilos sin modificar la identidad visual del modo claro.
+   ========================================================= */
+
+/* ---------- Ventanas emergentes ---------- */
+html.edu-modal-lock,
+body.edu-modal-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) {
+  --edu-modal-gap: 24px;
+  padding: 0 !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+  zoom: 1 !important;
+  width: min(calc(100vw - var(--edu-modal-gap)), 720px) !important;
+  max-width: min(calc(100vw - var(--edu-modal-gap)), 720px) !important;
+  min-height: calc(100dvh - var(--edu-modal-gap)) !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 12px auto !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg,
+.modal.edu-work-modal .modal-dialog,
+#modalGestionGrupo .modal-dialog,
+#modalGestionMatricula .modal-dialog,
+#modalSeccion .modal-dialog,
+#modalPreviewReporte .modal-dialog {
+  width: min(calc(100vw - var(--edu-modal-gap)), 900px) !important;
+  max-width: min(calc(100vw - var(--edu-modal-gap)), 900px) !important;
+}
+
+#modalConfigFacturacion .modal-dialog {
+  width: min(calc(100vw - var(--edu-modal-gap)), 1040px) !important;
+  max-width: min(calc(100vw - var(--edu-modal-gap)), 1040px) !important;
+}
+
+#modalEliminarUsuario .modal-dialog,
+#modalConfirmarEliminacion .modal-dialog,
+#modalConfirmarEliminacionSeccion .modal-dialog {
+  width: min(calc(100vw - var(--edu-modal-gap)), 500px) !important;
+  max-width: min(calc(100vw - var(--edu-modal-gap)), 500px) !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-content {
+  width: 100%;
+  max-height: calc(100dvh - var(--edu-modal-gap)) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 16px !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) form {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-header,
+.modal:not(.finance-invoice-preview-modal) .modal-footer {
+  flex: 0 0 auto !important;
+}
+
+.modal:not(.finance-invoice-preview-modal) .modal-body,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog-scrollable .modal-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: none;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Al ser necesaria una adaptación por altura, compactamos espacios, no la ventana completa. */
+.modal.edu-modal-compact-height:not(.finance-invoice-preview-modal) .modal-header,
+.modal.edu-modal-compact-height:not(.finance-invoice-preview-modal) .modal-footer {
+  padding-block: .65rem !important;
+}
+.modal.edu-modal-compact-height:not(.finance-invoice-preview-modal) .modal-body {
+  padding-top: .75rem !important;
+  padding-bottom: .75rem !important;
+}
+.modal.edu-modal-compact-height:not(.finance-invoice-preview-modal) .row.g-3,
+.modal.edu-modal-compact-height:not(.finance-invoice-preview-modal) .row.g-4 {
+  --bs-gutter-y: .65rem;
+}
+
+@media (max-width: 767.98px) {
+  .modal:not(.finance-invoice-preview-modal) { --edu-modal-gap: 12px; }
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+    margin: 6px auto !important;
+    min-height: calc(100dvh - 12px) !important;
+  }
+}
+
+/* ---------- Matrícula / secciones ---------- */
+#modalMatricula .modal-footer,
+#modalGrupo .modal-footer {
+  position: relative;
+  z-index: 2;
+  background: var(--surface, #fff);
+}
+
+#modalMatricula .mat-financial-status {
+  padding: .72rem .85rem;
+}
+#modalMatricula .mat-financial-metrics { margin-top: .5rem; }
+#modalMatricula .mat-debt-row { padding: .22rem 0; }
+.mat-debt-more {
+  margin-top: .3rem;
+  padding-top: .3rem;
+  border-top: 1px dashed rgba(100,116,139,.25);
+  color: #64748b;
+  font-size: .78rem;
+  font-weight: 650;
+}
+#mat-submit { min-width: 170px; }
+
+.section-form-card,
+.section-delete-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  background: #fff;
+}
+.section-delete-card { background: #f8fafc; }
+.section-name-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .65rem .8rem;
+  border-radius: 10px;
+  border: 1px dashed #b8c8dc;
+  background: #f8fbff;
+  color: #52677c;
+}
+.section-name-preview span { font-size: .78rem; }
+.section-name-preview strong { color: #173a5e; font-size: 1rem; letter-spacing: .03em; }
+
+/* ---------- Botón de accesibilidad: nunca debe parecer una alerta ---------- */
+.accessibility-toggle,
+#accessibility-toggle {
+  background: linear-gradient(135deg, #2f6f98, #1f8a8d) !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(22, 74, 113, .28) !important;
+}
+.accessibility-toggle:hover,
+#accessibility-toggle:hover {
+  background: linear-gradient(135deg, #285f85, #19777b) !important;
+  color: #fff !important;
+}
+
+/* ---------- Rol: contraste consistente en el sidebar ---------- */
+.sidebar .role-badge {
+  border: 1px solid rgba(255,255,255,.18) !important;
+  box-shadow: none !important;
+}
+.sidebar .role-badge-admin { background: rgba(64,148,205,.22) !important; color: #eaf7ff !important; }
+.sidebar .role-badge-asistente { background: rgba(49,180,135,.22) !important; color: #eafff7 !important; }
+.sidebar .role-badge-profesor { background: rgba(157,122,255,.24) !important; color: #f2edff !important; }
+
+/* ---------- Reportes: sin recortes/solapamientos al pasar el mouse ---------- */
+.report-main-card,
+.report-menu-top,
+.report-toolbar,
+.report-actions { overflow: visible !important; }
+.report-mode-switcher {
+  padding: 3px !important;
+  overflow-y: visible !important;
+}
+.report-mode-switcher .btn,
+.report-actions .btn {
+  transform: none !important;
+  position: relative;
+  z-index: 1;
+}
+.report-mode-switcher .btn:hover,
+.report-mode-switcher .btn:focus-visible,
+.report-actions .btn:hover,
+.report-actions .btn:focus-visible {
+  transform: none !important;
+  z-index: 2;
+}
+@media (min-width: 1100px) {
+  .report-mode-switcher {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    overflow-x: visible !important;
+  }
+  .report-mode-switcher .btn { min-width: 0 !important; width: 100%; }
+}
+
+/* ---------- Modo oscuro: cobertura de todos los módulos ---------- */
+body.theme-dark {
+  color-scheme: dark;
+  --edu-dark-bg: #08111f;
+  --edu-dark-surface: #101c2d;
+  --edu-dark-surface-2: #15243a;
+  --edu-dark-border: #2a3d56;
+  --edu-dark-text: #e8f0f8;
+  --edu-dark-muted: #a8b8ca;
+  --edu-dark-accent: #74b7e6;
+}
+
+body.theme-dark :is(
+  #app-shell,.app-main,#content,.view,
+  .card,.card-body,.card-header,.card-footer,
+  .modal-content,.modal-body,.modal-footer,
+  .filter-bar,.dropdown-menu,.list-group-item,
+  .stat-card,.dashboard-mini-panel,
+  .profesor-picker,.faculty-summary,.faculty-summary-item,
+  .card-filtros-asistencia,.attendance-group-card,.attendance-session-card,
+  .consultas-panel,.consulta-result-card,.consulta-stat,.consulta-documento,.consulta-preview-area,
+  .report-main-card,.report-filter-panel,.report-preview-metric,.report-empty-state,
+  .finance-panel,.finance-tool-card,.finance-summary-card,.finance-api-strip,.finance-record-card,.finance-invoice-record,
+  .billing-emitter-card,.billing-config-intro,.billing-service-card,.billing-status-card,.billing-config-note,
+  .section-form-card,.section-delete-card,.section-name-preview
+) {
+  background: var(--edu-dark-surface) !important;
+  color: var(--edu-dark-text) !important;
+  border-color: var(--edu-dark-border) !important;
+}
+
+body.theme-dark :is(
+  .card-header,.card-footer,.filter-bar,.report-filter-panel,
+  .profesor-picker,.faculty-summary-item,.section-delete-card,
+  .finance-filter-row,.billing-field,.extra-availability
+) {
+  background: var(--edu-dark-surface-2) !important;
+}
+
+body.theme-dark :is(
+  h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,
+  .card-title,.card-title-serif,.modal-body .form-label,.modal-footer,
+  .finance-record-person strong,.finance-invoice-record-main strong,
+  .section-name-preview strong
+) { color: var(--edu-dark-text) !important; }
+
+body.theme-dark :is(
+  p,small,.small,.text-muted,.text-secondary,.form-text,
+  .finance-page-subtitle,.finance-record-meta,.faculty-summary-item small,
+  .report-main-card small,.report-main-card .small
+) { color: var(--edu-dark-muted) !important; }
+
+body.theme-dark :is(.form-control,.form-select,.input-group-text,.profesor-select) {
+  background: #0c1828 !important;
+  color: var(--edu-dark-text) !important;
+  border-color: #39506d !important;
+}
+body.theme-dark :is(.form-control,.form-select,.profesor-select):focus {
+  background: #0c1828 !important;
+  color: #fff !important;
+  border-color: #6eb7e8 !important;
+  box-shadow: 0 0 0 .2rem rgba(110,183,232,.16) !important;
+}
+body.theme-dark .form-control::placeholder { color: #8fa3b9 !important; opacity: 1; }
+body.theme-dark :is(.form-control,.form-select):disabled,
+body.theme-dark :is(.form-control,.form-select)[readonly] { background: #18263a !important; color: #889db3 !important; }
+body.theme-dark .form-label { color: #dbe7f2 !important; }
+
+body.theme-dark :is(.table,.table-responsive,.report-table-wrap,.preview-table-wrap) {
+  background: var(--edu-dark-surface) !important;
+  color: var(--edu-dark-text) !important;
+  border-color: var(--edu-dark-border) !important;
+}
+body.theme-dark .table > :not(caption) > * > * {
+  background: transparent !important;
+  color: var(--edu-dark-text) !important;
+  border-color: #293c55 !important;
+}
+body.theme-dark .table thead th,
+body.theme-dark .table-light th {
+  background: #17283d !important;
+  color: #c9d8e8 !important;
+}
+body.theme-dark .table tbody tr:nth-child(even) > * { background: rgba(24,39,59,.42) !important; }
+body.theme-dark .table tbody tr:hover > * { background: #1a2e47 !important; }
+
+body.theme-dark :is(.btn-outline-secondary,.btn-outline-primary,.btn-outline-info,.btn-outline-success,.btn-outline-warning,.btn-outline-danger) {
+  background: transparent !important;
+}
+body.theme-dark .btn-outline-secondary { color: #c3d0df !important; border-color: #5a718b !important; }
+body.theme-dark .btn-outline-primary { color: #89c8f2 !important; border-color: #5289b2 !important; }
+body.theme-dark .btn-outline-info { color: #8bdbe6 !important; border-color: #438895 !important; }
+body.theme-dark .btn-outline-success { color: #84ddb7 !important; border-color: #3d8968 !important; }
+body.theme-dark .btn-outline-warning { color: #f4ce78 !important; border-color: #967439 !important; }
+body.theme-dark .btn-outline-danger { color: #ffabb8 !important; border-color: #a95462 !important; }
+body.theme-dark .btn-light { background: #24364c !important; color: #eef5fb !important; border-color: #405671 !important; }
+
+body.theme-dark .modal-header.bg-navy,
+body.theme-dark .modal-header.bg-dark,
+body.theme-dark .modal-header.bg-primary { background: #0d2843 !important; color: #fff !important; }
+body.theme-dark .modal-header :is(.modal-title,h1,h2,h3,h4,h5,h6,span,small) { color: #fff !important; }
+
+body.theme-dark .mat-financial-status.neutral { background: #14243a !important; color: #c7d7e8 !important; border-color: #35506d !important; }
+body.theme-dark .mat-financial-status.ok { background: #102d26 !important; color: #a9efd1 !important; border-color: #2f6e58 !important; }
+body.theme-dark .mat-financial-status.blocked { background: #342815 !important; color: #f4d694 !important; border-color: #785c28 !important; }
+body.theme-dark .mat-financial-metrics span { background: rgba(8,17,31,.55) !important; border-color: #3a506a !important; }
+body.theme-dark .mat-no-debt { color: #8de0b8 !important; }
+body.theme-dark .mat-debt-more { color: #9eb1c5 !important; }
+
+body.theme-dark .report-mode-switcher .btn { background: #14243a !important; color: #d8e5f1 !important; border-color: #314762 !important; }
+body.theme-dark .report-mode-switcher .btn:hover { background: #1b304a !important; border-color: #5b8db3 !important; }
+body.theme-dark .report-mode-switcher .btn.active { background: linear-gradient(135deg,#2e75aa,#1f628f) !important; color: #fff !important; }
+body.theme-dark .report-filter-error { background: #3b1f27 !important; color: #ffc5ce !important; border-color: #7d3e49 !important; }
+body.theme-dark :is(.preview-reporte-chip,.audit-action-badge) { background: #193b5d !important; color: #a9d8fa !important; border-color: #315d7d !important; }
+body.theme-dark :is(.audit-detail-btn,.audit-json,.audit-preview-note) { background: #13243a !important; color: #c8dbec !important; border-color: #2f4864 !important; }
+
+body.theme-dark .faculty-summary { background: #101c2d !important; border-color: #2a3d56 !important; }
+body.theme-dark .faculty-summary-icon { background: #1c3b5d !important; color: #8dcaf3 !important; }
+body.theme-dark .faculty-summary-success { background: #183b31 !important; color: #93e6c4 !important; }
+body.theme-dark .faculty-summary-muted { background: #293749 !important; color: #c5d1df !important; }
+body.theme-dark .faculty-summary-warning { background: #463617 !important; color: #f5d389 !important; }
+body.theme-dark .profesor-group-pill { background: #183451 !important; color: #c9e7fb !important; border-color: #315d7d !important; }
+
+body.theme-dark .attendance-cell-btn { background: #13233a !important; border-color: #314862 !important; color: #dbe8f4 !important; }
+body.theme-dark :is(.attendance-legend,.attendance-summary,.attendance-empty-state) { background: #13233a !important; color: #dbe8f4 !important; border-color: #314862 !important; }
+
+body.theme-dark #perfil-view .perfil-hero { background: linear-gradient(135deg,#163b5c,#1f5b77) !important; }
+body.theme-dark #perfil-view .perfil-hero :is(h1,h2,h3,p,span,small,strong,.perfil-eyebrow) { color: #fff !important; }
+
+body.theme-dark .sidebar .role-badge-profesor { background: rgba(168,135,255,.28) !important; color: #f7f3ff !important; border-color: rgba(215,201,255,.36) !important; }
+body.theme-dark .accessibility-toggle { background: linear-gradient(135deg,#4f93c2,#2a9ea1) !important; }
+
+/* ---------- Alto contraste: legible en todos los módulos ---------- */
+body.high-contrast {
+  color-scheme: dark;
+  background: #000 !important;
+  color: #fff !important;
+}
+body.high-contrast :is(
+  #app-shell,.app-main,#content,.view,.topbar,.sidebar,
+  .card,.card-body,.card-header,.card-footer,.modal-content,.modal-body,.modal-footer,
+  .filter-bar,.dropdown-menu,.list-group-item,.stat-card,.dashboard-mini-panel,
+  .profesor-picker,.faculty-summary,.faculty-summary-item,.card-filtros-asistencia,
+  .attendance-group-card,.attendance-session-card,.consultas-panel,.consulta-result-card,
+  .consulta-stat,.consulta-documento,.consulta-preview-area,.report-main-card,.report-filter-panel,
+  .report-preview-metric,.report-empty-state,.finance-panel,.finance-tool-card,.finance-summary-card,
+  .finance-api-strip,.finance-record-card,.finance-invoice-record,.billing-emitter-card,
+  .billing-config-intro,.billing-service-card,.billing-status-card,.billing-config-note,
+  .section-form-card,.section-delete-card,.section-name-preview,.mat-financial-status
+) {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: none !important;
+}
+body.high-contrast :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,label,.form-label,.form-text,.text-muted,.text-secondary,.modal-title,.card-title,.card-title-serif) { color: #fff !important; }
+body.high-contrast :is(.form-control,.form-select,.input-group-text,.profesor-select) { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }
+body.high-contrast .form-control::placeholder { color: #ddd !important; }
+body.high-contrast :is(.form-control,.form-select,.btn,a,button):focus-visible { outline: 3px solid #ffdf00 !important; outline-offset: 3px !important; box-shadow: none !important; }
+body.high-contrast .table > :not(caption) > * > * { background: #000 !important; color: #fff !important; border-color: #fff !important; }
+body.high-contrast .btn-primary,
+body.high-contrast .report-mode-switcher .btn.active,
+body.high-contrast .accessibility-action-active { background: #ffdf00 !important; color: #000 !important; border: 2px solid #fff !important; }
+body.high-contrast :is(.btn-outline-primary,.btn-outline-secondary,.btn-outline-info,.btn-outline-success,.btn-outline-warning,.btn-outline-danger,.btn-light,.report-mode-switcher .btn) { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }
+body.high-contrast :is(.badge,.role-badge,.status-badge,.profesor-group-pill,.preview-reporte-chip,.audit-action-badge) { background: #000 !important; color: #fff !important; border: 2px solid #fff !important; }
+body.high-contrast .accessibility-toggle { background: #ffdf00 !important; color: #000 !important; border: 2px solid #fff !important; }
+body.high-contrast .sidebar .nav-link.active { background: #ffdf00 !important; color: #000 !important; }
+body.high-contrast .sidebar .nav-link.active * { color: #000 !important; }
+
+/* ---------- Movimiento reducido ---------- */
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: .001ms !important;
+}
+
+/* ---------- Ajustes finos responsivos ---------- */
+@media (max-width: 575.98px) {
+  #mat-submit { min-width: 0; width: 100%; }
+  #modalMatricula .modal-footer,
+  #modalGrupo .modal-footer { flex-wrap: nowrap; }
+  .section-form-card,.section-delete-card { padding: .8rem; }
+}
+
+/* Tamaños por tarea: suficientes para trabajar sin que cada modal ocupe toda la pantalla. */
+#modalMatricula .modal-dialog { width:min(calc(100vw - var(--edu-modal-gap)),820px)!important; max-width:min(calc(100vw - var(--edu-modal-gap)),820px)!important; }
+#modalGrupo .modal-dialog { width:min(calc(100vw - var(--edu-modal-gap)),840px)!important; max-width:min(calc(100vw - var(--edu-modal-gap)),840px)!important; }
+#modalGestionMatricula .modal-dialog { width:min(calc(100vw - var(--edu-modal-gap)),820px)!important; max-width:min(calc(100vw - var(--edu-modal-gap)),820px)!important; }
+#modalGestionGrupo .modal-dialog { width:min(calc(100vw - var(--edu-modal-gap)),880px)!important; max-width:min(calc(100vw - var(--edu-modal-gap)),880px)!important; }
+#modalSeccion .modal-dialog { width:min(calc(100vw - var(--edu-modal-gap)),860px)!important; max-width:min(calc(100vw - var(--edu-modal-gap)),860px)!important; }
+
+/* Profesores: seis columnas reales, sin reglas heredadas de una antigua columna ID. */
+@media (min-width: 1100px) {
+  #profesores-view .profesores-table-wrap { overflow-x: visible !important; }
+  #profesores-table { width:100%; table-layout:fixed; min-width:0 !important; }
+  #profesores-table th:nth-child(1) { width:18% !important; }
+  #profesores-table th:nth-child(2) { width:13% !important; }
+  #profesores-table th:nth-child(3) { width:10% !important; }
+  #profesores-table th:nth-child(4) { width:24% !important; }
+  #profesores-table th:nth-child(5) { width:10% !important; }
+  #profesores-table th:nth-child(6) { width:25% !important; min-width:0 !important; }
+  #profesores-table td { overflow-wrap:anywhere; }
+  #profesores-table .profesor-actions-grid { width:100% !important; max-width:260px !important; }
+}
+
+/* Utilidades Bootstrap que algunos módulos usan directamente. */
+body.theme-dark :is(.bg-white,.bg-light,.alert-light,.text-bg-light) {
+  background: #15243a !important;
+  color: #e8f0f8 !important;
+  border-color: #2a3d56 !important;
+}
+body.theme-dark :is(.border,.border-top,.border-bottom,.border-start,.border-end) { border-color:#2a3d56 !important; }
+body.theme-dark .dropdown-item { color:#dce8f3 !important; }
+body.theme-dark .dropdown-item:hover,
+body.theme-dark .dropdown-item:focus { background:#1c314b !important; color:#fff !important; }
+body.theme-dark :is(.page-link,.pagination .page-link) { background:#101c2d !important; color:#8fc9ef !important; border-color:#324862 !important; }
+body.theme-dark :is(.alert-info,.alert-primary) { background:#17354f !important; color:#c6e5fa !important; border-color:#356384 !important; }
+body.theme-dark .alert-warning { background:#3a2d16 !important; color:#f3d58e !important; border-color:#765b2c !important; }
+body.theme-dark .alert-danger { background:#3d2028 !important; color:#ffc5cf !important; border-color:#7b414c !important; }
+body.theme-dark .alert-success { background:#153229 !important; color:#a8e8cd !important; border-color:#386d5a !important; }
+.modal:not(.finance-invoice-preview-modal) .modal-content > form {
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+}

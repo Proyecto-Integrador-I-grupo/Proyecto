@@ -45,7 +45,7 @@ const normalizarMateriaProfesor = (materia) => {
 
 
 const validarNombreHumano = (valor, etiqueta, obligatorio = true) => {
-  const texto = String(valor ?? "").trim();
+  const texto = String(valor ?? "").replace(/\s+/g, " ").trim();
   if (!texto && !obligatorio) return null;
   if (!texto) throw new Error(`${etiqueta} es obligatorio.`);
   if (texto.length < 2 || texto.length > 60) throw new Error(`${etiqueta} debe contener entre 2 y 60 caracteres.`);

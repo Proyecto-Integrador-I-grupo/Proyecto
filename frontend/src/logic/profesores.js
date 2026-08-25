@@ -172,12 +172,6 @@ function wireProfesoresEvents() {
     if (!modalEl.classList.contains('show')) { resolve(); return; }
     const terminar = () => {
       modalEl.removeEventListener('hidden.bs.modal', terminar);
-      document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
-      if (!document.querySelector('.modal.show')) {
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('padding-right');
-        document.body.style.removeProperty('overflow');
-      }
       resolve();
     };
     modalEl.addEventListener('hidden.bs.modal', terminar, { once: true });
@@ -234,24 +228,8 @@ function wireProfesoresEvents() {
     });
   }
 
-  // Limpieza segura de backdrops al cerrar modales para prevenir bloqueos de pantalla
-  const modalSustitutoEl = document.getElementById('modalAsignarSustituto');
-  if (modalSustitutoEl && !modalSustitutoEl.dataset.wiredBackdrop) {
-    modalSustitutoEl.dataset.wiredBackdrop = '1';
-    modalSustitutoEl.addEventListener('hidden.bs.modal', () => {
-      document.body.classList.remove('modal-open');
-      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-    });
-  }
+  // Bootstrap y el guard global de modales gestionan el backdrop y el bloqueo del fondo.
 
-  const modalAsignarGruposEl = document.getElementById('modalAsignarGrupos');
-  if (modalAsignarGruposEl && !modalAsignarGruposEl.dataset.wiredBackdrop) {
-    modalAsignarGruposEl.dataset.wiredBackdrop = '1';
-    modalAsignarGruposEl.addEventListener('hidden.bs.modal', () => {
-      document.body.classList.remove('modal-open');
-      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-    });
-  }
 }
 
 function normalizeGenero(val) {
@@ -275,7 +253,7 @@ async function loadProfesores() {
     actualizarStatsProfesores(allProfesores);
     renderProfesoresTable(filtrarProfesores(allProfesores));
   } catch (error) {
-    profTableBody.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-3">Error al cargar profesores.</td></tr>';
+    profTableBody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-3">Error al cargar profesores.</td></tr>';
     showToast(error.message || 'Error al obtener datos', 'error');
   }
 }

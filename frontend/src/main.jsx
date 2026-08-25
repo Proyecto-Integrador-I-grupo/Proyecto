@@ -20,6 +20,7 @@ import './styles/contrast-fixes.css';
 import './styles/final-fixes.css';
 import './styles/ui-polish.css';
 import './styles/accessibility-theme.css';
+import './styles/stability-final.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

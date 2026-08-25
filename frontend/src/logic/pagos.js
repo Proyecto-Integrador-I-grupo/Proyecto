@@ -125,6 +125,7 @@ function wirePagosEvents() {
   wire('fin-pagos-limpiar', 'click', limpiarFiltrosPagos);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
+  wire('fin-pago-plazo-habilitado', 'change', alternarPlazoPago);
   wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
   wire('fin-editar-pago-form', 'submit', guardarEdicionPago);
   wire('fin-concepto-form', 'submit', guardarConcepto);
@@ -1093,6 +1094,8 @@ function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   setValue('fin-edit-cargo-vencimiento', c.fecha_vencimiento ? String(c.fecha_vencimiento).slice(0,10) : '');
   setValue('fin-edit-cargo-periodo', c.periodo || '');
   setValue('fin-edit-cargo-descripcion', c.descripcion || '');
+  setValue('fin-edit-cargo-extension', 0);
+  setValue('fin-edit-cargo-motivo-extension', '');
   sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento');
   const ctx = document.getElementById('fin-edit-cargo-contexto');
   if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
@@ -1115,7 +1118,8 @@ async function guardarEdicionCargo(event) {
     validarDescuentoNoVencido(fechaVencimiento, descuento);
     await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify({
       monto_base:value('fin-edit-cargo-monto'), descuento,
-      fecha_vencimiento:fechaVencimiento, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion')
+      fecha_vencimiento:fechaVencimiento, periodo:value('fin-edit-cargo-periodo'), descripcion:value('fin-edit-cargo-descripcion'),
+      extender_plazo_dias:Number(value('fin-edit-cargo-extension') || 0), motivo_extension:value('fin-edit-cargo-motivo-extension')
     })});
     hideModal('modalEditarCargo');
     showToast('Cargo actualizado correctamente.', 'success');
@@ -1135,6 +1139,7 @@ async function guardarCargo(event) {
       monto_base: value('fin-cargo-monto'),
       descuento,
       fecha_vencimiento: fechaVencimiento,
+      plazo_dias: Number(value('fin-cargo-plazo') || 0),
       periodo: value('fin-cargo-periodo'),
       descripcion: value('fin-cargo-descripcion')
     };
@@ -1172,6 +1177,17 @@ async function refrescarDespuesDePago() {
   }
 }
 
+function alternarPlazoPago() {
+  const habilitado = Boolean(document.getElementById('fin-pago-plazo-habilitado')?.checked);
+  const campos = document.getElementById('fin-pago-plazo-campos');
+  campos?.classList.toggle('hidden', !habilitado);
+  if (!habilitado) {
+    setValue('fin-pago-plazo-fecha', '');
+    setValue('fin-pago-plazo-dias', '0');
+    setValue('fin-pago-plazo-motivo', '');
+  }
+}
+
 async function abrirPago(idCargo) {
   const cargo = cargos.find((c) => Number(c.id_cargo) === Number(idCargo));
   if (!cargo) return;
@@ -1187,6 +1203,12 @@ async function abrirPago(idCargo) {
   setValue('fin-pago-cargo-id', cargo.id_cargo);
   setValue('fin-pago-monto', Number(cargo.saldo || 0));
   setValue('fin-pago-referencia', '');
+  const plazoToggle = document.getElementById('fin-pago-plazo-habilitado');
+  if (plazoToggle) plazoToggle.checked = false;
+  setValue('fin-pago-plazo-fecha', cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : '');
+  setValue('fin-pago-plazo-dias', '0');
+  setValue('fin-pago-plazo-motivo', '');
+  alternarPlazoPago();
   const contexto = document.getElementById('fin-pago-contexto');
   if (contexto) contexto.innerHTML = `<strong>${esc(cargo.estudiante_nombre)}</strong><span>${esc(cargo.descripcion)}</span><span>Saldo: ${moneda(cargo.saldo)}</span>`;
 
@@ -1235,6 +1257,12 @@ async function guardarPago(event) {
       monto: value('fin-pago-monto'),
       metodo_pago: value('fin-pago-metodo'),
       referencia: value('fin-pago-referencia'),
+      plazo: {
+        habilitado: Boolean(document.getElementById('fin-pago-plazo-habilitado')?.checked),
+        fecha_vencimiento: value('fin-pago-plazo-fecha') || null,
+        extender_dias: Number(value('fin-pago-plazo-dias') || 0),
+        motivo: value('fin-pago-plazo-motivo')
+      },
       responsable: {
         nombre: value('fin-resp-nombre'),
         parentesco: value('fin-resp-parentesco'),

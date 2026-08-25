@@ -2,6 +2,7 @@ import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
 import { normalizarDiasSemana, validarChoqueProfesor } from "./matriculaServiceP.js";
+import { validarCargaDocente, validarPeriodoNoCerrado, horasSemanalesGrupo } from "./businessRulesService.js";
 
 
 let profesorHorarioSchemaPromise = null;
@@ -86,8 +87,85 @@ const normalizarGeneroProfesor = (genero) => {
   }
   return normalizado;
 };
+
+export async function procesarSuplenciasVencidas() {
+  const connection = await conexionPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [vencidas] = await connection.query(
+      `SELECT ps.id_suplencia, ps.id_grupo, ps.id_profesor_titular, ps.id_profesor_suplente,
+              g.nombre_grupo, g.dias_semana, g.hora_inicio, g.hora_fin, s.periodo_lectivo,
+              pl.estado AS estado_periodo, pr.id_persona
+       FROM profesor_suplencia ps
+       INNER JOIN grupo g ON g.id_grupo = ps.id_grupo
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       INNER JOIN periodo_lectivo pl ON pl.anio = s.periodo_lectivo
+       INNER JOIN profesor pr ON pr.id_profesor = ps.id_profesor_titular
+       WHERE ps.estado = TRUE AND ps.fecha_fin IS NOT NULL AND ps.fecha_fin < CURDATE()
+       ORDER BY ps.fecha_fin, ps.id_suplencia
+       FOR UPDATE`
+    );
+
+    for (const item of vencidas) {
+      try {
+        if (item.id_profesor_suplente) {
+          await connection.query(
+            `UPDATE grupo_profesor SET estado = FALSE, fecha_fin = LEAST(COALESCE(fecha_fin, CURDATE()), CURDATE())
+             WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE`,
+            [item.id_grupo, item.id_profesor_suplente]
+          );
+        }
+        if (String(item.estado_periodo).toUpperCase() === 'CERRADO') {
+          await connection.query(`UPDATE profesor_suplencia SET estado = FALSE WHERE id_suplencia = ?`, [item.id_suplencia]);
+          continue;
+        }
+        await validarPeriodoNoCerrado(connection, Number(item.periodo_lectivo));
+        const dias = normalizarDiasSemana(item.dias_semana, item.nombre_grupo);
+        await validarChoqueProfesor(connection, Number(item.id_profesor_titular), dias, item.hora_inicio, item.hora_fin, Number(item.id_grupo));
+        await validarCargaDocente(connection, Number(item.id_profesor_titular), dias, item.hora_inicio, item.hora_fin, Number(item.id_grupo));
+        const [[yaAsignado]] = await connection.query(
+          `SELECT id_grupo_profesor FROM grupo_profesor
+           WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE LIMIT 1`,
+          [item.id_grupo, item.id_profesor_titular]
+        );
+        if (!yaAsignado) {
+          await connection.query(
+            `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, fecha_fin, estado)
+             VALUES (?, ?, CURDATE(), NULL, TRUE)`,
+            [item.id_grupo, item.id_profesor_titular]
+          );
+        }
+        await connection.query(`UPDATE profesor_suplencia SET estado = FALSE WHERE id_suplencia = ?`, [item.id_suplencia]);
+      } catch (error) {
+        console.warn(`Suplencia ${item.id_suplencia}: no se pudo restaurar automáticamente todavía:`, error.message);
+      }
+    }
+
+    const [titulares] = await connection.query(
+      `SELECT pr.id_profesor, pr.id_persona
+       FROM profesor pr
+       WHERE pr.estado = FALSE AND pr.inactivo_hasta IS NOT NULL AND pr.inactivo_hasta < CURDATE()
+         AND NOT EXISTS (SELECT 1 FROM profesor_suplencia ps WHERE ps.id_profesor_titular = pr.id_profesor AND ps.estado = TRUE)`
+    );
+    for (const titular of titulares) {
+      await connection.query(
+        `UPDATE profesor SET estado = TRUE, inactivo_desde = NULL, inactivo_hasta = NULL, motivo_inactividad = NULL WHERE id_profesor = ?`,
+        [titular.id_profesor]
+      );
+      await connection.query(`UPDATE usuario SET estado = TRUE WHERE id_persona = ?`, [titular.id_persona]);
+    }
+    await connection.commit();
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    console.warn('No se pudo procesar la restauración automática de suplencias:', error.message);
+  } finally {
+    connection.release();
+  }
+}
+
 export const obtenerProfesoresService = async () => {
   await asegurarHorarioGruposProfesor();
+  await procesarSuplenciasVencidas();
   const query = `
     SELECT 
       pr.id_profesor,
@@ -99,6 +177,10 @@ export const obtenerProfesoresService = async () => {
       p.genero,
       pr.materia,
       pr.fecha_ingreso,
+      pr.horas_maximas_semana,
+      pr.inactivo_desde,
+      pr.inactivo_hasta,
+      pr.motivo_inactividad,
       pr.estado,
       (SELECT u.correo FROM usuario u WHERE u.id_persona = pr.id_persona AND u.estado = TRUE LIMIT 1) AS correo,
       GROUP_CONCAT(
@@ -138,7 +220,7 @@ export const obtenerProfesoresService = async () => {
  * Registra un profesor insertando la persona y el profesor dentro de una transacción.
  */
 export const crearProfesorService = async (datos, idUsuario = null) => {
-  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, materia, fecha_ingreso, correo, contrasena } = datos;
+  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, materia, fecha_ingreso, correo, contrasena, horas_maximas_semana } = datos;
 
   if (!nombre || !apellido1 || !materia || !fecha_nacimiento || !genero) {
     throw new Error("Faltan campos obligatorios para registrar al profesor.");
@@ -222,14 +304,17 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     const id_persona = resPersona.insertId;
 
     // 2. Insertar profesor enlazado
+    const horasMaximas = Number(horas_maximas_semana || 40);
+    if (!Number.isFinite(horasMaximas) || horasMaximas <= 0 || horasMaximas > 60) throw new Error("La carga máxima semanal debe estar entre 1 y 60 horas.");
     const queryProfesor = `
-      INSERT INTO profesor (id_persona, materia, fecha_ingreso, estado)
-      VALUES (?, ?, ?, TRUE)
+      INSERT INTO profesor (id_persona, materia, fecha_ingreso, horas_maximas_semana, estado)
+      VALUES (?, ?, ?, ?, TRUE)
     `;
     const [resProfesor] = await connection.query(queryProfesor, [
       id_persona,
       materiaNormalizada,
-      fecha_ingreso || new Date().toISOString().split("T")[0]
+      fecha_ingreso || new Date().toISOString().split("T")[0],
+      horasMaximas
     ]);
 
     // 3. Insertar el usuario de acceso del profesor (rol "Profesor", acceso limitado)
@@ -329,77 +414,55 @@ export const actualizarProfesorService = async (idProfesor, datos) => {
   }
 };
 
-export const destituirProfesorService = async (id_profesor, motivo = '') => {
+export const destituirProfesorService = async (id_profesor, motivo = '', fechaInicio = null, fechaFin = null) => {
   const connection = await conexionPromise.getConnection();
-
   try {
     await connection.beginTransaction();
-
-    const [rows] = await connection.query(
-      `SELECT id_profesor, id_persona, estado FROM profesor WHERE id_profesor = ?`,
-      [id_profesor]
-    );
-
-    if (rows.length === 0) {
-      throw new Error("El profesor no existe.");
+    const inicio = String(fechaInicio || new Date().toISOString().slice(0,10)).slice(0,10);
+    const fin = String(fechaFin || '').slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fin)) {
+      throw new Error('Debes indicar fecha de inicio y fecha de finalización de la incapacidad.');
     }
+    if (fin < inicio) throw new Error('La fecha de finalización no puede ser anterior al inicio.');
 
-    if (rows[0].estado == 0 || rows[0].estado === false) {
-      throw new Error("El profesor ya se encuentra inactivo.");
-    }
-
+    const [rows] = await connection.query(`SELECT id_profesor, id_persona, estado FROM profesor WHERE id_profesor = ?`, [id_profesor]);
+    if (!rows.length) throw new Error('El profesor no existe.');
+    if (!rows[0].estado) throw new Error('El profesor ya se encuentra inactivo.');
     const id_persona = rows[0].id_persona;
 
-    // Grupos que el profesor tiene activos justo antes de destituirlo: son los que
-    // vamos a "congelar" en profesor_suplencia para poder restaurarlos después.
     const [gruposActivos] = await connection.query(
-      `SELECT id_grupo FROM grupo_profesor 
-       WHERE id_profesor = ? AND estado = TRUE AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())`,
+      `SELECT gp.id_grupo, s.periodo_lectivo FROM grupo_profesor gp
+       INNER JOIN grupo g ON g.id_grupo = gp.id_grupo
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE gp.id_profesor = ? AND gp.estado = TRUE AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())`,
       [id_profesor]
     );
+    for (const grupo of gruposActivos) await validarPeriodoNoCerrado(connection, Number(grupo.periodo_lectivo));
 
     await connection.query(
-      `UPDATE profesor SET estado = FALSE WHERE id_profesor = ?`,
-      [id_profesor]
+      `UPDATE profesor SET estado = FALSE, inactivo_desde = ?, inactivo_hasta = ?, motivo_inactividad = ? WHERE id_profesor = ?`,
+      [inicio, fin, String(motivo || '').trim().slice(0,250) || null, id_profesor]
     );
-
-    // NUEVO: bloquear el acceso a la plataforma mientras esté destituido/incapacitado.
-    // authController.login ya rechaza usuario.estado = FALSE, así que esto es suficiente
-    // para cerrarle el paso sin tocar nada del login.
+    await connection.query(`UPDATE usuario SET estado = FALSE WHERE id_persona = ?`, [id_persona]);
     await connection.query(
-      `UPDATE usuario SET estado = FALSE WHERE id_persona = ?`,
-      [id_persona]
+      `UPDATE grupo_profesor SET fecha_fin = ?, estado = FALSE
+       WHERE id_profesor = ? AND estado = TRUE`,
+      [inicio, id_profesor]
     );
-
-    await connection.query(
-      `UPDATE grupo_profesor 
-       SET fecha_fin = CURDATE(), estado = FALSE 
-       WHERE id_profesor = ? AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())`,
-      [id_profesor]
-    );
-
     for (const { id_grupo } of gruposActivos) {
       await connection.query(
-        `INSERT INTO profesor_suplencia 
-           (id_grupo, id_profesor_titular, id_profesor_suplente, fecha_inicio, estado, motivo)
-         VALUES (?, ?, NULL, CURDATE(), TRUE, ?)`,
-        [id_grupo, id_profesor, motivo || null]
+        `INSERT INTO profesor_suplencia
+         (id_grupo, id_profesor_titular, id_profesor_suplente, fecha_inicio, fecha_fin, estado, motivo)
+         VALUES (?, ?, NULL, ?, ?, TRUE, ?)`,
+        [id_grupo, id_profesor, inicio, fin, String(motivo || '').trim().slice(0,250) || null]
       );
     }
-
     await connection.commit();
-    return {
-      id_profesor,
-      grupos_liberados: gruposActivos.length,
-      acceso_bloqueado: true,
-      mensaje: "Profesor destituido / incapacitado exitosamente"
-    };
+    return { id_profesor, grupos_liberados: gruposActivos.length, fecha_inicio: inicio, fecha_fin: fin, acceso_bloqueado: true, mensaje: 'Profesor incapacitado temporalmente.' };
   } catch (error) {
     await connection.rollback();
     throw error;
-  } finally {
-    connection.release();
-  }
+  } finally { connection.release(); }
 };
 
 export const reintegrarProfesorService = async (id_profesor) => {
@@ -424,7 +487,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
     const id_persona = rows[0].id_persona;
 
     await connection.query(
-      `UPDATE profesor SET estado = TRUE WHERE id_profesor = ?`,
+      `UPDATE profesor SET estado = TRUE, inactivo_desde = NULL, inactivo_hasta = NULL, motivo_inactividad = NULL WHERE id_profesor = ?`,
       [id_profesor]
     );
 
@@ -476,6 +539,7 @@ export const reintegrarProfesorService = async (id_profesor) => {
         throw new Error(`No se puede restaurar ${p.nombre_grupo || 'el grupo'} porque no tiene días y horario completos.`);
       }
       await validarChoqueProfesor(connection, Number(id_profesor), diasGrupo, p.hora_inicio, p.hora_fin, Number(p.id_grupo));
+      await validarCargaDocente(connection, Number(id_profesor), diasGrupo, p.hora_inicio, p.hora_fin, Number(p.id_grupo));
       await connection.query(
         `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
          VALUES (?, ?, CURDATE(), TRUE)`,
@@ -510,161 +574,41 @@ export const reintegrarProfesorService = async (id_profesor) => {
 
 export const eliminarProfesorService = async (id_profesor) => {
   const connection = await conexionPromise.getConnection();
-
   try {
     await connection.beginTransaction();
-
-    const [rows] = await connection.query(
-      `SELECT pr.id_profesor, pr.id_persona, p.nombre, p.apellido1, p.apellido2
-       FROM profesor pr
-       INNER JOIN persona p ON p.id_persona = pr.id_persona
-       WHERE pr.id_profesor = ?
-       LIMIT 1`,
+    const [[profesor]] = await connection.query(
+      `SELECT pr.id_profesor, pr.id_persona, pr.estado FROM profesor pr WHERE pr.id_profesor = ? LIMIT 1 FOR UPDATE`,
       [id_profesor]
     );
-
-    if (rows.length === 0) {
-      throw new Error("El profesor no existe.");
-    }
-
-    const profesor = rows[0];
-    const idPersona = profesor.id_persona;
-
-    const [usuarios] = await connection.query(
-      `SELECT id_usuario FROM usuario WHERE id_persona = ?`,
-      [idPersona]
-    );
-    const idsUsuario = usuarios.map((u) => Number(u.id_usuario)).filter(Number.isInteger);
-
-    await connection.query(`SET @DISABLE_TRIGGERS = 1`);
-
-    // El borrado solicitado es permanente. Primero se eliminan las referencias
-    // que impiden borrar la fila principal del profesor.
-    await connection.query(
-      `DELETE FROM profesor_suplencia
-       WHERE id_profesor_titular = ? OR id_profesor_suplente = ?`,
+    if (!profesor) throw new Error('El profesor no existe.');
+    const [[historial]] = await connection.query(
+      `SELECT
+        (SELECT COUNT(*) FROM asistencia WHERE id_profesor = ?) AS asistencias,
+        (SELECT COUNT(*) FROM grupo_profesor WHERE id_profesor = ?) AS asignaciones`,
       [id_profesor, id_profesor]
     );
-
     await connection.query(
-      `DELETE FROM grupo_profesor WHERE id_profesor = ?`,
+      `UPDATE profesor SET estado = FALSE, motivo_inactividad = COALESCE(motivo_inactividad, 'Baja lógica administrativa') WHERE id_profesor = ?`,
       [id_profesor]
     );
-
+    await connection.query(`UPDATE usuario SET estado = FALSE WHERE id_persona = ?`, [profesor.id_persona]);
     await connection.query(
-      `DELETE FROM asistencia WHERE id_profesor = ?`,
+      `UPDATE grupo_profesor SET estado = FALSE, fecha_fin = COALESCE(fecha_fin, CURDATE()) WHERE id_profesor = ? AND estado = TRUE`,
       [id_profesor]
     );
-
-    // Compatibilidad con instalaciones anteriores que todavía conservan
-    // id_profesor directamente en grupo o la tabla suplencia antigua.
-    const [grupoProfesorColumn] = await connection.query(
-      `SELECT 1
-       FROM information_schema.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = 'grupo'
-         AND COLUMN_NAME = 'id_profesor'
-       LIMIT 1`
-    );
-    if (grupoProfesorColumn.length) {
-      await connection.query(
-        `UPDATE grupo SET id_profesor = NULL WHERE id_profesor = ?`,
-        [id_profesor]
-      );
-    }
-
-    const [suplenciaTable] = await connection.query(
-      `SELECT 1
-       FROM information_schema.TABLES
-       WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = 'suplencia'
-       LIMIT 1`
-    );
-    if (suplenciaTable.length) {
-      const [suplenciaCols] = await connection.query(
-        `SELECT COLUMN_NAME
-         FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'suplencia'
-           AND COLUMN_NAME IN ('id_profesor', 'id_profesor_titular', 'id_profesor_suplente')`
-      );
-      const columnas = new Set(suplenciaCols.map((c) => c.COLUMN_NAME));
-      const condiciones = [];
-      const valores = [];
-      ['id_profesor', 'id_profesor_titular', 'id_profesor_suplente'].forEach((columna) => {
-        if (columnas.has(columna)) {
-          condiciones.push(`${columna} = ?`);
-          valores.push(id_profesor);
-        }
-      });
-      if (condiciones.length) {
-        await connection.query(
-          `DELETE FROM suplencia WHERE ${condiciones.join(' OR ')}`,
-          valores
-        );
-      }
-    }
-
-    // Conservamos la auditoría cuando la FK permite NULL. Si una instalación
-    // antigua no lo permite, se eliminan únicamente las auditorías del usuario
-    // que está siendo borrado para que la operación pueda completarse.
-    for (const idUsuarioProfesor of idsUsuario) {
-      try {
-        await connection.query(
-          `UPDATE auditoria SET id_usuario = NULL WHERE id_usuario = ?`,
-          [idUsuarioProfesor]
-        );
-      } catch (auditError) {
-        await connection.query(
-          `DELETE FROM auditoria WHERE id_usuario = ?`,
-          [idUsuarioProfesor]
-        );
-      }
-    }
-
-    await connection.query(
-      `DELETE FROM usuario WHERE id_persona = ?`,
-      [idPersona]
-    );
-
-    await connection.query(
-      `DELETE FROM profesor WHERE id_profesor = ?`,
-      [id_profesor]
-    );
-
-    const [estudianteRelacionado] = await connection.query(
-      `SELECT id_estudiante FROM estudiante WHERE id_persona = ? LIMIT 1`,
-      [idPersona]
-    );
-    const [usuarioRelacionado] = await connection.query(
-      `SELECT id_usuario FROM usuario WHERE id_persona = ? LIMIT 1`,
-      [idPersona]
-    );
-
-    if (estudianteRelacionado.length === 0 && usuarioRelacionado.length === 0) {
-      await connection.query(
-        `DELETE FROM persona WHERE id_persona = ?`,
-        [idPersona]
-      );
-    }
-
-    await connection.query(`SET @DISABLE_TRIGGERS = NULL`);
     await connection.commit();
-
     return {
       id_profesor: Number(id_profesor),
-      id_persona: idPersona,
-      nombre: `${profesor.nombre ?? ""} ${profesor.apellido1 ?? ""} ${profesor.apellido2 ?? ""}`.trim(),
-      eliminacion_permanente: true,
-      mensaje: "Profesor y datos asociados eliminados permanentemente"
+      baja_logica: true,
+      historial_preservado: true,
+      asistencias_historicas: Number(historial?.asistencias || 0),
+      asignaciones_historicas: Number(historial?.asignaciones || 0),
+      mensaje: 'Profesor desactivado. El historial académico se conserva.'
     };
   } catch (error) {
     await connection.rollback();
-    try { await connection.query(`SET @DISABLE_TRIGGERS = NULL`); } catch (e) {}
-    throw new Error(error.message || "Error interno al eliminar el profesor.");
-  } finally {
-    connection.release();
-  }
+    throw error;
+  } finally { connection.release(); }
 };
 
 export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor, id_profesor_anterior) => {
@@ -695,6 +639,7 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
       throw new Error('El grupo debe tener días y horario definidos antes de asignar un profesor o sustituto.');
     }
     await validarChoqueProfesor(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
+    await validarCargaDocente(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
 
     if (id_profesor_anterior) {
       const [titularRows] = await connection.query(
@@ -723,16 +668,12 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
       );
     }
 
-    const queryAsignar = `
-      INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, estado)
-      VALUES (?, ?, CURDATE(), TRUE)
-    `;
-    await connection.query(queryAsignar, [id_grupo, id_nuevo_profesor]);
-
     let provisional = false;
+    let fechaAsignacionInicio = new Date().toISOString().slice(0,10);
+    let fechaAsignacionFin = null;
     if (id_profesor_anterior) {
       const [suplenciaPendiente] = await connection.query(
-        `SELECT id_suplencia FROM profesor_suplencia 
+        `SELECT id_suplencia, fecha_inicio, fecha_fin FROM profesor_suplencia 
          WHERE id_grupo = ? AND id_profesor_titular = ? AND id_profesor_suplente IS NULL AND estado = TRUE
          LIMIT 1`,
         [id_grupo, id_profesor_anterior]
@@ -743,8 +684,15 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
           [id_nuevo_profesor, suplenciaPendiente[0].id_suplencia]
         );
         provisional = true;
+        fechaAsignacionInicio = String(suplenciaPendiente[0].fecha_inicio).slice(0,10);
+        fechaAsignacionFin = String(suplenciaPendiente[0].fecha_fin).slice(0,10);
       }
     }
+
+    await connection.query(
+      `INSERT INTO grupo_profesor (id_grupo, id_profesor, fecha_inicio, fecha_fin, estado) VALUES (?, ?, ?, ?, TRUE)`,
+      [id_grupo, id_nuevo_profesor, fechaAsignacionInicio, fechaAsignacionFin]
+    );
 
     await connection.commit();
     return {
@@ -806,12 +754,19 @@ export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) 
       if (gruposValidos.length !== listaGrupos.length) {
         throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
       }
+      let cargaPropuesta = 0;
       for (const grupo of gruposValidos) {
         const dias = normalizarDiasSemana(grupo.dias_semana, grupo.nombre_grupo);
         if (!dias.length || !grupo.hora_inicio || !grupo.hora_fin) {
           throw new Error(`El grupo ${grupo.nombre_grupo} no tiene días y horario completos. Defínelos antes de asignar profesores.`);
         }
         await validarChoqueProfesor(connection, Number(id_profesor), dias, grupo.hora_inicio, grupo.hora_fin, Number(grupo.id_grupo));
+        cargaPropuesta += horasSemanalesGrupo(dias, grupo.hora_inicio, grupo.hora_fin);
+      }
+      const [[limiteCarga]] = await connection.query(`SELECT horas_maximas_semana FROM profesor WHERE id_profesor = ? LIMIT 1`, [id_profesor]);
+      const maximo = Number(limiteCarga?.horas_maximas_semana || 40);
+      if (cargaPropuesta > maximo + 0.001) {
+        throw new Error(`La asignación propuesta suma ${cargaPropuesta.toFixed(1)} horas semanales y supera el máximo permitido de ${maximo.toFixed(1)} horas.`);
       }
     }
 
@@ -872,6 +827,7 @@ export const obtenerSuplenciasPendientesService = async () => {
       CASE WHEN ps.id_profesor_suplente IS NOT NULL 
            THEN CONCAT(psup.nombre, ' ', psup.apellido1) ELSE NULL END AS suplente_nombre,
       ps.fecha_inicio,
+      ps.fecha_fin,
       ps.motivo
     FROM profesor_suplencia ps
     INNER JOIN grupo g ON g.id_grupo = ps.id_grupo

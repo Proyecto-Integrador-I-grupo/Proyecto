@@ -418,3 +418,15 @@ export const cambiarMiClave = async (req, res) => {
         res.status(500).json({ mensaje: "Error al cambiar la clave." });
     }
 };
+
+export const obtenerPermisosAccionUsuario = async (req, res) => {
+  try { res.json(await usuarioModel.obtenerPermisosUsuario(req.params.id)); }
+  catch (e) { console.error(e); res.status(500).json({ mensaje: 'No se pudieron consultar los permisos por acción.' }); }
+};
+
+export const actualizarPermisosAccionUsuario = async (req, res) => {
+  try {
+    const permisos = Array.isArray(req.body?.permisos) ? req.body.permisos : [];
+    res.json({ mensaje:'Permisos actualizados.', permisos: await usuarioModel.actualizarPermisosUsuario(req.params.id, permisos) });
+  } catch (e) { console.error(e); res.status(500).json({ mensaje: 'No se pudieron actualizar los permisos por acción.' }); }
+};

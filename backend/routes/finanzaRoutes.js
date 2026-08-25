@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { requireAuth, requireRole, requirePermission } from "../middleware/authMiddleware.js";
 import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, getFacturas, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
@@ -18,17 +18,17 @@ router.put("/conceptos/:id", requireRole("administrador"), putConcepto);
 
 router.get("/cargos", requireRole("administrador", "asistente"), getCargos);
 router.get("/facturas", requireRole("administrador", "asistente"), getFacturas);
-router.post("/cargos", requireRole("administrador", "asistente"), postCargo);
-router.put("/cargos/:id", requireRole("administrador", "asistente"), putCargo);
+router.post("/cargos", requirePermission("finanzas.crear_cargo"), postCargo);
+router.put("/cargos/:id", requirePermission("finanzas.modificar_cargo"), putCargo);
 router.get("/estudiantes/:id/estado-matricula", requireRole("administrador", "asistente"), getEstadoMatricula);
 router.get("/responsables/:id", requireRole("administrador", "asistente"), getResponsable);
 router.get("/pagos", requireRole("administrador", "asistente"), getPagos);
 router.get("/estado-cuentas", requireRole("administrador", "asistente"), getEstadoCuentas);
 router.get("/estudiantes", requireRole("administrador", "asistente"), getEstudiantesFinanzas);
-router.post("/cargos/:id/pagar", requireRole("administrador", "asistente"), postPago);
-router.put("/pagos/:id", requireRole("administrador", "asistente"), putPago);
-router.post("/cargos/:id/facturar", requireRole("administrador", "asistente"), postFacturar);
-router.post("/cargos/:id/factura-confirmar", requireRole("administrador", "asistente"), postConfirmarFacturaCliente);
+router.post("/cargos/:id/pagar", requirePermission("finanzas.registrar_pago"), postPago);
+router.put("/pagos/:id", requirePermission("finanzas.registrar_pago"), putPago);
+router.post("/cargos/:id/facturar", requirePermission("finanzas.facturar_manual"), postFacturar);
+router.post("/cargos/:id/factura-confirmar", requirePermission("finanzas.facturar_manual"), postConfirmarFacturaCliente);
 router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);

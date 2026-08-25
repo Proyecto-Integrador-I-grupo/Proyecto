@@ -8,7 +8,7 @@ import {
   obtenerMateriasDisponibles
 } from "../controllers/asistenciaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { requireAuth, requireRole, requirePermission } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -38,11 +38,11 @@ router.get("/asistencia", requireAuth, obtenerAsistencias);
 router.get("/materias", requireAuth, obtenerMateriasDisponibles);
 
 // Registro nuevo de asistencia
-router.post("/asistencia", requireAuth, requireRole("Administrador", "Profesor"), validarAsistencia, validarCampos, crearAsistencia);
+router.post("/asistencia", requireAuth, requirePermission("asistencia.registrar"), validarAsistencia, validarCampos, crearAsistencia);
 
 // Modificación / Actualización de un registro de asistencia existente (Soluciona el fallo al modificar ausentes u otros estados)
-router.put("/asistencia/:id", requireAuth, requireRole("Administrador", "Profesor"), validarActualizacionAsistencia, validarCampos, actualizarAsistencia);
+router.put("/asistencia/:id", requireAuth, requirePermission("asistencia.modificar"), validarActualizacionAsistencia, validarCampos, actualizarAsistencia);
 
-router.delete("/asistencia/:id", requireAuth, requireRole("Administrador"), eliminarAsistencia);
+router.delete("/asistencia/:id", requireAuth, requirePermission("asistencia.anular"), eliminarAsistencia);
 
 export default router;

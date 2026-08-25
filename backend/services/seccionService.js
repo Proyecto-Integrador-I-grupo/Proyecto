@@ -1,4 +1,5 @@
 import conexionPromise from "../config/database.js";
+import { validarPeriodoNoCerrado } from "./businessRulesService.js";
 
 export const crearSeccionService = async (datos) => {
   const nombre = String(datos?.nombre || '').trim().toUpperCase();
@@ -22,6 +23,16 @@ export const crearSeccionService = async (datos) => {
   const connection = await conexionPromise.getConnection();
   try {
     await connection.beginTransaction();
+
+    const [[periodoExiste]] = await connection.query(`SELECT anio FROM periodo_lectivo WHERE anio = ? LIMIT 1`, [anioLectivo]);
+    if (!periodoExiste) {
+      const estadoInicial = anioLectivo === new Date().getFullYear() ? 'ACTIVO' : 'PLANIFICADO';
+      await connection.query(
+        `INSERT INTO periodo_lectivo (anio, fecha_inicio, fecha_fin, estado) VALUES (?, ?, ?, ?)`,
+        [anioLectivo, `${anioLectivo}-02-01`, `${anioLectivo}-12-18`, estadoInicial]
+      );
+    }
+    await validarPeriodoNoCerrado(connection, anioLectivo);
 
     const [coincidencias] = await connection.query(
       `SELECT id_seccion, estado FROM seccion
@@ -87,10 +98,19 @@ export const obtenerSeccionesService = async () => {
       ORDER BY periodo_lectivo DESC, nombre_seccion ASC
     `);
 
+    const anioActual = new Date().getFullYear();
+    const [[periodoActual]] = await connection.query(`SELECT anio FROM periodo_lectivo WHERE anio = ? LIMIT 1`, [anioActual]);
+    if (!periodoActual) {
+      await connection.query(
+        `INSERT INTO periodo_lectivo (anio, fecha_inicio, fecha_fin, estado) VALUES (?, ?, ?, 'ACTIVO')`,
+        [anioActual, `${anioActual}-02-01`, `${anioActual}-12-18`]
+      );
+    }
+
     const baseSeed = [];
     for (let nivel = 1; nivel <= 6; nivel += 1) {
-      baseSeed.push({ nombre: `${nivel}-A`, nivel, anio_lectivo: new Date().getFullYear(), descripcion: `Sección base institucional ${nivel}-A` });
-      baseSeed.push({ nombre: `${nivel}-B`, nivel, anio_lectivo: new Date().getFullYear(), descripcion: `Sección base institucional ${nivel}-B` });
+      baseSeed.push({ nombre: `${nivel}-A`, nivel, anio_lectivo: anioActual, descripcion: `Sección base institucional ${nivel}-A` });
+      baseSeed.push({ nombre: `${nivel}-B`, nivel, anio_lectivo: anioActual, descripcion: `Sección base institucional ${nivel}-B` });
     }
 
     const existingNames = new Set((existingRows || []).map((row) => `${String(row.nombre || '').trim().toLowerCase()}|${Number(row.anio_lectivo)}`));
@@ -126,6 +146,10 @@ export const eliminarSeccionService = async (idSeccion) => {
   const connection = await conexionPromise.getConnection();
   try {
     await connection.beginTransaction();
+
+    const [[seccion]] = await connection.query(`SELECT periodo_lectivo FROM seccion WHERE id_seccion = ? LIMIT 1 FOR UPDATE`, [idSeccion]);
+    if (!seccion) { const error = new Error('No se encontró la sección.'); error.statusCode = 404; throw error; }
+    await validarPeriodoNoCerrado(connection, Number(seccion.periodo_lectivo));
 
     const [ocupaciones] = await connection.query(
       `SELECT g.id_grupo, g.nombre_grupo

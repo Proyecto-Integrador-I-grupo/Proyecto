@@ -1,6 +1,7 @@
 import db from '../config/database.js';
 import * as auditoriaModel from '../models/auditoriaModel.js';
 import { registrarAsistenciaProceso, listarAsistencias, eliminarAsistenciaProceso } from '../services/asistenciaServiceP.js';
+import { validarFechaAsistencia } from '../services/businessRulesService.js';
 
 export async function crearAsistencia(req, res) {
   try {
@@ -60,13 +61,14 @@ export async function actualizarAsistencia(req, res) {
       return res.status(404).json({ mensaje: 'Registro de asistencia no encontrado.' });
     }
     const datosAnteriores = JSON.stringify(rowsAntes[0]);
+    await validarFechaAsistencia(db, rowsAntes[0].id_grupo, rowsAntes[0].fecha);
 
     const rol = String(req.usuarioActual?.nom_rol || "").toLowerCase();
     if (rol === "profesor" && Number(rowsAntes[0].id_profesor) !== Number(req.usuarioActual?.id_profesor)) {
       return res.status(403).json({ mensaje: "Solo puedes modificar asistencias registradas por tu usuario." });
     }
 
-    const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ?';
+    const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ? AND estado = TRUE';
     const [result] = await db.query(query, [estado_asistencia, observaciones || null, id]);
 
     if (result.affectedRows === 0) {

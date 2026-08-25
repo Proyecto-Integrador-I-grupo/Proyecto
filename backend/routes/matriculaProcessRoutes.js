@@ -12,7 +12,7 @@ import {
   transferirEstudianteGrupo
 } from "../controllers/matriculaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { requireAuth, requireRole, requirePermission } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -65,15 +65,15 @@ const validarTransferenciaEstudiante = [
 
 // Matrícula
 router.get("/matricula", requireAuth, obtenerMatriculas);
-router.post("/matricula", requireAuth, requireRole("Administrador", "Asistente"), validarMatricula, validarCampos, crearMatricula);
-router.post("/matricula/transferir", requireAuth, requireRole("Administrador", "Asistente"), validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
+router.post("/matricula", requireAuth, requirePermission("matricula.registrar"), validarMatricula, validarCampos, crearMatricula);
+router.post("/matricula/transferir", requireAuth, requirePermission("matricula.transferir"), validarTransferenciaEstudiante, validarCampos, transferirEstudianteGrupo);
 
 // Grupos
 router.get("/grupos", requireAuth, obtenerGrupos);
-router.post("/grupos", requireAuth, requireRole("Administrador", "Asistente"), validarGrupo, validarCampos, crearGrupo);
-router.put("/grupos/:id", requireAuth, requireRole("Administrador", "Asistente"), validarGrupoUpdate, validarCampos, actualizarGrupo);
+router.post("/grupos", requireAuth, requirePermission("grupos.crear"), validarGrupo, validarCampos, crearGrupo);
+router.put("/grupos/:id", requireAuth, requirePermission("grupos.modificar"), validarGrupoUpdate, validarCampos, actualizarGrupo);
 router.delete("/grupos/:id", requireAuth, requireRole("Administrador"), eliminarGrupo);
 router.get("/grupos/:id/detalle", requireAuth, obtenerDetalleGrupo);
-router.put("/grupos/:id/retirar-estudiante", requireAuth, requireRole("Administrador", "Asistente"), validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
+router.put("/grupos/:id/retirar-estudiante", requireAuth, requirePermission("matricula.transferir"), validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
 
 export default router;

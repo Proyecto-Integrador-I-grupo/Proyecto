@@ -1,5 +1,6 @@
 import * as seccionService from "../services/seccionService.js";
 import * as auditoriaModel from "../models/auditoriaModel.js";
+import * as periodoService from "../services/periodoService.js";
 
 export const getSecciones = async (req, res) => {
   try {
@@ -54,5 +55,19 @@ export const deleteSeccion = async (req, res) => {
     const status = Number(error.statusCode) || 500;
     if (status >= 500) console.error("Error al borrar sección:", error);
     res.status(status).json({ error: error.message || "Error al borrar la sección." });
+  }
+};
+
+export const getPeriodos = async (req, res) => {
+  try { res.json(await periodoService.listarPeriodosService()); }
+  catch (error) { res.status(500).json({ error: error.message || "Error al consultar períodos." }); }
+};
+
+export const putPeriodo = async (req, res) => {
+  try { res.json(await periodoService.actualizarPeriodoService(req.params.anio, req.body, req.usuarioActual?.id_usuario)); }
+  catch (error) {
+    const status = Number(error.statusCode) || 500;
+    if (status >= 500) console.error("Error al actualizar período:", error);
+    res.status(status).json({ error: error.message || "Error al actualizar el período." });
   }
 };

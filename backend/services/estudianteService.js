@@ -38,6 +38,7 @@ export const obtenerEstudiantesService = async () => {
       p.fecha_nacimiento,
       p.genero,
       e.fecha_ingreso,
+      e.estado_academico,
       e.estado
     FROM estudiante e
     INNER JOIN persona p ON e.id_persona = p.id_persona
@@ -69,6 +70,7 @@ export const obtenerEstudiantesMatriculadosService = async () => {
       p.genero,
 
       e.fecha_ingreso,
+      e.estado_academico,
       e.estado,
 
       ge.fecha_asignacion,
@@ -152,6 +154,7 @@ export const obtenerEstudiantePorIdService = async (id_estudiante) => {
       p.fecha_nacimiento,
       p.genero,
       e.fecha_ingreso,
+      e.estado_academico,
       e.estado
     FROM estudiante e
     INNER JOIN persona p ON e.id_persona = p.id_persona
@@ -293,27 +296,33 @@ export const eliminarEstudianteService = async (id_estudiante) => {
     }
 
     await connection.query(
-      `UPDATE estudiante SET estado = FALSE WHERE id_estudiante = ?`,
+      `UPDATE estudiante SET estado = FALSE, estado_academico = 'retirado' WHERE id_estudiante = ?`,
+      [id_estudiante]
+    );
+
+    // La baja académica no borra ni anula obligaciones financieras históricas.
+    // Los cargos, pagos y facturas se conservan íntegros para auditoría y cobro.
+    await connection.query(
+      `UPDATE grupo_estudiante SET estado = FALSE
+       WHERE id_estudiante = ? AND estado = TRUE`,
+      [id_estudiante]
+    );
+    await connection.query(
+      `UPDATE detalle_matricula dm
+       INNER JOIN matricula m ON m.id_matricula = dm.id_matricula
+       SET dm.estado = FALSE, m.estado_matricula = 'retirada'
+       WHERE m.id_estudiante = ? AND dm.estado = TRUE`,
       [id_estudiante]
     );
 
     await connection.query(
-      `UPDATE cargo_estudiante
-       SET estado = 'anulado', saldo = 0
-       WHERE id_estudiante = ?
-         AND estado IN ('pendiente', 'parcial')`,
-      [id_estudiante]
-    );
-
-    await connection.query(
-      `UPDATE responsable_pago
-       SET estado = FALSE, principal = FALSE
-       WHERE id_estudiante = ?`,
+      `UPDATE responsable_pago SET principal = FALSE
+       WHERE id_estudiante = ? AND estado = TRUE`,
       [id_estudiante]
     );
 
     await connection.commit();
-    return { id_estudiante, mensaje: "Estudiante eliminado correctamente" };
+    return { id_estudiante, mensaje: "Estudiante retirado correctamente; su historial se conserva" };
   } catch (error) {
     await connection.rollback();
     throw error;

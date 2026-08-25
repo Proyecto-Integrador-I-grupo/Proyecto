@@ -46,3 +46,24 @@ export const requireRole = (...rolesPermitidos) => {
     return next();
   };
 };
+
+
+export const requirePermission = (codigo) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.usuarioActual) return res.status(401).json({ mensaje: "Debes iniciar sesión para realizar esta acción." });
+      const rol = String(req.usuarioActual.nom_rol || '').toLowerCase();
+      if (rol === 'administrador') return next();
+
+      const usuarioModel = await import('../models/usuarioModel.js');
+      const permitido = await usuarioModel.usuarioTienePermiso(req.usuarioActual.id_usuario, codigo);
+      if (!permitido) {
+        return res.status(403).json({ mensaje: "No tienes permiso para realizar esta acción." });
+      }
+      return next();
+    } catch (error) {
+      console.error('Error validando permiso por acción:', error);
+      return res.status(500).json({ mensaje: 'No se pudo validar el permiso de la operación.' });
+    }
+  };
+};

@@ -206,7 +206,7 @@ async function cargarGrupoSeleccionado() {
     await cargarBitacora();
 
     if (hint) {
-      hint.textContent = `${(detalleGrupo.estudiantes || []).length} estudiante(s) cargados. Los días sábado y domingo se omiten de la bitácora.`;
+      hint.textContent = `${(detalleGrupo.estudiantes || []).length} estudiante(s) cargados. Solo se muestran los días configurados para este grupo dentro del período lectivo.`;
     }
   } catch (error) {
     detalleGrupo = null;
@@ -260,18 +260,20 @@ function rangoMes() {
 function diasLectivosMes() {
   const { anio, mes, ultimo } = rangoMes();
   const dias = [];
+  const mapa = { domingo:0, lunes:1, martes:2, miercoles:3, miércoles:3, jueves:4, viernes:5, sabado:6, sábado:6 };
+  const diasGrupo = new Set(String(detalleGrupo?.grupo?.dias_semana || '').split(',').map(d => mapa[d.trim().toLowerCase()]).filter(n => Number.isInteger(n)));
+  const fechaInicio = detalleGrupo?.grupo?.periodo_fecha_inicio ? String(detalleGrupo.grupo.periodo_fecha_inicio).slice(0,10) : null;
+  const fechaFin = detalleGrupo?.grupo?.periodo_fecha_fin ? String(detalleGrupo.grupo.periodo_fecha_fin).slice(0,10) : null;
 
   for (let dia = 1; dia <= ultimo; dia += 1) {
     const fecha = new Date(anio, mes - 1, dia);
     const semana = fecha.getDay();
-    if (semana === 0 || semana === 6) continue;
-    dias.push({
-      dia,
-      fecha: `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
-      semana: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][semana]
-    });
+    const iso = `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    if (diasGrupo.size ? !diasGrupo.has(semana) : (semana === 0 || semana === 6)) continue;
+    if (fechaInicio && iso < fechaInicio) continue;
+    if (fechaFin && iso > fechaFin) continue;
+    dias.push({ dia, fecha: iso, semana: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][semana] });
   }
-
   return dias;
 }
 

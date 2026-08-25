@@ -59,8 +59,8 @@ export const actualizarProfesor = async (req, res) => {
 export const destituirProfesor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { motivo } = req.body;
-    const resultado = await profesorService.destituirProfesorService(id, motivo);
+    const { motivo, fecha_inicio, fecha_fin } = req.body;
+    const resultado = await profesorService.destituirProfesorService(id, motivo, fecha_inicio, fecha_fin);
 
     try {
       await auditoriaModel.crearAuditoria({

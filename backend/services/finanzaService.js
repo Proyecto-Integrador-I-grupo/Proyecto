@@ -1,4 +1,12 @@
 import pool from "../config/database.js";
+
+function sumarDiasFecha(fechaIso, dias) {
+  const base = new Date(`${String(fechaIso).slice(0,10)}T12:00:00Z`);
+  if (Number.isNaN(base.getTime())) throw new Error('La fecha base del plazo no es válida.');
+  base.setUTCDate(base.getUTCDate() + Number(dias || 0));
+  return base.toISOString().slice(0,10);
+}
+
 import { generarFacturaDeCargo, reconciliarFacturasEduControl } from "./facturacionIntegrationService.js";
 
 function positiveInt(value, field) {
@@ -581,7 +589,7 @@ export async function listarCargos(filtros = {}) {
   const [rows] = await pool.query(
     `SELECT
        c.id_cargo, c.id_estudiante, c.id_concepto, c.id_matricula,
-       c.descripcion, c.periodo, c.fecha_emision, c.fecha_vencimiento,
+       c.descripcion, c.periodo, c.fecha_emision, c.fecha_vencimiento_original, c.fecha_vencimiento, c.plazo_dias,
        c.monto_base, c.descuento, c.impuesto, c.total, c.saldo, c.estado,
        cc.codigo AS concepto_codigo, cc.nombre AS concepto_nombre, cc.tipo AS concepto_tipo,
        CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
@@ -664,12 +672,10 @@ async function facturarCargosPagadosPendientesAutomaticamente() {
          ), 'otro') AS metodo_pago
        FROM cargo_estudiante c
        LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
-       WHERE c.estado <> 'anulado'
-         AND (c.estado = 'pagado' OR c.saldo <= 0)
-         AND (
-           c.total > 0 OR
-           COALESCE((SELECT SUM(pg2.monto) FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado'), 0) > 0
-         )
+       WHERE c.estado = 'pagado'
+         AND c.saldo <= 0
+         AND COALESCE((SELECT SUM(pg2.monto) FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado'), 0) + 0.001 >= c.total
+         AND c.total > 0
          AND fc.id_factura_externa IS NULL
        ORDER BY c.fecha_emision ASC, c.id_cargo ASC
        LIMIT 30`
@@ -814,18 +820,19 @@ export async function crearCargo(datos, idUsuario) {
   const descripcion = String(datos.descripcion || concepto.nombre).trim().slice(0, 200);
   const periodo = String(datos.periodo || "").trim().slice(0, 30) || null;
   const fechaEmision = datos.fecha_emision || new Date().toISOString().slice(0, 10);
-  const fechaVencimiento = datos.fecha_vencimiento || null;
+  const plazoDias = Math.max(0, Math.min(3650, Number(datos.plazo_dias || 0)));
+  const fechaVencimiento = datos.fecha_vencimiento || (plazoDias > 0 ? sumarDiasFecha(fechaEmision, plazoDias) : null);
   await validarDescuentoVigente(fechaVencimiento, descuento);
 
   const [result] = await pool.query(
     `INSERT INTO cargo_estudiante
       (id_estudiante, id_concepto, id_matricula, descripcion, periodo,
-       fecha_emision, fecha_vencimiento, monto_base, descuento, impuesto, total, saldo,
+       fecha_emision, fecha_vencimiento_original, fecha_vencimiento, plazo_dias, monto_base, descuento, impuesto, total, saldo,
        estado, id_usuario_crea)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
     [
       idEstudiante, idConcepto, datos.id_matricula || null, descripcion, periodo,
-      fechaEmision, fechaVencimiento, base, descuento, impuesto, total, total,
+      fechaEmision, fechaVencimiento, fechaVencimiento, plazoDias, base, descuento, impuesto, total, total,
       idUsuario || null
     ]
   );
@@ -917,7 +924,7 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
   };
 }
 
-export async function actualizarCargo(idCargo, datos) {
+export async function actualizarCargo(idCargo, datos, idUsuario = null) {
   const id = positiveInt(idCargo, 'El cargo');
   const connection = await pool.getConnection();
   try {
@@ -933,9 +940,15 @@ export async function actualizarCargo(idCargo, datos) {
     const base = datos.monto_base === undefined ? Number(cargo.monto_base) : money(datos.monto_base, 'El monto base', true);
     const descuento = datos.descuento === undefined ? Number(cargo.descuento) : money(datos.descuento, 'El descuento', true);
     if (descuento > base) throw new Error('El descuento no puede ser mayor al monto base.');
-    const fechaVencimientoResultante = datos.fecha_vencimiento === undefined
-      ? (cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : null)
+    const fechaAnterior = cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : null;
+    const extensionDias = Math.max(0, Math.min(3650, Number(datos.extender_plazo_dias || 0)));
+    let fechaVencimientoResultante = datos.fecha_vencimiento === undefined
+      ? fechaAnterior
       : (datos.fecha_vencimiento || null);
+    if (extensionDias > 0) {
+      const baseExtension = fechaVencimientoResultante || fechaAnterior || new Date().toISOString().slice(0, 10);
+      fechaVencimientoResultante = sumarDiasFecha(baseExtension, extensionDias);
+    }
     await validarDescuentoVigente(fechaVencimientoResultante, descuento, connection);
     const subtotal = base - descuento;
     const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
@@ -944,11 +957,17 @@ export async function actualizarCargo(idCargo, datos) {
     const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
     const estado = saldo <= 0 ? 'pagado' : (pagado > 0 ? 'parcial' : 'pendiente');
     await connection.query(
-      `UPDATE cargo_estudiante SET descripcion = ?, periodo = ?, fecha_vencimiento = ?, monto_base = ?, descuento = ?, impuesto = ?, total = ?, saldo = ?, estado = ? WHERE id_cargo = ?`,
-      [String(datos.descripcion ?? cargo.descripcion ?? '').trim().slice(0,200), String(datos.periodo ?? cargo.periodo ?? '').trim().slice(0,30) || null, fechaVencimientoResultante, base, descuento, impuesto, total, saldo, estado, id]
+      `UPDATE cargo_estudiante SET descripcion = ?, periodo = ?, fecha_vencimiento = ?, plazo_dias = ?, monto_base = ?, descuento = ?, impuesto = ?, total = ?, saldo = ?, estado = ? WHERE id_cargo = ?`,
+      [String(datos.descripcion ?? cargo.descripcion ?? '').trim().slice(0,200), String(datos.periodo ?? cargo.periodo ?? '').trim().slice(0,30) || null, fechaVencimientoResultante, Number(cargo.plazo_dias || 0) + extensionDias, base, descuento, impuesto, total, saldo, estado, id]
     );
+    if (extensionDias > 0 || fechaAnterior !== fechaVencimientoResultante) {
+      await connection.query(
+        `INSERT INTO historial_plazo_pago (id_cargo, fecha_vencimiento_anterior, fecha_vencimiento_nueva, dias_extension, motivo, id_usuario) VALUES (?, ?, ?, ?, ?, ?)`,
+        [id, fechaAnterior, fechaVencimientoResultante, extensionDias, String(datos.motivo_extension || '').trim().slice(0,250) || null, idUsuario || null]
+      );
+    }
     await connection.commit();
-    return { id_cargo:id, total, saldo, estado, pagado };
+    return { id_cargo:id, total, saldo, estado, pagado, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias };
   } catch (e) { await connection.rollback(); throw e; } finally { connection.release(); }
 }
 
@@ -1027,6 +1046,30 @@ export async function registrarPago(idCargo, datos, idUsuario) {
     }
     if (montoPago > Number(cargo.saldo) + 0.001) {
       throw new Error(`El pago no puede superar el saldo pendiente de CRC ${Number(cargo.saldo).toLocaleString("es-CR")}.`);
+    }
+
+    const plazo = datos?.plazo && typeof datos.plazo === 'object' ? datos.plazo : null;
+    if (plazo?.habilitado) {
+      const fechaAnterior = cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : null;
+      const diasExtension = Math.max(0, Math.min(3650, Number(plazo.extender_dias || 0)));
+      let fechaNueva = plazo.fecha_vencimiento ? String(plazo.fecha_vencimiento).slice(0, 10) : null;
+      if (diasExtension > 0) {
+        const base = fechaNueva || fechaAnterior || new Date().toISOString().slice(0, 10);
+        fechaNueva = sumarDiasFecha(base, diasExtension);
+      }
+      if (!fechaNueva) throw new Error('Indica una nueva fecha de vencimiento o una extensión de plazo.');
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (fechaNueva < hoy) throw new Error('El nuevo plazo no puede vencer en una fecha pasada.');
+
+      await connection.query(
+        `UPDATE cargo_estudiante SET fecha_vencimiento = ?, plazo_dias = COALESCE(plazo_dias,0) + ? WHERE id_cargo = ?`,
+        [fechaNueva, diasExtension, cargoId]
+      );
+      await connection.query(
+        `INSERT INTO historial_plazo_pago (id_cargo, fecha_vencimiento_anterior, fecha_vencimiento_nueva, dias_extension, motivo, id_usuario) VALUES (?, ?, ?, ?, ?, ?)`,
+        [cargoId, fechaAnterior, fechaNueva, diasExtension, String(plazo.motivo || '').trim().slice(0, 250) || null, idUsuario || null]
+      );
+      cargo.fecha_vencimiento = fechaNueva;
     }
 
     if (datos.responsable) {

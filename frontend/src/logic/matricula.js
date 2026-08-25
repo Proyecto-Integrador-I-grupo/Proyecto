@@ -43,6 +43,7 @@ let allSecciones = [];
 
 function wireMatriculaEvents() {
   configurarSelectoresProfesores();
+  configurarDisponibilidadAulas();
   const matForm = document.getElementById('matricula-form');
   if (matForm && !matForm.dataset.wired) {
     matForm.dataset.wired = '1';
@@ -167,6 +168,17 @@ function wireMatriculaEvents() {
       await cargarDetalleGestionGrupo(Number(cleanId));
       actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
     });
+  }
+
+  const periodoAnio = document.getElementById('periodo-admin-anio');
+  if (periodoAnio && !periodoAnio.dataset.wired) {
+    periodoAnio.dataset.wired = '1';
+    periodoAnio.addEventListener('change', sincronizarPeriodoSeleccionado);
+  }
+  const btnGuardarPeriodo = document.getElementById('btn-guardar-periodo');
+  if (btnGuardarPeriodo && !btnGuardarPeriodo.dataset.wired) {
+    btnGuardarPeriodo.dataset.wired = '1';
+    btnGuardarPeriodo.addEventListener('click', guardarPeriodoLectivo);
   }
 
   const grupoSeccionSearch = document.getElementById('grupo-seccion-search');
@@ -516,6 +528,69 @@ async function loadMatriculaData() {
     populateGruposSelects()
   ]);
   await populateSeccionesSelect();
+  await cargarPeriodosLectivos();
+}
+
+let periodosLectivos = [];
+
+async function cargarPeriodosLectivos() {
+  const card = document.getElementById('periodo-lectivo-card');
+  const select = document.getElementById('periodo-admin-anio');
+  const boton = document.getElementById('btn-guardar-periodo');
+  if (!select) return;
+  try {
+    const res = await apiFetch('/api/procesos/secciones/periodos');
+    const data = await res.json().catch(() => []);
+    if (!res.ok) throw new Error(data.error || 'No se pudieron consultar los períodos.');
+    periodosLectivos = Array.isArray(data) ? data : [];
+    select.innerHTML = '';
+    periodosLectivos.forEach((p) => select.add(new Option(`${p.anio} · ${String(p.estado || '').toUpperCase()}`, p.anio)));
+    const actual = periodosLectivos.find((p) => Number(p.anio) === new Date().getFullYear()) || periodosLectivos[0];
+    if (actual) select.value = String(actual.anio);
+    sincronizarPeriodoSeleccionado();
+    const admin = String(currentUser?.rol || '').toLowerCase() === 'administrador';
+    if (card) card.style.display = admin ? '' : 'none';
+    if (boton) boton.disabled = !admin;
+  } catch (e) {
+    if (card) card.style.display = 'none';
+  }
+}
+
+function sincronizarPeriodoSeleccionado() {
+  const anio = Number(document.getElementById('periodo-admin-anio')?.value || 0);
+  const p = periodosLectivos.find((x) => Number(x.anio) === anio);
+  if (!p) return;
+  const inicio = document.getElementById('periodo-admin-inicio');
+  const fin = document.getElementById('periodo-admin-fin');
+  const estado = document.getElementById('periodo-admin-estado');
+  if (inicio) inicio.value = p.fecha_inicio ? String(p.fecha_inicio).slice(0,10) : '';
+  if (fin) fin.value = p.fecha_fin ? String(p.fecha_fin).slice(0,10) : '';
+  if (estado) { estado.value = String(p.estado || 'PLANIFICADO').toUpperCase(); estado.disabled = String(p.estado || '').toUpperCase() === 'CERRADO'; }
+  const boton = document.getElementById('btn-guardar-periodo');
+  if (boton) boton.disabled = String(p.estado || '').toUpperCase() === 'CERRADO';
+}
+
+async function guardarPeriodoLectivo() {
+  const anio = Number(document.getElementById('periodo-admin-anio')?.value || 0);
+  const payload = {
+    fecha_inicio: document.getElementById('periodo-admin-inicio')?.value,
+    fecha_fin: document.getElementById('periodo-admin-fin')?.value,
+    estado: document.getElementById('periodo-admin-estado')?.value
+  };
+  if (!anio || !payload.fecha_inicio || !payload.fecha_fin) { showToast('Completa las fechas del período.', 'error'); return; }
+  if (payload.estado === 'CERRADO' && !window.confirm(`Cerrar ${anio} bloqueará matrículas, traslados, cambios de grupos y asistencias. ¿Continuar?`)) return;
+  const btn = document.getElementById('btn-guardar-periodo');
+  const original = btn?.innerHTML;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Guardando…'; }
+  try {
+    const res = await apiFetch(`/api/procesos/secciones/periodos/${anio}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'No se pudo actualizar el período.');
+    showToast(`Período ${anio} actualizado.`, 'success');
+    await cargarPeriodosLectivos();
+    await populateGruposSelects();
+  } catch (e) { showToast(e.message, 'error'); }
+  finally { if (btn?.isConnected && !btn.disabled) btn.innerHTML = original; else if (btn?.isConnected) btn.innerHTML = original; }
 }
 
 function normalizarParteSeccion(valor) {
@@ -819,6 +894,7 @@ async function cargarDetalleGestionGrupo(idGrupo) {
     ? `Este grupo tiene ${ocupadosActuales} estudiante${ocupadosActuales === 1 ? '' : 's'} matriculado${ocupadosActuales === 1 ? '' : 's'}. La capacidad no puede ser menor a ${ocupadosActuales}.`
     : 'La capacidad debe ser mayor a cero.';
   aulaSelect.value = grupo.aula ?? '';
+  actualizarDisponibilidadAulas('gestion');
   if (horaInicioInput) horaInicioInput.value = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
   if (horaFinInput) horaFinInput.value = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
   marcarDiasSeleccionados('gestion-grupo-dias', grupo.dias_semana || '');
@@ -846,7 +922,7 @@ async function handleGestionGrupoSubmit(e) {
   const rawGrupoVal = document.getElementById('gestion-grupo-select')?.value || 0;
   const idGrupo = Number(String(rawGrupoVal).split(':')[0].trim());
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
-  const aula = document.getElementById('gestion-grupo-aula')?.value.trim() || null;
+  const aula = document.getElementById('gestion-grupo-aula')?.value || null;
   const horaInicio = document.getElementById('gestion-grupo-hora-inicio')?.value || null;
   const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
   const diasSemana = obtenerDiasSeleccionados('gestion-grupo-dias');
@@ -1064,16 +1140,73 @@ function actualizarContadorProfesores(selectId, countId) {
 }
 
 function configurarSelectoresProfesores() {
-  const grupo = document.getElementById('grupo-profesor');
   const gestion = document.getElementById('gestion-grupo-profesor');
-  grupo?.addEventListener('change', () => actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count'));
-  gestion?.addEventListener('change', () => actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count'));
-  document.getElementById('grupo-profesor-clear')?.addEventListener('click', () => {
-    if (!grupo) return; if (grupo.options[0]) grupo.options[0].selected = true; Array.from(grupo.options).slice(1).forEach(o => { o.selected = false; }); actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
+  if (gestion && !gestion.dataset.selectorWired) {
+    gestion.dataset.selectorWired = '1';
+    gestion.addEventListener('change', () => actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count'));
+  }
+  const clearGestion = document.getElementById('gestion-profesor-clear');
+  if (clearGestion && !clearGestion.dataset.selectorWired) {
+    clearGestion.dataset.selectorWired = '1';
+    clearGestion.addEventListener('click', () => {
+      if (!gestion) return;
+      if (gestion.options[0]) gestion.options[0].selected = true;
+      Array.from(gestion.options).slice(1).forEach((o) => { o.selected = false; });
+      actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
+    });
+  }
+}
+
+function minutosHora(hora) {
+  if (!hora) return null;
+  const [h,m] = String(hora).slice(0,5).split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+}
+
+function horariosChocan(inicioA, finA, inicioB, finB) {
+  const a1=minutosHora(inicioA), a2=minutosHora(finA), b1=minutosHora(inicioB), b2=minutosHora(finB);
+  return [a1,a2,b1,b2].every(Number.isFinite) && a1 < b2 && a2 > b1;
+}
+
+function diasChocan(a, b) {
+  const sa = new Set((Array.isArray(a) ? a : String(a || '').split(',')).map(x => String(x).trim().toLowerCase()).filter(Boolean));
+  return (Array.isArray(b) ? b : String(b || '').split(',')).some(x => sa.has(String(x).trim().toLowerCase()));
+}
+
+function actualizarDisponibilidadAulas(modo='crear') {
+  const crear = modo === 'crear';
+  const aulaSelect = document.getElementById(crear ? 'grupo-aula' : 'gestion-grupo-aula');
+  if (!aulaSelect) return;
+  const dias = obtenerDiasSeleccionados(crear ? 'grupo-dias' : 'gestion-grupo-dias');
+  const inicio = document.getElementById(crear ? 'grupo-hora-inicio' : 'gestion-grupo-hora-inicio')?.value || '';
+  const fin = document.getElementById(crear ? 'grupo-hora-fin' : 'gestion-grupo-hora-fin')?.value || '';
+  const idExcluir = crear ? 0 : Number(String(document.getElementById('gestion-grupo-select')?.value || '').split(':')[0] || 0);
+  let anio = null;
+  if (crear) {
+    const idSeccion = Number(document.getElementById('grupo-seccion')?.value || 0);
+    anio = allSecciones.find(s => Number(s.id_seccion) === idSeccion)?.anio_lectivo || null;
+  } else {
+    anio = allGrupos.find(g => Number(g.id_grupo ?? g.id) === idExcluir)?.periodo_lectivo || null;
+  }
+  Array.from(aulaSelect.options).forEach((opt, idx) => {
+    if (idx === 0 || !opt.value) return;
+    const ocupante = allGrupos.find(g => Number(g.id_grupo ?? g.id) !== idExcluir && String(g.aula || '') === opt.value && (!anio || Number(g.periodo_lectivo) === Number(anio)) && diasChocan(dias, g.dias_semana) && horariosChocan(inicio, fin, g.hora_inicio, g.hora_fin));
+    opt.disabled = Boolean(ocupante);
+    opt.textContent = ocupante ? `${opt.value} · Ocupada por ${ocupante.nombre_grupo}` : opt.value;
   });
-  document.getElementById('gestion-profesor-clear')?.addEventListener('click', () => {
-    if (!gestion) return; if (gestion.options[0]) gestion.options[0].selected = true; Array.from(gestion.options).slice(1).forEach(o => { o.selected = false; }); actualizarContadorProfesores('gestion-grupo-profesor', 'gestion-profesor-count');
-  });
+  if (aulaSelect.selectedOptions[0]?.disabled) aulaSelect.value = '';
+}
+
+function configurarDisponibilidadAulas() {
+  const wireAvailability = (el, modo) => {
+    if (!el || el.dataset.aulaWired) return;
+    el.dataset.aulaWired = '1';
+    el.addEventListener('change', () => actualizarDisponibilidadAulas(modo));
+  };
+  ['grupo-hora-inicio','grupo-hora-fin','grupo-seccion'].forEach((id) => wireAvailability(document.getElementById(id), 'crear'));
+  document.querySelectorAll('#grupo-dias input[type="checkbox"]').forEach((el) => wireAvailability(el, 'crear'));
+  ['gestion-grupo-hora-inicio','gestion-grupo-hora-fin','gestion-grupo-select'].forEach((id) => wireAvailability(document.getElementById(id), 'gestion'));
+  document.querySelectorAll('#gestion-grupo-dias input[type="checkbox"]').forEach((el) => wireAvailability(el, 'gestion'));
 }
 
 function obtenerDiasSeleccionados(contenedorId) {
@@ -1089,17 +1222,14 @@ async function handleGrupoSubmit(e) {
   e.preventDefault();
   sessionStorage.setItem('educontrol_active_view', 'matricula');
 
-  const nombre = document.getElementById('grupo-nombre').value.trim();
-  const capacidad = parseInt(document.getElementById('grupo-capacidad').value, 10);
-  const idSeccion = parseInt(document.getElementById('grupo-seccion').value, 10);
-  const aula = document.getElementById('grupo-aula').value.trim() || null;
+  const nombre = document.getElementById('grupo-nombre')?.value.trim() || '';
+  const capacidad = parseInt(document.getElementById('grupo-capacidad')?.value || '', 10);
+  const idSeccion = parseInt(document.getElementById('grupo-seccion')?.value || '', 10);
+  const aula = document.getElementById('grupo-aula')?.value || null;
   const horaInicio = document.getElementById('grupo-hora-inicio')?.value || null;
   const horaFin = document.getElementById('grupo-hora-fin')?.value || null;
   const diasSemana = obtenerDiasSeleccionados('grupo-dias');
 
-  // Validación previa en el frontend: si algo no es válido, avisamos exactamente
-  // qué falta en vez de mandar la petición y dejar que el 400 del servidor
-  // se pierda en un toast que desaparece solo.
   if (!nombre) {
     showToast('Escribe un nombre para el grupo.', 'error');
     return;
@@ -1108,8 +1238,12 @@ async function handleGrupoSubmit(e) {
     showToast('La capacidad máxima debe ser un número mayor a cero.', 'error');
     return;
   }
+  if (!aula) {
+    showToast('Selecciona un aula.', 'error');
+    return;
+  }
   if (!Number.isInteger(idSeccion) || idSeccion <= 0) {
-    showToast('Selecciona una sección académica válida de la lista (haz clic en una opción del desplegable).', 'error');
+    showToast('Selecciona una sección académica válida.', 'error');
     return;
   }
   if (!diasSemana.length) {
@@ -1125,60 +1259,58 @@ async function handleGrupoSubmit(e) {
     return;
   }
 
-  // El grupo se crea sin profesores: la asignación docente se hace después
-  // desde "Gestionar Grupo" o desde el módulo de Profesores (botón "Grupos").
-  const payload = { nombre_grupo: nombre, capacidad, aula, id_seccion: idSeccion, hora_inicio: horaInicio, hora_fin: horaFin, dias_semana: diasSemana };
+  const choqueLocal = allGrupos.find((g) =>
+    String(g.aula || '') === String(aula) &&
+    diasChocan(diasSemana, g.dias_semana) &&
+    horariosChocan(horaInicio, horaFin, g.hora_inicio, g.hora_fin)
+  );
+  if (choqueLocal) {
+    showToast(`${aula} ya está ocupada por ${choqueLocal.nombre_grupo || 'otro grupo'} en un horario que se cruza.`, 'error');
+    return;
+  }
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creando...'; }
+  const payload = {
+    nombre_grupo: nombre,
+    capacidad,
+    aula,
+    id_seccion: idSeccion,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin,
+    dias_semana: diasSemana
+  };
+
+  const submitBtn = e.currentTarget?.querySelector('button[type="submit"]');
+  const originalHtml = submitBtn?.innerHTML || 'Crear Grupo';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creando...';
+  }
 
   try {
-    const res = await apiFetch('/api/procesos/grupos', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(payload) 
+    const res = await apiFetch('/api/procesos/grupos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-
     const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo crear el grupo.');
 
-    if (res.ok) {
-      const nuevoId = json.id_grupo ?? json.id ?? json.insertId;
-      const profSelect = document.getElementById('grupo-profesor');
-      const profesoresSeleccionados = Array.from(profSelect?.selectedOptions || []).map(opt => parseInt(opt.value, 10)).filter(Number.isInteger);
-      if (nuevoId && profesoresSeleccionados.length) {
-        try {
-          await apiFetch(`/api/procesos/grupos/${nuevoId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profesores: profesoresSeleccionados, capacidad, aula }) });
-        } catch (assignmentError) {
-          console.error('Grupo creado, pero no se pudo asignar el profesor:', assignmentError);
-          showToast('El grupo se creó, pero no se pudo guardar la asignación docente.', 'error');
-        }
-      }
-      sessionStorage.setItem('educontrol_active_view', 'matricula');
-      showToast('Grupo creado correctamente');
-
-      // Mantener "Crear Grupo" abierto para registrar varios grupos seguidos.
-      document.getElementById('grupo-form')?.reset();
-      actualizarContadorProfesores('grupo-profesor', 'grupo-profesor-count');
-      const searchProfesor = document.getElementById('grupo-profesor-search');
-      if (searchProfesor) searchProfesor.value = '';
-      const searchSeccion = document.getElementById('grupo-seccion-search');
-      if (searchSeccion) searchSeccion.value = '';
-
-      await populateGruposSelects();
-      await populateSeccionesSelect();
-      await populateProfesoresSelects(false);
-    } else {
-      const mensaje = json.error || json.mensaje || 'Error creando grupo';
-      if (typeof showResultModal === 'function') {
-        showResultModal('error', 'No se pudo crear el grupo', mensaje);
-      } else {
-        showToast(mensaje, 'error');
-      }
-    }
-  } catch {
-    showToast('Error de conexión al crear el grupo', 'error');
+    showToast('Grupo creado correctamente.', 'success');
+    e.currentTarget?.reset();
+    const searchSeccion = document.getElementById('grupo-seccion-search');
+    if (searchSeccion) searchSeccion.value = '';
+    await populateGruposSelects();
+    await populateSeccionesSelect();
+    await actualizarDisponibilidadAulas('crear');
+  } catch (error) {
+    const mensaje = error?.message || 'Error de conexión al crear el grupo.';
+    if (typeof showResultModal === 'function') showResultModal('error', 'No se pudo crear el grupo', mensaje);
+    else showToast(mensaje, 'error');
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Crear Grupo'; }
+    if (submitBtn?.isConnected) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
   }
 }
 

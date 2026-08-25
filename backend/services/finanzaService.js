@@ -718,14 +718,9 @@ export async function listarFacturas() {
   // sigue mostrando los cargos pagados como pendientes de facturar.
   await conciliarFacturasConEnfriamiento();
 
-  // Los cargos históricos que ya estaban pagados antes de esta versión también
-  // se facturan sin intervención manual. Esto mantiene el módulo y reportes
-  // consistentes aunque el pago se haya registrado en una versión anterior.
-  try {
-    await facturarCargosPagadosPendientesAutomaticamente();
-  } catch (error) {
-    console.warn('Finanzas: no se pudo completar la facturación automática pendiente:', error?.message || error);
-  }
+  // La creación de la factura ocurre al liquidar el cargo. Aquí solo se
+  // concilian referencias ya existentes; así evitamos dos procesos intentando
+  // crear el mismo comprobante mientras el pago aún está terminando.
 
   // Se consideran facturables tanto los cargos marcados como pagados como los
   // registros históricos cuyo saldo ya llegó a cero. Esto evita ocultar cargos
@@ -815,7 +810,9 @@ export async function crearCargo(datos, idUsuario) {
   const tarifa = Number(concepto.impuesto_tarifa || 0);
   const impuesto = Math.round((subtotal * tarifa / 100) * 100) / 100;
   const total = Math.round((subtotal + impuesto) * 100) / 100;
-  if (total <= 0) throw new Error("El total del cargo debe ser mayor que cero.");
+  // Un descuento administrativo puede cubrir el 100% del cargo. En ese caso
+  // el cargo queda saldado sin exigir un pago artificial de CRC 0.
+  if (total < 0) throw new Error("El total del cargo no puede ser negativo.");
 
   const descripcion = String(datos.descripcion || concepto.nombre).trim().slice(0, 200);
   const periodo = String(datos.periodo || "").trim().slice(0, 30) || null;
@@ -824,20 +821,21 @@ export async function crearCargo(datos, idUsuario) {
   const fechaVencimiento = datos.fecha_vencimiento || (plazoDias > 0 ? sumarDiasFecha(fechaEmision, plazoDias) : null);
   await validarDescuentoVigente(fechaVencimiento, descuento);
 
+  const estadoInicial = total <= 0 ? 'pagado' : 'pendiente';
   const [result] = await pool.query(
     `INSERT INTO cargo_estudiante
       (id_estudiante, id_concepto, id_matricula, descripcion, periodo,
        fecha_emision, fecha_vencimiento_original, fecha_vencimiento, plazo_dias, monto_base, descuento, impuesto, total, saldo,
        estado, id_usuario_crea)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       idEstudiante, idConcepto, datos.id_matricula || null, descripcion, periodo,
       fechaEmision, fechaVencimiento, fechaVencimiento, plazoDias, base, descuento, impuesto, total, total,
-      idUsuario || null
+      estadoInicial, idUsuario || null
     ]
   );
 
-  return { id_cargo: result.insertId, total, saldo: total, estado: 'pendiente' };
+  return { id_cargo: result.insertId, total, saldo: total, estado: estadoInicial };
 }
 
 export async function crearCargoMatriculaSiCorresponde({ id_matricula, id_estudiante, id_usuario, anio }) {
@@ -966,8 +964,24 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
         [id, fechaAnterior, fechaVencimientoResultante, extensionDias, String(datos.motivo_extension || '').trim().slice(0,250) || null, idUsuario || null]
       );
     }
+    const [[ultimoPago]] = await connection.query(
+      `SELECT metodo_pago FROM pago WHERE id_cargo = ? AND estado = 'aplicado' ORDER BY fecha_pago DESC, id_pago DESC LIMIT 1`,
+      [id]
+    );
     await connection.commit();
-    return { id_cargo:id, total, saldo, estado, pagado, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias };
+
+    let facturacion = null;
+    // Si un descuento termina de cubrir el saldo después de existir abonos, el
+    // cargo queda realmente liquidado y debe generar su comprobante final.
+    if (estado === 'pagado' && pagado > 0) {
+      try {
+        facturacion = await generarFacturaDeCargo(id, ultimoPago?.metodo_pago || 'otro');
+      } catch (errorFactura) {
+        console.warn(`Finanzas: cargo ${id} quedó saldado por descuento, pero la factura no pudo generarse en ese momento:`, errorFactura?.message || errorFactura);
+      }
+    }
+
+    return { id_cargo:id, total, saldo, estado, pagado, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias, facturacion };
   } catch (e) { await connection.rollback(); throw e; } finally { connection.release(); }
 }
 
@@ -994,16 +1008,31 @@ export async function listarPagos(filtros = {}) {
 
   const [rows] = await pool.query(
     `SELECT
-       pg.id_pago, pg.id_cargo, pg.fecha_pago, pg.monto, pg.metodo_pago, pg.referencia,
+       pg.id_pago, pg.id_cargo, pg.fecha_pago, pg.monto, pg.metodo_pago, pg.referencia, pg.id_usuario,
        c.descripcion, c.total AS total_cargo, c.saldo, c.estado AS estado_cargo,
        cc.nombre AS concepto_nombre, cc.codigo AS concepto_codigo,
        CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre,
+       NULLIF(TRIM(CONCAT_WS(' ', pu.nombre, pu.apellido1, pu.apellido2)), '') AS registrado_por,
+       COALESCE((
+         SELECT SUM(pg2.monto)
+         FROM pago pg2
+         WHERE pg2.id_cargo = pg.id_cargo
+           AND pg2.estado = 'aplicado'
+           AND pg2.id_pago <= pg.id_pago
+       ), 0) AS acumulado_hasta_pago,
+       CASE WHEN c.estado = 'pagado' AND pg.id_pago = (
+         SELECT MAX(pg3.id_pago)
+         FROM pago pg3
+         WHERE pg3.id_cargo = pg.id_cargo AND pg3.estado = 'aplicado'
+       ) THEN 1 ELSE 0 END AS pago_cierre,
        fc.id_factura_externa, fc.estado_factura
      FROM pago pg
      INNER JOIN cargo_estudiante c ON c.id_cargo = pg.id_cargo
      INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
      INNER JOIN estudiante e ON e.id_estudiante = c.id_estudiante
      INNER JOIN persona p ON p.id_persona = e.id_persona
+     LEFT JOIN usuario upg ON upg.id_usuario = pg.id_usuario
+     LEFT JOIN persona pu ON pu.id_persona = upg.id_persona
      LEFT JOIN factura_cargo fc ON fc.id_cargo = c.id_cargo
      ${where}
      ORDER BY pg.fecha_pago DESC, pg.id_pago DESC

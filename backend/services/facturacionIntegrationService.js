@@ -326,21 +326,9 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     cacheDocumentosFactura.clear();
   }
 
-  // Aunque el vínculo local se haya perdido, la referencia `cargo:<id>` es
-  // estable. Consultarla antes de crear evita facturas dobles tras reinicios,
-  // restauraciones o respuestas lentas entre EduControl y Factura Bonita.
-  const remotaExistente = await buscarFacturaRemotaPorCargo(idCargo);
-  if (remotaExistente?.id) {
-    await registrarEstadoFactura(idCargo, remotaExistente.id, "generada", remotaExistente, null);
-    return {
-      ok: true,
-      estado: "generada",
-      id_factura: remotaExistente.id,
-      factura: remotaExistente,
-      mensaje: "La factura ya existía y fue conciliada sin duplicarla.",
-      servicio: apiRoot
-    };
-  }
+  // Factura Bonita ya garantiza idempotencia con origen + referenciaExterna.
+  // Evitamos un GET previo a cada creación: reduce llamadas, elimina carreras
+  // y permite que el pago final genere el comprobante inmediatamente.
 
   let configGuardada = null;
   try {
@@ -473,8 +461,8 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     const respuesta = await consumirServicio(apiUrl, {
       method: "POST",
       body: JSON.stringify(payload),
-      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 45000),
-      retry429: 1
+      timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 60000),
+      retry429: 3
     });
 
     if (!respuesta?.id) {

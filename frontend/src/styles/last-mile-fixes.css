@@ -710,3 +710,63 @@ body.theme-dark .finance-term-box .text-muted { color: #b7c8da !important; }
   #modalGrupo .modal-dialog { margin: .5rem auto !important; width: min(calc(100vw - 1rem), 820px) !important; }
   #modalGrupo .modal-body { padding: .9rem !important; }
 }
+
+
+/* ===== Legibilidad final de interfaces (desktop y tablet) ===== */
+@media (min-width: 768px) {
+  .view .page-header h1,
+  .view .page-header h2,
+  .view .page-header .h4 { font-size: 1.48rem !important; }
+
+  .view .page-header p,
+  .view .card-body,
+  .view .modal-body { font-size: .96rem; }
+
+  .view :is(.form-control,.form-select,.input-group-text) {
+    font-size: .94rem;
+    min-height: 40px;
+  }
+
+  .view .btn:not(.btn-sm) {
+    font-size: .93rem;
+    min-height: 40px;
+  }
+
+  .view table > :not(caption) > * > * {
+    padding-top: .72rem;
+    padding-bottom: .72rem;
+  }
+}
+
+/* Profesores era la pantalla que más se había compactado en iteraciones previas. */
+#profesores-view .faculty-summary { gap: 1rem; padding: 1rem; }
+#profesores-view .faculty-summary-item { padding: .9rem 1rem; }
+#profesores-view .faculty-summary-item small { font-size: .82rem !important; line-height: 1.25; }
+#profesores-view .faculty-summary-item strong { font-size: 1.45rem !important; }
+#profesores-view .card-body { padding: 1.25rem !important; }
+#profesores-view #profesores-table th { font-size: .82rem !important; }
+#profesores-view #profesores-table td { font-size: .92rem !important; line-height: 1.35; }
+#profesores-view .profesor-name-cell small { font-size: .8rem !important; }
+#profesores-view .profesor-actions-grid .profesor-action-btn {
+  min-height: 38px !important;
+  padding: .46rem .66rem !important;
+  font-size: .82rem !important;
+}
+#profesores-view .profesor-actions-grid .profesor-action-btn i { font-size: .9rem !important; }
+#profesores-view #profesores-table th:nth-child(1) { width: 19% !important; }
+#profesores-view #profesores-table th:nth-child(2) { width: 13% !important; }
+#profesores-view #profesores-table th:nth-child(3) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(4) { width: 22% !important; }
+#profesores-view #profesores-table th:nth-child(5) { width: 11% !important; }
+#profesores-view #profesores-table th:nth-child(6) { width: 24% !important; }
+
+/* El historial distingue abonos individuales del pago que cerró el cargo. */
+.finance-history-meta small,
+.finance-history-amount small { display:block; margin-top:.14rem; }
+.finance-history-amount small:last-child { color:#64748b; font-weight:600; }
+body.theme-dark .finance-history-amount small:last-child { color:#b7c8da !important; }
+
+@media (max-width: 767.98px) {
+  #profesores-view .faculty-summary-item small { font-size: .78rem !important; }
+  #profesores-view #profesores-table td { font-size: .88rem !important; }
+}

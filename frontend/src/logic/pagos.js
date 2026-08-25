@@ -169,10 +169,25 @@ function wirePagosEvents() {
       const editar = event.target.closest('[data-fin-editar-cargo]');
       const documento = event.target.closest('[data-fin-documento]');
 
-      if (editar) abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
-      if (descuento) abrirEdicionCargo(Number(descuento.dataset.finDescuento), true);
-      if (pagar) await abrirPago(Number(pagar.dataset.finPagar));
-      if (documento) await abrirDocumentoFactura(Number(documento.dataset.finDocumento), documento.dataset.formato || 'pdf', documento);
+      if (descuento) {
+        event.preventDefault();
+        abrirEdicionCargo(Number(descuento.dataset.finDescuento), true);
+        return;
+      }
+      if (editar) {
+        event.preventDefault();
+        abrirEdicionCargo(Number(editar.dataset.finEditarCargo));
+        return;
+      }
+      if (pagar) {
+        event.preventDefault();
+        await abrirPago(Number(pagar.dataset.finPagar));
+        return;
+      }
+      if (documento) {
+        event.preventDefault();
+        await abrirDocumentoFactura(Number(documento.dataset.finDocumento), documento.dataset.formato || 'pdf', documento);
+      }
     });
   }
 
@@ -378,8 +393,15 @@ function renderHistorialPagos() {
 
   body.innerHTML = filtrados.map((pago) => {
     const concepto = pago.concepto_nombre || pago.descripcion || `Cargo #${pago.id_cargo}`;
-    const puedeEditar = !pago.id_factura_externa;
+    const esPagoCierre = Boolean(Number(pago.pago_cierre || 0));
+    const cargoFacturado = Boolean(pago.id_factura_externa);
+    const facturaDelCierre = esPagoCierre ? pago.id_factura_externa : null;
+    // Cuando existe factura final, todos los abonos que integran ese cargo quedan
+    // bloqueados para preservar la integridad del comprobante.
+    const puedeEditar = !cargoFacturado;
     const referencia = pago.referencia ? esc(pago.referencia) : 'Sin referencia';
+    const registradoPor = pago.registrado_por ? `Registrado por ${esc(pago.registrado_por)}` : '';
+    const acumulado = Number(pago.acumulado_hasta_pago || pago.monto || 0);
 
     return `
       <article class="finance-history-record">
@@ -399,23 +421,29 @@ function renderHistorialPagos() {
         <div class="finance-history-meta">
           <span>${esc(etiquetaMetodo(pago.metodo_pago))}</span>
           <small>${referencia}</small>
+          ${registradoPor ? `<small>${registradoPor}</small>` : ''}
         </div>
 
         <div class="finance-history-amount">
           <small>Monto aplicado</small>
           <strong>${moneda(pago.monto)}</strong>
+          <small>Acumulado: ${moneda(acumulado)}</small>
         </div>
 
         <div class="finance-history-invoice">
-          ${pago.id_factura_externa
-            ? `<span class="invoice-chip"><i class="bi bi-receipt-cutoff"></i> ${esc(pago.id_factura_externa)}</span>`
-            : '<span class="text-muted small">Sin factura generada</span>'}
+          ${facturaDelCierre
+            ? `<span class="invoice-chip"><i class="bi bi-receipt-cutoff"></i> ${esc(facturaDelCierre)}</span>`
+            : (esPagoCierre
+                ? '<span class="text-muted small">Factura final pendiente</span>'
+                : (cargoFacturado
+                    ? '<span class="text-muted small">Abono incluido en factura final</span>'
+                    : '<span class="text-muted small">Abono registrado</span>'))}
         </div>
 
         <div class="finance-history-actions">
           ${puedeEditar
             ? `<button class="btn btn-sm btn-outline-secondary" data-fin-editar-pago="${pago.id_pago}"><i class="bi bi-pencil"></i> Modificar</button>`
-            : '<span class="small text-muted">Pago facturado</span>'}
+            : `<span class="small text-muted">${esPagoCierre ? 'Pago de cierre facturado' : 'Abono consolidado'}</span>`}
         </div>
       </article>`;
   }).join('');

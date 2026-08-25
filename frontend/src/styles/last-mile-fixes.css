@@ -361,3 +361,112 @@ body.reduced-motion *::after {
     margin: 6px auto !important;
   }
 }
+
+/* ===================== PULIDO FINAL DARK MODE ===================== */
+body.theme-dark {
+  --bs-body-color: #eaf2fb;
+  --bs-body-bg: #0b1423;
+  --bs-secondary-color: #b4c4d7;
+  --bs-tertiary-color: #9fb2c7;
+  --bs-border-color: #344b66;
+}
+
+body.theme-dark :is(.btn-secondary,.btn-light,.btn-outline-secondary,.btn-outline-light) {
+  background-color: #15243a !important;
+  border-color: #4a627d !important;
+  color: #e7f0fa !important;
+}
+body.theme-dark :is(.btn-secondary,.btn-light,.btn-outline-secondary,.btn-outline-light):hover,
+body.theme-dark :is(.btn-secondary,.btn-light,.btn-outline-secondary,.btn-outline-light):focus-visible {
+  background-color: #213650 !important;
+  border-color: #708aa5 !important;
+  color: #ffffff !important;
+}
+body.theme-dark :is(.btn-secondary,.btn-light,.btn-outline-secondary,.btn-outline-light):disabled {
+  background-color: #162337 !important;
+  border-color: #34495f !important;
+  color: #8295aa !important;
+  opacity: .72 !important;
+}
+
+body.theme-dark :is(.text-dark,.text-body,.text-body-emphasis,.text-black,.link-dark) {
+  color: #eef6ff !important;
+}
+body.theme-dark :is(.text-muted,.text-secondary,.text-body-secondary,.form-text) {
+  color: #b4c4d7 !important;
+}
+body.theme-dark :is(.bg-body,.bg-body-tertiary,.bg-secondary-subtle,.bg-primary-subtle,.bg-info-subtle,.bg-success-subtle,.bg-warning-subtle,.bg-danger-subtle) {
+  background-color: #15243a !important;
+  color: #eef6ff !important;
+}
+
+body.theme-dark :is(.modal-header,.modal-footer,.offcanvas-header,.offcanvas-body,.accordion-body) {
+  background-color: #111d2f !important;
+  color: #eef6ff !important;
+  border-color: #344b66 !important;
+}
+body.theme-dark .btn-close { filter: invert(1) grayscale(100%) brightness(180%); opacity: .9; }
+
+body.theme-dark #pagos-view :is(
+  .finance-history-record,.finance-invoice-record,.finance-record-card,
+  .finance-summary-card,.finance-api-strip,.finance-payment-context,
+  .finance-filter-row,.finance-tool-body,.finance-tool-header
+) {
+  background-color: #111d2f !important;
+  color: #eef6ff !important;
+  border-color: #344b66 !important;
+}
+body.theme-dark #pagos-view :is(.finance-history-record,.finance-invoice-record) *:not(.badge):not(.btn):not(i),
+body.theme-dark #matricula-view :is(.section-form-card,.section-delete-card,.section-name-preview) *:not(.badge):not(.btn):not(i) {
+  color: inherit;
+}
+body.theme-dark #pagos-view :is(.finance-history-record,.finance-invoice-record) :is(small,.small,span.text-muted),
+body.theme-dark #matricula-view :is(.section-form-card,.section-delete-card) :is(small,.small,.text-muted,.form-text) {
+  color: #b4c4d7 !important;
+}
+
+/* Controles que Bootstrap presenta blancos: conservar una superficie oscura. */
+body.theme-dark :is(.form-check-input,.form-range) { accent-color: #5aa6d6; }
+body.theme-dark .form-check-input {
+  background-color: #0d1929 !important;
+  border-color: #58708a !important;
+}
+body.theme-dark .form-check-input:checked {
+  background-color: #327eb0 !important;
+  border-color: #67acd7 !important;
+}
+
+/* Los botones de Crear/Gestionar Grupo comparten exactamente el mismo tratamiento. */
+#matricula-view [data-bs-target="#modalGrupo"],
+#matricula-view [data-bs-target="#modalGestionGrupo"] {
+  background: transparent !important;
+  color: inherit !important;
+  border-color: currentColor !important;
+  box-shadow: none !important;
+}
+body.theme-dark #matricula-view [data-bs-target="#modalGrupo"],
+body.theme-dark #matricula-view [data-bs-target="#modalGestionGrupo"] {
+  background: #13233a !important;
+  color: #dce9f6 !important;
+  border-color: #56708d !important;
+}
+
+/* Mantener desplazamiento disponible sin barras visuales molestas. */
+html, body, #root, .app-shell, .app-main, .view,
+.modal, .modal-dialog, .modal-content, .modal-body,
+.table-responsive, .attendance-grid-scroll, .finance-history-list,
+.finance-invoices-list, .finance-panel, .offcanvas, .offcanvas-body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar, #root::-webkit-scrollbar,
+.app-shell::-webkit-scrollbar, .app-main::-webkit-scrollbar, .view::-webkit-scrollbar,
+.modal::-webkit-scrollbar, .modal-dialog::-webkit-scrollbar, .modal-content::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar, .table-responsive::-webkit-scrollbar,
+.attendance-grid-scroll::-webkit-scrollbar, .finance-history-list::-webkit-scrollbar,
+.finance-invoices-list::-webkit-scrollbar, .finance-panel::-webkit-scrollbar,
+.offcanvas::-webkit-scrollbar, .offcanvas-body::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}

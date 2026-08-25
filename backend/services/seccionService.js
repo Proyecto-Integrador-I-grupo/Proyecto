@@ -4,7 +4,8 @@ export const crearSeccionService = async (datos) => {
   const nombre = String(datos?.nombre || '').trim().toUpperCase();
   const nivel = String(datos?.nivel || '').trim();
   const anioLectivo = Number(datos?.anio_lectivo);
-  const descripcion = String(datos?.descripcion || '').trim() || null;
+  const descripcionTexto = String(datos?.descripcion ?? '').trim().slice(0, 250);
+  const descripcion = descripcionTexto || null;
 
   if (!/^[1-6]-[A-F]$/.test(nombre) || !/^[1-6]$/.test(nivel) || !Number.isInteger(anioLectivo) || anioLectivo < 2000 || anioLectivo > 2100) {
     const error = new Error('La sección debe usar el formato grado-letra, por ejemplo 1-A.');
@@ -22,27 +23,44 @@ export const crearSeccionService = async (datos) => {
   try {
     await connection.beginTransaction();
 
-    const [duplicados] = await connection.query(
-      `SELECT id_seccion FROM seccion
-       WHERE UPPER(TRIM(nombre_seccion)) = ? AND periodo_lectivo = ? AND estado = TRUE
+    const [coincidencias] = await connection.query(
+      `SELECT id_seccion, estado FROM seccion
+       WHERE UPPER(TRIM(nombre_seccion)) = ? AND periodo_lectivo = ?
+       ORDER BY estado DESC, id_seccion DESC
        LIMIT 1 FOR UPDATE`,
       [nombre, anioLectivo]
     );
-    if (duplicados.length) {
+
+    if (coincidencias.length && Number(coincidencias[0].estado) === 1) {
       const error = new Error(`La sección ${nombre} (${anioLectivo}) ya existe.`);
       error.statusCode = 409;
       throw error;
     }
 
-    const [resultado] = await connection.query(
-      `INSERT INTO seccion (nombre_seccion, nivel, periodo_lectivo, descripcion, estado)
-       VALUES (?, ?, ?, ?, TRUE)`,
-      [nombre, nivel, anioLectivo, descripcion]
-    );
+    // Si la sección existía pero había sido eliminada lógicamente, se reactiva
+    // en vez de intentar insertar otra fila que pueda chocar con una restricción
+    // UNIQUE de instalaciones anteriores. La descripción sigue siendo opcional.
+    let idSeccion;
+    if (coincidencias.length) {
+      idSeccion = Number(coincidencias[0].id_seccion);
+      await connection.query(
+        `UPDATE seccion
+         SET nivel = ?, descripcion = ?, estado = TRUE
+         WHERE id_seccion = ?`,
+        [nivel, descripcionTexto, idSeccion]
+      );
+    } else {
+      const [resultado] = await connection.query(
+        `INSERT INTO seccion (nombre_seccion, nivel, periodo_lectivo, descripcion, estado)
+         VALUES (?, ?, ?, ?, TRUE)`,
+        [nombre, nivel, anioLectivo, descripcionTexto]
+      );
+      idSeccion = resultado.insertId;
+    }
 
     await connection.commit();
     return {
-      id_seccion: resultado.insertId,
+      id_seccion: idSeccion,
       nombre,
       nivel,
       anio_lectivo: anioLectivo,

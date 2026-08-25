@@ -90,6 +90,25 @@ async function refrescarFinanzas(event) {
   }
 }
 
+function textoFiltro(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function fechaIsoLocal(valor) {
+  if (!valor) return '';
+  if (typeof valor === 'string') {
+    const match = valor.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function wirePagosEvents() {
   wire('fin-refrescar', 'click', refrescarFinanzas);
   wire('fin-busqueda', 'input', debounce(renderCargos, 180));
@@ -323,24 +342,28 @@ function renderHistorialPagos() {
   const resumen = document.getElementById('fin-historial-resumen');
   if (!body) return;
 
-  if (resumen) {
-    resumen.textContent = `${pagos.length} pago${pagos.length === 1 ? '' : 's'}`;
-    resumen.classList.toggle('is-empty', pagos.length === 0);
-  }
-
-  const busqueda = String(document.getElementById('fin-pagos-busqueda')?.value || '').trim().toLowerCase();
-  const metodo = String(document.getElementById('fin-pagos-metodo')?.value || '').trim().toLowerCase();
+  const busqueda = textoFiltro(document.getElementById('fin-pagos-busqueda')?.value);
+  const metodo = textoFiltro(document.getElementById('fin-pagos-metodo')?.value);
   const desde = String(document.getElementById('fin-pagos-desde')?.value || '');
   const hasta = String(document.getElementById('fin-pagos-hasta')?.value || '');
   const filtrados = pagos.filter((pago) => {
-    if (metodo && String(pago.metodo_pago || '').toLowerCase() !== metodo) return false;
-    const fecha = String(pago.fecha_pago || '').slice(0, 10);
+    if (metodo && textoFiltro(pago.metodo_pago) !== metodo) return false;
+    const fecha = fechaIsoLocal(pago.fecha_pago);
     if (desde && fecha && fecha < desde) return false;
     if (hasta && fecha && fecha > hasta) return false;
     if (!busqueda) return true;
-    return [pago.estudiante_nombre, pago.concepto_nombre, pago.descripcion, pago.referencia, pago.id_factura_externa]
-      .join(' ').toLowerCase().includes(busqueda);
+    const texto = [pago.estudiante_nombre, pago.concepto_nombre, pago.descripcion, pago.referencia, pago.id_factura_externa]
+      .join(' ');
+    return textoFiltro(texto).includes(busqueda);
   });
+
+  if (resumen) {
+    const hayFiltros = Boolean(busqueda || metodo || desde || hasta);
+    resumen.textContent = hayFiltros
+      ? `${filtrados.length} de ${pagos.length} pago${pagos.length === 1 ? '' : 's'}`
+      : `${pagos.length} pago${pagos.length === 1 ? '' : 's'}`;
+    resumen.classList.toggle('is-empty', filtrados.length === 0);
+  }
 
   if (!filtrados.length) {
     body.innerHTML = `
@@ -907,8 +930,7 @@ function renderPendientesPago() {
         </div>
 
         <div class="finance-record-actions">
-          ${esAdmin() && !vencido ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Descuento</button>` : ''}
-          ${esAdmin() && vencido ? `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Los cargos vencidos no admiten descuentos"><i class="bi bi-percent"></i> Sin descuento</button>` : ''}
+          ${esAdmin() ? `<button class="btn btn-sm btn-outline-secondary" data-fin-descuento="${c.id_cargo}" title="Aplicar o modificar descuento"><i class="bi bi-percent"></i> Descuento</button>` : ''}
           <button class="btn btn-sm btn-success finance-pay-btn" data-fin-pagar="${c.id_cargo}">
             <i class="bi bi-cash-coin"></i> Pagar
           </button>
@@ -924,8 +946,8 @@ function renderFacturacion() {
   const todos = obtenerCargosPagados();
   actualizarResumenFacturacion();
 
-  const busqueda = String(document.getElementById('fin-facturas-busqueda')?.value || '').trim().toLowerCase();
-  const filtro = String(document.getElementById('fin-facturas-filtro')?.value || '').trim().toLowerCase();
+  const busqueda = textoFiltro(document.getElementById('fin-facturas-busqueda')?.value);
+  const filtro = textoFiltro(document.getElementById('fin-facturas-filtro')?.value);
   const desde = String(document.getElementById('fin-facturas-desde')?.value || '');
   const hasta = String(document.getElementById('fin-facturas-hasta')?.value || '');
   const registros = todos.filter((c) => {
@@ -933,12 +955,11 @@ function renderFacturacion() {
     const esError = !tieneFactura && String(c.estado_factura || '').toLowerCase() === 'error';
     if (filtro === 'facturada' && !tieneFactura) return false;
     if (filtro === 'pendiente' && tieneFactura) return false;
-    const fecha = String(c.fecha_actualizacion || c.fecha_solicitud || c.fecha_emision || '').slice(0, 10);
+    const fecha = fechaIsoLocal(c.fecha_actualizacion || c.fecha_solicitud || c.fecha_emision);
     if (desde && fecha && fecha < desde) return false;
     if (hasta && fecha && fecha > hasta) return false;
     if (!busqueda) return true;
-    return [c.estudiante_nombre, c.concepto_nombre, c.descripcion, c.id_factura_externa, c.id_cargo]
-      .join(' ').toLowerCase().includes(busqueda);
+    return textoFiltro([c.estudiante_nombre, c.concepto_nombre, c.descripcion, c.id_factura_externa, c.id_cargo].join(' ')).includes(busqueda);
   });
 
   if (!registros.length) {
@@ -993,20 +1014,22 @@ function renderAdministracionCargos() {
   const body = document.getElementById('fin-cargos-body');
   if (!body) return;
 
-  const busqueda = String(document.getElementById('fin-busqueda')?.value || '').trim().toLowerCase();
-  const estado = String(document.getElementById('fin-filtro-estado')?.value || '').trim().toLowerCase();
+  const busqueda = textoFiltro(document.getElementById('fin-busqueda')?.value);
+  const estado = textoFiltro(document.getElementById('fin-filtro-estado')?.value);
 
   const filtrados = cargos.filter((c) => {
-    if (estado && String(c.estado || '').toLowerCase() !== estado) return false;
+    if (estado && textoFiltro(c.estado) !== estado) return false;
     if (!busqueda) return true;
     const texto = [
       c.estudiante_nombre,
       c.concepto_nombre,
       c.descripcion,
       c.periodo,
-      c.id_estudiante
-    ].join(' ').toLowerCase();
-    return texto.includes(busqueda);
+      c.id_estudiante,
+      c.id_cargo,
+      c.id_factura_externa
+    ].join(' ');
+    return textoFiltro(texto).includes(busqueda);
   });
 
   if (!filtrados.length) {
@@ -1042,24 +1065,16 @@ function fechaVencimientoPasada(valor) {
 }
 
 function sincronizarDescuentoConVencimiento(idFecha, idDescuento) {
-  const fecha = value(idFecha);
   const input = document.getElementById(idDescuento);
   if (!input) return;
-  const vencida = fechaVencimientoPasada(fecha);
-  if (vencida) {
-    input.value = '0';
-    input.disabled = true;
-    input.title = 'No se permiten descuentos cuando la fecha de vencimiento ya pasó.';
-  } else {
-    input.disabled = false;
-    input.removeAttribute('title');
-  }
+  // El vencimiento informa mora, pero no elimina ni bloquea un descuento
+  // administrativo ya definido para el cargo.
+  input.disabled = false;
+  input.removeAttribute('title');
 }
 
 function validarDescuentoNoVencido(fecha, descuento) {
-  if (fechaVencimientoPasada(fecha) && Number(descuento || 0) > 0) {
-    throw new Error('No se puede aplicar un descuento a un cargo vencido. Usa una fecha vigente o deja el descuento en CRC 0.');
-  }
+  return true;
 }
 
 function estaVencido(cargo) {

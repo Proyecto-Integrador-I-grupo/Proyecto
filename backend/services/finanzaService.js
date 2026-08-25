@@ -16,45 +16,21 @@ function money(value, field, allowZero = false) {
 }
 
 async function normalizarDescuentosVencidos(db = pool, idCargo = null) {
-  const filtroCargo = idCargo ? " AND c.id_cargo = ?" : "";
-  const params = idCargo ? [positiveInt(idCargo, "El cargo")] : [];
-  await db.query(`
-    UPDATE cargo_estudiante c
-    INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
-    LEFT JOIN (
-      SELECT id_cargo, COALESCE(SUM(monto), 0) AS pagado
-      FROM pago
-      WHERE estado = 'aplicado'
-      GROUP BY id_cargo
-    ) pg ON pg.id_cargo = c.id_cargo
-    SET
-      c.descuento = 0,
-      c.impuesto = ROUND(c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100, 2),
-      c.total = ROUND(c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100), 2),
-      c.saldo = GREATEST(0, ROUND((c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100)) - COALESCE(pg.pagado, 0), 2)),
-      c.estado = CASE
-        WHEN ROUND((c.monto_base + (c.monto_base * COALESCE(cc.impuesto_tarifa, 0) / 100)) - COALESCE(pg.pagado, 0), 2) <= 0 THEN 'pagado'
-        WHEN COALESCE(pg.pagado, 0) > 0 THEN 'parcial'
-        ELSE 'pendiente'
-      END
-    WHERE c.estado IN ('pendiente', 'parcial')
-      AND c.fecha_vencimiento IS NOT NULL
-      AND c.fecha_vencimiento < CURDATE()
-      AND c.descuento > 0${filtroCargo}
-  `, params);
+  // Un descuento confirmado forma parte del cargo y no debe desaparecer al
+  // alcanzar la fecha de vencimiento. Antes esta rutina lo llevaba a cero,
+  // recalculaba el total sin descuento y podía terminar facturando un monto
+  // distinto al que el usuario había aprobado. Se conserva la función por
+  // compatibilidad con los puntos que la invocan, pero ya no muta el cargo.
+  return { actualizado: false, id_cargo: idCargo ? positiveInt(idCargo, "El cargo") : null };
 }
 
 async function validarDescuentoVigente(fechaVencimiento, descuento, db = pool) {
-  if (!(Number(descuento) > 0) || !fechaVencimiento) return;
-  const fecha = String(fechaVencimiento).slice(0, 10);
-  const [[row]] = await db.query(
-    `SELECT CASE WHEN DATE(?) < CURDATE() THEN 1 ELSE 0 END AS vencida`,
-    [fecha]
-  );
-  if (Number(row?.vencida || 0) === 1) {
-    throw new Error('No se puede aplicar un descuento a un cargo vencido. Cambia la fecha de vencimiento a una fecha vigente o deja el descuento en CRC 0.');
-  }
+  // La fecha de vencimiento controla mora/estado, no revoca un descuento ya
+  // definido por administración. La validez monetaria se verifica al crear o
+  // editar el cargo (descuento >= 0 y descuento <= monto base).
+  return true;
 }
+
 
 export async function obtenerResumenFinanciero() {
   await prepararDatosFinancieros();

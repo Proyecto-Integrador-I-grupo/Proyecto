@@ -1417,6 +1417,28 @@ function initAccessibilityWidget() {
     return;
   }
 
+  // Sincroniza el estado interno con lo guardado antes de conectar controles.
+  // main.jsx aplica el tema muy temprano para evitar destellos, pero este módulo
+  // también necesita conocer exactamente esos mismos valores.
+  try {
+    const saved = JSON.parse(localStorage.getItem(ACCESSIBILITY_KEY) || '{}');
+    accessibilitySettings = {
+      isDark: Boolean(saved.isDark),
+      highContrast: Boolean(saved.highContrast),
+      reducedMotion: Boolean(saved.reducedMotion),
+      fontSize: Math.min(160, Math.max(90, Number(saved.fontSize) || 100))
+    };
+  } catch {
+    accessibilitySettings = {
+      isDark: document.body.classList.contains('theme-dark'),
+      highContrast: document.body.classList.contains('high-contrast'),
+      reducedMotion: document.body.classList.contains('reduced-motion'),
+      fontSize: 100
+    };
+  }
+
+  applyAccessibilitySettings();
+
   if (
     toggleBtn.dataset.wired === 'true'
   ) {

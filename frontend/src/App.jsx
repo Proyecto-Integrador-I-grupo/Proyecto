@@ -404,8 +404,9 @@ export default function App() {
               </div>
 
               <div className="d-flex align-items-center gap-2">
-                <div id="assistant-permission-notice" className="asistente-notice hidden">
-                  <i className="bi bi-shield-lock"></i> Módulo de Asistente
+                <div id="role-context-notice" className="role-context-notice hidden" aria-live="polite">
+                  <i className="bi bi-shield-check"></i>
+                  <span id="role-context-text">Acceso según rol</span>
                 </div>
                 <span id="network-status" className="badge text-bg-danger d-none">
                   Sin conexión

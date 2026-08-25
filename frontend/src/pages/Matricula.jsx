@@ -56,12 +56,12 @@ export default function Matricula() {
                 </div>
                 <form id="seccion-form">
                   <div className="row g-3">
-                    <div className="col-md-4"><label className="form-label">Nivel / grado</label><input id="seccion-nivel" className="form-control" maxLength="40" placeholder="Ej.: 1" required /></div>
-                    <div className="col-md-4"><label className="form-label">Letra / sección</label><input id="seccion-nombre" className="form-control" maxLength="80" placeholder="Ej.: A" required /></div>
+                    <div className="col-md-4"><label className="form-label">Nivel / grado</label><select id="seccion-nivel" className="form-select" defaultValue="1" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+                    <div className="col-md-4"><label className="form-label">Letra / sección</label><select id="seccion-nombre" className="form-select" defaultValue="A" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option></select></div>
                     <div className="col-md-4"><label className="form-label">Año lectivo</label><input id="seccion-periodo" type="number" min="2000" max="2100" className="form-control" placeholder="Ej.: 2026" required /></div>
                     <div className="col-12"><div id="seccion-preview" className="section-name-preview"><span>Vista previa</span><strong>1-A</strong></div></div>
                     <div className="col-12"><label className="form-label">Descripción <span className="text-muted fw-normal">(opcional)</span></label><textarea id="seccion-descripcion" className="form-control" rows="2" maxLength="250" placeholder="Ej.: Primer grado, sección A"></textarea></div>
-                    <div className="col-12"><button type="submit" className="btn btn-primary"><i className="bi bi-plus-circle me-1"></i> Crear Sección</button></div>
+                    <div className="col-12"><div id="seccion-validation-hint" className="form-text mb-2">El sistema impedirá duplicados para el mismo año lectivo.</div><button id="btn-crear-seccion" type="submit" className="btn btn-primary w-100"><i className="bi bi-plus-circle me-1"></i> Crear sección</button></div>
                   </div>
                 </form>
               </div>

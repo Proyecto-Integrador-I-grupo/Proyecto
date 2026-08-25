@@ -329,14 +329,19 @@ function renderUserInfo() {
     esProfesor
   );
 
-  const assistantBanner =
-    document.getElementById(
-      'assistant-permission-notice'
-    );
-
-  if (assistantBanner) {
+  const roleNotice = document.getElementById('role-context-notice');
+  const roleNoticeText = document.getElementById('role-context-text');
+  if (roleNotice) {
     const esAsistente = !esAdmin && !esProfesor;
-    assistantBanner.classList.toggle('hidden', !esAsistente);
+    const visible = esAsistente || esProfesor;
+    roleNotice.classList.toggle('hidden', !visible);
+    roleNotice.classList.toggle('is-profesor', esProfesor);
+    roleNotice.classList.toggle('is-asistente', esAsistente);
+    if (roleNoticeText) {
+      roleNoticeText.textContent = esProfesor
+        ? 'Vista docente · asistencia, reportes y consultas'
+        : 'Vista asistente · acceso administrativo limitado';
+    }
   }
 
   aplicarRestriccionesModulos(
@@ -1568,6 +1573,14 @@ function initAccessibilityWidget() {
     }
   );
 
+  if (document.documentElement.dataset.eduAccessibilityStorage !== '1') {
+    document.documentElement.dataset.eduAccessibilityStorage = '1';
+    window.addEventListener('storage', (event) => {
+      if (event.key !== ACCESSIBILITY_KEY) return;
+      restoreAccessibilitySettings();
+    });
+  }
+
   updateAccessibilityControls();
 }
 
@@ -1614,10 +1627,12 @@ function restoreAccessibilitySettings() {
         )
       );
 
-    if (saved) {
+    if (saved && typeof saved === 'object') {
       accessibilitySettings = {
-        ...accessibilitySettings,
-        ...saved
+        isDark: Boolean(saved.isDark),
+        highContrast: Boolean(saved.highContrast),
+        reducedMotion: Boolean(saved.reducedMotion),
+        fontSize: Math.min(160, Math.max(90, Number(saved.fontSize) || 100))
       };
     }
 

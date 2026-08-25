@@ -68,8 +68,32 @@ export async function loadPagosData() {
   ]);
 }
 
+
+async function refrescarFinanzas(event) {
+  const button = event?.currentTarget || document.getElementById('fin-refrescar');
+  if (button?.dataset.busy === '1') return;
+  const html = button?.innerHTML || '';
+  if (button) {
+    button.dataset.busy = '1';
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Actualizando</span>';
+  }
+  try {
+    await loadPagosData();
+    showToast('Información financiera actualizada.', 'success');
+  } catch (error) {
+    showToast(error.message || 'No se pudo actualizar Finanzas.', 'error');
+  } finally {
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.innerHTML = html || '<i class="bi bi-arrow-clockwise"></i>';
+      delete button.dataset.busy;
+    }
+  }
+}
+
 function wirePagosEvents() {
-  wire('fin-refrescar', 'click', loadPagosData);
+  wire('fin-refrescar', 'click', refrescarFinanzas);
   wire('fin-busqueda', 'input', debounce(renderCargos, 180));
   wire('fin-filtro-estado', 'change', renderCargos);
   wire('fin-facturas-busqueda', 'input', debounce(renderFacturacion, 160));

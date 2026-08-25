@@ -1,0 +1,146 @@
+/* Ajustes solicitados: tema, modales, roles, permisos, perfil y móvil. */
+
+/* Persistencia/contraste del login */
+body.theme-dark .login-screen { background-color:#07111f !important; }
+body.theme-dark .login-card {
+  background:rgba(12,24,40,.96) !important;
+  border:1px solid #31445d !important;
+  color:#eef6ff !important;
+  box-shadow:0 24px 65px rgba(0,0,0,.42) !important;
+}
+body.theme-dark .login-card h1,
+body.theme-dark .login-card .form-label { color:#f5f9ff !important; }
+body.theme-dark .login-card .text-muted { color:#b8c8da !important; }
+body.theme-dark .login-card :is(.form-control,.input-group-text) {
+  background:#142338 !important; border-color:#41546e !important; color:#f0f6fd !important;
+}
+body.theme-dark .login-card .form-control::placeholder { color:#8ea2b9 !important; }
+body.theme-dark .login-card #toggle-password { background:#182a41 !important; border-color:#41546e !important; color:#d9e7f5 !important; }
+body.theme-dark .login-footer { color:#d5e1ed !important; text-shadow:0 1px 4px rgba(0,0,0,.65); }
+
+/* El botón de accesibilidad debe ser solo el círculo, sin caja rectangular. */
+.accessibility-widget { background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
+.accessibility-toggle,#accessibility-toggle { flex:0 0 54px; width:54px !important; height:54px !important; min-width:54px !important; padding:0 !important; border-radius:50% !important; }
+
+/* Cobertura de modo oscuro para superficies que quedaban claras. */
+body.theme-dark :is(
+  .section-form-card,.section-delete-card,.section-name-preview,.mat-financial-status,
+  .perfil-hero + .row .card,.perfil-info-item,.permissions-view .card,.permissions-hero,
+  .attendance-matrix-wrap,.attendance-history-panel,.attendance-history-toolbar,
+  .finance-filter-row,.finance-record-empty,.profesor-picker,.search-box .input-group-text
+) { border-color:#31435b !important; }
+body.theme-dark :is(.section-form-card,.section-delete-card,.section-name-preview,.perfil-info-item,.attendance-history-toolbar) {
+  background:#142238 !important; color:#eaf2fb !important;
+}
+body.theme-dark .section-name-preview strong,
+body.theme-dark #perfil-form h5,
+body.theme-dark .perfil-info-item i { color:#8fd3f5 !important; }
+body.theme-dark .table-light,
+body.theme-dark .table-light > * { --bs-table-bg:#18263b !important; --bs-table-color:#e8f1fa !important; }
+body.theme-dark .form-text { color:#9eb1c7 !important; }
+body.theme-dark :is(.text-dark,.text-body,.text-black) { color:#edf5ff !important; }
+body.theme-dark :is(.bg-body,.bg-body-tertiary,.bg-body-secondary) { background:#111d2f !important; color:#edf5ff !important; }
+body.theme-dark :is(.list-group-item-action:hover,.list-group-item-action:focus) { background:#1b2b42 !important; color:#fff !important; }
+body.theme-dark .accordion-item, body.theme-dark .accordion-button { background:#111d2f !important; color:#edf5ff !important; border-color:#2b3b52 !important; }
+body.theme-dark .accordion-button:not(.collapsed) { background:#16263c !important; color:#fff !important; }
+body.theme-dark .accordion-button::after { filter:invert(1) grayscale(1); }
+
+body.theme-dark hr { border-color:#33465f !important; opacity:1; }
+body.theme-dark .btn-close:not(.btn-close-white) { filter:invert(1) grayscale(1); }
+body.theme-dark option { background:#152238; color:#eef5fc; }
+
+/* Modales: no forzar toda la altura de la pantalla. */
+.modal:not(.finance-invoice-preview-modal) .modal-dialog,
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-dialog-centered {
+  min-height:0 !important;
+  height:auto !important;
+  width:min(calc(100vw - 32px),640px) !important;
+  max-width:min(calc(100vw - 32px),640px) !important;
+  margin:1.25rem auto !important;
+}
+.modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg,
+.modal.edu-work-modal .modal-dialog,
+#modalGestionGrupo .modal-dialog,
+#modalGestionMatricula .modal-dialog,
+#modalPreviewReporte .modal-dialog {
+  width:min(calc(100vw - 32px),780px) !important;
+  max-width:min(calc(100vw - 32px),780px) !important;
+}
+#modalSeccion .modal-dialog { width:min(calc(100vw - 32px),720px) !important; max-width:min(calc(100vw - 32px),720px) !important; }
+#modalConfigFacturacion .modal-dialog { width:min(calc(100vw - 32px),900px) !important; max-width:min(calc(100vw - 32px),900px) !important; }
+.modal:not(.finance-invoice-preview-modal) .modal-content { max-height:calc(100dvh - 40px) !important; }
+.modal:not(.finance-invoice-preview-modal) .modal-body { scrollbar-width:thin !important; }
+.modal:not(.finance-invoice-preview-modal) .modal-body::-webkit-scrollbar { width:7px !important; }
+.modal:not(.finance-invoice-preview-modal) .modal-body::-webkit-scrollbar-thumb { background:#9aa8b7; border-radius:999px; }
+
+/* Secciones */
+.edu-section-modal .section-form-card,.edu-section-modal .section-delete-card { padding:1.1rem; border:1px solid #dfe6ef; border-radius:15px; background:#fff; }
+.edu-section-modal .section-name-preview { min-height:52px; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem .9rem; border:1px dashed #aac0d5; border-radius:12px; background:#f6f9fc; }
+#btn-crear-seccion { min-height:44px; }
+
+/* El borrado de asistencia se percibe inmediatamente. */
+#asis-historial-body tr.is-removing { opacity:.45; pointer-events:none; transition:opacity .15s ease; }
+
+/* Permisos */
+.permissions-hero { display:flex; align-items:center; justify-content:space-between; gap:1.5rem; padding:1.6rem 1.8rem; border-radius:20px; background:linear-gradient(135deg,#123d67,#1b6f95); color:#fff; }
+.permissions-hero p { color:rgba(255,255,255,.84); }
+.permissions-eyebrow { display:block; font-size:.76rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:#bfe7ff; margin-bottom:.35rem; }
+.permissions-hero-icon { width:64px; height:64px; border-radius:18px; display:grid; place-items:center; font-size:1.7rem; background:rgba(255,255,255,.13); flex:0 0 auto; }
+.permissions-view .card { border-radius:18px; overflow:hidden; }
+.permissions-view .card-header { padding-inline:1.15rem; }
+.permissions-view .card-body { padding:1.15rem; }
+.permissions-view .table th,.permissions-view .table td { padding:.9rem .85rem; vertical-align:middle; }
+
+/* Perfil */
+#perfil-view .row.g-4 { --bs-gutter-x:1.5rem; --bs-gutter-y:1.5rem; }
+#perfil-view .card { border-radius:20px; overflow:hidden; }
+#perfil-view .perfil-info-item { min-height:48px; overflow-wrap:anywhere; }
+.perfil-section-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.35rem; }
+.perfil-section-heading > i { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:#edf6ff; color:#1f6aa5; font-size:1.15rem; flex:0 0 auto; }
+body.theme-dark .perfil-section-heading > i { background:#17334b; color:#8fd3f5; }
+#perfil-form .row.g-3 { --bs-gutter-y:1.05rem; }
+
+/* Contexto por rol */
+.role-context-notice { display:inline-flex; align-items:center; gap:.45rem; max-width:360px; padding:.45rem .7rem; border-radius:999px; font-size:.78rem; font-weight:700; background:#eef7ff; border:1px solid #cfe5f7; color:#25506f; }
+.role-context-notice.is-asistente { background:#eefaf5; border-color:#cdebdc; color:#22624b; }
+.role-context-notice.is-profesor { background:#f4f0ff; border-color:#ddd2ff; color:#5b428a; }
+body.theme-dark .role-context-notice.is-asistente { background:#15342c; border-color:#2b6553; color:#bdebd9; }
+body.theme-dark .role-context-notice.is-profesor { background:#2c2544; border-color:#584b7a; color:#dfd5ff; }
+body.is-profesor #dashboard-hero .hero-pill span::after { content:' · Docente'; }
+body.is-asistente #dashboard-hero .hero-pill span::after { content:' · Asistente'; }
+
+/* Botones de recarga: área táctil y estado disabled claros. */
+#fin-refrescar,#asis-refrescar,#asis-historial-refrescar,#btn-refrescar-usuarios { min-height:40px; }
+button:disabled,.btn:disabled { cursor:not-allowed !important; opacity:.7 !important; }
+
+/* Móvil */
+@media (max-width:767.98px) {
+  #content { padding:1rem !important; }
+  .topbar { padding:.75rem 1rem !important; gap:.6rem; }
+  .topbar #view-title { font-size:1.05rem; }
+  .role-context-notice { max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.7rem; }
+  .permissions-hero,.perfil-hero { padding:1.2rem; border-radius:16px; }
+  .permissions-hero-icon { width:52px; height:52px; border-radius:14px; }
+  .permissions-view .card-body { padding:1rem; }
+  .permissions-view .table { min-width:680px; }
+  #perfil-view .card-body { padding:1.2rem !important; }
+  .perfil-section-heading { align-items:flex-start; }
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog,
+  .modal:not(.finance-invoice-preview-modal) .modal-dialog.modal-lg {
+    width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; margin:8px auto !important;
+  }
+  .modal:not(.finance-invoice-preview-modal) .modal-content { max-height:calc(100dvh - 16px) !important; border-radius:14px !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-body { padding:1rem !important; }
+  .modal:not(.finance-invoice-preview-modal) .modal-footer { padding:.75rem 1rem; gap:.5rem; }
+  .modal:not(.finance-invoice-preview-modal) .modal-footer .btn { flex:1 1 auto; }
+  .edu-section-modal .section-form-card,.edu-section-modal .section-delete-card { padding:.9rem; }
+}
+
+@media (max-width:480px) {
+  .role-context-notice { display:none !important; }
+  .finance-toolbar-actions { width:100%; display:grid !important; grid-template-columns:1fr 1fr; gap:.5rem !important; }
+  .finance-toolbar-actions .btn { width:100%; min-width:0; }
+  #fin-refrescar { grid-column:auto; }
+  .permissions-hero-icon,.perfil-icono { display:none; }
+  .permissions-hero,.perfil-hero { display:block; }
+}

@@ -46,12 +46,12 @@ function mesActualISO() {
 }
 
 function wireAsistenciaEvents() {
-  wire('asis-refrescar', 'click', loadAsistenciaData);
+  wire('asis-refrescar', 'click', refrescarAsistencia);
   wire('asis-bitacora-grupo', 'change', cargarGrupoSeleccionado);
   wire('asis-bitacora-mes', 'change', cargarBitacora);
   wire('asis-bitacora-profesor', 'change', cargarBitacora);
   wire('asis-guardar-mes', 'click', guardarCambiosMes);
-  wire('asis-historial-refrescar', 'click', cargarHistorial);
+  wire('asis-historial-refrescar', 'click', refrescarHistorial);
   wire('asis-historial-busqueda', 'input', renderHistorialFiltrado);
   wire('asis-historial-estado', 'change', renderHistorialFiltrado);
 
@@ -84,6 +84,33 @@ function wireAsistenciaEvents() {
     collapse.dataset.wired = '1';
     collapse.addEventListener('show.bs.collapse', cargarHistorial);
   }
+}
+
+
+async function ejecutarConBotonOcupado(button, tarea, texto = 'Actualizando…') {
+  if (!button || button.dataset.busy === '1') return;
+  const html = button.innerHTML;
+  button.dataset.busy = '1';
+  button.disabled = true;
+  button.innerHTML = `<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>${texto}`;
+  try { await tarea(); }
+  finally {
+    if (button.isConnected) {
+      button.disabled = false;
+      button.innerHTML = html;
+      delete button.dataset.busy;
+    }
+  }
+}
+
+async function refrescarAsistencia(event) {
+  const button = event?.currentTarget || document.getElementById('asis-refrescar');
+  await ejecutarConBotonOcupado(button, loadAsistenciaData);
+}
+
+async function refrescarHistorial(event) {
+  const button = event?.currentTarget || document.getElementById('asis-historial-refrescar');
+  await ejecutarConBotonOcupado(button, cargarHistorial);
 }
 
 function wire(id, event, handler) {
@@ -656,15 +683,26 @@ async function guardarEdicionHistorial(event) {
 async function eliminarAsistencia(id) {
   if (!window.confirm('¿Eliminar permanentemente este registro de asistencia? Esta acción quedará registrada en auditoría.')) return;
 
+  const button = document.querySelector(`.asis-delete-btn[data-id="${id}"]`);
+  const row = button?.closest('tr');
+  if (button) button.disabled = true;
+  if (row) row.classList.add('is-removing');
+
   try {
     const res = await apiFetch(`/api/procesos/asistencia/${id}`, { method: 'DELETE' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.mensaje || 'No se pudo eliminar.');
 
+    // Actualización inmediata: no dejamos un registro eliminado visible mientras
+    // se completan las dos consultas de sincronización.
+    historialCompleto = historialCompleto.filter((r) => Number(r.id_asistencia) !== Number(id));
+    renderHistorialFiltrado();
     showToast('Registro de asistencia eliminado.', 'success');
-    await cargarHistorial();
-    await cargarBitacora();
+
+    await Promise.allSettled([cargarHistorial(), cargarBitacora()]);
   } catch (error) {
+    if (row) row.classList.remove('is-removing');
+    if (button?.isConnected) button.disabled = false;
     showToast(error.message, 'error');
   }
 }

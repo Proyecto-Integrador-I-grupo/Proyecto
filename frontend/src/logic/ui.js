@@ -1590,6 +1590,19 @@ function applyAccessibilitySettings() {
     accessibilitySettings.isDark
   );
 
+  document.documentElement.classList.toggle(
+    'theme-dark',
+    accessibilitySettings.isDark
+  );
+
+  document.documentElement.setAttribute(
+    'data-bs-theme',
+    accessibilitySettings.isDark ? 'dark' : 'light'
+  );
+
+  document.documentElement.style.colorScheme =
+    accessibilitySettings.isDark ? 'dark' : 'light';
+
   document.body.classList.toggle(
     'high-contrast',
     accessibilitySettings.highContrast

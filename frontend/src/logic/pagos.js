@@ -1,4 +1,5 @@
 import { apiFetch, showToast } from './ui.js';
+import { pagarConBanky, describirResultadoBanco } from '../services/payments/bankyCheckout.js';
 
 let conceptos = [];
 let estudiantes = [];
@@ -125,6 +126,7 @@ function wirePagosEvents() {
   wire('fin-pagos-limpiar', 'click', limpiarFiltrosPagos);
   wire('fin-cargo-form', 'submit', guardarCargo);
   wire('fin-pago-form', 'submit', guardarPago);
+  wire('fin-pago-metodo', 'change', alternarMetodoPago);
   wire('fin-pago-plazo-habilitado', 'change', alternarPlazoPago);
   wire('fin-editar-cargo-form', 'submit', guardarEdicionCargo);
   wire('fin-editar-pago-form', 'submit', guardarEdicionPago);
@@ -154,6 +156,22 @@ function wirePagosEvents() {
       const search = document.getElementById('fin-extra-profesor-search');
       if (search) search.value = '';
       await cargarProfesoresExtra();
+    });
+  }
+
+  if (!window.__educontrolFacturaBonitaBridge) {
+    window.__educontrolFacturaBonitaBridge = true;
+    window.addEventListener('message', (event) => {
+      const data = event.data || {};
+      if (data.type !== 'factura-bonita:registered' || !data.apiKey) return;
+      const configured = String(document.getElementById('fin-config-factura-url')?.value || '').trim();
+      let expectedOrigin = '';
+      try { expectedOrigin = configured ? new URL(configured).origin : ''; } catch {}
+      if (expectedOrigin && event.origin !== expectedOrigin) return;
+      setValue('fin-config-factura-key', data.apiKey);
+      if (data.baseUrl) setValue('fin-config-factura-url', data.baseUrl);
+      showToast(`Cuenta ${data.empresa || 'Factura Bonita'} registrada. Guarda las conexiones para vincular EduControl.`, 'success');
+      try { window.focus(); } catch {}
     });
   }
 
@@ -1345,6 +1363,18 @@ async function refrescarDespuesDePago() {
   }
 }
 
+function alternarMetodoPago() {
+  const metodo = String(value('fin-pago-metodo') || '').toLowerCase();
+  const nota = document.getElementById('fin-pago-banco-ayuda');
+  nota?.classList.toggle('hidden', metodo !== 'tarjeta');
+  const referencia = document.getElementById('fin-pago-referencia');
+  if (referencia) {
+    referencia.disabled = metodo === 'tarjeta';
+    referencia.placeholder = metodo === 'tarjeta' ? 'La asigna el banco al aprobar el pago' : '';
+    if (metodo === 'tarjeta') referencia.value = '';
+  }
+}
+
 function alternarPlazoPago() {
   const habilitado = Boolean(document.getElementById('fin-pago-plazo-habilitado')?.checked);
   const campos = document.getElementById('fin-pago-plazo-campos');
@@ -1370,7 +1400,9 @@ async function abrirPago(idCargo) {
   }
   setValue('fin-pago-cargo-id', cargo.id_cargo);
   setValue('fin-pago-monto', Number(cargo.saldo || 0));
+  setValue('fin-pago-metodo', 'efectivo');
   setValue('fin-pago-referencia', '');
+  alternarMetodoPago();
   const plazoToggle = document.getElementById('fin-pago-plazo-habilitado');
   if (plazoToggle) plazoToggle.checked = false;
   setValue('fin-pago-plazo-fecha', cargo.fecha_vencimiento ? String(cargo.fecha_vencimiento).slice(0, 10) : '');
@@ -1441,10 +1473,48 @@ async function guardarPago(event) {
       }
     };
 
-    const r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+    let r;
+    if (String(payload.metodo_pago || '').toLowerCase() === 'tarjeta') {
+      const inicio = await requestJson(`/api/finanzas/cargos/${idCargo}/pago-banco/iniciar`, {
+        method: 'POST',
+        body: JSON.stringify({
+          monto: payload.monto,
+          responsable: payload.responsable,
+          plazo: payload.plazo,
+          origin: window.location.origin
+        })
+      });
+
+      showToast('Completa el pago en la ventana segura del servicio bancario.', 'info');
+      const resultadoBanco = await pagarConBanky({
+        checkoutUrl: inicio.checkoutUrl,
+        expectedOrigin: inicio.expectedOrigin,
+        channel: inicio.channel
+      });
+      const estadoBanco = String(resultadoBanco?.status || '').toLowerCase();
+      if (estadoBanco !== 'completed') {
+        await requestJson(`/api/finanzas/cargos/${idCargo}/pago-banco/resultado`, {
+          method: 'POST',
+          body: JSON.stringify({ token: inicio.token, payload: resultadoBanco })
+        }).catch(() => {});
+        throw new Error(describirResultadoBanco(resultadoBanco));
+      }
+
+      r = await requestJson(`/api/finanzas/cargos/${idCargo}/pago-banco/confirmar`, {
+        method: 'POST',
+        body: JSON.stringify({
+          token: inicio.token,
+          sourceOrigin: inicio.expectedOrigin,
+          payload: resultadoBanco
+        })
+      });
+      if (r?.banco?.transactionCode) setValue('fin-pago-referencia', r.banco.transactionCode);
+    } else {
+      r = await requestJson(`/api/finanzas/cargos/${idCargo}/pagar`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    }
 
     const cargo = cargos.find((c) => Number(c.id_cargo) === idCargo);
     if (cargo) {
@@ -1727,8 +1797,11 @@ async function guardarEdicionPago(event) {
 }
 
 function estadoServicioTexto(servicio) {
-  if (!servicio?.configurado) return { texto: 'Pendiente', clase: 'pending', icono: 'bi-clock' };
-  if (String(servicio?.estado || '') === 'degradado') return { texto: 'Vista disponible', clase: 'degraded', icono: 'bi-file-earmark-text' };
+  const remoto = String(servicio?.estado || '');
+  if (!servicio?.configurado || remoto === 'pendiente_endpoint') return { texto: 'Pendiente endpoint', clase: 'pending', icono: 'bi-clock' };
+  if (remoto === 'configurado_sin_contrato') return { texto: 'Endpoint recibido', clase: 'configured', icono: 'bi-link-45deg' };
+  if (remoto === 'degradado') return { texto: 'Vista disponible', clase: 'degraded', icono: 'bi-file-earmark-text' };
+  if (remoto === 'limitado') return { texto: 'Disponible', clase: 'degraded', icono: 'bi-hourglass-split' };
   if (servicio.disponible === true) return { texto: 'Conectado', clase: 'online', icono: 'bi-check-circle' };
   if (servicio.disponible === false) return { texto: 'Sin conexión', clase: 'offline', icono: 'bi-exclamation-circle' };
   return { texto: 'Configurado', clase: 'configured', icono: 'bi-link-45deg' };
@@ -1799,36 +1872,52 @@ async function cargarEstadoIntegraciones(notificar = false) {
 
   botones.forEach((btn) => {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Probando…';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando…';
   });
 
   try {
     const estado = await requestJson('/api/finanzas/integraciones/estado', { timeout: 80000 });
     pintarEstadoServicio('factura', estado.facturacion);
-    pintarEstadoServicio('documentos', estado.documentos);
+    pintarEstadoServicio('banco', estado.banco);
+    pintarEstadoServicio('firma', estado.firma_digital);
+    pintarEstadoServicio('electronica', estado.factura_electronica);
+    pintarEstadoServicio('tributacion', estado.tributacion);
     pintarEstadoIntegracionPagina(estado);
 
+    const facturaRegistro = document.getElementById('fin-factura-registro');
+    const facturaPortal = document.getElementById('fin-factura-portal');
+    const facturaBase = String(estado?.facturacion?.url || '').replace(/\/+$/, '');
+    if (facturaRegistro && facturaBase) facturaRegistro.href = `${facturaBase}/?registro=1&returnUrl=${encodeURIComponent(window.location.origin)}`;
+    if (facturaPortal && facturaBase) facturaPortal.href = facturaBase;
+
+    const bancoRegistro = document.getElementById('fin-banco-registro');
+    const bancoLogin = document.getElementById('fin-banco-login');
+    if (bancoRegistro && estado?.banco?.registro_url) bancoRegistro.href = estado.banco.registro_url;
+    if (bancoLogin && estado?.banco?.login_url) bancoLogin.href = estado.banco.login_url;
+
     if (notificar) {
-      const conectado = estado.facturacion?.disponible && estado.documentos?.disponible;
+      const actual = estado?.facturacion?.disponible && estado?.banco?.disponible;
+      const completa = estado?.flujo?.listo_completo;
       showToast(
-        conectado
-          ? 'Módulo financiero verificado: facturación y PDF disponibles.'
-          : 'La prueba respondió, pero algún servicio todavía no está disponible.',
-        conectado ? 'success' : 'warning'
+        completa
+          ? 'Todos los servicios están configurados para el flujo completo.'
+          : actual
+            ? 'Factura Bonita y el servicio de pago responden. Los demás servicios siguen pendientes de endpoint.'
+            : 'La verificación terminó; revisa los servicios marcados como pendientes.',
+        completa ? 'success' : (actual ? 'info' : 'warning')
       );
     }
     return estado;
   } catch (e) {
     if (notificar) showToast(e.message, 'error');
     const errorEstado = { configurado: true, disponible: false, detalle: e.message };
-    pintarEstadoServicio('factura', errorEstado);
-    pintarEstadoServicio('documentos', errorEstado);
+    ['factura','banco','firma','electronica','tributacion'].forEach((prefijo) => pintarEstadoServicio(prefijo, errorEstado));
     pintarEstadoIntegracionPagina({ facturacion: errorEstado, documentos: errorEstado });
     throw e;
   } finally {
     botones.forEach((btn, index) => {
       btn.disabled = false;
-      btn.innerHTML = originales[index] || '<i class="bi bi-check2-circle"></i> Verificar módulo';
+      btn.innerHTML = originales[index] || '<i class="bi bi-arrow-repeat"></i> Verificar';
     });
   }
 }
@@ -1840,8 +1929,44 @@ async function cargarConfiguracion() {
     setValue('fin-config-tipo-id', c.tipo_identificacion || '02');
     setValue('fin-config-numero-id', c.numero_identificacion || '');
     setValue('fin-config-correo', c.correo || '');
+
+    setValue('fin-config-factura-url', c.factura_bonita_url || '');
+    setValue('fin-config-factura-key', '');
+    const keyInput = document.getElementById('fin-config-factura-key');
+    if (keyInput) {
+      keyInput.placeholder = c.factura_bonita_api_key_configurada
+        ? 'Clave guardada · escribe solo para reemplazarla'
+        : 'Pega la clave de la cuenta de EduControl';
+    }
+    const keyHint = document.getElementById('fin-factura-key-hint');
+    if (keyHint) {
+      keyHint.textContent = c.factura_bonita_api_key_configurada
+        ? 'EduControl ya tiene una X-Api-Key guardada. El campo puede quedar vacío.'
+        : 'Después del registro copia la clave desde Integración en Factura Bonita.';
+    }
+
+    setValue('fin-config-banco-merchant', c.banco_merchant_id || '');
+    const afiliado = document.getElementById('fin-config-banco-afiliado');
+    if (afiliado) afiliado.checked = Boolean(c.banco_afiliado);
+    setValue('fin-config-firma-url', c.firma_digital_url || '');
+    setValue('fin-config-electronica-url', c.factura_electronica_url || '');
+    setValue('fin-config-tributacion-url', c.tributacion_url || '');
+
     logoFacturaData = c.logo_data || null;
     renderLogoFacturaPreview();
+
+    const facturaBase = String(c.factura_bonita_url || '').replace(/\/+$/, '');
+    const facturaRegistro = document.getElementById('fin-factura-registro');
+    const facturaPortal = document.getElementById('fin-factura-portal');
+    if (facturaBase) {
+      if (facturaRegistro) facturaRegistro.href = `${facturaBase}/?registro=1&returnUrl=${encodeURIComponent(window.location.origin)}`;
+      if (facturaPortal) facturaPortal.href = facturaBase;
+    }
+
+    const bancoRegistro = document.getElementById('fin-banco-registro');
+    const bancoLogin = document.getElementById('fin-banco-login');
+    if (bancoRegistro && c.banco_registro_url) bancoRegistro.href = c.banco_registro_url;
+    if (bancoLogin && c.banco_login_url) bancoLogin.href = c.banco_login_url;
   } catch {
     logoFacturaData = null;
     renderLogoFacturaPreview();
@@ -1959,24 +2084,32 @@ async function guardarConfiguracion(event) {
   }
 
   try {
-    const guardada = await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify({
+    const payload = {
       institucion_nombre: value('fin-config-nombre'),
       tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'),
       correo: value('fin-config-correo'),
-      logo_data: logoFacturaData
-    }) });
+      factura_bonita_url: value('fin-config-factura-url'),
+      factura_bonita_api_key: value('fin-config-factura-key'),
+      banco_merchant_id: value('fin-config-banco-merchant'),
+      banco_afiliado: Boolean(document.getElementById('fin-config-banco-afiliado')?.checked),
+      firma_digital_url: value('fin-config-firma-url'),
+      factura_electronica_url: value('fin-config-electronica-url'),
+      tributacion_url: value('fin-config-tributacion-url')
+    };
 
-    // Usamos la respuesta persistida del backend, no solamente la vista previa
-    // local. Así, al cerrar y volver a abrir el modal, se conserva exactamente
-    // el logo almacenado en configuracion_facturacion.
-    logoFacturaData = guardada?.logo_data || null;
-    renderLogoFacturaPreview();
+    const guardada = await requestJson('/api/finanzas/configuracion', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    setValue('fin-config-factura-key', '');
+    const keyInput = document.getElementById('fin-config-factura-key');
+    if (keyInput && guardada?.factura_bonita_api_key_configurada) {
+      keyInput.placeholder = 'Clave guardada · escribe solo para reemplazarla';
+    }
 
     const verificacion = await requestJson('/api/finanzas/configuracion');
-    logoFacturaData = verificacion?.logo_data || null;
-    renderLogoFacturaPreview();
-
     const esperado = {
       institucion_nombre: value('fin-config-nombre').trim(),
       tipo_identificacion: value('fin-config-tipo-id').trim(),
@@ -1989,21 +2122,17 @@ async function guardarConfiguracion(event) {
       String(verificacion?.numero_identificacion || '').trim() === esperado.numero_identificacion &&
       String(verificacion?.correo || '').trim().toLowerCase() === esperado.correo;
 
-    if (!coincide || Boolean(logoFacturaData) !== Boolean(guardada?.logo_data)) {
-      throw new Error('No fue posible confirmar que la configuración quedara guardada. Inténtalo nuevamente.');
-    }
+    if (!coincide) throw new Error('No fue posible confirmar que la configuración quedara guardada.');
 
-    const input = document.getElementById('fin-config-logo');
-    if (input) input.value = '';
     await cargarEstadoIntegraciones(false);
     hideModal('modalConfigFacturacion');
-    showToast(logoFacturaData ? 'Configuración y logo guardados correctamente.' : 'Configuración guardada correctamente.', 'success');
+    showToast('Configuración de servicios guardada correctamente.', 'success');
   } catch (e) {
     showToast(e.message || 'No se pudo guardar la configuración.', 'error');
   } finally {
     if (submit) {
       submit.disabled = false;
-      submit.innerHTML = original || 'Guardar';
+      submit.innerHTML = original || 'Guardar conexiones';
     }
   }
 }

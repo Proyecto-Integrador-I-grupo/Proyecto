@@ -30,10 +30,7 @@ import './styles/dark-mode-master.css';
 import './styles/integration-ready.css';
 import './styles/schedules-final.css';
 import './styles/responsive-final.css';
-<<<<<<< HEAD
 import './styles/final-touchups.css';
-=======
->>>>>>> ebe768a4e49a7a3db6b3f9ad35386bab9338a30b
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

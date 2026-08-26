@@ -1,5 +1,5 @@
 import React from 'react';
-
+import '../styles/consultas.css';
 export default function Consultas() {
   return (
     <>

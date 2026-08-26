@@ -59,11 +59,15 @@ export function pagarConBanky({ checkoutUrl, expectedOrigin, channel = BANKY_CHA
       return;
     }
     try {
-      popup.location.replace(checkoutUrl);
+      // assign() resulta más compatible con ventanas preabiertas que replace()
+      // en Edge/Chrome cuando el destino pertenece a otro origen.
+      popup.location.assign(checkoutUrl);
       popup.focus();
     } catch {
       cleanup();
-      try { popup.close(); } catch {}
+      try {
+        popup.document.body.innerHTML = '<main style=\"font-family:system-ui;padding:32px;color:#8b1e2d\"><h2>No se pudo abrir el datáfono</h2><p>Revisa la afiliación bancaria y vuelve a intentarlo.</p></main>';
+      } catch {}
       reject(new Error('No se pudo abrir el datáfono del servicio bancario.'));
       return;
     }

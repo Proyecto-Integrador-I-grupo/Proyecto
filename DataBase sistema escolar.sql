@@ -193,6 +193,9 @@ CREATE TABLE grupo_profesor(
     CONSTRAINT fk_grupo_profesor_grupo FOREIGN KEY (id_grupo) REFERENCES grupo(id_grupo),
     CONSTRAINT fk_grupo_profesor_profesor FOREIGN KEY (id_profesor) REFERENCES profesor(id_profesor)
 );
+CREATE INDEX idx_grupo_profesor_profesor_estado ON grupo_profesor(id_profesor, estado, id_grupo);
+CREATE INDEX idx_grupo_seccion_estado ON grupo(id_seccion, estado);
+CREATE INDEX idx_seccion_periodo_estado ON seccion(periodo_lectivo, estado);
 -- ===========================================
 -- Suplencias de profesor
 -- ===========================================

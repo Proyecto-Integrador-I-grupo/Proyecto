@@ -3,7 +3,6 @@ import Dashboard from './pages/Dashboard';
 import Estudiantes from './pages/Estudiantes';
 import Matricula from './pages/Matricula';
 import Profesores from './pages/Profesores';
-import Horarios from './pages/Horarios';
 import Asistencia from './pages/Asistencia';
 import Reportes from './pages/Reportes';
 import Consultas from './pages/Consultas';
@@ -305,16 +304,6 @@ export default function App() {
               </li>
 
 
-              <li className="nav-item schedule-nav-item">
-                <button
-                  type="button"
-                  data-view="horarios"
-                  className="nav-link w-100 text-start d-flex align-items-center gap-2"
-                >
-                  <i className="bi bi-calendar-week"></i> Horarios
-                </button>
-              </li>
-
               <li className="nav-item">
                 <button
                   type="button"
@@ -449,7 +438,6 @@ export default function App() {
               <Estudiantes />
               <Matricula />
               <Profesores />
-              <Horarios />
               <Asistencia />
               <Pagos />
               <Reportes />

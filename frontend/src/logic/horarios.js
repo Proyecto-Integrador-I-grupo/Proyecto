@@ -1,18 +1,14 @@
 import { apiFetch, currentUser, showToast } from './ui.js';
 
 (function () {
-  const moduleName = 'horarios';
-  window.EduControlModules = window.EduControlModules || {};
-  window.EduControlModules[moduleName] = {
-    name: moduleName,
-    init() {
-      const section = document.getElementById(`${moduleName}-view`);
-      if (!section) return;
-      section.dataset.module = moduleName;
-      wireHorarioEvents();
-    },
-    load: loadHorarios
-  };
+  if (document.documentElement.dataset.horariosModalWired === '1') return;
+  document.documentElement.dataset.horariosModalWired = '1';
+
+  document.addEventListener('show.bs.modal', (event) => {
+    if (event.target?.id !== 'modalHorarios') return;
+    wireHorarioEvents();
+    loadHorarios();
+  });
 })();
 
 const DAY_META = [
@@ -107,7 +103,7 @@ function wireHorarioEvents() {
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!document.getElementById('horarios-view')?.classList.contains('hidden')) renderHorarios();
+        if (document.getElementById('modalHorarios')?.classList.contains('show')) renderHorarios();
       }, 160);
     });
   }
@@ -291,7 +287,7 @@ function buildTimeline(rows) {
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) { start = 420; end = 1020; }
   start = Math.max(300, start - 60);
   end = Math.min(1320, end + 60);
-  const rowHeight = 62;
+  const rowHeight = 48;
   const totalHeight = ((end - start) / 60) * rowHeight;
 
   const labels = [];

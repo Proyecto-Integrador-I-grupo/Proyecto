@@ -1,4 +1,5 @@
 import React from 'react';
+import Horarios from './Horarios';
 
 const Modal = ({id,title,children,footer}) => (
   <div className="modal fade" id={id} tabIndex="-1" aria-hidden="true">
@@ -14,20 +15,41 @@ export default function Profesores() {
   const schoolDomain = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com').replace(/^@+/, '');
   return (
     <section id="profesores-view" className="view hidden">
-      <div className="page-header d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
-        <div className="flex-grow-1">
-          <h2 className="card-title-serif h4 mb-1"><i className="bi bi-person-badge"></i> Cuerpo Docente</h2>
-          <p className="text-muted small mb-0">Gestiona el registro, la disponibilidad y la asignación de grupos del personal docente.</p>
+      <div className="faculty-admin-only">
+        <div className="page-header d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+          <div className="flex-grow-1">
+            <h2 className="card-title-serif h4 mb-1"><i className="bi bi-person-badge"></i> Cuerpo Docente</h2>
+            <p className="text-muted small mb-0">Gestiona docentes, asignaciones y consulta la agenda académica desde un solo lugar.</p>
+          </div>
+          <div className="d-flex gap-2 flex-wrap w-mobile-100">
+            <button type="button" className="btn btn-outline-primary schedule-admin-trigger" data-bs-toggle="modal" data-bs-target="#modalHorarios">
+              <i className="bi bi-calendar-week"></i> Ver horarios
+            </button>
+            <button type="button" id="prof-refrescar" className="btn btn-outline-secondary">
+              <i className="bi bi-arrow-clockwise"></i> Refrescar
+            </button>
+            <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProfesor">
+              <i className="bi bi-plus-lg"></i> Agregar Profesor
+            </button>
+          </div>
         </div>
-        <div className="d-flex gap-2 flex-wrap w-mobile-100">
-          <button type="button" id="prof-refrescar" className="btn btn-outline-secondary">
-            <i className="bi bi-arrow-clockwise"></i> Refrescar
-          </button>
-          <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProfesor">
-            <i className="bi bi-plus-lg"></i> Agregar Profesor
+      </div>
+
+      <div className="faculty-professor-only">
+        <div className="teacher-self-card mb-4">
+          <div className="teacher-self-icon"><i className="bi bi-calendar2-week"></i></div>
+          <div className="teacher-self-copy">
+            <span className="eyebrow">Mi docencia</span>
+            <h2 className="h4 mb-1">Horario y grupos asignados</h2>
+            <p className="mb-0">Consulta únicamente tus clases, grupos, aula y horas asignadas en el período lectivo.</p>
+          </div>
+          <button type="button" className="btn btn-primary teacher-self-action" data-bs-toggle="modal" data-bs-target="#modalHorarios">
+            <i className="bi bi-clock-history"></i> Ver mi horario
           </button>
         </div>
       </div>
+
+      <div className="faculty-admin-only">
       <div className="faculty-summary mb-4">
         <div className="faculty-summary-item">
           <span className="faculty-summary-icon"><i className="bi bi-people"></i></span>
@@ -47,6 +69,8 @@ export default function Profesores() {
         </div>
       </div>
       <div className="card border-0 shadow-sm"><div className="card-body"><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap"><div className="input-group input-group-sm search-box"><span className="input-group-text"><i className="bi bi-search"></i></span><input id="prof-search" type="text" className="form-control" maxLength="80" placeholder="Buscar por nombre, materia o correo..." /></div><select id="prof-filtro-estado" className="form-select form-select-sm" style={{width:'auto'}}><option value="todos">Todos los profesores</option><option value="activos">Solo activos</option><option value="inactivos">Solo inactivos / destituidos</option></select></div><div className="profesores-table-wrap"><table id="profesores-table" className="table table-hover align-middle mb-0"><thead><tr><th>Nombre Completo</th><th>Materia</th><th>Ingreso</th><th>Grupos y horario</th><th>Estado</th><th className="text-end">Acciones</th></tr></thead><tbody></tbody></table></div></div></div>
+
+      </div>
 
       <Modal id="modalProfesor" title={<><i className="bi bi-person-plus"></i> Registrar Profesor</>}>
         <form id="profesor-form" autoComplete="off"><div className="modal-body p-4">
@@ -85,6 +109,7 @@ export default function Profesores() {
       <Modal id="modalReintegrar" title={<><i className="bi bi-person-check"></i> Reintegrar Profesor</>}><div className="modal-body p-4"><p>¿Deseas reintegrar a <strong id="reintegrar-nombre-profesor"></strong>?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-reintegrar-btn" className="btn btn-success">Reintegrar</button></div></Modal>
       <Modal id="modalAsignarSustituto" title={<><i className="bi bi-person-lines-fill"></i> Asignar Sustituto</>}><div className="modal-body p-4"><p>Profesor titular: <strong id="sustituto-nombre-profesor"></strong></p><div id="sustituto-lista"></div></div></Modal>
       <Modal id="modalAsignarGrupos" title={<><i className="bi bi-diagram-3"></i> Asignar Grupos</>}><div className="modal-body p-4"><p>Profesor: <strong id="asignar-grupos-nombre-profesor"></strong></p><p className="text-muted small">Materia: <span id="asignar-grupos-materia"></span></p><input id="asignar-grupos-search" className="form-control form-control-sm mb-3" placeholder="Buscar grupo..." /><div id="asignar-grupos-lista" className="d-grid gap-2"></div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="confirmar-asignar-grupos-btn" className="btn btn-primary">Guardar asignación</button></div></Modal>
+      <Horarios />
     </section>
   );
 }

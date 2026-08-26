@@ -359,3 +359,131 @@ html.theme-dark body.theme-dark #root #modalSeccion .section-safety-note { backg
   #modalSeccion .section-create-action .btn { width:100%; }
   #modalSeccion .section-preview-card { grid-template-columns:1fr; }
 }
+
+/* ======================================================================
+   HORARIOS DENTRO DE PROFESORES · modal final
+   ====================================================================== */
+.faculty-professor-only { display:none; }
+body.is-profesor #profesores-view .faculty-admin-only { display:none !important; }
+body.is-profesor #profesores-view .faculty-professor-only { display:block !important; }
+
+.teacher-self-card {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:1rem;
+  padding:1.25rem 1.35rem;
+  border:1px solid #dbe5ee;
+  border-radius:18px;
+  background:linear-gradient(135deg,#ffffff 0%,#f5f9fc 100%);
+  box-shadow:0 10px 28px rgba(20,46,72,.06);
+}
+.teacher-self-icon {
+  width:56px; height:56px; border-radius:16px; display:grid; place-items:center;
+  background:#e6f4fb; color:#267aa7; font-size:1.45rem;
+}
+.teacher-self-copy h2 { color:#173a5e; font-weight:850; }
+.teacher-self-copy p { color:#667b90; }
+.teacher-self-action { min-width:165px; }
+
+#modalHorarios .modal-dialog {
+  width:min(calc(100vw - 30px),1180px) !important;
+  max-width:min(calc(100vw - 30px),1180px) !important;
+  margin:.75rem auto !important;
+  min-height:0 !important;
+  height:auto !important;
+}
+#modalHorarios .modal-content {
+  max-height:calc(100dvh - 24px) !important;
+  overflow:hidden !important;
+  border-radius:18px !important;
+}
+#modalHorarios .schedule-modal-header { padding:.8rem 1rem !important; }
+#modalHorarios .schedule-modal-kicker {
+  color:#bfe2f6; font-size:.68rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase;
+}
+#modalHorarios .schedule-modal-header .modal-title { font-weight:850; }
+#modalHorarios .schedule-refresh-btn { min-width:102px; }
+#modalHorarios .schedule-modal-body {
+  overflow:hidden !important;
+  padding:0 !important;
+  background:#f5f8fb;
+}
+#modalHorarios .schedule-modal-workspace {
+  padding:.85rem;
+  background:#f5f8fb;
+}
+#modalHorarios .schedule-modal-intro {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  margin-bottom:.7rem; padding:.1rem .15rem;
+}
+#modalHorarios .schedule-modal-intro > div { display:flex; flex-direction:column; min-width:0; }
+#modalHorarios .schedule-modal-intro strong { color:#173a5e; font-size:.95rem; }
+#modalHorarios .schedule-modal-intro span:not(.schedule-modal-badge) { color:#718297; font-size:.76rem; }
+#modalHorarios .schedule-modal-badge {
+  display:inline-flex; align-items:center; gap:.4rem; padding:.38rem .65rem;
+  border:1px solid #cfe2ee; border-radius:999px; background:#eef7fc;
+  color:#2a6d92; font-size:.7rem; font-weight:800; white-space:nowrap;
+}
+#modalHorarios .schedule-filter-card-compact { padding:.75rem .85rem; margin-bottom:.7rem; border-radius:14px; }
+#modalHorarios .schedule-filter-grid { grid-template-columns:1.05fr 1.05fr .9fr .55fr; gap:.6rem; }
+#modalHorarios .schedule-filter-field > label { font-size:.68rem; margin-bottom:.25rem; }
+#modalHorarios .schedule-filter-field .form-select,
+#modalHorarios .schedule-filter-field .btn { min-height:38px; font-size:.82rem; }
+#modalHorarios .schedule-stats-grid-compact { gap:.6rem; margin-bottom:.7rem; }
+#modalHorarios .schedule-stats-grid-compact .schedule-stat-card { padding:.65rem .75rem; border-radius:13px; }
+#modalHorarios .schedule-stats-grid-compact .schedule-stat-icon { width:36px; height:36px; flex-basis:36px; border-radius:10px; }
+#modalHorarios .schedule-stats-grid-compact .schedule-stat-card strong { font-size:1.05rem; }
+#modalHorarios .schedule-board-card-modal { border-radius:15px; }
+#modalHorarios .schedule-board-heading { padding:.72rem .85rem; }
+#modalHorarios .schedule-board-heading h3 { font-size:1rem; }
+#modalHorarios .schedule-board { padding:.7rem; }
+#modalHorarios .schedule-empty-state { min-height:180px; }
+#modalHorarios .schedule-agenda-list { gap:.4rem; padding:.45rem; }
+#modalHorarios .schedule-class-card { padding:.5rem; }
+#modalHorarios .schedule-timeline-corner,
+#modalHorarios .schedule-timeline-day-label { min-height:38px; }
+#modalHorarios .schedule-modal-footer {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.55rem .85rem !important;
+}
+#modalHorarios .schedule-modal-help { color:#718397; font-size:.7rem; display:inline-flex; gap:.35rem; align-items:center; }
+
+html.theme-dark body.theme-dark #root .teacher-self-card {
+  background:linear-gradient(135deg,#101e2f,#12263a) !important;
+  border-color:#344d66 !important; box-shadow:none !important;
+}
+html.theme-dark body.theme-dark #root .teacher-self-icon { background:#173b57 !important; color:#9edcff !important; }
+html.theme-dark body.theme-dark #root .teacher-self-copy h2 { color:#f3f8fd !important; }
+html.theme-dark body.theme-dark #root .teacher-self-copy p { color:#b5c6d7 !important; }
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-body,
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-workspace { background:#0b1726 !important; }
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-intro strong { color:#f3f8fd !important; }
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-intro span:not(.schedule-modal-badge) { color:#b5c6d7 !important; }
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-badge { background:#173449 !important; border-color:#3d617b !important; color:#a5e0ff !important; }
+html.theme-dark body.theme-dark #root #modalHorarios .schedule-modal-help { color:#b5c6d7 !important; }
+
+@media (max-width: 991.98px) {
+  #modalHorarios .modal-dialog { width:calc(100vw - 14px) !important; max-width:calc(100vw - 14px) !important; margin:7px auto !important; }
+  #modalHorarios .schedule-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #modalHorarios .schedule-stats-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  #modalHorarios .schedule-agenda-week,
+  #modalHorarios .schedule-agenda-week:has(.schedule-agenda-day:nth-child(6)) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 767.98px) {
+  .teacher-self-card { grid-template-columns:auto minmax(0,1fr); }
+  .teacher-self-action { grid-column:1/-1; width:100%; }
+  #modalHorarios .schedule-modal-header { align-items:flex-start; }
+  #modalHorarios .schedule-refresh-btn { font-size:0; min-width:38px; width:38px; padding:.35rem; }
+  #modalHorarios .schedule-refresh-btn i { font-size:1rem; margin:0 !important; }
+  #modalHorarios .schedule-modal-intro { align-items:flex-start; }
+  #modalHorarios .schedule-modal-badge { display:none; }
+  #modalHorarios .schedule-filter-grid { grid-template-columns:1fr; }
+  #modalHorarios .schedule-stats-grid { grid-template-columns:1fr 1fr; }
+  #modalHorarios .schedule-board-heading { align-items:flex-start; flex-direction:column; }
+  #modalHorarios .schedule-agenda-week,
+  #modalHorarios .schedule-agenda-week:has(.schedule-agenda-day:nth-child(6)) { grid-template-columns:1fr; }
+  #modalHorarios .schedule-modal-help { display:none; }
+  #modalHorarios .schedule-modal-footer { justify-content:flex-end; }
+}
+body.is-asistente #profesores-view .schedule-admin-trigger { display:none !important; }

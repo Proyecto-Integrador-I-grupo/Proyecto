@@ -214,7 +214,6 @@ function showApp() {
 const VISTAS_RESTRINGIDAS_PROFESOR = [
   'matricula',
   'estudiantes',
-  'profesores',
   'pagos',
   'usuarios'
 ];
@@ -339,7 +338,7 @@ function renderUserInfo() {
     roleNotice.classList.toggle('is-asistente', esAsistente);
     if (roleNoticeText) {
       roleNoticeText.textContent = esProfesor
-        ? 'Vista docente · horarios, asistencia, reportes y consultas'
+        ? 'Vista docente · profesores, mi horario, asistencia, reportes y consultas'
         : 'Vista asistente · acceso administrativo limitado';
     }
   }
@@ -367,9 +366,6 @@ function aplicarRestriccionesModulos(rolNormalizado) {
       // el botón de Gestión de Permisos/Usuarios
       if (vista === 'usuarios') {
         restringida = !esAdmin;
-
-      } else if (vista === 'horarios') {
-        restringida = !esAdmin && !esProfesor;
 
       } else if (
         esProfesor &&
@@ -569,6 +565,9 @@ function wireSidebarToggle() {
 }
 
 function setActiveView(viewName) {
+  // Compatibilidad con sesiones guardadas de la versión que tenía Horarios en el menú.
+  if (viewName === 'horarios') viewName = 'profesores';
+
   const rolNormalizado =
     (currentUser?.rol || '').toLowerCase();
 
@@ -588,12 +587,6 @@ function setActiveView(viewName) {
 
     viewName = 'dashboard';
 
-  } else if (
-    viewName === 'horarios' &&
-    !['administrador', 'profesor'].includes(rolNormalizado)
-  ) {
-    showToast('La vista de horarios está disponible para administradores y profesores.', 'error');
-    viewName = 'dashboard';
   } else if (
     rolNormalizado === 'profesor' &&
     VISTAS_RESTRINGIDAS_PROFESOR.includes(

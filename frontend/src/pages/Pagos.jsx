@@ -495,12 +495,17 @@ export default function Pagos() {
               </div>
             </section>
 
-            <section className="integration-block-v2 integration-future-block-v2">
-              <div className="integration-block-heading-v2 future-heading-v2">
-                <div><i className="bi bi-hourglass-split"></i><strong>Pendientes de integración</strong></div>
-                <small>Se activarán cuando el equipo entregue cada endpoint y contrato JSON.</small>
-              </div>
-              <div className="integration-future-grid-v2">
+            <details className="integration-pending-details-v3">
+              <summary>
+                <span className="integration-pending-summary-v3"><i className="bi bi-hourglass-split"></i><span><strong>Próximas integraciones</strong><small>Firma Digital, Factura Electrónica y Tributación</small></span></span>
+                <span className="integration-pending-state-v3">3 pendientes <i className="bi bi-chevron-down"></i></span>
+              </summary>
+              <section className="integration-block-v2 integration-future-block-v2">
+                <div className="integration-block-heading-v2 future-heading-v2">
+                  <div><i className="bi bi-diagram-3"></i><strong>Servicios preparados</strong></div>
+                  <small>Se activarán cuando el equipo entregue cada endpoint y contrato JSON.</small>
+                </div>
+                <div className="integration-future-grid-v2">
                 <article className="integration-future-card-v2">
                   <div className="integration-future-main-v2"><span className="integration-service-icon"><i className="bi bi-pen"></i></span><div><small>SEGURIDAD</small><strong>Firma Digital</strong><p id="fin-service-firma-detail">Pendiente de recibir el endpoint y contrato JSON.</p></div></div>
                   <span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
@@ -516,8 +521,9 @@ export default function Pagos() {
                   <span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
                   <input id="fin-config-tributacion-url" className="form-control form-control-sm" placeholder="Endpoint futuro" aria-label="Endpoint de Tributación" />
                 </article>
-              </div>
-            </section>
+                </div>
+              </section>
+            </details>
 
             <details className="integration-emitter-details-v2">
               <summary><span><i className="bi bi-building"></i><strong>Datos del emisor</strong><small>Información de EduControl enviada en la facturación.</small></span><i className="bi bi-chevron-down"></i></summary>

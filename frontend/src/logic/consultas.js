@@ -131,12 +131,35 @@ function aplicarPermisosConsultaUI() {
       const permitidos = tiposConsultaPermitidos();
 
       const pedir = async (tipo, url) => {
-        if (!permitidos.includes(tipo)) return [];
-        const response = await apiFetch(url);
-        if (!response.ok) return [];
-        return await response.json();
-      };
+  if (!permitidos.includes(tipo)) {
+    return [];
+  }
 
+  const response = await apiFetch(url);
+
+  if (!response.ok) {
+    const errorData = await response
+      .json()
+      .catch(() => ({}));
+
+    console.error(
+      `Error cargando ${tipo}:`,
+      errorData.mensaje ||
+      errorData.error ||
+      `HTTP ${response.status}`
+    );
+
+    return [];
+  }
+
+  const data = await response
+    .json()
+    .catch(() => []);
+
+  return Array.isArray(data)
+    ? data
+    : [];
+};
       const pedirGrupos = async () => {
         const response = await apiFetch('/api/procesos/grupos');
         if (!response.ok) return [];
@@ -238,60 +261,63 @@ function aplicarPermisosConsultaUI() {
      CAMBIO DEL TIPO DE CONSULTA
      ========================================== */
 
-  function actualizarConsulta() {
-    let tipo =
-      document.getElementById('consulta-tipo')?.value ||
-      tiposConsultaPermitidos()[0] ||
-      'asistencia';
+function actualizarConsulta() {
+  let tipo =
+    document.getElementById('consulta-tipo')?.value ||
+    tiposConsultaPermitidos()[0] ||
+    'asistencia';
 
-    const permitidos = tiposConsultaPermitidos();
-    if (!permitidos.includes(tipo)) {
-      tipo = permitidos[0] || 'asistencia';
-      const selector = document.getElementById('consulta-tipo');
-      if (selector) selector.value = tipo;
+  const permitidos = tiposConsultaPermitidos();
+
+  if (!permitidos.includes(tipo)) {
+    tipo = permitidos[0] || 'asistencia';
+
+    const selector =
+      document.getElementById('consulta-tipo');
+
+    if (selector) {
+      selector.value = tipo;
     }
-
-    actualizarFiltroEstado(tipo);
-    actualizarTextoBusqueda(tipo);
-    actualizarFiltrosVisibles(tipo);
-
-    if (tipo === 'prematriculados') {
-      mostrarEstudiantesPrematriculados();
-      return;
-    }
-
-    if (tipo === 'matriculados') {
-      mostrarEstudiantesMatriculados();
-      return;
-    }
-
-    if (tipo === 'profesores') {
-      mostrarProfesores();
-      return;
-    }
-
-    if (tipo === 'matriculas') {
-      mostrarMatriculas();
-      return;
-    }
-
-    if (tipo === 'auditoria' || tipo === 'grupos') {
-      select.innerHTML = '<option value="">Todos</option>';
-    } else if (tipo === 'asistencia') {
-  mostrarAsistencias();
-  return;
-}
-
-if (tipo === 'grupos') {
-  mostrarGrupos();
-  return;
-}
-
-if (tipo === 'auditoria') {
-  mostrarAuditorias();
-}
   }
 
+  actualizarFiltroEstado(tipo);
+  actualizarTextoBusqueda(tipo);
+  actualizarFiltrosVisibles(tipo);
+
+  if (tipo === 'prematriculados') {
+    mostrarEstudiantesPrematriculados();
+    return;
+  }
+
+  if (tipo === 'matriculados') {
+    mostrarEstudiantesMatriculados();
+    return;
+  }
+
+  if (tipo === 'profesores') {
+    mostrarProfesores();
+    return;
+  }
+
+  if (tipo === 'matriculas') {
+    mostrarMatriculas();
+    return;
+  }
+
+  if (tipo === 'asistencia') {
+    mostrarAsistencias();
+    return;
+  }
+
+  if (tipo === 'grupos') {
+    mostrarGrupos();
+    return;
+  }
+
+  if (tipo === 'auditoria') {
+    mostrarAuditorias();
+  }
+}
   /* ==========================================
      FILTROS DINÁMICOS
      ========================================== */
@@ -1416,32 +1442,140 @@ const usaInformacionAcademica =
     });
   }
 
-  function mostrarDetalleAuditoria(id) {
-    const registro = auditorias.find((item) => String(item.id_auditoria) === String(id));
-    const contenido = document.getElementById('consulta-detalle-contenido');
-    const titulo = document.getElementById('consulta-detalle-titulo');
-    if (!registro || !contenido || !titulo) return;
+function mostrarDetalleAuditoria(id) {
+  const registro = auditorias.find(
+    (item) =>
+      String(item.id_auditoria) === String(id)
+  );
 
-    documentoActual = registro;
-    tipoDocumentoActual = 'auditoria';
-    titulo.textContent = 'Detalle de auditoría';
-    prepararEncabezadoDocumento('Registro de auditoría');
+  const contenido =
+    document.getElementById(
+      'consulta-detalle-contenido'
+    );
 
-    const anteriores = parseAuditData(registro.datos_anteriores);
-    const nuevos = parseAuditData(registro.datos_nuevos);
+  const titulo =
+    document.getElementById(
+      'consulta-detalle-titulo'
+    );
+
+  if (!contenido || !titulo) {
+    return;
+  }
+
+  titulo.textContent =
+    'Vista previa de auditoría';
+
+  if (!registro) {
     contenido.innerHTML = `
-      <div class="row g-3">
-        ${crearCampoDetalle('ID de auditoría', registro.id_auditoria ?? '-')}
-        ${crearCampoDetalle('Fecha', formatearFechaHora(registro.fecha_creacion))}
-        ${crearCampoDetalle('Módulo / tabla', escapeHtml(registro.nombre_tabla || '-'))}
-        ${crearCampoDetalle('Acción', escapeHtml(registro.accion_usuario || '-'))}
-        ${crearCampoDetalle('Usuario', escapeHtml(registro.usuario_nombre || registro.usuario_correo || (registro.id_usuario ? `Usuario #${registro.id_usuario}` : 'Sistema')))}
-        ${crearCampoDetalle('Datos anteriores', `<pre class="consulta-json">${escapeHtml(formatearJson(anteriores))}</pre>`, true)}
-        ${crearCampoDetalle('Datos nuevos / detalle', `<pre class="consulta-json">${escapeHtml(formatearJson(nuevos))}</pre>`, true)}
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró el registro de auditoría.
       </div>
     `;
+
     abrirModalDetalle();
+    return;
   }
+
+  documentoActual = registro;
+  tipoDocumentoActual = 'auditoria';
+
+  prepararEncabezadoDocumento(
+    'Registro de auditoría'
+  );
+
+  const anteriores =
+    parseAuditData(
+      registro.datos_anteriores
+    );
+
+  const nuevos =
+    parseAuditData(
+      registro.datos_nuevos
+    );
+
+  const usuario =
+    registro.usuario_nombre ||
+    registro.usuario_correo ||
+    (
+      registro.id_usuario
+        ? `Usuario #${registro.id_usuario}`
+        : 'Sistema'
+    );
+
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Información del registro
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
+          'ID de auditoría',
+          registro.id_auditoria ?? '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Fecha',
+          formatearFechaHora(
+            registro.fecha_creacion
+          )
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Módulo / tabla',
+          registro.nombre_tabla || '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Acción',
+          registro.accion_usuario || '-'
+        )}
+
+        ${crearCampoDetalleDocumento(
+          'Usuario',
+          usuario
+        )}
+
+      </div>
+    </div>
+
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Cambios registrados
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        <div class="consulta-documento-campo completo">
+          <span class="consulta-documento-etiqueta">
+            Datos anteriores
+          </span>
+
+          <pre class="consulta-json">${escapeHtml(
+            formatearJson(anteriores)
+          )}</pre>
+        </div>
+
+        <div class="consulta-documento-campo completo">
+          <span class="consulta-documento-etiqueta">
+            Datos nuevos / detalle
+          </span>
+
+          <pre class="consulta-json">${escapeHtml(
+            formatearJson(nuevos)
+          )}</pre>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  abrirModalDetalle();
+}
 
   function formatearJson(value) {
     if (value === null || value === undefined || value === '') return 'Sin datos';
@@ -1674,208 +1808,221 @@ const usaInformacionAcademica =
      ACCIONES DE LAS TABLAS
      ========================================== */
 
-  async function manejarAccionesTabla(evento) {
-    const verEstudiante =
-      evento.target.closest(
-        '.consulta-ver-estudiante'
-      );
-    const verMatriculado =
-  evento.target.closest(
-    '.consulta-ver-matriculado'
-  );
-    const verProfesor =
-      evento.target.closest(
-        '.consulta-ver-profesor'
-      );
+ async function manejarAccionesTabla(evento) {
+  const verEstudiante =
+    evento.target.closest(
+      '.consulta-ver-estudiante'
+    );
 
-    const verMatricula =
-      evento.target.closest(
-        '.consulta-ver-matricula'
-      );
+  const verMatriculado =
+    evento.target.closest(
+      '.consulta-ver-matriculado'
+    );
 
-    const verAsistencia =
-      evento.target.closest(
-        '.consulta-ver-asistencia'
-      );
+  const verProfesor =
+    evento.target.closest(
+      '.consulta-ver-profesor'
+    );
 
-    const verGrupo =
-     evento.target.closest(
+  const verMatricula =
+    evento.target.closest(
+      '.consulta-ver-matricula'
+    );
+
+  const verAsistencia =
+    evento.target.closest(
+      '.consulta-ver-asistencia'
+    );
+
+  const verGrupo =
+    evento.target.closest(
       '.consulta-ver-grupo'
     );
 
-    const verAuditoria =
-      evento.target.closest('.consulta-ver-auditoria');
+  const verAuditoria =
+    evento.target.closest(
+      '.consulta-ver-auditoria'
+    );
 
-    if (verEstudiante) {
-      await mostrarDetalleEstudiante(
-        verEstudiante.dataset.id
-      );
-      return;
-    }
+  if (verEstudiante) {
+    await mostrarDetalleEstudiante(
+      verEstudiante.dataset.id
+    );
+    return;
+  }
 
   if (verMatriculado) {
-     mostrarDetalleMatriculado(
-    verMatriculado.dataset.estudiante,
-    verMatriculado.dataset.matricula
-  );
-  return;
-    }
-
-    if (verProfesor) {
-      mostrarDetalleProfesor(
-        verProfesor.dataset.id
-      );
-      return;
-    }
-
-    if (verMatricula) {
-      mostrarDetalleMatricula(
-        verMatricula.dataset.id
-      );
-      return;
-    }
-
-    if (verAsistencia) {
-      mostrarDetalleAsistencia(
-        verAsistencia.dataset.id
-      );
-    }
-
-   if (verGrupo) {
-     mostrarDetalleGrupo(
-       verGrupo.dataset.id
-      );
-     return;
-    }
-
-    if (verAuditoria) {
-      mostrarDetalleAuditoria(verAuditoria.dataset.id);
-    }
+    mostrarDetalleMatriculado(
+      verMatriculado.dataset.estudiante,
+      verMatriculado.dataset.matricula
+    );
+    return;
   }
 
-  async function mostrarDetalleEstudiante(id) {
-    const contenido =
-      document.getElementById(
-        'consulta-detalle-contenido'
-      );
+  if (verProfesor) {
+    mostrarDetalleProfesor(
+      verProfesor.dataset.id
+    );
+    return;
+  }
 
-    const titulo =
-      document.getElementById(
-        'consulta-detalle-titulo'
-      );
+  if (verMatricula) {
+    mostrarDetalleMatricula(
+      verMatricula.dataset.id
+    );
+    return;
+  }
 
-    if (
-      !contenido ||
-      !titulo
-    ) {
-      return;
+  if (verAsistencia) {
+    mostrarDetalleAsistencia(
+      verAsistencia.dataset.id
+    );
+    return;
+  }
+
+  if (verGrupo) {
+    mostrarDetalleGrupo(
+      verGrupo.dataset.id
+    );
+    return;
+  }
+
+  if (verAuditoria) {
+    mostrarDetalleAuditoria(
+      verAuditoria.dataset.id
+    );
+  }
+}
+
+async function mostrarDetalleEstudiante(id) {
+  const contenido =
+    document.getElementById(
+      'consulta-detalle-contenido'
+    );
+
+  const titulo =
+    document.getElementById(
+      'consulta-detalle-titulo'
+    );
+
+  if (!contenido || !titulo) {
+    return;
+  }
+
+  titulo.textContent =
+    'Vista previa del estudiante';
+
+  contenido.innerHTML = `
+    <div class="text-center py-4 text-muted">
+      <span
+        class="spinner-border spinner-border-sm me-2">
+      </span>
+      Cargando información...
+    </div>
+  `;
+
+  abrirModalDetalle();
+
+  try {
+    const respuesta = await apiFetch(
+      `/api/estudiantes/${id}`
+    );
+
+    if (!respuesta.ok) {
+      throw new Error(
+        'No se pudo obtener la información del estudiante.'
+      );
     }
 
-    titulo.textContent =
-      'Vista previa del estudiante';
+    const estudiante =
+      await respuesta.json();
+
+    documentoActual = estudiante;
+    tipoDocumentoActual = 'estudiante';
+
+    registrarAuditoriaConsulta(
+      'estudiante',
+      'vista_previa',
+      {
+        id_registro:
+          estudiante.id_estudiante ??
+          estudiante.id ??
+          null
+      }
+    );
+
+    prepararEncabezadoDocumento(
+      'Ficha del estudiante'
+    );
+
+    const activo =
+      estudiante.estado == 1 ||
+      estudiante.estado === true ||
+      estudiante.estado === undefined;
 
     contenido.innerHTML = `
-      <div class="text-center py-4 text-muted">
-        <span
-          class="spinner-border spinner-border-sm me-2">
-        </span>
-        Cargando información...
-      </div>
-    `;
+      <div class="consulta-documento-seccion">
 
-    abrirModalDetalle();
+        <h3 class="consulta-documento-seccion-titulo">
+          Información personal
+        </h3>
 
-    try {
-      const respuesta = await apiFetch(
-        `/api/estudiantes/${id}`
-      );
+        <div class="consulta-documento-grid">
 
-      if (!respuesta.ok) {
-        throw new Error(
-          'No se pudo obtener la información del estudiante.'
-        );
-      }
-
-      const estudiante =
-        await respuesta.json();
-       
-      documentoActual = estudiante;
-tipoDocumentoActual = 'estudiante';
-
-registrarAuditoriaConsulta(
-  'estudiante',
-  'vista_previa',
-  {
-    id_registro: estudiante.id_estudiante ?? estudiante.id ?? null
-  }
-);
-
-prepararEncabezadoDocumento(
-  'Ficha del estudiante'
-);
-
-      const activo =
-        estudiante.estado == 1 ||
-        estudiante.estado === true ||
-        estudiante.estado === undefined;
-
-      contenido.innerHTML = `
-        <div class="row g-3">
-
-
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Identificación',
             estudiante.id_estudiante ??
             estudiante.id ??
             '-'
           )}
 
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Nombre completo',
             formarNombre(estudiante) || '-'
           )}
 
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Fecha de nacimiento',
             limpiarFecha(
               estudiante.fecha_nacimiento
             )
           )}
 
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Fecha de ingreso',
             limpiarFecha(
               estudiante.fecha_ingreso
             )
           )}
 
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Género',
             mostrarGenero(
               estudiante.genero
             )
           )}
 
-          ${crearCampoDetalle(
+          ${crearCampoDetalleDocumento(
             'Estado',
-            activo
-              ? '<span class="badge bg-success">Activo</span>'
-              : '<span class="badge bg-secondary">Inactivo</span>'
+            activo ? 'Activo' : 'Inactivo'
           )}
 
         </div>
-      `;
-    } catch (error) {
-      contenido.innerHTML = `
-        <div class="text-center py-4 text-danger">
-          <i
-            class="bi bi-exclamation-circle fs-2 d-block mb-2">
-          </i>
-          ${error.message}
-        </div>
-      `;
-    }
+      </div>
+    `;
+
+  } catch (error) {
+    contenido.innerHTML = `
+      <div class="text-center py-5 text-danger">
+        <i
+          class="bi bi-exclamation-circle fs-2 d-block mb-2">
+        </i>
+
+        ${error.message}
+      </div>
+    `;
   }
+} 
 
   function mostrarDetalleMatriculado(
   idEstudiante,
@@ -2022,356 +2169,372 @@ prepararEncabezadoDocumento(
   abrirModalDetalle();
 }
 
-  function mostrarDetalleProfesor(id) {
-    const profesor = profesores.find(
-      (item) => {
-        return String(
-          item.id_profesor ?? item.id
-        ) === String(id);
-      }
+function mostrarDetalleProfesor(id) {
+  const profesor = profesores.find(
+    (item) => {
+      return String(
+        item.id_profesor ?? item.id
+      ) === String(id);
+    }
+  );
+
+  const contenido =
+    document.getElementById(
+      'consulta-detalle-contenido'
     );
 
-    const contenido =
-      document.getElementById(
-        'consulta-detalle-contenido'
-      );
+  const titulo =
+    document.getElementById(
+      'consulta-detalle-titulo'
+    );
 
-    const titulo =
-      document.getElementById(
-        'consulta-detalle-titulo'
-      );
-
-    if (
-      !contenido ||
-      !titulo
-    ) {
-      return;
-    }
-
-    titulo.textContent =
-     'Vista previa del profesor';
-
-    if (!profesor) {
-      contenido.innerHTML = `
-        <div class="text-center py-4 text-danger">
-          No se encontró la información del profesor.
-        </div>
-      `;
-
-      abrirModalDetalle();
-      return;
-    }
-
-    documentoActual = profesor;
-tipoDocumentoActual = 'profesor';
-
-registrarAuditoriaConsulta(
-  'profesor',
-  'vista_previa',
-  {
-    id_registro: profesor.id_profesor ?? profesor.id ?? null
+  if (!contenido || !titulo) {
+    return;
   }
-);
 
-prepararEncabezadoDocumento(
-  'Ficha del profesor'
-);
+  titulo.textContent =
+    'Vista previa del profesor';
 
-    const activo =
-      profesor.estado == 1 ||
-      profesor.estado === true;
-
+  if (!profesor) {
     contenido.innerHTML = `
-      <div class="row g-3">
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró la información del profesor.
+      </div>
+    `;
 
-        ${crearCampoDetalle(
+    abrirModalDetalle();
+    return;
+  }
+
+  documentoActual = profesor;
+  tipoDocumentoActual = 'profesor';
+
+  registrarAuditoriaConsulta(
+    'profesor',
+    'vista_previa',
+    {
+      id_registro:
+        profesor.id_profesor ??
+        profesor.id ??
+        null
+    }
+  );
+
+  prepararEncabezadoDocumento(
+    'Ficha del profesor'
+  );
+
+  const activo =
+    profesor.estado == 1 ||
+    profesor.estado === true;
+
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
+
+      <h3 class="consulta-documento-seccion-titulo">
+        Información del profesor
+      </h3>
+
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
           'Identificación',
           profesor.id_profesor ??
           profesor.id ??
           '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Nombre completo',
           formarNombre(profesor) || '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Materia',
           profesor.materia ??
           'Sin asignar'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Fecha de ingreso',
           limpiarFecha(
             profesor.fecha_ingreso
           )
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Estado',
-          activo
-            ? '<span class="badge bg-success">Activo</span>'
-            : '<span class="badge bg-danger">Inactivo</span>'
+          activo ? 'Activo' : 'Inactivo'
         )}
 
       </div>
+    </div>
 
-      <div class="alert alert-light border mt-4 mb-0 small">
-        <i class="bi bi-info-circle me-1"></i>
-        La gestión del profesor se realiza desde
-        el módulo de Profesores.
+    <div class="alert alert-light border mt-4 mb-0 small">
+      <i class="bi bi-info-circle me-1"></i>
+      La gestión del profesor se realiza desde
+      el módulo de Profesores.
+    </div>
+  `;
+
+  abrirModalDetalle();
+}
+
+function mostrarDetalleMatricula(id) {
+  const registro = matriculas.find(
+    (item) => {
+      return String(
+        item.id_matricula
+      ) === String(id);
+    }
+  );
+
+  const contenido =
+    document.getElementById(
+      'consulta-detalle-contenido'
+    );
+
+  const titulo =
+    document.getElementById(
+      'consulta-detalle-titulo'
+    );
+
+  if (!contenido || !titulo) {
+    return;
+  }
+
+  titulo.textContent =
+    'Vista previa de la matrícula';
+
+  if (!registro) {
+    contenido.innerHTML = `
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró la matrícula.
       </div>
     `;
 
     abrirModalDetalle();
+    return;
   }
 
-  function mostrarDetalleMatricula(id) {
-    const registro = matriculas.find(
-      (item) => {
-        return String(
-          item.id_matricula
-        ) === String(id);
-      }
-    );
+  documentoActual = registro;
+  tipoDocumentoActual = 'matricula';
 
-    const contenido =
-      document.getElementById(
-        'consulta-detalle-contenido'
-      );
-
-    const titulo =
-      document.getElementById(
-        'consulta-detalle-titulo'
-      );
-
-    if (
-      !contenido ||
-      !titulo
-    ) {
-      return;
+  registrarAuditoriaConsulta(
+    'matricula',
+    'vista_previa',
+    {
+      id_registro:
+        registro.id_matricula ?? null
     }
+  );
 
-    titulo.textContent =
-      'Vista previa de la matrícula';
+  prepararEncabezadoDocumento(
+    'Comprobante de matrícula'
+  );
 
-    if (!registro) {
-      contenido.innerHTML = `
-        <div class="text-center py-4 text-danger">
-          No se encontró la matrícula.
-        </div>
-      `;
+  const estudiante = `
+    ${registro.estudiante_nombre ?? ''}
+    ${registro.estudiante_apellido1 ?? ''}
+    ${registro.estudiante_apellido2 ?? ''}
+  `
+    .replace(/\s+/g, ' ')
+    .trim();
 
-      abrirModalDetalle();
-      return;
-    }
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
 
-    documentoActual = registro;
-tipoDocumentoActual = 'matricula';
+      <h3 class="consulta-documento-seccion-titulo">
+        Información de la matrícula
+      </h3>
 
-registrarAuditoriaConsulta(
-  'matricula',
-  'vista_previa',
-  {
-    id_registro: registro.id_matricula ?? null
-  }
-);
+      <div class="consulta-documento-grid">
 
-prepararEncabezadoDocumento(
-  'Comprobante de matrícula'
-);
-
-    const estudiante = `${
-      registro.estudiante_nombre ?? ''
-    } ${
-      registro.estudiante_apellido1 ?? ''
-    } ${
-      registro.estudiante_apellido2 ?? ''
-    }`.trim();
-
-        contenido.innerHTML = `
-      <div class="row g-3">
-
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Identificación',
           registro.id_matricula ?? '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Fecha',
           limpiarFecha(registro.fecha)
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Estudiante',
           estudiante || '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Grupo',
           registro.nombre_grupo ?? '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Período',
           `${registro.periodo_lectivo ?? '-'} / ${
             registro.anio_lectivo ?? '-'
           }`
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Tipo',
           registro.tipo_matricula ?? '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Estado',
           registro.estado_matricula ?? '-'
         )}
 
-        <div class="col-12">
-          <div class="bg-white border rounded p-3">
-            <span class="text-muted small d-block mb-1">
-              Observaciones
-            </span>
+        ${crearCampoDetalleDocumento(
+          'Observaciones',
+          registro.observaciones ||
+          'Sin observaciones',
+          true
+        )}
 
-            <div class="fw-semibold">
-              ${registro.observaciones || 'Sin observaciones'}
-            </div>
-          </div>
-        </div>
+      </div>
+    </div>
+  `;
 
+  abrirModalDetalle();
+}
+
+function mostrarDetalleAsistencia(id) {
+  const registro = asistencias.find(
+    (item) => {
+      return String(
+        item.id_asistencia
+      ) === String(id);
+    }
+  );
+
+  const contenido =
+    document.getElementById(
+      'consulta-detalle-contenido'
+    );
+
+  const titulo =
+    document.getElementById(
+      'consulta-detalle-titulo'
+    );
+
+  if (!contenido || !titulo) {
+    return;
+  }
+
+  titulo.textContent =
+    'Vista previa de la asistencia';
+
+  if (!registro) {
+    contenido.innerHTML = `
+      <div class="text-center py-5 text-danger">
+        <i class="bi bi-exclamation-circle fs-2 d-block mb-2"></i>
+        No se encontró el registro de asistencia.
       </div>
     `;
 
     abrirModalDetalle();
+    return;
   }
 
-  function mostrarDetalleAsistencia(id) {
-    const registro = asistencias.find(
-      (item) => {
-        return String(
-          item.id_asistencia
-        ) === String(id);
-      }
-    );
+  documentoActual = registro;
+  tipoDocumentoActual = 'asistencia';
 
-    const contenido =
-      document.getElementById(
-        'consulta-detalle-contenido'
-      );
-
-    const titulo =
-      document.getElementById(
-        'consulta-detalle-titulo'
-      );
-
-   if (
-  !contenido ||
-  !titulo
-) {
-  return;
-}
-
-    titulo.textContent =
-     'Vista previa de la asistencia';
-
-    if (!registro) {
-      contenido.innerHTML = `
-        <div class="text-center py-4 text-danger">
-          No se encontró el registro de asistencia.
-        </div>
-      `;
-
-      abrirModalDetalle();
-      return;
+  registrarAuditoriaConsulta(
+    'asistencia',
+    'vista_previa',
+    {
+      id_registro:
+        registro.id_asistencia ?? null
     }
+  );
 
-    documentoActual = registro;
-tipoDocumentoActual = 'asistencia';
+  prepararEncabezadoDocumento(
+    'Registro de asistencia'
+  );
 
-registrarAuditoriaConsulta(
-  'asistencia',
-  'vista_previa',
-  {
-    id_registro: registro.id_asistencia ?? null
-  }
-);
+  const estudiante = `
+    ${registro.estudiante_nombre ?? ''}
+    ${registro.estudiante_apellido1 ?? ''}
+    ${registro.estudiante_apellido2 ?? ''}
+  `
+    .replace(/\s+/g, ' ')
+    .trim();
 
-prepararEncabezadoDocumento(
-  'Registro de asistencia'
-);
+  const profesor = `
+    ${registro.profesor_nombre ?? ''}
+    ${registro.profesor_apellido1 ?? ''}
+  `
+    .replace(/\s+/g, ' ')
+    .trim();
 
-    const estudiante = `${
-      registro.estudiante_nombre ?? ''
-    } ${
-      registro.estudiante_apellido1 ?? ''
-    } ${
-      registro.estudiante_apellido2 ?? ''
-    }`.trim();
+  const estado = String(
+    registro.estado_asistencia ?? ''
+  ).toLowerCase();
 
-    const profesor = `${
-      registro.profesor_nombre ?? ''
-    } ${
-      registro.profesor_apellido1 ?? ''
-    }`.trim();
+  const estadoTexto = {
+    presente: 'Presente',
+    ausente: 'Ausente',
+    tardia: 'Tardía',
+    justificada: 'Justificada'
+  }[estado] || registro.estado_asistencia || '-';
 
-    const estado = String(
-      registro.estado_asistencia ?? ''
-    ).toLowerCase();
+  contenido.innerHTML = `
+    <div class="consulta-documento-seccion">
 
-    contenido.innerHTML = `
-      <div class="row g-3">
+      <h3 class="consulta-documento-seccion-titulo">
+        Información de asistencia
+      </h3>
 
-        ${crearCampoDetalle(
+      <div class="consulta-documento-grid">
+
+        ${crearCampoDetalleDocumento(
           'Identificación',
           registro.id_asistencia ?? '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Fecha',
           limpiarFecha(registro.fecha)
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Estudiante',
           estudiante || '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Grupo',
           registro.nombre_grupo ?? '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Profesor',
           profesor || '-'
         )}
 
-        ${crearCampoDetalle(
+        ${crearCampoDetalleDocumento(
           'Estado',
-          crearBadgeAsistencia(estado)
+          estadoTexto
         )}
 
-        <div class="col-12">
-          <div class="bg-white border rounded p-3">
-            <span class="text-muted small d-block mb-1">
-              Observaciones
-            </span>
-
-            <div class="fw-semibold">
-              ${registro.observaciones || 'Sin observaciones'}
-            </div>
-          </div>
-        </div>
+        ${crearCampoDetalleDocumento(
+          'Observaciones',
+          registro.observaciones ||
+          'Sin observaciones',
+          true
+        )}
 
       </div>
-    `;
+    </div>
+  `;
 
-    abrirModalDetalle();
-  }
+  abrirModalDetalle();
+}
 
   function mostrarDetalleGrupo(id) {
   const grupo = grupos.find((item) => {
@@ -3161,13 +3324,13 @@ function prepararEncabezadoDocumento(titulo) {
     );
   }
 
-  async function registrarAuditoriaConsulta(
+ async function registrarAuditoriaConsulta(
   tipo,
   accion,
   detalle = {}
 ) {
   try {
-    await apiFetch('/api/auditorias', {
+    const respuesta = await apiFetch('/api/auditorias', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -3183,6 +3346,39 @@ function prepararEncabezadoDocumento(titulo) {
         })
       })
     });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta
+        .json()
+        .catch(() => ({}));
+
+      console.warn(
+        'No se pudo registrar la auditoría de consulta:',
+        errorData.mensaje ||
+        `Error ${respuesta.status}`
+      );
+
+      return;
+    }
+
+    // Actualizamos la auditoría en memoria para que,
+    // si se consulta luego, aparezcan los registros recientes.
+    if (rolActual() === 'administrador') {
+      const respuestaAuditorias =
+        await apiFetch('/api/auditorias');
+
+      if (respuestaAuditorias.ok) {
+        const datos =
+          await respuestaAuditorias.json();
+
+        auditorias =
+          Array.isArray(datos)
+            ? datos
+            : [];
+
+        actualizarResumen();
+      }
+    }
   } catch (error) {
     console.warn(
       'No se pudo registrar la auditoría de consulta:',

@@ -160,7 +160,7 @@ export async function postClaseExtra(req, res) {
 }
 
 export async function getConfiguracion(req, res) {
-  try { res.json((await obtenerConfiguracionFacturacion()) || {}); }
+  try { res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate"); res.json((await obtenerConfiguracionFacturacion()) || {}); }
   catch (e) { responderError(res, e, 500); }
 }
 

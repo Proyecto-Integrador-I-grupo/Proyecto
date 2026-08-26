@@ -15,13 +15,13 @@ export function describirResultadoBanco(result = {}) {
   return messages[code] || 'El pago no pudo completarse.';
 }
 
-export function pagarConBanky({ checkoutUrl, expectedOrigin, channel = BANKY_CHANNEL }) {
+export function pagarConBanky({ checkoutUrl, expectedOrigin, channel = BANKY_CHANNEL, popup: popupPreabierto = null }) {
   if (!checkoutUrl) return Promise.reject(new Error('No se recibió la dirección del servicio de pago.'));
   if (!expectedOrigin) return Promise.reject(new Error('No se configuró el origen seguro del servicio de pago.'));
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    let popup = null;
+    let popup = popupPreabierto || null;
     let watcher = null;
 
     function cleanup() {
@@ -50,10 +50,21 @@ export function pagarConBanky({ checkoutUrl, expectedOrigin, channel = BANKY_CHA
     }
 
     window.addEventListener('message', onMessage);
-    popup = window.open(checkoutUrl, 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
+    if (!popup) {
+      popup = window.open('about:blank', 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
+    }
     if (!popup) {
       cleanup();
       reject(new Error('El navegador bloqueó la ventana de pago. Permite ventanas emergentes e inténtalo nuevamente.'));
+      return;
+    }
+    try {
+      popup.location.replace(checkoutUrl);
+      popup.focus();
+    } catch {
+      cleanup();
+      try { popup.close(); } catch {}
+      reject(new Error('No se pudo abrir el datáfono del servicio bancario.'));
       return;
     }
 

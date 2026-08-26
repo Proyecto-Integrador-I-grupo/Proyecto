@@ -762,3 +762,278 @@
     min-height: 90px;
   }
 }
+
+/* ==========================================
+   AJUSTES VISUALES FINALES - CONSULTAS
+   ========================================== */
+
+/* Encabezado principal */
+.consultas-hero {
+  padding: 1.35rem 1.5rem;
+  border: 1px solid #d9e5f2;
+  border-left: 4px solid #4f86bd;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    110deg,
+    #ffffff 0%,
+    #f8fbff 58%,
+    #eef5fb 100%
+  );
+
+  box-shadow: 0 4px 14px rgba(15, 39, 71, 0.05);
+}
+
+.consultas-hero-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+
+  border-radius: 12px;
+
+  background: #315f8d;
+  color: #ffffff;
+
+  font-size: 1.3rem;
+
+  box-shadow: none;
+}
+
+
+/* Tarjetas de resumen */
+.consulta-stat {
+  min-height: 82px;
+  padding: 0.85rem 0.95rem;
+
+  gap: 0.7rem;
+
+  border: 1px solid #e1e7ee;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  box-shadow: 0 2px 8px rgba(15, 39, 71, 0.035);
+}
+
+.consulta-stat-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 2.6rem;
+
+  border-radius: 10px;
+
+  background: #eaf2f8;
+  color: #3d6f9f;
+
+  font-size: 1rem;
+}
+
+.consulta-stat .fs-3 {
+  font-size: 1.45rem !important;
+  color: #243b53;
+}
+
+
+/* Tarjeta de filtros y resultados */
+.consultas-container .card {
+  border-radius: 14px;
+}
+
+.consultas-container .card-body {
+  padding: 1.25rem;
+}
+
+
+/* Inputs y selects */
+.consultas-container .form-control,
+.consultas-container .form-select {
+  min-height: 38px;
+
+  border-color: #dbe2ea;
+  border-radius: 8px;
+
+  font-size: 0.9rem;
+}
+
+.consultas-container .form-control:focus,
+.consultas-container .form-select:focus {
+  border-color: #8aadd0;
+
+  box-shadow:
+    0 0 0 0.15rem rgba(71, 116, 160, 0.12);
+}
+
+
+/* Botón limpiar */
+#consulta-limpiar {
+  min-height: 38px;
+
+  padding: 0.35rem 0.85rem;
+
+  border-radius: 8px;
+
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+
+/* Botón Actualizar */
+#consulta-refrescar {
+  padding: 0.32rem 0.75rem;
+
+  border: 1px solid #b7cadc;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #315f8d;
+
+  font-size: 0.82rem;
+  font-weight: 500;
+
+  box-shadow: none;
+}
+
+#consulta-refrescar:hover {
+  border-color: #8cabc7;
+
+  background: #eef5fa;
+  color: #244c72;
+}
+
+
+/* Botones de Vista previa */
+.consulta-ver-estudiante,
+.consulta-ver-matriculado,
+.consulta-ver-profesor,
+.consulta-ver-matricula,
+.consulta-ver-asistencia,
+.consulta-ver-grupo {
+  padding: 0.3rem 0.68rem !important;
+
+  border: 1px solid #ccd5df !important;
+  border-radius: 7px !important;
+
+  background: #f8fafc !important;
+  color: #495b6c !important;
+
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+
+  box-shadow: none !important;
+}
+
+.consulta-ver-estudiante:hover,
+.consulta-ver-matriculado:hover,
+.consulta-ver-profesor:hover,
+.consulta-ver-matricula:hover,
+.consulta-ver-asistencia:hover,
+.consulta-ver-grupo:hover {
+  border-color: #aab8c6 !important;
+
+  background: #eef2f6 !important;
+  color: #263747 !important;
+}
+
+
+/* Iconos dentro de botones */
+#consulta-refrescar i,
+.consulta-ver-estudiante i,
+.consulta-ver-matriculado i,
+.consulta-ver-profesor i,
+.consulta-ver-matricula i,
+.consulta-ver-asistencia i,
+.consulta-ver-grupo i {
+  margin-right: 0.2rem;
+  font-size: 0.82rem;
+}
+
+
+/* Tabla */
+#consulta-tabla {
+  font-size: 0.9rem;
+}
+
+#consulta-tabla thead th {
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+
+  border-bottom: 1px solid #dfe5eb;
+
+  color: #526273;
+
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+#consulta-tabla tbody td {
+  padding-top: 0.78rem;
+  padding-bottom: 0.78rem;
+
+  border-color: #edf0f3;
+
+  vertical-align: middle;
+}
+
+#consulta-tabla tbody tr:hover {
+  background: #fafbfd;
+}
+
+
+/* Estados */
+#consulta-tabla .badge {
+  padding: 0.32rem 0.55rem;
+
+  border-radius: 6px;
+
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+#consulta-tabla .badge.bg-success {
+  background: #e7f5ec !important;
+  color: #297346 !important;
+}
+
+#consulta-tabla .badge.bg-secondary {
+  background: #edf1f5 !important;
+  color: #64748b !important;
+}
+
+#consulta-tabla .badge.bg-danger {
+  background: #fbecec !important;
+  color: #a94442 !important;
+}
+
+#consulta-tabla .badge.bg-warning {
+  background: #fff5dd !important;
+  color: #8a681d !important;
+}
+
+
+/* Título del listado */
+#consulta-titulo-tabla {
+  color: #25384b;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+#consulta-cantidad {
+  font-size: 0.78rem;
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+  .consultas-hero {
+    padding: 1.1rem;
+  }
+
+  .consulta-stat {
+    min-height: 76px;
+  }
+
+  #consulta-refrescar {
+    width: auto;
+  }
+}

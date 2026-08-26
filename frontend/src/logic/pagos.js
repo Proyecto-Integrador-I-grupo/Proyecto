@@ -1139,6 +1139,8 @@ function actualizarResponsableExoneracion(modo) {
   const ids = idsResponsableExoneracion(modo);
   const box = document.getElementById(ids.contenedor);
   box?.classList.toggle('hidden', !exonerado);
+  const modal = document.getElementById(editar ? 'modalEditarCargo' : 'modalNuevoCargo');
+  modal?.classList.toggle('is-exemption-active', exonerado);
   [ids.nombre, ids.correo, ids.numero].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;

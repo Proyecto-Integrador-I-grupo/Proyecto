@@ -27,6 +27,7 @@ import './styles/last-mile-fixes.css';
 import './styles/dark-mode-final.css';
 import './styles/dark-mode-polished.css';
 import './styles/dark-mode-master.css';
+import './styles/integration-ready.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

@@ -26,16 +26,16 @@ export default function Matricula() {
           <div className="col-md-6"><label className="form-label">Nombre del grupo</label><input id="grupo-nombre" className="form-control" maxLength="80" placeholder="Ej.: Lunes-Miércoles" required /></div>
           <div className="col-md-3"><label className="form-label">Capacidad</label><input id="grupo-capacidad" type="number" min="1" className="form-control" required /></div>
           <div className="col-md-3"><label className="form-label">Aula</label><select id="grupo-aula" className="form-select" required><option value="" disabled>Seleccionar aula</option>{Array.from({length:25},(_,i)=>{const codigo=`Aula ${String(i+1).padStart(2,'0')}`;return <option key={codigo} value={codigo}>{codigo}</option>})}</select></div>
-          <div className="col-12"><label className="form-label">Días de clase</label><div className="schedule-days schedule-days-week" id="grupo-dias">{['lunes','martes','miercoles','jueves','viernes'].map((dia) => <label key={dia} className="schedule-day"><input type="checkbox" value={dia} /> <span>{dia === 'miercoles' ? 'Miércoles' : dia.charAt(0).toUpperCase()+dia.slice(1)}</span></label>)}</div><div className="form-text">Selecciona los días reales. El sistema impedirá que el aula quede asignada a dos grupos en horarios que se crucen.</div></div>
-          <div className="col-md-4"><label className="form-label">Hora de inicio</label><input id="grupo-hora-inicio" type="time" className="form-control" required /></div>
-          <div className="col-md-4"><label className="form-label">Hora de finalización</label><input id="grupo-hora-fin" type="time" className="form-control" required /></div>
+          <div className="col-12"><label className="form-label schedule-label"><i className="bi bi-calendar-week schedule-field-icon"></i>Días de clase</label><div className="schedule-days schedule-days-week" id="grupo-dias">{['lunes','martes','miercoles','jueves','viernes'].map((dia) => <label key={dia} className="schedule-day"><input type="checkbox" value={dia} /> <span>{dia === 'miercoles' ? 'Miércoles' : dia.charAt(0).toUpperCase()+dia.slice(1)}</span></label>)}</div><div className="form-text">Selecciona los días reales. El sistema impedirá que el aula quede asignada a dos grupos en horarios que se crucen.</div></div>
+          <div className="col-md-4"><label className="form-label schedule-label"><i className="bi bi-clock schedule-field-icon"></i>Hora de inicio</label><input id="grupo-hora-inicio" type="time" className="form-control schedule-time-control" required /></div>
+          <div className="col-md-4"><label className="form-label schedule-label"><i className="bi bi-clock-fill schedule-field-icon"></i>Hora de finalización</label><input id="grupo-hora-fin" type="time" className="form-control schedule-time-control" required /></div>
           <div className="col-md-4"><label className="form-label">Sección</label><select id="grupo-seccion" className="form-select" required><option value="" disabled>Seleccionar sección</option></select></div>
           <div className="col-12"><input id="grupo-seccion-search" className="form-control form-control-sm" placeholder="Buscar sección por nombre, nivel o año..." /><div className="form-text">Las secciones y aulas ya ocupadas para ese horario se marcan como no disponibles.</div><div id="grupo-seccion-empty-hint" className="form-text hidden">No hay secciones registradas.</div></div>
         </div></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button><button type="submit" className="btn btn-outline-secondary">Crear Grupo</button></div></form>
       </Modal>
 
       <Modal id="modalGestionGrupo" title={<><i className="bi bi-pencil-square"></i> Gestionar Grupo</>} lg>
-        <form id="gestion-grupo-form"><div className="modal-body p-4"><div className="row g-3"><div className="col-12"><label className="form-label">Grupo</label><select id="gestion-grupo-select" className="form-select" required><option value="" disabled>Seleccionar grupo</option></select></div><div className="col-md-6"><label className="form-label">Capacidad</label><input id="gestion-grupo-capacidad" type="number" min="1" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Aula</label><select id="gestion-grupo-aula" className="form-select" required><option value="" disabled>Seleccionar aula</option>{Array.from({length:25},(_,i)=>{const codigo=`Aula ${String(i+1).padStart(2,'0')}`;return <option key={codigo} value={codigo}>{codigo}</option>})}</select><div className="form-text">No se permiten dos grupos en la misma aula con horarios superpuestos.</div></div><div className="col-12"><label className="form-label">Días de clase</label><div className="schedule-days" id="gestion-grupo-dias">{['lunes','martes','miercoles','jueves','viernes'].map((dia) => <label key={dia} className="schedule-day"><input type="checkbox" value={dia} /> <span>{dia === 'miercoles' ? 'Miércoles' : dia.charAt(0).toUpperCase()+dia.slice(1)}</span></label>)}</div></div><div className="col-md-6"><label className="form-label">Hora de inicio</label><input id="gestion-grupo-hora-inicio" type="time" className="form-control" /></div><div className="col-md-6"><label className="form-label">Hora de finalización</label><input id="gestion-grupo-hora-fin" type="time" className="form-control" /></div></div></div><div className="modal-footer d-flex justify-content-between"><button type="button" id="btn-borrar-grupo" className="btn btn-outline-danger"><i className="bi bi-trash"></i> Borrar Grupo</button><div><button type="button" className="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cerrar</button><button type="submit" className="btn btn-primary">Guardar cambios</button></div></div></form>
+        <form id="gestion-grupo-form"><div className="modal-body p-4"><div className="row g-3"><div className="col-12"><label className="form-label">Grupo</label><select id="gestion-grupo-select" className="form-select" required><option value="" disabled>Seleccionar grupo</option></select></div><div className="col-md-6"><label className="form-label">Capacidad</label><input id="gestion-grupo-capacidad" type="number" min="1" className="form-control" required /></div><div className="col-md-6"><label className="form-label">Aula</label><select id="gestion-grupo-aula" className="form-select" required><option value="" disabled>Seleccionar aula</option>{Array.from({length:25},(_,i)=>{const codigo=`Aula ${String(i+1).padStart(2,'0')}`;return <option key={codigo} value={codigo}>{codigo}</option>})}</select><div className="form-text">No se permiten dos grupos en la misma aula con horarios superpuestos.</div></div><div className="col-12"><label className="form-label schedule-label"><i className="bi bi-calendar-week schedule-field-icon"></i>Días de clase</label><div className="schedule-days" id="gestion-grupo-dias">{['lunes','martes','miercoles','jueves','viernes'].map((dia) => <label key={dia} className="schedule-day"><input type="checkbox" value={dia} /> <span>{dia === 'miercoles' ? 'Miércoles' : dia.charAt(0).toUpperCase()+dia.slice(1)}</span></label>)}</div></div><div className="col-md-6"><label className="form-label schedule-label"><i className="bi bi-clock schedule-field-icon"></i>Hora de inicio</label><input id="gestion-grupo-hora-inicio" type="time" className="form-control schedule-time-control" /></div><div className="col-md-6"><label className="form-label schedule-label"><i className="bi bi-clock-fill schedule-field-icon"></i>Hora de finalización</label><input id="gestion-grupo-hora-fin" type="time" className="form-control schedule-time-control" /></div></div></div><div className="modal-footer d-flex justify-content-between"><button type="button" id="btn-borrar-grupo" className="btn btn-outline-danger"><i className="bi bi-trash"></i> Borrar Grupo</button><div><button type="button" className="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cerrar</button><button type="submit" className="btn btn-primary">Guardar cambios</button></div></div></form>
       </Modal>
 
       <Modal id="modalGestionMatricula" title={<><i className="bi bi-person-gear"></i> Gestionar Matrícula</>} lg>
@@ -43,48 +43,88 @@ export default function Matricula() {
       </Modal>
 
       <Modal id="modalSeccion" title={<><i className="bi bi-diagram-3"></i> Administrar Secciones</>} lg className="edu-section-modal">
-        <div className="modal-body p-4">
-          <div className="row g-4">
-            <div className="col-lg-7">
-              <div className="section-form-card">
-                <div className="mb-3">
-                  <h6 className="mb-1">Crear nueva sección</h6>
-                  <p className="text-muted small mb-1">Completa el grado y la letra. El sistema la mostrará en formato <strong>1-A</strong>.</p><div className="section-format-example"><i className="bi bi-lightbulb"></i><span><strong>Ejemplo:</strong> grado 1 + sección A = <strong>1-A</strong>. Grado 6 + sección B = <strong>6-B</strong>.</span></div>
-                </div>
-                <form id="seccion-form" noValidate>
-                  <div className="row g-3">
-                    <div className="col-md-4"><label className="form-label">Nivel / grado</label><select id="seccion-nivel" className="form-select" defaultValue="1" required><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
-                    <div className="col-md-4"><label className="form-label">Letra / sección</label><select id="seccion-nombre" className="form-select" defaultValue="A" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option></select></div>
-                    <div className="col-md-4"><label className="form-label">Año lectivo</label><input id="seccion-periodo" type="number" min="2000" max="2100" className="form-control" placeholder="Ej.: 2026" required /></div>
-                    <div className="col-12"><div id="seccion-preview" className="section-name-preview"><span>Vista previa</span><strong>1-A</strong></div></div>
-                    <div className="col-12"><label className="form-label">Descripción <span className="text-muted fw-normal">(opcional)</span></label><textarea id="seccion-descripcion" className="form-control" rows="2" maxLength="250" placeholder="Ej.: Primer grado, sección A (puedes dejarlo vacío)" aria-required="false"></textarea></div>
-                    <div className="col-12"><div id="seccion-validation-hint" className="form-text mb-2">El sistema impedirá duplicados para el mismo año lectivo.</div><button id="btn-crear-seccion" type="submit" className="btn btn-primary w-100"><i className="bi bi-plus-circle me-1"></i> Crear sección</button></div>
-                  </div>
-                </form>
+        <div className="modal-body section-admin-body">
+          <div className="section-admin-panel section-create-panel">
+            <div className="section-panel-heading">
+              <span className="section-panel-icon"><i className="bi bi-plus-square"></i></span>
+              <div>
+                <h6 className="mb-1">Crear nueva sección</h6>
+                <p className="mb-0">Define grado, letra y año lectivo. La descripción es opcional.</p>
               </div>
             </div>
+
+            <form id="seccion-form" noValidate>
+              <div className="row g-3 align-items-end section-create-fields">
+                <div className="col-sm-4 col-lg-3">
+                  <label className="form-label">Nivel / grado</label>
+                  <select id="seccion-nivel" className="form-select" defaultValue="1" required>
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                  </select>
+                </div>
+                <div className="col-sm-4 col-lg-3">
+                  <label className="form-label">Letra / sección</label>
+                  <select id="seccion-nombre" className="form-select" defaultValue="A" required>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option>
+                  </select>
+                </div>
+                <div className="col-sm-4 col-lg-3">
+                  <label className="form-label"><i className="bi bi-calendar3 schedule-field-icon"></i>Año lectivo</label>
+                  <input id="seccion-periodo" type="number" min="2000" max="2100" className="form-control" placeholder="Ej.: 2026" required />
+                </div>
+                <div className="col-lg-3">
+                  <div id="seccion-preview" className="section-name-preview section-name-preview-compact">
+                    <span>Vista previa</span><strong>1-A</strong>
+                  </div>
+                </div>
+
+                <div className="col-lg-8">
+                  <label className="form-label">Descripción <span className="section-optional-label">Opcional</span></label>
+                  <textarea id="seccion-descripcion" className="form-control" rows="2" maxLength="250" placeholder="Ej.: Primer grado, sección A. Puedes dejar este campo vacío." aria-required="false"></textarea>
+                </div>
+                <div className="col-lg-4 section-create-action">
+                  <div id="seccion-validation-hint" className="form-text">No se permiten duplicados en el mismo año lectivo.</div>
+                  <button id="btn-crear-seccion" type="submit" className="btn btn-primary w-100"><i className="bi bi-plus-circle me-1"></i> Crear sección</button>
+                </div>
+              </div>
+            </form>
+
+            <div className="section-format-example mt-3">
+              <i className="bi bi-lightbulb"></i>
+              <span><strong>Formato:</strong> grado 1 + sección A = <strong>1-A</strong> · grado 6 + sección B = <strong>6-B</strong>.</span>
+            </div>
+          </div>
+
+          <div className="row g-3 mt-1 section-admin-secondary">
             <div className="col-lg-5">
-              <div className="section-delete-card">
-                <h6 className="mb-1">Secciones registradas</h6>
-                <p className="text-muted small">Selecciona una sección únicamente si necesitas eliminarla.</p>
+              <div className="section-admin-panel section-delete-card h-100">
+                <div className="section-panel-heading compact">
+                  <span className="section-panel-icon danger"><i className="bi bi-trash3"></i></span>
+                  <div><h6 className="mb-1">Secciones registradas</h6><p className="mb-0">Elimina únicamente una sección que ya no se utilice.</p></div>
+                </div>
                 <label className="form-label">Sección</label>
                 <select id="seccion-delete-select" className="form-select mb-3"><option value="" disabled>Seleccionar sección</option></select>
-                <button type="button" id="btn-borrar-seccion" className="btn btn-outline-danger w-100" disabled><i className="bi bi-trash me-1"></i> Eliminar Sección</button>
+                <button type="button" id="btn-borrar-seccion" className="btn btn-outline-danger w-100" disabled><i className="bi bi-trash me-1"></i> Eliminar sección</button>
               </div>
-              <div className="section-delete-card mt-3" id="periodo-lectivo-card">
-                <h6 className="mb-1">Período lectivo</h6>
-                <p className="text-muted small">Al cerrar un año se bloquean matrículas, traslados, cambios de grupos y edición de asistencias.</p>
-                <div className="row g-2">
-                  <div className="col-12"><label className="form-label">Año</label><select id="periodo-admin-anio" className="form-select"></select></div>
-                  <div className="col-6"><label className="form-label">Inicio</label><input id="periodo-admin-inicio" type="date" className="form-control" /></div>
-                  <div className="col-6"><label className="form-label">Fin</label><input id="periodo-admin-fin" type="date" className="form-control" /></div>
-                  <div className="col-12"><label className="form-label">Estado</label><select id="periodo-admin-estado" className="form-select"><option value="PLANIFICADO">Planificado</option><option value="ACTIVO">Activo</option><option value="CERRADO">Cerrado</option></select></div>
+            </div>
+
+            <div className="col-lg-7">
+              <div className="section-admin-panel section-period-card h-100" id="periodo-lectivo-card">
+                <div className="section-panel-heading compact">
+                  <span className="section-panel-icon info"><i className="bi bi-calendar-range"></i></span>
+                  <div><h6 className="mb-1">Período lectivo</h6><p className="mb-0">Al cerrarlo se bloquean matrículas, traslados, cambios de grupos y edición de asistencias.</p></div>
+                </div>
+                <div className="row g-2 align-items-end">
+                  <div className="col-sm-6 col-lg-3"><label className="form-label">Año</label><select id="periodo-admin-anio" className="form-select"></select></div>
+                  <div className="col-sm-6 col-lg-3"><label className="form-label"><i className="bi bi-calendar-event schedule-field-icon"></i>Inicio</label><input id="periodo-admin-inicio" type="date" className="form-control schedule-date-control" /></div>
+                  <div className="col-sm-6 col-lg-3"><label className="form-label"><i className="bi bi-calendar-check schedule-field-icon"></i>Fin</label><input id="periodo-admin-fin" type="date" className="form-control schedule-date-control" /></div>
+                  <div className="col-sm-6 col-lg-3"><label className="form-label">Estado</label><select id="periodo-admin-estado" className="form-select"><option value="PLANIFICADO">Planificado</option><option value="ACTIVO">Activo</option><option value="CERRADO">Cerrado</option></select></div>
                   <div className="col-12"><button type="button" id="btn-guardar-periodo" className="btn btn-outline-secondary w-100"><i className="bi bi-calendar-check me-1"></i> Guardar período</button></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+        <div className="modal-footer section-admin-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button></div>
       </Modal>
 
       <Modal id="modalConfirmarEliminacion" title={<><i className="bi bi-exclamation-triangle"></i> Confirmar eliminación</>}><div className="modal-body p-4"><p>Esta acción eliminará el grupo seleccionado. ¿Deseas continuar?</p></div><div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" id="btn-confirmar-borrado-grupo" className="btn btn-danger destructive-confirm">Eliminar grupo</button></div></Modal>

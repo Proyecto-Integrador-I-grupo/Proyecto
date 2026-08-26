@@ -35,12 +35,12 @@
   border-left: 4px solid var(--consulta-blue);
   border-radius: 14px;
 
-  background: linear-gradient(
+background: linear-gradient(
   110deg,
-  #e3edff 0%,
-  #dbe6fb 40%,
-  #dddaf5 70%,
-  #d8cff0 100%
+  #b9cdf6 0%,
+  #b7c4ed 35%,
+  #bcb6e7 68%,
+  #c4ace3 100%
 );
 
   box-shadow: 0 4px 14px rgba(24, 55, 82, 0.045);

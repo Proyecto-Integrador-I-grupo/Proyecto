@@ -29,6 +29,7 @@ import './styles/dark-mode-polished.css';
 import './styles/dark-mode-master.css';
 import './styles/integration-ready.css';
 import './styles/schedules-final.css';
+import './styles/responsive-final.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };

@@ -2122,13 +2122,14 @@ async function guardarConfiguracion(event) {
   }
 
   try {
+    const nuevaApiKeyIngresada = String(value('fin-config-factura-key') || '').trim();
     const payload = {
       institucion_nombre: value('fin-config-nombre'),
       tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'),
       correo: value('fin-config-correo'),
       factura_bonita_url: value('fin-config-factura-url'),
-      factura_bonita_api_key: value('fin-config-factura-key'),
+      factura_bonita_api_key: nuevaApiKeyIngresada,
       banco_merchant_id: value('fin-config-banco-merchant'),
       banco_afiliado: Boolean(document.getElementById('fin-config-banco-afiliado')?.checked),
       firma_digital_url: value('fin-config-firma-url'),
@@ -2156,7 +2157,7 @@ async function guardarConfiguracion(event) {
       (!esperadoFacturaUrl || guardadoFacturaUrl === esperadoFacturaUrl) &&
       (!merchantEsperado || String(verificacion?.banco_merchant_id || '').trim() === merchantEsperado) &&
       Boolean(verificacion?.banco_afiliado) === afiliadoEsperado &&
-      (!value('fin-config-factura-key').trim() || Boolean(verificacion?.factura_bonita_api_key_configurada));
+      (!nuevaApiKeyIngresada || Boolean(verificacion?.factura_bonita_api_key_configurada));
 
     if (!coincideServicios) throw new Error('La configuración respondió, pero no fue posible confirmar todos los datos de integración.');
 

@@ -94,61 +94,50 @@ async function columnaConfiguracionExiste(nombre) {
   return Number(row?.existe || 0) > 0;
 }
 
+async function crearTablaConfiguracionIntegraciones() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS configuracion_integracion_servicios (
+    id_configuracion TINYINT NOT NULL PRIMARY KEY,
+    factura_bonita_url VARCHAR(500) NULL,
+    factura_bonita_api_key LONGTEXT NULL,
+    banco_checkout_url VARCHAR(500) NULL,
+    banco_login_url VARCHAR(500) NULL,
+    banco_registro_url VARCHAR(500) NULL,
+    banco_merchant_id VARCHAR(160) NULL,
+    banco_afiliado BOOLEAN NOT NULL DEFAULT FALSE,
+    firma_digital_url VARCHAR(500) NULL,
+    factura_electronica_url VARCHAR(500) NULL,
+    tributacion_url VARCHAR(500) NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
+async function crearTablaDocumentosIntegrados() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS documento_facturacion_integrada (
+    id_documento BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_cargo INT NOT NULL,
+    tipo ENUM('pdf_visual','factura_electronica','acuse') NOT NULL,
+    estado VARCHAR(40) NOT NULL DEFAULT 'pendiente',
+    identificador_externo VARCHAR(160) NULL,
+    url_documento VARCHAR(1000) NULL,
+    mime_type VARCHAR(120) NULL,
+    contenido LONGTEXT NULL,
+    respuesta_json JSON NULL,
+    error_mensaje VARCHAR(500) NULL,
+    fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_documento_integrado_cargo_tipo (id_cargo, tipo),
+    KEY idx_documento_integrado_estado (estado),
+    CONSTRAINT fk_documento_integrado_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
 async function asegurarEsquemaIntegracion() {
   if (esquemaIntegracionPromise) return esquemaIntegracionPromise;
   esquemaIntegracionPromise = (async () => {
-    const columnas = [
-      ['factura_bonita_url', "VARCHAR(500) NULL"],
-      ['factura_bonita_api_key', "LONGTEXT NULL"],
-      ['banco_checkout_url', "VARCHAR(500) NULL"],
-      ['banco_login_url', "VARCHAR(500) NULL"],
-      ['banco_registro_url', "VARCHAR(500) NULL"],
-      ['banco_merchant_id', "VARCHAR(160) NULL"],
-      ['banco_afiliado', "BOOLEAN NOT NULL DEFAULT FALSE"],
-      ['firma_digital_url', "VARCHAR(500) NULL"],
-      ['factura_electronica_url', "VARCHAR(500) NULL"],
-      ['tributacion_url', "VARCHAR(500) NULL"]
-    ];
-    for (const [nombre, definicion] of columnas) {
-      if (!(await columnaConfiguracionExiste(nombre))) {
-        await pool.query(`ALTER TABLE configuracion_facturacion ADD COLUMN ${nombre} ${definicion}`);
-      }
-    }
-
-    // La configuración de integraciones se guarda aparte de los datos fiscales.
-    // Así puede persistir aunque una versión de la BD todavía no tenga cargado
-    // el registro 1 de configuracion_facturacion.
-    await pool.query(`CREATE TABLE IF NOT EXISTS configuracion_integracion_servicios (
-      id_configuracion TINYINT NOT NULL PRIMARY KEY,
-      factura_bonita_url VARCHAR(500) NULL,
-      factura_bonita_api_key LONGTEXT NULL,
-      banco_checkout_url VARCHAR(500) NULL,
-      banco_login_url VARCHAR(500) NULL,
-      banco_registro_url VARCHAR(500) NULL,
-      banco_merchant_id VARCHAR(160) NULL,
-      banco_afiliado BOOLEAN NOT NULL DEFAULT FALSE,
-      firma_digital_url VARCHAR(500) NULL,
-      factura_electronica_url VARCHAR(500) NULL,
-      tributacion_url VARCHAR(500) NULL,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-
-    await pool.query(`CREATE TABLE IF NOT EXISTS documento_facturacion_integrada (
-      id_documento BIGINT AUTO_INCREMENT PRIMARY KEY,
-      id_cargo INT NOT NULL,
-      tipo ENUM('pdf_visual','factura_electronica','acuse') NOT NULL,
-      estado VARCHAR(40) NOT NULL DEFAULT 'pendiente',
-      identificador_externo VARCHAR(160) NULL,
-      url_documento VARCHAR(1000) NULL,
-      mime_type VARCHAR(120) NULL,
-      contenido LONGTEXT NULL,
-      respuesta_json JSON NULL,
-      error_mensaje VARCHAR(500) NULL,
-      fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uq_documento_integrado_cargo_tipo (id_cargo, tipo),
-      KEY idx_documento_integrado_estado (estado),
-      CONSTRAINT fk_documento_integrado_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    // La tabla de integraciones es la fuente de verdad para credenciales y endpoints.
+    // Se crea primero para que una BD anterior pueda guardar configuraciones aunque
+    // configuracion_facturacion todavía tenga el esquema original.
+    await crearTablaConfiguracionIntegraciones();
+    await crearTablaDocumentosIntegrados();
   })().catch((error) => {
     esquemaIntegracionPromise = null;
     throw error;
@@ -180,7 +169,15 @@ async function obtenerConfigInterna() {
   await asegurarLogoConfiguracion();
   await asegurarEsquemaIntegracion();
   const [rows] = await pool.query(`SELECT * FROM configuracion_facturacion WHERE id_configuracion = 1 LIMIT 1`);
-  const [integrationRows] = await pool.query(`SELECT * FROM configuracion_integracion_servicios WHERE id_configuracion = 1 LIMIT 1`);
+  let integrationRows;
+  try {
+    [integrationRows] = await pool.query(`SELECT * FROM configuracion_integracion_servicios WHERE id_configuracion = 1 LIMIT 1`);
+  } catch (error) {
+    if (error?.code !== 'ER_NO_SUCH_TABLE') throw error;
+    // Reparación defensiva para instalaciones que fueron creadas con un SQL anterior.
+    await crearTablaConfiguracionIntegraciones();
+    [integrationRows] = await pool.query(`SELECT * FROM configuracion_integracion_servicios WHERE id_configuracion = 1 LIMIT 1`);
+  }
   const fiscal = rows[0] || {};
   const integration = integrationRows[0] || {};
   const camposIntegracion = [
@@ -382,34 +379,21 @@ export async function actualizarConfiguracionFacturacion(datos) {
      firmaDigitalUrl, facturaElectronicaUrl, tributacionUrl]
   );
 
-  // Los datos fiscales se actualizan únicamente cuando están completos. Las
-  // integraciones pueden guardarse independientemente para no bloquear pagos.
+  // Los datos fiscales se guardan en su tabla propia. Los endpoints/credenciales
+  // permanecen únicamente en configuracion_integracion_servicios para evitar
+  // duplicación y diferencias entre versiones de la base de datos.
   if (nombre && tipo && numeroId && correo) await pool.query(
     `INSERT INTO configuracion_facturacion
-      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado,
-       factura_bonita_url, factura_bonita_api_key, banco_checkout_url, banco_login_url, banco_registro_url, banco_merchant_id, banco_afiliado,
-       firma_digital_url, factura_electronica_url, tributacion_url)
-     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
+     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE)
      ON DUPLICATE KEY UPDATE
        institucion_nombre = VALUES(institucion_nombre),
        tipo_identificacion = VALUES(tipo_identificacion),
        numero_identificacion = VALUES(numero_identificacion),
        correo = VALUES(correo),
        logo_data = VALUES(logo_data),
-       estado = TRUE,
-       factura_bonita_url = VALUES(factura_bonita_url),
-       factura_bonita_api_key = VALUES(factura_bonita_api_key),
-       banco_checkout_url = VALUES(banco_checkout_url),
-       banco_login_url = VALUES(banco_login_url),
-       banco_registro_url = VALUES(banco_registro_url),
-       banco_merchant_id = VALUES(banco_merchant_id),
-       banco_afiliado = VALUES(banco_afiliado),
-       firma_digital_url = VALUES(firma_digital_url),
-       factura_electronica_url = VALUES(factura_electronica_url),
-       tributacion_url = VALUES(tributacion_url)`,
-    [nombre, tipo, numeroId, correo, logoData, facturaBonitaUrl, apiKeyCifrada,
-     bancoCheckoutUrl, bancoLoginUrl, bancoRegistroUrl, bancoMerchantId, bancoAfiliado ? 1 : 0,
-     firmaDigitalUrl, facturaElectronicaUrl, tributacionUrl]
+       estado = TRUE`,
+    [nombre, tipo, numeroId, correo, logoData]
   );
 
   return obtenerConfiguracionFacturacion();

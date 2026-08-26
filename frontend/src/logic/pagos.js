@@ -139,11 +139,11 @@ function wirePagosEvents() {
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
-  wire('fin-cargo-monto', 'input', () => actualizarResponsableExoneracion('nuevo'));
-  wire('fin-cargo-descuento', 'input', () => actualizarResponsableExoneracion('nuevo'));
+  wire('fin-cargo-monto', 'input', () => { sincronizarLimiteDescuento('nuevo'); actualizarResponsableExoneracion('nuevo'); });
+  wire('fin-cargo-descuento', 'input', () => { sincronizarLimiteDescuento('nuevo'); actualizarResponsableExoneracion('nuevo'); });
   wire('fin-cargo-estudiante', 'change', () => cargarResponsableExoneracion('nuevo'));
-  wire('fin-edit-cargo-monto', 'input', () => actualizarResponsableExoneracion('editar'));
-  wire('fin-edit-cargo-descuento', 'input', () => actualizarResponsableExoneracion('editar'));
+  wire('fin-edit-cargo-monto', 'input', () => { sincronizarLimiteDescuento('editar'); actualizarResponsableExoneracion('editar'); });
+  wire('fin-edit-cargo-descuento', 'input', () => { sincronizarLimiteDescuento('editar'); actualizarResponsableExoneracion('editar'); });
   wire('fin-clase-extra-form', 'submit', guardarClaseExtra);
   wire('fin-extra-profesor', 'change', handleProfesorExtraChange);
   wire('fin-extra-profesor-search', 'input', (event) => renderProfesoresExtraSelect(event.target.value));
@@ -866,7 +866,7 @@ async function cargarCargos() {
   // Siempre se conserva el catálogo completo en memoria. Los filtros de la
   // sección administrativa se aplican localmente para no alterar los bloques
   // principales de Pendientes y Facturación.
-  cargos = await requestJson('/api/finanzas/cargos');
+  cargos = await requestJson(`/api/finanzas/cargos?_=${Date.now()}`, { cache: 'no-store' });
   if (!Array.isArray(cargos)) cargos = [];
   renderCargos();
 }
@@ -1134,6 +1134,25 @@ function validarDescuentoNoVencido(fecha, descuento) {
   return true;
 }
 
+function validarMontoDescuento(base, descuento) {
+  const montoBase = Number(base);
+  const montoDescuento = Number(descuento);
+  if (!Number.isFinite(montoBase) || montoBase < 0) throw new Error('El monto base no es válido.');
+  if (!Number.isFinite(montoDescuento) || montoDescuento < 0) throw new Error('El descuento no puede ser negativo.');
+  if (montoDescuento > montoBase) throw new Error('El descuento no puede ser mayor al monto base.');
+  return { base: montoBase, descuento: montoDescuento };
+}
+
+function sincronizarLimiteDescuento(modo) {
+  const editar = modo === 'editar';
+  const baseInput = document.getElementById(editar ? 'fin-edit-cargo-monto' : 'fin-cargo-monto');
+  const descuentoInput = document.getElementById(editar ? 'fin-edit-cargo-descuento' : 'fin-cargo-descuento');
+  if (!baseInput || !descuentoInput) return;
+  const base = Math.max(0, Number(baseInput.value || 0));
+  descuentoInput.max = String(base);
+  descuentoInput.setCustomValidity(Number(descuentoInput.value || 0) > base ? 'El descuento no puede ser mayor al monto base.' : '');
+}
+
 function esExoneracionCompleta(base, descuento) {
   const b = Number(base || 0);
   const d = Number(descuento || 0);
@@ -1231,6 +1250,7 @@ async function abrirEdicionCargo(idCargo, enfocarDescuento = false) {
   await cargarResponsableExoneracion('editar', c.id_estudiante);
   actualizarResponsableExoneracion('editar');
   sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento');
+  sincronizarLimiteDescuento('editar');
   const ctx = document.getElementById('fin-edit-cargo-contexto');
   if (ctx) ctx.innerHTML = `<strong>${esc(c.estudiante_nombre)}</strong><span>${esc(c.concepto_nombre)}</span><span>Pagado: ${moneda(Number(c.total||0)-Number(c.saldo||0))}</span>`;
   showModal('modalEditarCargo');
@@ -1254,8 +1274,7 @@ async function guardarEdicionCargo(event) {
   const id = Number(value('fin-edit-cargo-id'));
   try {
     const fechaVencimiento = value('fin-edit-cargo-vencimiento') || null;
-    const base = Number(value('fin-edit-cargo-monto') || 0);
-    const descuento = Number(value('fin-edit-cargo-descuento') || 0);
+    const { base, descuento } = validarMontoDescuento(value('fin-edit-cargo-monto') || 0, value('fin-edit-cargo-descuento') || 0);
     validarDescuentoNoVencido(fechaVencimiento, descuento);
     const exoneracionTotal = esExoneracionCompleta(base, descuento);
     actualizarResponsableExoneracion('editar');
@@ -1268,6 +1287,11 @@ async function guardarEdicionCargo(event) {
     if (exoneracionTotal) payload.responsable = leerResponsableExoneracion('editar');
 
     const r = await requestJson(`/api/finanzas/cargos/${id}`, { method:'PUT', body:JSON.stringify(payload) });
+    const idx = cargos.findIndex((cargo) => Number(cargo.id_cargo) === id);
+    if (idx >= 0) {
+      cargos[idx] = { ...cargos[idx], ...r, monto_base: r.monto_base ?? base, descuento: r.descuento ?? descuento };
+      renderCargos();
+    }
     hideModal('modalEditarCargo');
     if (r.exoneracion_total) {
       if (r.facturacion?.ok) showToast(`Exoneración del 100% aplicada. Factura ${r.facturacion.id_factura || ''} generada correctamente.`, 'success');
@@ -1297,8 +1321,7 @@ async function guardarCargo(event) {
 
   try {
     const fechaVencimiento = value('fin-cargo-vencimiento') || null;
-    const base = Number(value('fin-cargo-monto') || 0);
-    const descuento = Number(value('fin-cargo-descuento') || 0);
+    const { base, descuento } = validarMontoDescuento(value('fin-cargo-monto') || 0, value('fin-cargo-descuento') || 0);
     validarDescuentoNoVencido(fechaVencimiento, descuento);
     const exoneracionTotal = esExoneracionCompleta(base, descuento);
     actualizarResponsableExoneracion('nuevo');

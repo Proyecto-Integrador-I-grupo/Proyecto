@@ -42,7 +42,54 @@ const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || '
   .trim().toLowerCase().replace(/^@+/, '');
 const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
 
+function fechaLocalISO(fecha = new Date()) {
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+}
+
+function limitesFechaIngreso() {
+  const hoy = new Date();
+  return {
+    min: `${hoy.getFullYear()}-01-01`,
+    max: fechaLocalISO(hoy),
+    anio: hoy.getFullYear()
+  };
+}
+
+function configurarFechaIngresoProfesor() {
+  const { min, max } = limitesFechaIngreso();
+  ['prof-fecha-ingreso', 'edit-prof-fecha-ingreso'].forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.min = min;
+    input.max = max;
+  });
+}
+
+function validarFechaIngresoProfesor(valor) {
+  const fecha = String(valor || '').slice(0, 10);
+  const { min, max, anio } = limitesFechaIngreso();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new Error('Selecciona una fecha de ingreso válida.');
+  }
+  if (fecha < min) {
+    throw new Error(`La fecha de ingreso debe pertenecer al año ${anio}.`);
+  }
+  if (fecha > max) {
+    throw new Error('La fecha de ingreso no puede ser futura.');
+  }
+  return fecha;
+}
+
+function validarHorasMaximasProfesor(valor) {
+  const horas = Number(valor);
+  if (!Number.isFinite(horas) || horas < 1 || horas > 60) {
+    throw new Error('La carga máxima semanal debe estar entre 1 y 60 horas.');
+  }
+  return horas;
+}
+
 function wireProfesoresEvents() {
+  configurarFechaIngresoProfesor();
   const modalProfesor = document.getElementById('modalProfesor');
   if (modalProfesor && !modalProfesor.dataset.cleanWired) {
     modalProfesor.dataset.cleanWired = '1';
@@ -80,6 +127,9 @@ function wireProfesoresEvents() {
 
     modalProfesor.addEventListener('show.bs.modal', () => {
       document.getElementById('profesor-form')?.reset();
+      configurarFechaIngresoProfesor();
+      const ingreso = document.getElementById('prof-fecha-ingreso');
+      if (ingreso) ingreso.value = fechaLocalISO();
       limpiarCredencialesProfesor();
     });
 
@@ -422,17 +472,34 @@ async function handleProfesorSubmit(e) {
     return;
   }
 
+  let fechaIngreso;
+  let horasMaximas;
+  try {
+    fechaIngreso = validarFechaIngresoProfesor(document.getElementById('prof-fecha-ingreso')?.value);
+    horasMaximas = validarHorasMaximasProfesor(document.getElementById('prof-horas-max')?.value || 40);
+  } catch (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const fechaNacimiento = document.getElementById('prof-fecha-nac')?.value || '';
+  const genero = normalizeGenero(document.getElementById('prof-genero')?.value) || '';
+  if (!fechaNacimiento || !genero) {
+    showToast('Completa la fecha de nacimiento y el género del profesor.', 'error');
+    return;
+  }
+
   const payload = {
     nombre: nombre,
     apellido1: apellido1,
     apellido2: document.getElementById('prof-apellido2')?.value.trim() || '',
-    fecha_nacimiento: document.getElementById('prof-fecha-nac')?.value || null,
-    genero: normalizeGenero(document.getElementById('prof-genero')?.value) || null,
+    fecha_nacimiento: fechaNacimiento,
+    genero,
     materia: materia,
-    fecha_ingreso: document.getElementById('prof-fecha-ingreso')?.value || null,
+    fecha_ingreso: fechaIngreso,
     correo: correo,
     contrasena: contrasena,
-    horas_maximas_semana: Number(document.getElementById('prof-horas-max')?.value || 40)
+    horas_maximas_semana: horasMaximas
   };
 
   try {
@@ -534,6 +601,7 @@ function abrirEdicionProfesor(idProf) {
   set('edit-prof-correo', profesor.correo);
   set('edit-prof-genero', profesor.genero || 'O');
   set('edit-prof-fecha-nac', String(profesor.fecha_nacimiento || '').slice(0, 10));
+  configurarFechaIngresoProfesor();
   set('edit-prof-fecha-ingreso', String(profesor.fecha_ingreso || '').slice(0, 10));
   const modalEl = document.getElementById('modalEditarProfesor');
   if (modalEl) new bootstrap.Modal(modalEl).show();
@@ -553,8 +621,14 @@ async function guardarEdicionProfesor(event) {
     fecha_nacimiento: val('edit-prof-fecha-nac'),
     fecha_ingreso: val('edit-prof-fecha-ingreso')
   };
-  if (!id || !payload.nombre || !payload.apellido1 || !payload.correo || !payload.fecha_nacimiento) {
+  if (!id || !payload.nombre || !payload.apellido1 || !payload.materia || !payload.correo || !payload.fecha_nacimiento || !payload.genero || !payload.fecha_ingreso) {
     showToast('Completa todos los datos obligatorios.', 'error'); return;
+  }
+  try {
+    payload.fecha_ingreso = validarFechaIngresoProfesor(payload.fecha_ingreso);
+  } catch (error) {
+    showToast(error.message, 'error');
+    return;
   }
   if (!isSchoolEmail(payload.correo)) { showToast(`Utiliza un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error'); return; }
   try {

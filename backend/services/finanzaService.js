@@ -1070,7 +1070,7 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
       }
     }
 
-    return { id_cargo:id, total, saldo, estado, pagado, exoneracion_total: exoneracionTotal, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias, facturacion };
+    return { id_cargo:id, monto_base: base, descuento, impuesto, total, saldo, estado, pagado, exoneracion_total: exoneracionTotal, fecha_vencimiento: fechaVencimientoResultante, plazo_dias: Number(cargo.plazo_dias || 0) + extensionDias, facturacion };
   } catch (e) { await connection.rollback(); throw e; } finally { connection.release(); }
 }
 

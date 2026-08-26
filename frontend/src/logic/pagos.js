@@ -1563,7 +1563,20 @@ async function guardarPago(event) {
     }
   } catch (e) {
     if (popupBanco && !popupBanco.closed) {
-      try { popupBanco.close(); } catch {}
+      try {
+        popupBanco.document.title = 'No se pudo iniciar el pago';
+        popupBanco.document.body.style.margin = '0';
+        popupBanco.document.body.innerHTML = `
+          <main style="min-height:100vh;display:grid;place-items:center;background:#f7f9fb;font-family:system-ui;padding:28px;box-sizing:border-box">
+            <section style="max-width:440px;background:#fff;border:1px solid #ead2d6;border-radius:18px;padding:28px;text-align:center;box-shadow:0 14px 36px rgba(0,0,0,.10)">
+              <div style="width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin:0 auto 12px;background:#fff0f2;color:#c43d4d;font-size:30px;font-weight:800">!</div>
+              <h2 style="margin:0 0 8px;color:#7d2630">No se pudo iniciar el datáfono</h2>
+              <p style="margin:0;color:#66788a;line-height:1.5">${esc(e?.message || 'Revisa la afiliación bancaria y vuelve a intentarlo.')}</p>
+            </section>
+          </main>`;
+      } catch {
+        try { popupBanco.close(); } catch {}
+      }
       popupBanco = null;
     }
     if (/cargo ya está pagado/i.test(String(e.message || ''))) {
@@ -1828,12 +1841,22 @@ async function guardarEdicionPago(event) {
 
 function estadoServicioTexto(servicio, prefijo = '') {
   const remoto = String(servicio?.estado || '');
+
+  // El estado visual de vinculación/afiliación representa configuración persistida.
+  // La conectividad remota se comunica aparte en el detalle y en Verificar conexiones.
+  if (prefijo === 'factura' && servicio?.cuenta_vinculada === true) {
+    return { texto: 'Vinculado', clase: servicio?.disponible === false ? 'configured' : 'online', icono: 'bi-key-fill' };
+  }
+  if (prefijo === 'banco' && servicio?.afiliado === true && servicio?.merchant_configurado === true) {
+    return { texto: 'Afiliado', clase: servicio?.disponible === false ? 'configured' : 'online', icono: 'bi-building-check' };
+  }
+
   if (!servicio?.configurado || remoto === 'pendiente_endpoint') return { texto: 'Pendiente endpoint', clase: 'pending', icono: 'bi-clock' };
   if (remoto === 'configurado_sin_contrato') return { texto: 'Endpoint recibido', clase: 'configured', icono: 'bi-link-45deg' };
-  if (prefijo === 'banco' && servicio?.disponible === true && servicio?.listo_cobro !== true) {
+  if (prefijo === 'banco' && servicio?.disponible === true) {
     return { texto: 'Falta afiliación', clase: 'configured', icono: 'bi-building-check' };
   }
-  if (prefijo === 'factura' && servicio?.disponible === true && servicio?.cuenta_vinculada !== true) {
+  if (prefijo === 'factura' && servicio?.disponible === true) {
     return { texto: 'Falta vincular', clase: 'configured', icono: 'bi-key' };
   }
   if (remoto === 'degradado') return { texto: 'Vista disponible', clase: 'degraded', icono: 'bi-file-earmark-text' };
@@ -1987,6 +2010,27 @@ async function cargarConfiguracion() {
     setValue('fin-config-firma-url', c.firma_digital_url || '');
     setValue('fin-config-electronica-url', c.factura_electronica_url || '');
     setValue('fin-config-tributacion-url', c.tributacion_url || '');
+
+    // Refleja inmediatamente lo que ya quedó persistido, sin depender de una
+    // prueba de red para mostrar Vinculado / Afiliado.
+    pintarEstadoServicio('factura', {
+      configurado: Boolean(c.factura_bonita_url),
+      disponible: null,
+      cuenta_vinculada: Boolean(c.factura_bonita_api_key_configurada),
+      url: c.factura_bonita_url || null,
+      detalle: c.factura_bonita_api_key_configurada
+        ? 'Cuenta de Factura Bonita vinculada y guardada.'
+        : 'Falta guardar la clave de integración de Factura Bonita.'
+    });
+    pintarEstadoServicio('banco', {
+      configurado: true,
+      disponible: null,
+      afiliado: Boolean(c.banco_afiliado),
+      merchant_configurado: Boolean(c.banco_merchant_id),
+      detalle: c.banco_afiliado && c.banco_merchant_id
+        ? 'Afiliación bancaria guardada para EduControl.'
+        : 'Falta completar y guardar la afiliación bancaria.'
+    });
 
     logoFacturaData = c.logo_data || null;
     renderLogoFacturaPreview();

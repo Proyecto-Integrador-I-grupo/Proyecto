@@ -24,6 +24,11 @@ import './styles/stability-final.css';
 import './styles/requested-fixes.css';
 import './styles/release-polish.css';
 import './styles/last-mile-fixes.css';
+import './styles/dark-mode-final.css';
+import './styles/dark-mode-polished.css';
+import './styles/dark-mode-master.css';
+import './styles/integration-ready.css';
+import './styles/schedules-final.css';
 
 window.bootstrap = bootstrap;
 window.jspdf = { jsPDF };
@@ -31,7 +36,11 @@ window.jspdf = { jsPDF };
 const ACCESSIBILITY_KEY = 'educontrol_accesibilidad';
 try {
   const saved = JSON.parse(localStorage.getItem(ACCESSIBILITY_KEY) || '{}');
-  document.body.classList.toggle('theme-dark', Boolean(saved.isDark));
+  const isDark = Boolean(saved.isDark);
+  document.body.classList.toggle('theme-dark', isDark);
+  document.documentElement.classList.toggle('theme-dark', isDark);
+  document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+  document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   document.body.classList.toggle('high-contrast', Boolean(saved.highContrast));
   document.body.classList.toggle('reduced-motion', Boolean(saved.reducedMotion));
   document.documentElement.classList.toggle('reduced-motion', Boolean(saved.reducedMotion));

@@ -1,0 +1,587 @@
+/* ======================================================================
+   EDUCONTROL · PASADA FINAL DE INTEGRACIÓN VISUAL
+   Horarios, iconografía y administración de secciones.
+   Se importa de último para corregir únicamente presentación.
+   ====================================================================== */
+
+/* ---------- Iconos de fecha y horario ---------- */
+.schedule-label,
+#matricula-view .form-label:has(.schedule-field-icon),
+#modalSeccion .form-label:has(.schedule-field-icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: .38rem;
+}
+
+.schedule-field-icon {
+  color: #2f789f;
+  font-size: .92em;
+  line-height: 1;
+  opacity: 1;
+}
+
+/* El icono nativo del navegador no debe desaparecer en dark mode. */
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"]) {
+  color-scheme: dark !important;
+  background-color: #0d1a2a !important;
+  color: #f2f7fc !important;
+}
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-calendar-picker-indicator {
+  filter: invert(91%) sepia(10%) saturate(720%) hue-rotate(169deg) brightness(104%) contrast(101%) !important;
+  opacity: 1 !important;
+  cursor: pointer;
+}
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-fields-wrapper,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-text,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-hour-field,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-minute-field,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-day-field,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-month-field,
+html.theme-dark body.theme-dark #root :is(input[type="date"], input[type="time"], input[type="month"])::-webkit-datetime-edit-year-field {
+  color: #eef6fd !important;
+}
+html.theme-dark body.theme-dark #root .schedule-field-icon {
+  color: #8fd4fb !important;
+  opacity: 1 !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .profesor-group-pill .bi-calendar3 {
+  color: #92dafd !important;
+  opacity: 1 !important;
+}
+html.theme-dark body.theme-dark #root #profesores-view .profesor-group-pill {
+  background: #152b42 !important;
+  color: #e5f1fb !important;
+  border-color: #426480 !important;
+}
+
+/* Iconos de estado/horario pequeños: más contraste sin recolorear botones. */
+html.theme-dark body.theme-dark #root :is(
+  .section-panel-icon,
+  .section-format-example > i,
+  .finance-history-icon,
+  .finance-summary-icon,
+  .consulta-stat-icon,
+  .perfil-info-item > i
+) {
+  opacity: 1 !important;
+}
+
+/* ---------- Administrar secciones ---------- */
+#modalSeccion .modal-dialog {
+  width: min(calc(100vw - 32px), 980px) !important;
+  max-width: min(calc(100vw - 32px), 980px) !important;
+}
+#modalSeccion .modal-content,
+#modalSeccion .modal-body {
+  max-height: none !important;
+  overflow: visible !important;
+}
+#modalSeccion .section-admin-body {
+  padding: 1.1rem 1.2rem 1rem !important;
+  background: #f6f8fb;
+}
+#modalSeccion .section-admin-panel {
+  background: #ffffff;
+  border: 1px solid #dfe7ef;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 7px 20px rgba(15, 23, 42, .045);
+}
+#modalSeccion .section-create-panel {
+  border-top: 3px solid #2f7ca7;
+}
+#modalSeccion .section-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: .72rem;
+  margin-bottom: .95rem;
+}
+#modalSeccion .section-panel-heading.compact {
+  margin-bottom: .85rem;
+}
+#modalSeccion .section-panel-heading h6 {
+  color: #173a5e;
+  font-size: .98rem;
+  font-weight: 800;
+}
+#modalSeccion .section-panel-heading p {
+  color: #687b8e;
+  font-size: .78rem;
+  line-height: 1.42;
+}
+#modalSeccion .section-panel-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #e8f4fb;
+  color: #216f9d;
+  font-size: 1rem;
+}
+#modalSeccion .section-panel-icon.danger {
+  background: #fff0f1;
+  color: #b4434e;
+}
+#modalSeccion .section-panel-icon.info {
+  background: #eef2ff;
+  color: #5368b3;
+}
+#modalSeccion .section-create-fields {
+  --bs-gutter-y: .8rem;
+}
+#modalSeccion .section-name-preview-compact {
+  min-height: 40px;
+  height: 40px;
+  padding: .4rem .7rem;
+  border-style: solid;
+}
+#modalSeccion .section-name-preview-compact span {
+  font-size: .72rem;
+  color: #6d8094;
+}
+#modalSeccion .section-name-preview-compact strong {
+  font-size: 1.03rem;
+}
+#modalSeccion .section-optional-label {
+  display: inline-flex;
+  align-items: center;
+  margin-left: .3rem;
+  padding: .08rem .38rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #62758a;
+  font-size: .68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+#modalSeccion #seccion-descripcion {
+  min-height: 66px;
+  resize: none;
+}
+#modalSeccion .section-create-action {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: .42rem;
+}
+#modalSeccion .section-create-action .form-text {
+  margin: 0;
+  font-size: .72rem;
+  line-height: 1.3;
+}
+#modalSeccion .section-format-example {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .58rem .72rem;
+  border-radius: 10px;
+  font-size: .76rem;
+}
+#modalSeccion .section-admin-secondary {
+  --bs-gutter-y: .8rem;
+}
+#modalSeccion .section-delete-card,
+#modalSeccion .section-period-card {
+  background: #ffffff;
+}
+#modalSeccion .section-admin-footer {
+  padding: .72rem 1.2rem !important;
+}
+
+/* Dark mode de Secciones: contraste específico, no gris genérico. */
+html.theme-dark body.theme-dark #root #modalSeccion .section-admin-body {
+  background: #0b1625 !important;
+  color: #edf5fd !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-admin-panel {
+  background: #111f31 !important;
+  color: #edf5fd !important;
+  border-color: #38516c !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2) !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-create-panel {
+  border-top-color: #67b7e3 !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-panel-heading h6 {
+  color: #f4f9fd !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-panel-heading p {
+  color: #b5c6d7 !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-panel-icon {
+  background: #173b57 !important;
+  color: #9edcff !important;
+  border: 1px solid #3f6681;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-panel-icon.danger {
+  background: #40242b !important;
+  color: #ffb6c0 !important;
+  border-color: #824a53 !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-panel-icon.info {
+  background: #292b52 !important;
+  color: #c8c8ff !important;
+  border-color: #5b5e8b !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-optional-label {
+  background: #1a2b40 !important;
+  color: #bfd0e1 !important;
+  border: 1px solid #425d78;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-name-preview-compact {
+  background: #15273a !important;
+  color: #dce9f5 !important;
+  border-color: #46637f !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-name-preview-compact span {
+  color: #adc0d2 !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-name-preview-compact strong {
+  color: #9edcff !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-format-example {
+  background: #132b3e !important;
+  color: #d1e9f7 !important;
+  border-color: #385d76 !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion .section-format-example > i {
+  color: #8fd8fb !important;
+}
+html.theme-dark body.theme-dark #root #modalSeccion :is(.form-label,.form-text,.small) {
+  opacity: 1 !important;
+}
+
+/* ---------- Responsive de secciones ---------- */
+@media (max-width: 991.98px) {
+  #modalSeccion .modal-dialog {
+    width: min(calc(100vw - 20px), 900px) !important;
+    max-width: min(calc(100vw - 20px), 900px) !important;
+  }
+  #modalSeccion .section-admin-body { padding: .9rem !important; }
+}
+@media (max-width: 575.98px) {
+  #modalSeccion .modal-dialog {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    margin: .35rem auto !important;
+  }
+  #modalSeccion .section-admin-panel { padding: .8rem !important; border-radius: 13px; }
+  #modalSeccion .section-panel-icon { width: 34px; height: 34px; flex-basis: 34px; }
+  #modalSeccion .section-admin-footer { padding: .6rem .85rem !important; }
+}
+
+/* Días seleccionables: el check también debe leerse con claridad. */
+#matricula-view .schedule-day input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  accent-color: #2f7fae;
+  cursor: pointer;
+}
+html.theme-dark body.theme-dark #root #matricula-view .schedule-day input[type="checkbox"] {
+  accent-color: #67bee9;
+  color-scheme: dark;
+}
+html.theme-dark body.theme-dark #root #matricula-view .schedule-day:has(input:checked) input[type="checkbox"] {
+  accent-color: #9edcff;
+}
+
+/* ======================================================================
+   DESCUENTOS / EXONERACIÓN · composición final compacta
+   Mantiene intactos los ids y la lógica de facturación; solo reorganiza
+   la presentación cuando el descuento cubre el 100% del cargo.
+   ====================================================================== */
+#modalEditarCargo .modal-dialog,
+#modalNuevoCargo .modal-dialog {
+  width: min(calc(100vw - 28px), 900px) !important;
+  max-width: min(calc(100vw - 28px), 900px) !important;
+}
+#modalEditarCargo.is-exemption-active .modal-dialog,
+#modalNuevoCargo.is-exemption-active .modal-dialog {
+  width: min(calc(100vw - 28px), 980px) !important;
+  max-width: min(calc(100vw - 28px), 980px) !important;
+}
+#modalEditarCargo .modal-content,
+#modalNuevoCargo .modal-content {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 18px) !important;
+  overflow: hidden !important;
+}
+#modalEditarCargo .modal-body,
+#modalNuevoCargo .modal-body {
+  padding: .85rem 1rem !important;
+  overflow: hidden !important;
+  max-height: none !important;
+}
+#modalEditarCargo .modal-body > .row,
+#modalNuevoCargo .modal-body > .row {
+  --bs-gutter-x: .78rem;
+  --bs-gutter-y: .62rem;
+}
+#modalEditarCargo .finance-payment-context,
+#modalNuevoCargo .finance-payment-context {
+  margin-bottom: .65rem !important;
+  padding: .58rem .72rem !important;
+  min-height: 0 !important;
+}
+#modalEditarCargo .form-label,
+#modalNuevoCargo .form-label {
+  margin-bottom: .22rem !important;
+  font-size: .78rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+#modalEditarCargo :is(.form-control,.form-select,.input-group-text),
+#modalNuevoCargo :is(.form-control,.form-select,.input-group-text) {
+  min-height: 39px !important;
+}
+#modalEditarCargo .form-text,
+#modalNuevoCargo .form-text {
+  margin-top: .18rem !important;
+  font-size: .7rem;
+  line-height: 1.22;
+}
+#modalEditarCargo .modal-footer,
+#modalNuevoCargo .modal-footer {
+  padding: .65rem 1rem !important;
+  gap: .5rem;
+}
+
+/* El campo de descuento comunica visualmente cuando ya cubre todo. */
+#modalEditarCargo.is-exemption-active .finance-discount-field,
+#modalNuevoCargo.is-exemption-active .finance-discount-field {
+  position: relative;
+}
+#modalEditarCargo.is-exemption-active .finance-discount-field .input-group,
+#modalNuevoCargo.is-exemption-active .finance-discount-field .input-group {
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px rgba(20, 138, 94, .10);
+}
+#modalEditarCargo.is-exemption-active .finance-discount-field .form-control,
+#modalNuevoCargo.is-exemption-active .finance-discount-field .form-control {
+  border-color: #55a985 !important;
+}
+#modalEditarCargo.is-exemption-active .finance-discount-field .form-text,
+#modalNuevoCargo.is-exemption-active .finance-discount-field .form-text {
+  color: #27795c !important;
+  font-weight: 700;
+}
+
+.finance-exemption-compact {
+  padding: .72rem .78rem !important;
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, #f7fbff 0%, #f4faf7 100%) !important;
+  border: 1px solid #cfe1dc !important;
+  box-shadow: none !important;
+}
+.finance-exemption-heading-compact {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: .62rem !important;
+  margin: 0 0 .55rem !important;
+}
+.finance-exemption-heading-compact .finance-exemption-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #e4f3ed;
+  color: #177555;
+  font-size: 1rem;
+  flex: 0 0 34px;
+}
+.finance-exemption-heading-compact .finance-exemption-icon > i {
+  color: inherit !important;
+  font-size: inherit !important;
+}
+.finance-exemption-heading-compact > div {
+  min-width: 0;
+  display: grid;
+  gap: .08rem;
+}
+.finance-exemption-heading-compact strong {
+  font-size: .88rem;
+  line-height: 1.2;
+}
+.finance-exemption-heading-compact small {
+  font-size: .71rem;
+  line-height: 1.25;
+}
+.finance-exemption-zero {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 30px;
+  padding: .28rem .58rem;
+  border-radius: 999px;
+  background: #e7f7ef;
+  border: 1px solid #b9dfcc;
+  color: #176b50;
+  font-size: .72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.finance-exemption-grid {
+  --bs-gutter-x: .58rem !important;
+  --bs-gutter-y: .48rem !important;
+  margin-top: 0 !important;
+}
+.finance-exemption-grid .form-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .28rem;
+  margin-bottom: .16rem !important;
+  font-size: .72rem !important;
+}
+.finance-exemption-grid :is(.form-control,.form-select) {
+  min-height: 37px !important;
+  padding-top: .35rem !important;
+  padding-bottom: .35rem !important;
+  font-size: .86rem !important;
+}
+.finance-required-mark {
+  color: #b52e44;
+  font-weight: 900;
+}
+.finance-optional-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: .06rem .3rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #6c7d90;
+  font-size: .58rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .025em;
+}
+#modalEditarCargo .alert.alert-light,
+#modalNuevoCargo .alert.alert-light {
+  padding: .5rem .68rem !important;
+  margin-bottom: 0 !important;
+  font-size: .7rem !important;
+  line-height: 1.28;
+}
+
+/* Dark mode del bloque de exoneración. */
+html.theme-dark body.theme-dark #root .finance-exemption-compact {
+  background: linear-gradient(180deg, #102236 0%, #102820 100%) !important;
+  border-color: #3f655a !important;
+}
+html.theme-dark body.theme-dark #root .finance-exemption-heading-compact .finance-exemption-icon {
+  background: #173e34 !important;
+  color: #7ee2ba !important;
+  border: 1px solid #3c7261;
+}
+html.theme-dark body.theme-dark #root .finance-exemption-heading-compact strong {
+  color: #f4faf8 !important;
+}
+html.theme-dark body.theme-dark #root .finance-exemption-heading-compact small {
+  color: #b8cbc4 !important;
+}
+html.theme-dark body.theme-dark #root .finance-exemption-zero {
+  background: #173d33 !important;
+  border-color: #3d7663 !important;
+  color: #8de8c3 !important;
+}
+html.theme-dark body.theme-dark #root .finance-optional-tag {
+  background: #1a2c40 !important;
+  color: #bdd0e1 !important;
+  border: 1px solid #3f5872;
+}
+html.theme-dark body.theme-dark #root .finance-required-mark {
+  color: #ff9eac !important;
+}
+html.theme-dark body.theme-dark #root #modalEditarCargo.is-exemption-active .finance-discount-field .input-group,
+html.theme-dark body.theme-dark #root #modalNuevoCargo.is-exemption-active .finance-discount-field .input-group {
+  box-shadow: 0 0 0 3px rgba(82, 211, 160, .09) !important;
+}
+html.theme-dark body.theme-dark #root #modalEditarCargo.is-exemption-active .finance-discount-field .form-control,
+html.theme-dark body.theme-dark #root #modalNuevoCargo.is-exemption-active .finance-discount-field .form-control {
+  border-color: #4f9e80 !important;
+}
+html.theme-dark body.theme-dark #root #modalEditarCargo.is-exemption-active .finance-discount-field .form-text,
+html.theme-dark body.theme-dark #root #modalNuevoCargo.is-exemption-active .finance-discount-field .form-text {
+  color: #8eddbd !important;
+}
+
+/* En pantallas de poca altura reducimos lo accesorio en lugar de crear scroll interno. */
+@media (max-height: 760px) and (min-width: 768px) {
+  #modalEditarCargo .modal-header,
+  #modalNuevoCargo .modal-header {
+    padding: .5rem .8rem !important;
+  }
+  #modalEditarCargo .modal-body,
+  #modalNuevoCargo .modal-body {
+    padding: .52rem .72rem !important;
+  }
+  #modalEditarCargo .modal-body > .row,
+  #modalNuevoCargo .modal-body > .row {
+    --bs-gutter-y: .4rem;
+  }
+  #modalEditarCargo :is(.form-control,.form-select,.input-group-text),
+  #modalNuevoCargo :is(.form-control,.form-select,.input-group-text) {
+    min-height: 34px !important;
+    padding-top: .27rem !important;
+    padding-bottom: .27rem !important;
+  }
+  #modalEditarCargo .form-label,
+  #modalNuevoCargo .form-label {
+    font-size: .7rem !important;
+  }
+  #modalEditarCargo .form-text,
+  #modalNuevoCargo .form-text {
+    display: none !important;
+  }
+  .finance-exemption-compact {
+    padding: .48rem .6rem !important;
+  }
+  .finance-exemption-heading-compact {
+    margin-bottom: .35rem !important;
+  }
+  .finance-exemption-grid {
+    --bs-gutter-y: .3rem !important;
+  }
+  .finance-exemption-grid :is(.form-control,.form-select) {
+    min-height: 33px !important;
+  }
+  #modalEditarCargo .alert.alert-light,
+  #modalNuevoCargo .alert.alert-light {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  #modalEditarCargo .modal-dialog,
+  #modalEditarCargo.is-exemption-active .modal-dialog,
+  #modalNuevoCargo .modal-dialog,
+  #modalNuevoCargo.is-exemption-active .modal-dialog {
+    width: calc(100vw - 10px) !important;
+    max-width: calc(100vw - 10px) !important;
+    margin: 5px auto !important;
+  }
+  .finance-exemption-heading-compact {
+    grid-template-columns: auto minmax(0,1fr);
+  }
+  .finance-exemption-zero {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-left: 2.45rem;
+  }
+  .finance-exemption-grid > [class*="col-md-"] {
+    width: 50%;
+  }
+  .finance-exemption-grid > .col-md-6,
+  .finance-exemption-grid > .col-md-5 {
+    width: 100%;
+  }
+}

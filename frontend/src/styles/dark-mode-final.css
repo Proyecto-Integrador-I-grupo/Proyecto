@@ -1,0 +1,731 @@
+/* =========================================================
+   EDUCONTROL - DARK MODE FINAL
+   Esta hoja se importa de última para neutralizar reglas de
+   modo claro heredadas sin alterar la lógica de la aplicación.
+   ========================================================= */
+
+html.theme-dark,
+html[data-bs-theme="dark"] {
+  color-scheme: dark;
+  background: #081321 !important;
+}
+
+body.theme-dark {
+  --ec-dark-bg: #081321;
+  --ec-dark-surface: #0f1c2d;
+  --ec-dark-surface-2: #14243a;
+  --ec-dark-surface-3: #1a2e48;
+  --ec-dark-border: #344b66;
+  --ec-dark-border-soft: #293d55;
+  --ec-dark-text: #edf5fd;
+  --ec-dark-heading: #f8fbff;
+  --ec-dark-muted: #b6c6d8;
+  --ec-dark-muted-2: #91a6bb;
+  --ec-dark-focus: #65acd6;
+  --bs-body-bg: var(--ec-dark-bg);
+  --bs-body-color: var(--ec-dark-text);
+  --bs-secondary-color: var(--ec-dark-muted);
+  --bs-tertiary-color: var(--ec-dark-muted-2);
+  --bs-emphasis-color: #ffffff;
+  --bs-border-color: var(--ec-dark-border);
+  --bs-card-bg: var(--ec-dark-surface);
+  --bs-modal-bg: var(--ec-dark-surface);
+  background: var(--ec-dark-bg) !important;
+  color: var(--ec-dark-text) !important;
+}
+
+body.theme-dark :is(#root,#app-shell,.app-shell,.app-main,#content,.view,.page-content,.content-wrapper) {
+  background-color: var(--ec-dark-bg) !important;
+  color: var(--ec-dark-text) !important;
+}
+
+/* Evita destellos claros del documento al cambiar de vista/modal. */
+html.theme-dark body,
+html.theme-dark #root {
+  background-color: var(--ec-dark-bg) !important;
+}
+
+/* ---------- Navegación y cabeceras ---------- */
+body.theme-dark :is(.topbar,.sidebar,.sidebar-user,.app-footer,.view-header,.page-header) {
+  border-color: var(--ec-dark-border-soft) !important;
+}
+
+body.theme-dark .topbar {
+  background: #0d1929 !important;
+  color: var(--ec-dark-text) !important;
+}
+
+body.theme-dark .sidebar {
+  background: #0a1625 !important;
+  color: var(--ec-dark-text) !important;
+}
+
+body.theme-dark .sidebar .nav-link:not(.active) {
+  color: #b8c8da !important;
+  background: transparent !important;
+}
+
+body.theme-dark .sidebar .nav-link:not(.active):hover,
+body.theme-dark .sidebar .nav-link:not(.active):focus-visible {
+  background: #16283e !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .sidebar .nav-link.active {
+  background: #224b70 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .sidebar .nav-link.active * {
+  color: #ffffff !important;
+}
+
+/* ---------- Superficies ---------- */
+body.theme-dark :is(
+  .card,.card-body,.card-header,.card-footer,
+  .modal-content,.modal-header,.modal-body,.modal-footer,
+  .offcanvas,.offcanvas-header,.offcanvas-body,
+  .dropdown-menu,.list-group-item,.popover,.toast,
+  .accordion-item,.accordion-button,.accordion-body,
+  .filter-bar,.search-box,.toolbar,.panel,.section-panel,
+  .profesor-picker,.profesor-select,
+  .section-form-card,.section-delete-card,.section-name-preview,
+  .attendance-history-panel,.attendance-history-toolbar,.attendance-summary,.attendance-legend,
+  .finance-panel,.finance-tool-card,.finance-summary-card,.finance-api-strip,.finance-filter-row,
+  .finance-record-card,.finance-history-record,.finance-invoice-record,.finance-payment-context,
+  .billing-emitter-card,.billing-config-intro,.billing-status-card,.billing-config-note,.billing-service-card,
+  .billing-logo-card,.billing-config-card,.billing-future-details,.billing-config-footer,
+  .perfil-card,.perfil-info-item,.permission-card,.permissions-card,
+  .consulta-card,.consulta-result-card,.consulta-stat,.consulta-documento,.consulta-resultado,
+  .report-main-card,.report-filter-panel,.report-preview-metric,.report-empty-state,
+  .mat-financial-status,.finance-term-box
+) {
+  background-color: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+
+body.theme-dark :is(.bg-white,.bg-light,.bg-body,.bg-body-tertiary,.bg-secondary-subtle,.text-bg-light,.alert-light) {
+  background-color: var(--ec-dark-surface-2) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+
+body.theme-dark :is(.border,.border-top,.border-end,.border-bottom,.border-start) {
+  border-color: var(--ec-dark-border) !important;
+}
+
+/* ---------- Tipografía: neutraliza colores de modo claro ---------- */
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,
+  #profesores-view,#consultas-view,#reportes-view,#perfil-view,#usuarios-view,
+  .modal-content,.offcanvas,.dropdown-menu,.accessibility-menu
+) :is(h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.card-title,.modal-title,legend,.form-label,th,dt) {
+  color: var(--ec-dark-heading) !important;
+}
+
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,
+  #profesores-view,#consultas-view,#reportes-view,#perfil-view,#usuarios-view,
+  .modal-content,.offcanvas,.dropdown-menu,.accessibility-menu
+) :is(p,td,dd,li,.lead) {
+  color: var(--ec-dark-text) !important;
+}
+
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,
+  #profesores-view,#consultas-view,#reportes-view,#perfil-view,#usuarios-view,
+  .modal-content,.offcanvas,.dropdown-menu,.accessibility-menu
+) :is(.text-muted,.text-secondary,.text-body-secondary,.form-text,.help-text,.card-subtitle,small,.small) {
+  color: var(--ec-dark-muted) !important;
+}
+
+body.theme-dark :is(.text-dark,.text-black,.text-body,.text-body-emphasis,.link-dark) {
+  color: var(--ec-dark-text) !important;
+}
+
+body.theme-dark a:not(.btn):not(.nav-link) {
+  color: #82c9f2 !important;
+}
+body.theme-dark a:not(.btn):not(.nav-link):hover {
+  color: #b7e5ff !important;
+}
+
+/* ---------- Formularios ---------- */
+body.theme-dark :is(
+  .form-control,.form-select,.input-group-text,.profesor-select,
+  input[type="text"],input[type="email"],input[type="password"],input[type="search"],
+  input[type="number"],input[type="date"],input[type="time"],input[type="month"],
+  input[type="tel"],textarea
+) {
+  background-color: #0b1828 !important;
+  color: #f1f7fd !important;
+  border-color: #425a74 !important;
+  caret-color: #ffffff;
+}
+
+body.theme-dark :is(.form-control,.form-select,.profesor-select):hover:not(:disabled) {
+  border-color: #56728f !important;
+}
+
+body.theme-dark :is(.form-control,.form-select,.profesor-select):focus {
+  background-color: #0d1c2e !important;
+  color: #ffffff !important;
+  border-color: var(--ec-dark-focus) !important;
+  box-shadow: 0 0 0 .18rem rgba(101,172,214,.18) !important;
+}
+
+body.theme-dark :is(.form-control,.form-select,textarea,input)::placeholder {
+  color: #91a5ba !important;
+  opacity: 1 !important;
+}
+
+body.theme-dark :is(.form-control,.form-select,.profesor-select):disabled,
+body.theme-dark :is(.form-control,.form-select,.profesor-select)[readonly] {
+  background-color: #17263a !important;
+  color: #aebed0 !important;
+  border-color: #334a62 !important;
+  opacity: 1 !important;
+}
+
+body.theme-dark option,
+body.theme-dark optgroup {
+  background: #0f1c2d !important;
+  color: #edf5fd !important;
+}
+
+body.theme-dark .form-check-input {
+  background-color: #0b1828 !important;
+  border-color: #59738e !important;
+}
+body.theme-dark .form-check-input:checked {
+  background-color: #347faf !important;
+  border-color: #6bb4df !important;
+}
+body.theme-dark .form-check-label {
+  color: var(--ec-dark-text) !important;
+}
+
+/* ---------- Botones ---------- */
+body.theme-dark .btn {
+  box-shadow: none !important;
+}
+
+body.theme-dark :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary) {
+  background: #14243a !important;
+  color: #e7f0fa !important;
+  border-color: #4e6884 !important;
+}
+body.theme-dark :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):hover,
+body.theme-dark :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):focus-visible {
+  background: #203650 !important;
+  color: #ffffff !important;
+  border-color: #7893af !important;
+}
+
+body.theme-dark .btn-outline-primary {
+  background: #12263b !important;
+  color: #9dd9ff !important;
+  border-color: #4c86ad !important;
+}
+body.theme-dark .btn-outline-primary:hover,
+body.theme-dark .btn-outline-primary:focus-visible {
+  background: #245f89 !important;
+  color: #ffffff !important;
+  border-color: #6da9d2 !important;
+}
+
+body.theme-dark .btn-outline-info {
+  background: #12282f !important;
+  color: #a0e7ef !important;
+  border-color: #4d8d98 !important;
+}
+body.theme-dark .btn-outline-info:hover,
+body.theme-dark .btn-outline-info:focus-visible {
+  background: #236b76 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .btn-outline-success {
+  background: #142920 !important;
+  color: #a9e9ca !important;
+  border-color: #4c8a6f !important;
+}
+body.theme-dark .btn-outline-success:hover,
+body.theme-dark .btn-outline-success:focus-visible {
+  background: #28654e !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .btn-outline-warning {
+  background: #302816 !important;
+  color: #f4d694 !important;
+  border-color: #866f3b !important;
+}
+body.theme-dark .btn-outline-warning:hover,
+body.theme-dark .btn-outline-warning:focus-visible {
+  background: #705923 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .btn-outline-danger {
+  background: #301c22 !important;
+  color: #ffb6c0 !important;
+  border-color: #92505b !important;
+}
+body.theme-dark .btn-outline-danger:hover,
+body.theme-dark .btn-outline-danger:focus-visible {
+  background: #79343f !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .btn-danger {
+  background: #8e3441 !important;
+  color: #fff7f8 !important;
+  border-color: #b95a66 !important;
+}
+body.theme-dark .btn-danger:hover,
+body.theme-dark .btn-danger:focus-visible {
+  background: #aa3e4c !important;
+  color: #ffffff !important;
+  border-color: #d06a76 !important;
+}
+
+body.theme-dark :is(.btn,.form-control,.form-select):disabled,
+body.theme-dark :is(.btn.disabled) {
+  opacity: .68 !important;
+}
+
+body.theme-dark :is(.btn-light,.btn-secondary,.btn-outline-light,.btn-outline-secondary):disabled {
+  background: #172337 !important;
+  color: #8fa2b6 !important;
+  border-color: #34495f !important;
+}
+
+body.theme-dark .btn-close {
+  filter: invert(1) grayscale(1) brightness(1.8) !important;
+  opacity: .9 !important;
+  background-color: transparent !important;
+  border: 0 !important;
+}
+
+/* ---------- Tablas ---------- */
+body.theme-dark .table,
+body.theme-dark .table-responsive {
+  --bs-table-bg: var(--ec-dark-surface);
+  --bs-table-color: var(--ec-dark-text);
+  --bs-table-border-color: #334a65;
+  --bs-table-striped-bg: #13243a;
+  --bs-table-striped-color: var(--ec-dark-text);
+  --bs-table-hover-bg: #1a2e48;
+  --bs-table-hover-color: #ffffff;
+  background-color: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: #334a65 !important;
+}
+
+body.theme-dark .table > :not(caption) > * > * {
+  background-color: transparent !important;
+  color: var(--ec-dark-text) !important;
+  border-color: #334a65 !important;
+  box-shadow: none !important;
+}
+
+body.theme-dark :is(.table-light,thead.table-light,thead.table-light th,.table-light > *) {
+  --bs-table-bg: #192b43 !important;
+  --bs-table-color: #f0f6fd !important;
+  background-color: #192b43 !important;
+  color: #f0f6fd !important;
+}
+
+/* ---------- Menús, tabs y acordeones ---------- */
+body.theme-dark .dropdown-item {
+  color: #dce8f3 !important;
+}
+body.theme-dark .dropdown-item:hover,
+body.theme-dark .dropdown-item:focus,
+body.theme-dark .accordion-button:not(.collapsed) {
+  background-color: #1a2e48 !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .nav-tabs {
+  border-color: var(--ec-dark-border) !important;
+}
+body.theme-dark .nav-tabs .nav-link {
+  color: #b7c8da !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+body.theme-dark .nav-tabs .nav-link.active {
+  color: #ffffff !important;
+  background: #172a42 !important;
+  border-color: #415a75 #415a75 #172a42 !important;
+}
+
+/* ---------- Alertas ---------- */
+body.theme-dark .alert-primary,
+body.theme-dark .alert-info {
+  background: #12314a !important;
+  color: #d1ecff !important;
+  border-color: #35617f !important;
+}
+body.theme-dark .alert-success {
+  background: #123428 !important;
+  color: #c6f2dc !important;
+  border-color: #34765e !important;
+}
+body.theme-dark .alert-warning {
+  background: #392e17 !important;
+  color: #f5d99b !important;
+  border-color: #765d2d !important;
+}
+body.theme-dark .alert-danger {
+  background: #3a2027 !important;
+  color: #ffc6ce !important;
+  border-color: #7f424d !important;
+}
+
+/* ---------- Vistas específicas ---------- */
+body.theme-dark #dashboard-view :is(.dashboard-card,.metric-card,.kpi-card,.dashboard-stat-card) {
+  background: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+
+body.theme-dark #profesores-view :is(.faculty-summary,.faculty-summary-item,.profesor-row-card,.profesor-actions-grid) {
+  background-color: var(--ec-dark-surface) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+body.theme-dark #profesores-view :is(.profesor-name-cell strong,.faculty-summary-item strong) {
+  color: #f7fbff !important;
+}
+
+body.theme-dark #matricula-view :is(.matricula-card,.matricula-option-card,.group-card,.schedule-day) {
+  background-color: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+body.theme-dark #matricula-view .schedule-day:has(input:checked) {
+  background: #1b3952 !important;
+  color: #ffffff !important;
+  border-color: #68a5cf !important;
+}
+body.theme-dark #matricula-view :is([data-bs-target="#modalGrupo"],[data-bs-target="#modalGestionGrupo"],.matricula-card-action) {
+  background: #14243a !important;
+  color: #e6eff8 !important;
+  border-color: #56708d !important;
+}
+body.theme-dark #matricula-view :is([data-bs-target="#modalGrupo"],[data-bs-target="#modalGestionGrupo"],.matricula-card-action):hover {
+  background: #203650 !important;
+  color: #ffffff !important;
+  border-color: #7893af !important;
+}
+
+body.theme-dark #asistencia-view :is(
+  .attendance-grid,.attendance-grid-header,.attendance-student-cell,.attendance-cell,
+  .attendance-history-panel,.attendance-history-toolbar,.attendance-empty-state
+) {
+  background-color: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+body.theme-dark #asistencia-view .attendance-cell-btn:not(.is-presente):not(.is-ausente):not(.is-tardia):not(.is-justificada) {
+  background: #122238 !important;
+  color: #dfeaf5 !important;
+  border-color: #405a76 !important;
+}
+
+body.theme-dark #pagos-view :is(
+  .finance-record-money > div,.finance-flow-panel,.finance-flow-help,.finance-tool-body,
+  .finance-tool-header,.finance-empty-state,.billing-field,.billing-logo-box
+) {
+  background-color: var(--ec-dark-surface-2) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+body.theme-dark #pagos-view :is(
+  .finance-card-heading h3,.finance-panel-title h3,.finance-record-title,.finance-record-person,
+  .finance-history-date,.finance-history-person,.finance-summary-card strong,.billing-service-copy strong
+) {
+  color: #f7fbff !important;
+}
+body.theme-dark #pagos-view :is(
+  .finance-card-heading p,.finance-record-meta,.finance-record-state small,.billing-service-copy p,
+  .billing-emitter-heading small,.billing-config-intro p,.billing-field .form-label,.finance-note
+) {
+  color: var(--ec-dark-muted) !important;
+}
+
+body.theme-dark #usuarios-view .card-header,
+body.theme-dark #consultas-view :is(.consulta-preview-area,.audit-json,.audit-preview-note),
+body.theme-dark #reportes-view :is(.preview-reporte,.report-preview,.report-preview-card),
+body.theme-dark #perfil-view :is(.perfil-section,.profile-section,.perfil-field) {
+  background-color: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+
+/* Perfil conserva su hero coloreado pero siempre legible. */
+body.theme-dark #perfil-view .perfil-hero {
+  background: linear-gradient(135deg,#163b5c,#1f5b77) !important;
+}
+body.theme-dark #perfil-view .perfil-hero * {
+  color: #ffffff !important;
+}
+
+/* ---------- Badges / estados: legibles sin volverlos blancos ---------- */
+body.theme-dark :is(.badge.text-bg-light,.badge.bg-light) {
+  background: #1b2c43 !important;
+  color: #e5eef8 !important;
+  border-color: #435a74 !important;
+}
+body.theme-dark .badge.bg-success,
+body.theme-dark .badge.text-bg-success {
+  background: #176747 !important;
+  color: #effff8 !important;
+}
+body.theme-dark .badge.bg-danger,
+body.theme-dark .badge.text-bg-danger {
+  background: #793440 !important;
+  color: #fff1f3 !important;
+}
+body.theme-dark .badge.bg-warning,
+body.theme-dark .badge.text-bg-warning {
+  background: #72531d !important;
+  color: #fff3cf !important;
+}
+body.theme-dark .badge.bg-info,
+body.theme-dark .badge.text-bg-info {
+  background: #1b5065 !important;
+  color: #d6f5ff !important;
+}
+
+/* ---------- Modales ---------- */
+body.theme-dark .modal-backdrop.show {
+  opacity: .72 !important;
+}
+body.theme-dark .modal-content {
+  box-shadow: 0 22px 70px rgba(0,0,0,.48) !important;
+}
+body.theme-dark .modal-header.bg-navy,
+body.theme-dark .modal-header.bg-dark,
+body.theme-dark .finance-invoice-preview-header {
+  background: #0c2035 !important;
+  color: #ffffff !important;
+}
+body.theme-dark .modal-header.bg-navy *,
+body.theme-dark .modal-header.bg-dark *,
+body.theme-dark .finance-invoice-preview-header * {
+  color: #ffffff !important;
+}
+
+/* Confirmaciones destructivas. */
+body.theme-dark :is(#modalConfirmarEliminacion,#modalConfirmarEliminacionSeccion) .destructive-confirm {
+  background: #8f3340 !important;
+  color: #fff5f6 !important;
+  border-color: #bd5965 !important;
+}
+body.theme-dark :is(#modalConfirmarEliminacion,#modalConfirmarEliminacionSeccion) .destructive-confirm:disabled {
+  background: #422b34 !important;
+  color: #bda7ad !important;
+  border-color: #61404a !important;
+  opacity: .82 !important;
+}
+
+/* ---------- Login ---------- */
+body.theme-dark .login-card {
+  background: rgba(10,24,40,.96) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: #3a526d !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.48) !important;
+}
+body.theme-dark .login-card :is(h1,h2,h3,.form-label,strong) {
+  color: #f8fbff !important;
+}
+body.theme-dark .login-card :is(.text-muted,.form-text,small) {
+  color: #b7c8da !important;
+}
+body.theme-dark .login-card #toggle-password {
+  background: #14243a !important;
+  color: #dce8f4 !important;
+  border-color: #425a74 !important;
+}
+
+/* ---------- Accesibilidad ---------- */
+body.theme-dark .accessibility-widget {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body.theme-dark .accessibility-toggle {
+  background: linear-gradient(135deg,#3389ad,#249ba4) !important;
+  color: #ffffff !important;
+  border-color: #66bed0 !important;
+}
+body.theme-dark .accessibility-menu {
+  background: #0f1c2d !important;
+  color: var(--ec-dark-text) !important;
+  border-color: #3a526d !important;
+}
+body.theme-dark .accessibility-action {
+  background: #14243a !important;
+  color: #dce8f4 !important;
+  border-color: #405872 !important;
+}
+body.theme-dark .accessibility-action:hover,
+body.theme-dark .accessibility-action:focus-visible {
+  background: #203650 !important;
+  color: #ffffff !important;
+}
+body.theme-dark .accessibility-action-active {
+  background: #245f89 !important;
+  color: #ffffff !important;
+  border-color: #6da9d2 !important;
+}
+
+/* ---------- Scrollbars invisibles: desplazamiento sigue disponible ---------- */
+body.theme-dark :is(
+  html,body,#root,.app-shell,.app-main,.view,.modal,.modal-dialog,.modal-content,.modal-body,
+  .table-responsive,.attendance-grid-scroll,.finance-history-list,.finance-invoices-list,
+  .finance-panel,.offcanvas,.offcanvas-body,.dropdown-menu
+) {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+body.theme-dark ::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ---------- Foco visible ---------- */
+body.theme-dark :is(button,a,input,select,textarea,[tabindex]):focus-visible {
+  outline: 2px solid #78bde6 !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------- Alto contraste conserva prioridad sobre dark ---------- */
+body.theme-dark.high-contrast {
+  --ec-dark-bg: #000000;
+  --ec-dark-surface: #000000;
+  --ec-dark-surface-2: #000000;
+  --ec-dark-text: #ffffff;
+  --ec-dark-heading: #ffffff;
+  --ec-dark-muted: #ffffff;
+  --ec-dark-border: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+  body.theme-dark .modal-content {
+    border-color: #3a526d !important;
+  }
+}
+
+/* ---------- Últimos residuos de componentes custom ---------- */
+body.theme-dark :is(.report-mode-switcher,.billing-logo-picker,.consultas-panel,.card-filtros-asistencia) {
+  background: var(--ec-dark-surface) !important;
+  color: var(--ec-dark-text) !important;
+  border-color: var(--ec-dark-border) !important;
+}
+
+body.theme-dark .report-mode-switcher .btn {
+  background: #14243a !important;
+  color: #dce8f4 !important;
+  border-color: #4b647f !important;
+}
+body.theme-dark .report-mode-switcher .btn.active,
+body.theme-dark .report-mode-switcher .btn:hover,
+body.theme-dark .report-mode-switcher .btn:focus-visible {
+  background: #245f89 !important;
+  color: #ffffff !important;
+  border-color: #6da9d2 !important;
+}
+
+body.theme-dark :is(.btn-info,.btn-success,.btn-warning) {
+  color: #ffffff !important;
+}
+body.theme-dark .btn-info {
+  background: #216b78 !important;
+  border-color: #3d8c98 !important;
+}
+body.theme-dark .btn-success {
+  background: #28654e !important;
+  border-color: #45866c !important;
+}
+body.theme-dark .btn-warning {
+  background: #725923 !important;
+  border-color: #94783b !important;
+  color: #fff7df !important;
+}
+
+/* Los textos custom que heredaban azul marino del modo claro vuelven a heredar
+   el color de su superficie. Se excluyen badges/estados para conservar semántica. */
+body.theme-dark :is(
+  #dashboard-view,#estudiantes-view,#matricula-view,#asistencia-view,#pagos-view,
+  #profesores-view,#consultas-view,#reportes-view,#perfil-view,#usuarios-view,
+  .modal-content,.offcanvas,.dropdown-menu
+) :is(span,strong):not(.text-muted):not(.text-secondary):not(.text-body-secondary):not([class*="badge"]):not([class*="status"]):not([class*="state"]):not([class*="role"]):not([class*="legend"]) {
+  color: inherit !important;
+}
+
+/* Bootstrap a veces aplica fondo blanco a botones de archivo y grupos input. */
+body.theme-dark .input-group,
+body.theme-dark .input-group > * {
+  border-color: #425a74 !important;
+}
+body.theme-dark input[type="file"] {
+  background: #0b1828 !important;
+  color: var(--ec-dark-text) !important;
+  border-color: #425a74 !important;
+}
+body.theme-dark input[type="file"]::file-selector-button {
+  background: #172a42 !important;
+  color: #e5eef8 !important;
+  border: 0 !important;
+  border-right: 1px solid #425a74 !important;
+}
+body.theme-dark input[type="file"]::file-selector-button:hover {
+  background: #203650 !important;
+  color: #ffffff !important;
+}
+
+/* Alto contraste siempre gana frente a esta hoja final. */
+body.high-contrast,
+body.theme-dark.high-contrast {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+body.high-contrast :is(
+  #app-shell,.app-shell,.app-main,#content,.view,.topbar,.sidebar,
+  .card,.card-body,.card-header,.card-footer,.modal-content,.modal-header,.modal-body,.modal-footer,
+  .dropdown-menu,.list-group-item,.accordion-item,.accordion-button,.accordion-body,
+  .finance-panel,.finance-record-card,.finance-history-record,.finance-invoice-record,
+  .section-form-card,.section-delete-card,.report-main-card,.consulta-documento
+) {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+body.high-contrast :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,label,legend,th,td,.text-muted,.text-secondary,.form-text) {
+  color: #ffffff !important;
+}
+body.high-contrast :is(.form-control,.form-select,.input-group-text,.profesor-select) {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+body.high-contrast :is(.btn-outline-primary,.btn-outline-secondary,.btn-outline-info,.btn-outline-success,.btn-outline-warning,.btn-outline-danger,.btn-light,.btn-secondary) {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+body.high-contrast .accessibility-action-active,
+body.high-contrast .sidebar .nav-link.active {
+  background: #ffdf00 !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+body.high-contrast .accessibility-action-active *,
+body.high-contrast .sidebar .nav-link.active * {
+  color: #000000 !important;
+}

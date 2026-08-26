@@ -247,6 +247,9 @@ function normalizeGenero(val) {
 }
 
 async function loadProfesores() {
+  const rol = String(currentUser?.rol || window.EduControlCurrentUser?.rol || '').trim().toLowerCase();
+  if (rol === 'profesor') return;
+
   const profTableBody = document.querySelector('#profesores-table tbody');
   if (!profTableBody) return;
 

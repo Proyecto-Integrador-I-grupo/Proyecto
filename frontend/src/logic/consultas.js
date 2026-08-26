@@ -122,204 +122,77 @@ function aplicarPermisosConsultaUI() {
       actualizarConsulta();
     });
   }
-async function cargarConsultas() {
-  mostrarCargando();
-  aplicarPermisosConsultaUI();
 
-  try {
-    const permitidos = tiposConsultaPermitidos();
+  async function cargarConsultas() {
+    mostrarCargando();
+    aplicarPermisosConsultaUI();
 
-    const normalizarLista = (data, tipo) => {
-      if (Array.isArray(data)) {
-        return data;
-      }
+    try {
+      const permitidos = tiposConsultaPermitidos();
 
-      if (!data || typeof data !== 'object') {
-        return [];
-      }
+      const pedir = async (tipo, url) => {
+  if (!permitidos.includes(tipo)) {
+    return [];
+  }
 
-      const posiblesClaves = {
-        prematriculados: [
-          'estudiantes',
-          'prematriculados',
-          'data',
-          'rows',
-          'resultados'
-        ],
+  const response = await apiFetch(url);
 
-        matriculados: [
-          'estudiantes',
-          'matriculados',
-          'estudiantesMatriculados',
-          'data',
-          'rows',
-          'resultados'
-        ],
+  if (!response.ok) {
+    const errorData = await response
+      .json()
+      .catch(() => ({}));
 
-        profesores: [
-          'profesores',
-          'data',
-          'rows',
-          'resultados'
-        ],
+    console.error(
+      `Error cargando ${tipo}:`,
+      errorData.mensaje ||
+      errorData.error ||
+      `HTTP ${response.status}`
+    );
 
-        matriculas: [
-          'matriculas',
-          'data',
-          'rows',
-          'resultados'
-        ],
+    return [];
+  }
 
-        asistencia: [
-          'asistencias',
-          'asistencia',
-          'data',
-          'rows',
-          'resultados'
-        ],
+  const data = await response
+    .json()
+    .catch(() => []);
 
-        grupos: [
-          'grupos',
-          'data',
-          'rows',
-          'resultados'
-        ],
-
-        auditoria: [
-          'auditorias',
-          'auditoria',
-          'data',
-          'rows',
-          'resultados'
-        ]
+  return Array.isArray(data)
+    ? data
+    : [];
+};
+      const pedirGrupos = async () => {
+        const response = await apiFetch('/api/procesos/grupos');
+        if (!response.ok) return [];
+        const data = await response.json().catch(() => []);
+        return Array.isArray(data) ? data : [];
       };
 
-      const claves =
-        posiblesClaves[tipo] || [];
+      [estudiantes, estudiantesMatriculados, profesores, matriculas, asistencias, grupos, auditorias] = await Promise.all([
+        pedir('prematriculados', '/api/estudiantes'),
+        pedir('matriculados', '/api/estudiantes/matriculados'),
+        pedir('profesores', '/api/profesores'),
+        pedir('matriculas', '/api/procesos/matricula'),
+        pedir('asistencia', '/api/procesos/asistencia'),
+        pedirGrupos(),
+        pedir('auditoria', '/api/auditorias')
+      ]);
 
-      for (const clave of claves) {
-        if (Array.isArray(data[clave])) {
-          return data[clave];
-        }
-      }
+      gruposAsignados = grupos;
 
-      return [];
-    };
+      actualizarResumen();
+      cargarFiltroGrupos();
+      cargarFiltrosMatriculados();
+      actualizarContextoProfesor();
+      actualizarConsulta();
+    } catch (error) {
+      console.error('Error cargando consultas:', error);
 
-    const pedir = async (tipo, url) => {
-      if (!permitidos.includes(tipo)) {
-        return [];
-      }
-
-      const response = await apiFetch(url);
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({}));
-
-        console.error(
-          `Error cargando ${tipo}:`,
-          errorData.mensaje ||
-          errorData.error ||
-          `HTTP ${response.status}`
-        );
-
-        return [];
-      }
-
-      const data = await response
-        .json()
-        .catch(() => []);
-
-      return normalizarLista(data, tipo);
-    };
-
-    const pedirGrupos = async () => {
-      const response =
-        await apiFetch('/api/procesos/grupos');
-
-      if (!response.ok) {
-        console.error(
-          'Error cargando grupos:',
-          response.status
-        );
-
-        return [];
-      }
-
-      const data = await response
-        .json()
-        .catch(() => []);
-
-      return normalizarLista(
-        data,
-        'grupos'
+      mostrarError(
+        error.message ||
+        'No se pudo cargar la información.'
       );
-    };
-
-    [
-      estudiantes,
-      estudiantesMatriculados,
-      profesores,
-      matriculas,
-      asistencias,
-      grupos,
-      auditorias
-    ] = await Promise.all([
-      pedir(
-        'prematriculados',
-        '/api/estudiantes'
-      ),
-
-      pedir(
-        'matriculados',
-        '/api/estudiantes/matriculados'
-      ),
-
-      pedir(
-        'profesores',
-        '/api/profesores'
-      ),
-
-      pedir(
-        'matriculas',
-        '/api/procesos/matricula'
-      ),
-
-      pedir(
-        'asistencia',
-        '/api/procesos/asistencia'
-      ),
-
-      pedirGrupos(),
-
-      pedir(
-        'auditoria',
-        '/api/auditorias'
-      )
-    ]);
-
-    gruposAsignados = grupos;
-
-    actualizarResumen();
-    cargarFiltroGrupos();
-    cargarFiltrosMatriculados();
-    actualizarContextoProfesor();
-    actualizarConsulta();
-
-  } catch (error) {
-    console.error(
-      'Error cargando consultas:',
-      error
-    );
-
-    mostrarError(
-      error.message ||
-      'No se pudo cargar la información.'
-    );
+    }
   }
-}
 
   /* ==========================================
      RESUMEN GENERAL DE CONSULTAS

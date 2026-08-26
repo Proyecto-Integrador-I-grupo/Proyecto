@@ -183,3 +183,30 @@ export const getSuplenciasPendientes = async (req, res) => {
     res.status(500).json({ error: "Error al obtener las coberturas pendientes." });
   }
 };
+export const getHorarios = async (req, res) => {
+  try {
+    const rol = String(req.usuarioActual?.nom_rol || '').trim().toLowerCase();
+    if (!['administrador', 'profesor'].includes(rol)) {
+      return res.status(403).json({ error: 'La consulta de horarios está disponible para administradores y profesores.' });
+    }
+
+    let idProfesor = null;
+    if (rol === 'profesor') {
+      idProfesor = Number(req.usuarioActual?.id_profesor || 0);
+      if (!idProfesor) {
+        return res.status(403).json({ error: 'Tu usuario no está vinculado a un registro de profesor.' });
+      }
+    }
+
+    const datos = await profesorService.obtenerHorariosService({ idProfesor });
+    return res.json({
+      alcance: rol === 'administrador' ? 'institucional' : 'personal',
+      id_profesor_actual: idProfesor,
+      ...datos
+    });
+  } catch (error) {
+    console.error('Error en getHorarios:', error);
+    return res.status(500).json({ error: error.message || 'No se pudieron cargar los horarios.' });
+  }
+};
+

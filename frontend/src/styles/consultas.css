@@ -1,3 +1,11 @@
+@charset "UTF-8";
+
+/* =========================================================
+   EDUCONTROL · MÓDULO DE CONSULTAS
+   Base visual: Kristel
+   Integración: ajustes funcionales y responsive de main
+   ========================================================= */
+
 #consultas-view {
   --ec-ink: #102844;
   --ec-text: #35516d;
@@ -23,11 +31,11 @@
 .consultas-container {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1.5rem;
 }
 
 /* =========================================================
-   HERO · IDENTIDAD PROPIA DE CONSULTAS
+   HERO
    ========================================================= */
 
 .consultas-hero {
@@ -59,7 +67,11 @@
   right: -95px;
   bottom: -125px;
   border-radius: 50% 50% 0 0;
-  background: linear-gradient(135deg, rgba(46, 148, 199, 0.14), rgba(63, 102, 232, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(46, 148, 199, 0.14),
+    rgba(63, 102, 232, 0.08)
+  );
   transform: rotate(-7deg);
   pointer-events: none;
 }
@@ -107,7 +119,7 @@
 }
 
 /* =========================================================
-   RESUMEN · TARJETAS DE CONSULTA
+   TARJETAS DE RESUMEN
    ========================================================= */
 
 .consulta-stat {
@@ -124,7 +136,10 @@
   background: #fff;
 
   box-shadow: 0 5px 14px rgba(25, 52, 78, 0.045);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .consulta-stat::after {
@@ -168,38 +183,43 @@
   line-height: 1;
 }
 
-/* Variación visual por tarjeta, como en los otros módulos de EduControl */
 #consultas-view .row.g-3.mb-4 > div:nth-child(1) .consulta-stat-icon {
   background: #e9efff;
   color: #4567dc;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(2) .consulta-stat-icon {
   background: #e4f5ef;
   color: #16815e;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(3) .consulta-stat-icon {
   background: #e8f4fb;
   color: #287eae;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(4) .consulta-stat-icon {
   background: #f0ebff;
   color: #6b55c8;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(5) .consulta-stat-icon {
   background: #e3f5f7;
   color: #16889c;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(6) .consulta-stat-icon {
   background: #e7eff8;
   color: #3d6f9e;
 }
+
 #consultas-view .row.g-3.mb-4 > div:nth-child(7) .consulta-stat-icon {
   background: #e9edff;
   color: #5368bd;
 }
 
 /* =========================================================
-   CONTEXTO PROFESOR
+   CONTEXTO DEL PROFESOR
    ========================================================= */
 
 .consulta-profesor-contexto {
@@ -233,6 +253,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  line-height: 1.5;
 }
 
 .consulta-profesor-grupo-chip {
@@ -243,6 +264,8 @@
   border: 1px solid #cfe1ed;
   border-radius: 9px;
   background: #fff;
+  color: var(--ec-text);
+  line-height: 1.25;
 }
 
 .consulta-profesor-grupo-chip strong {
@@ -257,10 +280,11 @@
 }
 
 /* =========================================================
-   PANEL PRINCIPAL · FILTROS
+   PANEL PRINCIPAL / FILTROS
    ========================================================= */
 
 #consultas-view .card,
+#consultas-view .consultas-panel,
 .consulta-result-card {
   border: 1px solid #d8e2ea !important;
   border-radius: 16px !important;
@@ -270,6 +294,32 @@
 
 #consultas-view .card-body {
   padding: 1.35rem;
+}
+
+.consulta-result-card {
+  padding: 1.25rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.consulta-result-card:hover {
+  border-color: #c8d9e6 !important;
+  box-shadow: 0 8px 20px rgba(27, 55, 82, 0.08) !important;
+}
+
+.consulta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ec-line);
+}
+
+.consulta-meta {
+  color: #607a91 !important;
+  font-size: 0.76rem !important;
+  font-weight: 500;
 }
 
 .consultas-toolbar {
@@ -345,7 +395,7 @@
 }
 
 /* =========================================================
-   BOTONES · MISMO LENGUAJE EDUCONTROL, PERSONALIDAD CONSULTAS
+   BOTONES
    ========================================================= */
 
 #consulta-limpiar,
@@ -365,7 +415,10 @@
   font-weight: 650 !important;
   line-height: 1.15 !important;
   box-shadow: none !important;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease;
 }
 
 #consulta-limpiar {
@@ -435,20 +488,34 @@
   font-size: 0.86rem !important;
 }
 
+#consulta-descargar-pdf {
+  padding: 0.42rem 0.9rem !important;
+  border: 1px solid #4868dd !important;
+  background: linear-gradient(135deg, #456ae3, #7353cf) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(75, 93, 210, 0.16) !important;
+}
+
+#consulta-descargar-pdf:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #3859c8, #6244ba) !important;
+}
+
+#modalDetalleConsulta .modal-footer .btn-secondary {
+  padding: 0.42rem 0.9rem !important;
+  border: 1px solid #c3d2de !important;
+  background: #fff !important;
+  color: #456179 !important;
+}
+
+#modalDetalleConsulta .modal-footer .btn-secondary:hover {
+  background: #edf5fa !important;
+  color: #294f6b !important;
+}
+
 /* =========================================================
    RESULTADOS
    ========================================================= */
-
-.consulta-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e3eaf0;
-}
 
 #consulta-titulo-tabla {
   margin: 0;
@@ -457,8 +524,7 @@
   font-weight: 700;
 }
 
-#consulta-cantidad,
-.consulta-meta {
+#consulta-cantidad {
   color: #607a91 !important;
   font-size: 0.76rem !important;
   font-weight: 500;
@@ -497,10 +563,6 @@
   font-size: 0.83rem;
   font-weight: 500;
   vertical-align: middle;
-}
-
-#consulta-tabla tbody tr {
-  transition: background 0.14s ease;
 }
 
 #consulta-tabla tbody tr:hover {
@@ -613,8 +675,8 @@
 
 .consulta-documento {
   width: 100%;
-  max-width: 900px;
-  min-height: 620px;
+  max-width: 920px;
+  min-height: 650px;
   margin: 0 auto;
   padding: 2.25rem 2.5rem;
 
@@ -675,6 +737,7 @@
 
 .consulta-documento-meta strong {
   display: block;
+  margin-top: 0.15rem;
   color: #395c75;
   font-size: 0.78rem;
   font-weight: 700;
@@ -687,7 +750,7 @@
 }
 
 .consulta-documento-contenido {
-  min-height: 390px;
+  min-height: 420px;
 }
 
 .consulta-documento-seccion {
@@ -755,33 +818,20 @@
   color: #3477a1;
 }
 
-/* =========================================================
-   BOTONES DEL MODAL
-   ========================================================= */
-
-#consulta-descargar-pdf {
-  padding: 0.42rem 0.9rem !important;
-  border: 1px solid #4868dd !important;
-  background: linear-gradient(135deg, #456ae3, #7353cf) !important;
-  color: #fff !important;
-  box-shadow: 0 6px 14px rgba(75, 93, 210, 0.16) !important;
-}
-
-#consulta-descargar-pdf:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, #3859c8, #6244ba) !important;
-}
-
-#modalDetalleConsulta .modal-footer .btn-secondary {
-  padding: 0.42rem 0.9rem !important;
-  border: 1px solid #c3d2de !important;
-  background: #fff !important;
-  color: #456179 !important;
-}
-
-#modalDetalleConsulta .modal-footer .btn-secondary:hover {
-  background: #edf5fa !important;
-  color: #294f6b !important;
+.consulta-json,
+#modalDetalleConsulta .consulta-json {
+  margin: 0.3rem 0 0;
+  max-height: 250px;
+  overflow: auto;
+  padding: 0.8rem;
+  border: 1px solid #d6e2eb;
+  border-radius: 9px;
+  background: #f3f7fa;
+  color: #385269;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* =========================================================
@@ -826,8 +876,6 @@
 }
 
 .consulta-profesor-grupo {
-  display: flex;
-  align-items: center;
   min-height: 60px;
   padding: 0.75rem 0.85rem;
   border: 1px solid #d8e5ed;
@@ -843,31 +891,213 @@
 }
 
 /* =========================================================
-   AUDITORÍA
+   MODO OSCURO
    ========================================================= */
 
-.consulta-json {
-  margin: 0.3rem 0 0;
-  max-height: 250px;
-  overflow: auto;
-  padding: 0.8rem;
-  border: 1px solid #d6e2eb;
-  border-radius: 9px;
-  background: #f3f7fa;
-  color: #385269;
-  font-size: 0.74rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
+body.dark-mode #consultas-view,
+html[data-bs-theme="dark"] #consultas-view {
+  --ec-ink: #eef6fd;
+  --ec-text: #d7e5f0;
+  --ec-muted: #9fb6c9;
+  --ec-line: #2f475c;
+  --ec-surface: #102235;
+  --ec-page: #0c1a28;
+  color: var(--ec-text);
+}
+
+body.dark-mode .consultas-hero,
+html[data-bs-theme="dark"] .consultas-hero {
+  border-color: #33566e;
+  border-left-color: #4aa9d7;
+  background:
+    radial-gradient(circle at 88% 28%, rgba(101, 142, 235, 0.13) 0 3px, transparent 4px) 0 0 / 18px 18px,
+    linear-gradient(112deg, #102235 0%, #132b40 56%, #173850 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+body.dark-mode .consultas-hero h1,
+body.dark-mode .consultas-hero h2,
+body.dark-mode .consultas-hero h3,
+html[data-bs-theme="dark"] .consultas-hero h1,
+html[data-bs-theme="dark"] .consultas-hero h2,
+html[data-bs-theme="dark"] .consultas-hero h3 {
+  color: #eef6fd;
+}
+
+body.dark-mode .consultas-hero .text-muted,
+html[data-bs-theme="dark"] .consultas-hero .text-muted {
+  color: #a9bfd0 !important;
+}
+
+body.dark-mode .consulta-stat,
+body.dark-mode #consultas-view .card,
+body.dark-mode #consultas-view .consultas-panel,
+body.dark-mode .consulta-result-card,
+html[data-bs-theme="dark"] .consulta-stat,
+html[data-bs-theme="dark"] #consultas-view .card,
+html[data-bs-theme="dark"] #consultas-view .consultas-panel,
+html[data-bs-theme="dark"] .consulta-result-card {
+  border-color: #2d465b !important;
+  background: #102235 !important;
+  color: #d7e5f0;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.18) !important;
+}
+
+body.dark-mode .consulta-stat .text-muted,
+html[data-bs-theme="dark"] .consulta-stat .text-muted {
+  color: #a4bbcc !important;
+}
+
+body.dark-mode .consulta-stat .fs-3,
+html[data-bs-theme="dark"] .consulta-stat .fs-3 {
+  color: #84cff3 !important;
+}
+
+body.dark-mode .consultas-toolbar,
+body.dark-mode .consulta-filtros-avanzados,
+html[data-bs-theme="dark"] .consultas-toolbar,
+html[data-bs-theme="dark"] .consulta-filtros-avanzados {
+  border-color: #2e4b62;
+  background: #13283b;
+}
+
+body.dark-mode #consultas-view .form-label,
+html[data-bs-theme="dark"] #consultas-view .form-label {
+  color: #c7d9e6;
+}
+
+body.dark-mode #consultas-view .form-control,
+body.dark-mode #consultas-view .form-select,
+body.dark-mode #consultas-view .input-group-text,
+html[data-bs-theme="dark"] #consultas-view .form-control,
+html[data-bs-theme="dark"] #consultas-view .form-select,
+html[data-bs-theme="dark"] #consultas-view .input-group-text {
+  border-color: #35536b;
+  background-color: #0e2031;
+  color: #e5eef5;
+}
+
+body.dark-mode #consultas-view .form-control::placeholder,
+html[data-bs-theme="dark"] #consultas-view .form-control::placeholder {
+  color: #829caf;
+}
+
+body.dark-mode .consulta-profesor-contexto,
+html[data-bs-theme="dark"] .consulta-profesor-contexto {
+  border-color: #31576e;
+  border-left-color: #27a5bb;
+  background: #122a3b;
+}
+
+body.dark-mode .consulta-profesor-grupo-chip,
+html[data-bs-theme="dark"] .consulta-profesor-grupo-chip {
+  border-color: #35566d;
+  background: #142b3d;
+  color: #d7e5f0;
+}
+
+body.dark-mode .consulta-profesor-grupo-chip strong,
+html[data-bs-theme="dark"] .consulta-profesor-grupo-chip strong {
+  color: #82cbf3;
+}
+
+body.dark-mode .consulta-profesor-grupo-chip span,
+html[data-bs-theme="dark"] .consulta-profesor-grupo-chip span {
+  color: #9fb7c9;
+}
+
+body.dark-mode #consultas-view .table-responsive,
+html[data-bs-theme="dark"] #consultas-view .table-responsive {
+  border-color: #2d485e;
+  background: #102235;
+}
+
+body.dark-mode #consulta-tabla,
+html[data-bs-theme="dark"] #consulta-tabla {
+  color: #d6e4ef;
+}
+
+body.dark-mode #consulta-tabla thead th,
+html[data-bs-theme="dark"] #consulta-tabla thead th {
+  border-color: #35566d;
+  background: linear-gradient(180deg, #1b3a52, #173147);
+  color: #badbec;
+}
+
+body.dark-mode #consulta-tabla tbody td,
+html[data-bs-theme="dark"] #consulta-tabla tbody td {
+  border-color: #283f53;
+  color: #d5e3ed;
+}
+
+body.dark-mode #consulta-tabla tbody tr:hover,
+html[data-bs-theme="dark"] #consulta-tabla tbody tr:hover {
+  background: #162d41;
+}
+
+body.dark-mode #consulta-tabla tbody strong,
+html[data-bs-theme="dark"] #consulta-tabla tbody strong {
+  color: #9bd8f7;
+}
+
+body.dark-mode #consulta-titulo-tabla,
+html[data-bs-theme="dark"] #consulta-titulo-tabla {
+  color: #dcecf7;
+}
+
+body.dark-mode #consulta-cantidad,
+body.dark-mode .consulta-meta,
+html[data-bs-theme="dark"] #consulta-cantidad,
+html[data-bs-theme="dark"] .consulta-meta {
+  color: #9fb7ca !important;
+}
+
+body.dark-mode .consulta-chip,
+html[data-bs-theme="dark"] .consulta-chip {
+  border-color: #35617c;
+  background: #15364b;
+  color: #a9dcf7;
+}
+
+body.dark-mode #modalDetalleConsulta .modal-content,
+html[data-bs-theme="dark"] #modalDetalleConsulta .modal-content {
+  background: #102235;
+  color: #d7e5ef;
+}
+
+body.dark-mode #modalDetalleConsulta .modal-header,
+body.dark-mode #modalDetalleConsulta .modal-footer,
+html[data-bs-theme="dark"] #modalDetalleConsulta .modal-header,
+html[data-bs-theme="dark"] #modalDetalleConsulta .modal-footer {
+  border-color: #2c465b;
+  background: #13283b;
+}
+
+body.dark-mode #modalDetalleConsulta .modal-title,
+body.dark-mode #consulta-detalle-titulo,
+html[data-bs-theme="dark"] #modalDetalleConsulta .modal-title,
+html[data-bs-theme="dark"] #consulta-detalle-titulo {
+  color: #e5f1f8;
+}
+
+body.dark-mode .consulta-json,
+body.dark-mode #modalDetalleConsulta .consulta-json,
+html[data-bs-theme="dark"] .consulta-json,
+html[data-bs-theme="dark"] #modalDetalleConsulta .consulta-json {
+  border-color: #304c63;
+  background: #0d1d2d;
+  color: #d5e4ee;
+}
+
+/* El documento se conserva como hoja clara para exportación/lectura */
+body.dark-mode .consulta-preview-area,
+html[data-bs-theme="dark"] .consulta-preview-area {
+  background: linear-gradient(135deg, #102235, #142b40);
 }
 
 /* =========================================================
-   UTILIDADES / RESPONSIVE
+   RESPONSIVE
    ========================================================= */
-
-.hidden {
-  display: none !important;
-}
 
 @media (max-width: 991.98px) {
   .consultas-hero {
@@ -881,8 +1111,17 @@
 }
 
 @media (max-width: 768px) {
+  .consultas-container {
+    gap: 1rem;
+  }
+
+  .consultas-hero {
+    min-height: auto;
+    padding: 1.2rem;
+  }
+
   .consulta-preview-area {
-    padding: 0.8rem;
+    padding: 1rem;
   }
 
   .consulta-documento {
@@ -901,7 +1140,8 @@
     text-align: left;
   }
 
-  .consulta-documento-grid {
+  .consulta-documento-grid,
+  .consulta-profesores-grupo {
     grid-template-columns: 1fr;
   }
 
@@ -914,14 +1154,14 @@
     align-items: flex-start;
   }
 
-  .consulta-profesores-grupo {
-    grid-template-columns: 1fr;
+  #consultas-view #consulta-tabla,
+  #consulta-tabla {
+    min-width: 720px;
   }
 }
 
 @media (max-width: 576px) {
   .consultas-hero {
-    min-height: auto;
     padding: 1.1rem;
   }
 
@@ -934,7 +1174,18 @@
     padding: 0.82rem;
   }
 
-  #consulta-tabla {
-    min-width: 760px;
+  .consulta-stat-icon {
+    width: 2.6rem;
+    height: 2.6rem;
+    flex: 0 0 2.6rem;
+  }
+
+  #consulta-refrescar,
+  #consulta-limpiar {
+    width: 100%;
+  }
+
+  .consulta-documento {
+    padding: 1rem;
   }
 }

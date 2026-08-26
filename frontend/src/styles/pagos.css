@@ -1571,3 +1571,73 @@ body.theme-dark .integration-config-v2{background:#0d1827!important}body.theme-d
 #modalRegistrarPago #fin-pago-referencia:disabled{opacity:.78}
 body.theme-dark #modalConfigFacturacion .integration-card-footer-v2{border-color:#294056}
 @media(max-width:900px){#modalConfigFacturacion .integration-live-grid-v2{grid-template-columns:1fr}#modalConfigFacturacion .integration-future-grid-v2{grid-template-columns:1fr}.integration-secret-hint{max-width:none!important;text-align:left!important}}
+
+/* ===== Ajuste definitivo de Configuración de servicios ===== */
+#modalConfigFacturacion .modal-dialog {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: 1180px;
+  margin: 16px auto;
+}
+#modalConfigFacturacion .modal-content {
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#modalConfigFacturacion #fin-config-form {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+#modalConfigFacturacion .integration-config-v2 {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: .9rem 1rem .7rem !important;
+  scrollbar-width: thin;
+}
+#modalConfigFacturacion .integration-toolbar-v2 {
+  margin-bottom: .65rem;
+  border-radius: 15px;
+}
+#modalConfigFacturacion .integration-block-heading-v2 {
+  padding: .1rem .2rem .45rem;
+}
+#modalConfigFacturacion .integration-live-card-v2 {
+  min-height: 0;
+  padding: .9rem;
+}
+#modalConfigFacturacion .integration-card-detail-v2 {
+  margin: .35rem 0 .55rem !important;
+  line-height: 1.35;
+}
+#modalConfigFacturacion .integration-fields-v2 .form-control {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+#modalConfigFacturacion .integration-card-footer-v2 {
+  margin-top: .55rem;
+  padding-top: .55rem;
+}
+#modalConfigFacturacion .integration-future-card-v2 {
+  min-height: 118px;
+}
+#modalConfigFacturacion .billing-config-footer {
+  flex: 0 0 auto;
+  position: static !important;
+  border-top: 1px solid #e1e8ef;
+  box-shadow: 0 -6px 18px rgba(24,50,74,.05);
+}
+@media (max-height: 760px) {
+  #modalConfigFacturacion .integration-toolbar-copy small,
+  #modalConfigFacturacion .integration-block-heading-v2 > small { display:none; }
+  #modalConfigFacturacion .integration-future-card-v2 { min-height: 96px; }
+}
+@media (max-width: 700px) {
+  #modalConfigFacturacion .modal-dialog { width: calc(100vw - 16px); margin: 8px auto; }
+  #modalConfigFacturacion .modal-content { max-height: calc(100dvh - 16px); }
+  #modalConfigFacturacion .integration-toolbar-v2 { display:grid; gap:.65rem; }
+  #modalConfigFacturacion .integration-verify-btn { width:100%; }
+}

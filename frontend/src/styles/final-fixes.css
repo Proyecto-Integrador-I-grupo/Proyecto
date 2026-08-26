@@ -456,3 +456,23 @@ body.edu-modal-lock #content {
   box-shadow: 0 0 0 .18rem rgba(220,53,69,.08) !important;
 }
 #usuarios-view .invalid-feedback { font-size: .8rem; font-weight: 600; }
+
+/* Confirmación de baja lógica de estudiante: botón destructivo legible */
+#modalEliminarEstudiante #confirmar-eliminar-estudiante-btn {
+  background: #c43f4d !important;
+  border-color: #c43f4d !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 700;
+}
+#modalEliminarEstudiante #confirmar-eliminar-estudiante-btn:hover,
+#modalEliminarEstudiante #confirmar-eliminar-estudiante-btn:focus-visible {
+  background: #a92f3c !important;
+  border-color: #a92f3c !important;
+  color: #ffffff !important;
+}
+body.theme-dark #modalEliminarEstudiante #confirmar-eliminar-estudiante-btn {
+  background: #a83c4b !important;
+  border-color: #ce6672 !important;
+  color: #fff !important;
+}

@@ -368,7 +368,7 @@ export default function Pagos() {
               <div className="col-md-4"><label className="form-label">Monto</label><div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-pago-monto" type="number" min="0.01" step="0.01" className="form-control" required /></div></div>
               <div className="col-md-4"><label className="form-label">Método</label><select id="fin-pago-metodo" className="form-select" required><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta / servicio bancario</option><option value="sinpe">SINPE</option><option value="transferencia">Transferencia</option><option value="otro">Otro</option></select></div>
               <div className="col-md-4"><label className="form-label">Referencia</label><input id="fin-pago-referencia" className="form-control" maxLength="100" /></div>
-              <div id="fin-pago-banco-ayuda" className="col-12 hidden"><div className="finance-bank-payment-note"><i className="bi bi-shield-check"></i><span>Al elegir tarjeta, EduControl abrirá el servicio bancario afiliado. El pago solo se registrará después de recibir una confirmación válida del banco.</span></div></div>
+              <div id="fin-pago-banco-ayuda" className="col-12 hidden"><div className="finance-bank-payment-note"><i className="bi bi-shield-check"></i><span>Al elegir tarjeta, EduControl abrirá el datáfono del banco. Cada responsable ingresa ahí su propia tarjeta; EduControl no guarda datos de tarjeta y solo registra el pago cuando el banco lo confirma.</span></div></div>
               <div className="col-12">
                 <div className="finance-term-box">
                   <div className="form-check form-switch mb-0">
@@ -483,7 +483,7 @@ export default function Pagos() {
                   <p id="fin-service-banco-detail" className="integration-card-detail-v2">Comprobando el endpoint de pago disponible…</p>
                   <div className="integration-fields-v2 bank-fields-v2">
                     <label><span>Identificador de comercio</span><input id="fin-config-banco-merchant" className="form-control" maxLength="128" placeholder="Credencial entregada por el banco" /></label>
-                    <label className="integration-affiliation-v2"><input id="fin-config-banco-afiliado" type="checkbox" /><span><strong>Negocio afiliado</strong><small>EduControl puede utilizar el checkout bancario.</small></span></label>
+                    <label className="integration-affiliation-v2"><input id="fin-config-banco-afiliado" type="checkbox" /><span><strong>EduControl afiliado</strong><small>Actívalo después de pegar el identificador de comercio entregado por el banco.</small></span></label>
                   </div>
                   <div className="integration-card-footer-v2">
                     <div className="integration-service-actions">

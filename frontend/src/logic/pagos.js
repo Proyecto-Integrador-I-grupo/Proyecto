@@ -791,7 +791,20 @@ async function comprobarDisponibilidadExtra() {
 
 async function guardarClaseExtra(event) {
   event.preventDefault();
+  let popupBanco = null;
   try {
+    const metodoInicial = String(value('fin-pago-metodo') || '').toLowerCase();
+    if (metodoInicial === 'tarjeta') {
+      // Abrimos la ventana dentro del gesto del usuario para evitar que el
+      // navegador la bloquee mientras esperamos la respuesta del backend.
+      popupBanco = window.open('about:blank', 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
+      if (!popupBanco) throw new Error('El navegador bloqueó el datáfono. Permite ventanas emergentes para EduControl e inténtalo nuevamente.');
+      try {
+        popupBanco.document.title = 'Conectando con el servicio bancario';
+        popupBanco.document.body.innerHTML = '<div style="font-family:system-ui;padding:32px;color:#18324a"><h2>Conectando con el datáfono…</h2><p>EduControl está preparando el cobro seguro. Los datos de la tarjeta se ingresan únicamente en el servicio bancario.</p></div>';
+      } catch {}
+    }
+
     const payload = {
       id_estudiante: value('fin-extra-estudiante'),
       id_profesor: value('fin-extra-profesor'),
@@ -1489,8 +1502,10 @@ async function guardarPago(event) {
       const resultadoBanco = await pagarConBanky({
         checkoutUrl: inicio.checkoutUrl,
         expectedOrigin: inicio.expectedOrigin,
-        channel: inicio.channel
+        channel: inicio.channel,
+        popup: popupBanco
       });
+      popupBanco = null;
       const estadoBanco = String(resultadoBanco?.status || '').toLowerCase();
       if (estadoBanco !== 'completed') {
         await requestJson(`/api/finanzas/cargos/${idCargo}/pago-banco/resultado`, {
@@ -1536,6 +1551,10 @@ async function guardarPago(event) {
       await abrirDocumentoFactura(idCargo, 'pdf', null, true);
     }
   } catch (e) {
+    if (popupBanco && !popupBanco.closed) {
+      try { popupBanco.close(); } catch {}
+      popupBanco = null;
+    }
     if (/cargo ya está pagado/i.test(String(e.message || ''))) {
       hideModal('modalRegistrarPago');
       showToast('El cargo ya había sido pagado. La información se actualizó.', 'warning');
@@ -1796,13 +1815,19 @@ async function guardarEdicionPago(event) {
   } catch(e){ showToast(e.message,'error'); }
 }
 
-function estadoServicioTexto(servicio) {
+function estadoServicioTexto(servicio, prefijo = '') {
   const remoto = String(servicio?.estado || '');
   if (!servicio?.configurado || remoto === 'pendiente_endpoint') return { texto: 'Pendiente endpoint', clase: 'pending', icono: 'bi-clock' };
   if (remoto === 'configurado_sin_contrato') return { texto: 'Endpoint recibido', clase: 'configured', icono: 'bi-link-45deg' };
+  if (prefijo === 'banco' && servicio?.disponible === true && servicio?.listo_cobro !== true) {
+    return { texto: 'Falta afiliación', clase: 'configured', icono: 'bi-building-check' };
+  }
+  if (prefijo === 'factura' && servicio?.disponible === true && servicio?.cuenta_vinculada !== true) {
+    return { texto: 'Falta vincular', clase: 'configured', icono: 'bi-key' };
+  }
   if (remoto === 'degradado') return { texto: 'Vista disponible', clase: 'degraded', icono: 'bi-file-earmark-text' };
   if (remoto === 'limitado') return { texto: 'Disponible', clase: 'degraded', icono: 'bi-hourglass-split' };
-  if (servicio.disponible === true) return { texto: 'Conectado', clase: 'online', icono: 'bi-check-circle' };
+  if (servicio.disponible === true) return { texto: 'Listo', clase: 'online', icono: 'bi-check-circle' };
   if (servicio.disponible === false) return { texto: 'Sin conexión', clase: 'offline', icono: 'bi-exclamation-circle' };
   return { texto: 'Configurado', clase: 'configured', icono: 'bi-link-45deg' };
 }
@@ -1852,7 +1877,7 @@ function pintarEstadoServicio(prefijo, servicio) {
   const detalle = document.getElementById(`fin-service-${prefijo}-detail`);
   if (!badge) return;
 
-  const estado = estadoServicioTexto(servicio);
+  const estado = estadoServicioTexto(servicio, prefijo);
   badge.className = `billing-service-status ${estado.clase}`;
   badge.innerHTML = `<i class="bi ${estado.icono}"></i> ${estado.texto}`;
 
@@ -1924,7 +1949,7 @@ async function cargarEstadoIntegraciones(notificar = false) {
 
 async function cargarConfiguracion() {
   try {
-    const c = await requestJson('/api/finanzas/configuracion');
+    const c = (await requestJson('/api/finanzas/configuracion')) || {};
     setValue('fin-config-nombre', c.institucion_nombre || '');
     setValue('fin-config-tipo-id', c.tipo_identificacion || '02');
     setValue('fin-config-numero-id', c.numero_identificacion || '');
@@ -1967,9 +1992,11 @@ async function cargarConfiguracion() {
     const bancoLogin = document.getElementById('fin-banco-login');
     if (bancoRegistro && c.banco_registro_url) bancoRegistro.href = c.banco_registro_url;
     if (bancoLogin && c.banco_login_url) bancoLogin.href = c.banco_login_url;
-  } catch {
+  } catch (error) {
     logoFacturaData = null;
     renderLogoFacturaPreview();
+    showToast(error?.message || 'No se pudo cargar la configuración guardada de servicios.', 'error');
+    throw error;
   }
 }
 
@@ -2110,23 +2137,21 @@ async function guardarConfiguracion(event) {
     }
 
     const verificacion = await requestJson('/api/finanzas/configuracion');
-    const esperado = {
-      institucion_nombre: value('fin-config-nombre').trim(),
-      tipo_identificacion: value('fin-config-tipo-id').trim(),
-      numero_identificacion: value('fin-config-numero-id').trim(),
-      correo: value('fin-config-correo').trim().toLowerCase()
-    };
-    const coincide =
-      String(verificacion?.institucion_nombre || '').trim() === esperado.institucion_nombre &&
-      String(verificacion?.tipo_identificacion || '').trim() === esperado.tipo_identificacion &&
-      String(verificacion?.numero_identificacion || '').trim() === esperado.numero_identificacion &&
-      String(verificacion?.correo || '').trim().toLowerCase() === esperado.correo;
+    const esperadoFacturaUrl = String(value('fin-config-factura-url') || '').trim().replace(/\/+$/, '');
+    const guardadoFacturaUrl = String(verificacion?.factura_bonita_url || '').trim().replace(/\/+$/, '');
+    const merchantEsperado = String(value('fin-config-banco-merchant') || '').trim();
+    const afiliadoEsperado = Boolean(document.getElementById('fin-config-banco-afiliado')?.checked);
+    const coincideServicios =
+      (!esperadoFacturaUrl || guardadoFacturaUrl === esperadoFacturaUrl) &&
+      (!merchantEsperado || String(verificacion?.banco_merchant_id || '').trim() === merchantEsperado) &&
+      Boolean(verificacion?.banco_afiliado) === afiliadoEsperado &&
+      (!value('fin-config-factura-key').trim() || Boolean(verificacion?.factura_bonita_api_key_configurada));
 
-    if (!coincide) throw new Error('No fue posible confirmar que la configuración quedara guardada.');
+    if (!coincideServicios) throw new Error('La configuración respondió, pero no fue posible confirmar todos los datos de integración.');
 
+    await cargarConfiguracion();
     await cargarEstadoIntegraciones(false);
-    hideModal('modalConfigFacturacion');
-    showToast('Configuración de servicios guardada correctamente.', 'success');
+    showToast('Conexiones guardadas. Los datos permanecerán disponibles al volver a abrir esta ventana.', 'success');
   } catch (e) {
     showToast(e.message || 'No se pudo guardar la configuración.', 'error');
   } finally {

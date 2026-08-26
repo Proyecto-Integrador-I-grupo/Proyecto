@@ -1,9 +1,9 @@
 #consultas-view {
   --consulta-navy: #17324d;
-  --consulta-blue: #2f6f9f;
-  --consulta-blue-hover: #245b84;
-  --consulta-sky-soft: #eef5fa;
-  --consulta-sky-header: #e7f0f6;
+  --consulta-blue: #4f8fbd;
+  --consulta-blue-hover: #3d789f;
+  --consulta-sky-soft: #e8f2fb;
+  --consulta-sky-header: #eaf3f9;
   --consulta-border: #d8e2ea;
   --consulta-border-strong: #c7d5e0;
   --consulta-text: #304a60;
@@ -32,14 +32,14 @@
   padding: 1.5rem 1.65rem;
 
   border: 1px solid var(--consulta-border);
-  border-left: 4px solid var(--consulta-blue);
+  border-left: 4px solid #5f9dca;
   border-radius: 14px;
 
   background: linear-gradient(
     110deg,
     #ffffff 0%,
-    #f8fbfd 62%,
-    #edf4f8 100%
+    #f1f8fd 56%,
+    #dceef9 100%
   );
 
   box-shadow: 0 4px 14px rgba(24, 55, 82, 0.045);
@@ -78,7 +78,7 @@
   flex: 0 0 3.7rem;
 
   border-radius: 12px;
-  background: var(--consulta-navy);
+  background: #315f82;
   color: #ffffff;
   font-size: 1.35rem;
 
@@ -126,7 +126,7 @@
 }
 
 .consulta-stat .text-muted {
-  color: #6c8092 !important;
+  color: #5f7890 !important;
   font-size: 0.76rem !important;
   font-weight: 500;
 }
@@ -134,9 +134,47 @@
 .consulta-stat .fs-3 {
   margin-top: 0.12rem !important;
   color: var(--consulta-navy);
-  font-size: 1.38rem !important;
+  font-size: 1.42rem !important;
   font-weight: 700 !important;
   line-height: 1;
+}
+
+
+
+/* Colores pastel por tarjeta de resumen */
+#consultas-view .row.g-3.mb-4 > div:nth-child(1) .consulta-stat-icon {
+  background: #e3effb;
+  color: #3f7fb5;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(2) .consulta-stat-icon {
+  background: #e2f2e9;
+  color: #3d8a66;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(3) .consulta-stat-icon {
+  background: #eee8fa;
+  color: #765fa7;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(4) .consulta-stat-icon {
+  background: #faeddc;
+  color: #ae7438;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(5) .consulta-stat-icon {
+  background: #e0f1f3;
+  color: #3e8290;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(6) .consulta-stat-icon {
+  background: #e5eef8;
+  color: #4779a8;
+}
+
+#consultas-view .row.g-3.mb-4 > div:nth-child(7) .consulta-stat-icon {
+  background: #f6e8e9;
+  color: #a55f68;
 }
 
 /* =========================================================
@@ -322,8 +360,8 @@
 #consulta-refrescar {
   padding: 0.35rem 0.8rem !important;
 
-  border: 1px solid var(--consulta-blue) !important;
-  background: var(--consulta-blue) !important;
+  border: 1px solid #4f8fbd !important;
+  background: #4f8fbd !important;
   color: #ffffff !important;
 }
 
@@ -957,4 +995,4 @@
   #consulta-tabla {
     min-width: 760px;
   }
-}
+} 

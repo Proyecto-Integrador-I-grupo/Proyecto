@@ -1516,3 +1516,16 @@ body.theme-dark .integration-service-card,body.theme-dark .integration-flow-card
 .finance-bank-payment-note i{color:#0e7490;font-size:1rem;margin-top:.05rem}
 body.dark-mode .finance-bank-payment-note{background:rgba(14,165,233,.10);border-color:rgba(125,211,252,.24);color:#cbd5e1}
 body.dark-mode .finance-bank-payment-note i{color:#7dd3fc}
+
+/* Pulido final del centro de servicios */
+.integration-section-label{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.15rem .15rem .05rem;margin-top:.05rem}
+.integration-section-label span{display:inline-flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:850;letter-spacing:.025em;color:#2b4359}
+.integration-section-label small{font-size:.68rem;color:#7a8da0}
+.integration-section-active span i{color:#21845e}.integration-section-future{margin-top:.18rem;padding-top:.68rem;border-top:1px solid #e7edf3}.integration-section-future span i{color:#a27622}
+.integration-service-live{box-shadow:0 8px 24px rgba(30,66,91,.055);padding:.95rem}
+.integration-service-live .integration-service-head strong{font-size:1rem}.integration-service-live>p{min-height:0;margin:.55rem 0 .7rem}
+.integration-service-future{padding:.72rem .8rem;box-shadow:none}.integration-service-future>p{min-height:0;margin:.45rem 0 .55rem}.integration-service-future .integration-service-icon{width:34px;height:34px;font-size:.95rem}
+.integration-flow-wide{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);align-items:center}.integration-flow-wide>.eyebrow{grid-column:1/-1}.integration-flow-wide p{max-width:760px}
+#modalConfigFacturacion .billing-config-intro{padding:.72rem .85rem}.integration-config-intro p{margin:.18rem 0 0;font-size:.72rem}.integration-config-intro strong{font-size:.92rem}
+body.theme-dark .integration-section-label span{color:#e6eef7!important}body.theme-dark .integration-section-label small{color:#9fb1c5!important}body.theme-dark .integration-section-future{border-color:#2a4157!important}
+@media(max-width:850px){.integration-section-label{align-items:flex-start;flex-direction:column;gap:.15rem}.integration-flow-wide{grid-column:auto;grid-template-columns:1fr}}

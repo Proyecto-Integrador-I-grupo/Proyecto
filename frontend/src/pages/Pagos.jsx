@@ -45,14 +45,6 @@ export default function Pagos() {
           </div>
         </div>
 
-        <div className="finance-api-strip is-local" aria-live="polite">
-          <span id="fin-api-page-dot" className="finance-api-dot online"></span>
-          <div className="finance-api-copy">
-            <small>Comprobantes EduControl</small>
-            <strong id="fin-api-page-status">Verificando Factura Bonita</strong>
-            <span id="fin-api-page-detail">Los pagos completos generan el comprobante visual con la plantilla EduControl.</span>
-          </div>
-        </div>
       </header>
 
       <div className="finance-summary finance-summary-compact">
@@ -454,7 +446,11 @@ export default function Pagos() {
             </div>
 
             <div className="integration-service-grid">
-              <article className="integration-service-card integration-service-primary">
+              <div className="integration-section-label integration-section-active">
+                <span><i className="bi bi-check2-circle"></i> Servicios activos</span>
+                <small>Configuraciones que EduControl puede usar actualmente.</small>
+              </div>
+              <article className="integration-service-card integration-service-primary integration-service-live">
                 <div className="integration-service-head">
                   <span className="integration-service-icon"><i className="bi bi-file-earmark-pdf"></i></span>
                   <div><small>Factura visual</small><strong>Factura Bonita</strong></div>
@@ -472,7 +468,7 @@ export default function Pagos() {
                 <small id="fin-factura-key-hint" className="integration-secret-hint">Después del registro copia la clave desde Integración en Factura Bonita.</small>
               </article>
 
-              <article className="integration-service-card">
+              <article className="integration-service-card integration-service-live">
                 <div className="integration-service-head">
                   <span className="integration-service-icon bank"><i className="bi bi-credit-card"></i></span>
                   <div><small>Pago</small><strong>Servicio bancario</strong></div>
@@ -488,6 +484,11 @@ export default function Pagos() {
                   <a id="fin-banco-login" className="btn btn-sm btn-outline-secondary" href="https://bankyfinanzas.netlify.app/login" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Abrir banco</a>
                 </div>
               </article>
+
+              <div className="integration-section-label integration-section-future">
+                <span><i className="bi bi-hourglass-split"></i> Próximas integraciones</span>
+                <small>Quedan visibles para completar la conexión cuando el equipo entregue cada endpoint.</small>
+              </div>
 
               <article className="integration-service-card integration-service-future">
                 <div className="integration-service-head">
@@ -519,7 +520,7 @@ export default function Pagos() {
                 <label>Endpoint futuro<input id="fin-config-tributacion-url" className="form-control form-control-sm" placeholder="Pendiente de endpoint" /></label>
               </article>
 
-              <article className="integration-flow-card">
+              <article className="integration-flow-card integration-flow-wide">
                 <span className="eyebrow">FLUJO FINAL</span>
                 <div className="integration-flow-line">
                   <span>Pago</span><i className="bi bi-chevron-right"></i>

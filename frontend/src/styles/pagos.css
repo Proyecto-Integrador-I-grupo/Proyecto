@@ -1641,3 +1641,276 @@ body.theme-dark #modalConfigFacturacion .integration-card-footer-v2{border-color
   #modalConfigFacturacion .integration-toolbar-v2 { display:grid; gap:.65rem; }
   #modalConfigFacturacion .integration-verify-btn { width:100%; }
 }
+
+/* ===== Servicios de facturación · composición final ===== */
+#modalConfigFacturacion .modal-dialog {
+  width: min(1060px, calc(100vw - 28px));
+  max-width: 1060px;
+  margin: 14px auto;
+}
+#modalConfigFacturacion .modal-content {
+  max-height: calc(100dvh - 28px);
+  border-radius: 18px;
+  overflow: hidden;
+}
+#modalConfigFacturacion #fin-config-form {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#modalConfigFacturacion .integration-config-v2 {
+  padding: .85rem .95rem .75rem !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+#modalConfigFacturacion .integration-config-v2::-webkit-scrollbar { display: none; }
+#modalConfigFacturacion .integration-toolbar-v2 {
+  padding: .78rem .9rem;
+  margin-bottom: .7rem;
+  border: 1px solid #dbe5ef;
+  border-radius: 14px;
+  background: linear-gradient(120deg,#fff,#f7fbff);
+  box-shadow: none;
+}
+#modalConfigFacturacion .integration-toolbar-copy {
+  gap: .7rem;
+}
+#modalConfigFacturacion .integration-toolbar-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+#modalConfigFacturacion .integration-toolbar-copy strong {
+  font-size: 1rem;
+}
+#modalConfigFacturacion .integration-toolbar-copy small {
+  margin-top: .12rem;
+  max-width: 560px;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+#modalConfigFacturacion .integration-verify-btn {
+  min-height: 38px;
+  padding: .42rem .72rem;
+  border-radius: 10px;
+  font-size: .76rem;
+  white-space: nowrap;
+}
+#modalConfigFacturacion .integration-block-heading-v2 {
+  padding: 0 .15rem .45rem;
+}
+#modalConfigFacturacion .integration-block-heading-v2 > div {
+  font-size: .82rem;
+}
+#modalConfigFacturacion .integration-block-heading-v2 > small {
+  font-size: .66rem;
+}
+#modalConfigFacturacion .integration-live-grid-v2 {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: .8rem;
+}
+#modalConfigFacturacion .integration-live-card-v2 {
+  min-height: 0;
+  padding: .82rem;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(26,55,83,.045);
+}
+#modalConfigFacturacion .integration-card-top-v2 {
+  gap: .55rem;
+}
+#modalConfigFacturacion .integration-service-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+}
+#modalConfigFacturacion .integration-card-title-v2 small {
+  font-size: .61rem;
+}
+#modalConfigFacturacion .integration-card-title-v2 strong {
+  font-size: .95rem;
+}
+#modalConfigFacturacion .billing-service-status {
+  font-size: .62rem;
+  padding: .28rem .48rem;
+}
+#modalConfigFacturacion .integration-card-detail-v2 {
+  min-height: 0 !important;
+  margin: .35rem 0 .55rem !important;
+  font-size: .68rem;
+  line-height: 1.35;
+}
+#modalConfigFacturacion .integration-fields-v2 {
+  gap: .55rem;
+}
+#modalConfigFacturacion .integration-fields-v2 label > span {
+  font-size: .65rem;
+}
+#modalConfigFacturacion .integration-fields-v2 .form-control {
+  min-height: 40px !important;
+  height: 40px;
+  padding: .4rem .62rem;
+  border-radius: 9px;
+  font-size: .76rem;
+}
+#modalConfigFacturacion .integration-affiliation-v2 {
+  min-height: 48px !important;
+  padding: .55rem .65rem !important;
+}
+#modalConfigFacturacion .integration-card-footer-v2 {
+  margin-top: .55rem !important;
+  padding-top: .55rem !important;
+  align-items: center !important;
+}
+#modalConfigFacturacion .integration-service-actions {
+  display: flex;
+  gap: .42rem;
+  flex-wrap: wrap;
+}
+#modalConfigFacturacion .integration-service-actions .btn {
+  min-height: 36px !important;
+  padding: .35rem .62rem !important;
+  border-radius: 9px;
+  font-size: .7rem !important;
+}
+#modalConfigFacturacion .integration-secret-hint {
+  max-width: 220px !important;
+  font-size: .59rem !important;
+  line-height: 1.3;
+}
+#modalConfigFacturacion .integration-pending-details-v3,
+#modalConfigFacturacion .integration-emitter-details-v2 {
+  margin-top: .65rem;
+  border: 1px solid #dfe7ef;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+#modalConfigFacturacion .integration-pending-details-v3 > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 54px;
+  padding: .6rem .72rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+#modalConfigFacturacion .integration-pending-details-v3 > summary::-webkit-details-marker { display:none; }
+#modalConfigFacturacion .integration-pending-summary-v3 {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-width: 0;
+}
+#modalConfigFacturacion .integration-pending-summary-v3 > i {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 9px;
+  background: #fff4d9;
+  color: #9b6d18;
+}
+#modalConfigFacturacion .integration-pending-summary-v3 > span {
+  display: grid;
+  gap: .05rem;
+}
+#modalConfigFacturacion .integration-pending-summary-v3 strong {
+  color: #344a5d;
+  font-size: .75rem;
+}
+#modalConfigFacturacion .integration-pending-summary-v3 small {
+  color: #8393a3;
+  font-size: .62rem;
+}
+#modalConfigFacturacion .integration-pending-state-v3 {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  flex: 0 0 auto;
+  padding: .28rem .48rem;
+  border-radius: 999px;
+  background: #fff6dd;
+  color: #896519;
+  font-size: .61rem;
+  font-weight: 700;
+}
+#modalConfigFacturacion .integration-pending-state-v3 i { transition: transform .18s ease; }
+#modalConfigFacturacion .integration-pending-details-v3[open] .integration-pending-state-v3 i { transform: rotate(180deg); }
+#modalConfigFacturacion .integration-pending-details-v3[open] > summary,
+#modalConfigFacturacion .integration-emitter-details-v2[open] > summary {
+  border-bottom: 1px solid #e5ebf1;
+}
+#modalConfigFacturacion .integration-pending-details-v3 .integration-future-block-v2 {
+  margin: 0;
+  padding: .65rem .72rem .72rem;
+  border: 0;
+}
+#modalConfigFacturacion .integration-future-grid-v2 {
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .55rem;
+}
+#modalConfigFacturacion .integration-future-card-v2 {
+  min-height: 108px !important;
+  padding: .62rem;
+  border-radius: 10px;
+}
+#modalConfigFacturacion .integration-future-card-v2 > .form-control {
+  min-height: 30px;
+  height: 30px;
+  padding: .25rem .45rem;
+  font-size: .62rem;
+}
+#modalConfigFacturacion .integration-emitter-details-v2 {
+  margin-top: .55rem;
+}
+#modalConfigFacturacion .integration-emitter-details-v2 summary {
+  min-height: 50px;
+  padding: .55rem .72rem;
+}
+#modalConfigFacturacion .integration-emitter-grid-v2 {
+  padding: .65rem;
+  gap: .55rem;
+}
+#modalConfigFacturacion .integration-footer-v2,
+#modalConfigFacturacion .billing-config-footer {
+  flex: 0 0 auto;
+  position: static !important;
+  padding: .65rem .85rem !important;
+  border-top: 1px solid #e1e8ef;
+  background: #fff;
+  box-shadow: 0 -4px 14px rgba(24,50,74,.04);
+}
+#modalConfigFacturacion .integration-footer-v2 .btn {
+  min-height: 38px;
+  padding: .42rem .78rem;
+  border-radius: 10px;
+  font-size: .76rem;
+}
+body.theme-dark #modalConfigFacturacion .integration-toolbar-v2,
+body.theme-dark #modalConfigFacturacion .integration-pending-details-v3,
+body.theme-dark #modalConfigFacturacion .integration-emitter-details-v2 {
+  background:#101e2f!important;
+  border-color:#2a4157!important;
+}
+body.theme-dark #modalConfigFacturacion .integration-pending-summary-v3 strong { color:#e7eef7!important; }
+body.theme-dark #modalConfigFacturacion .integration-pending-summary-v3 small { color:#9fb1c5!important; }
+body.theme-dark #modalConfigFacturacion .integration-pending-summary-v3 > i { background:#372f19!important;color:#f1cf71!important; }
+body.theme-dark #modalConfigFacturacion .integration-pending-state-v3 { background:#372f19!important;color:#f1cf71!important; }
+body.theme-dark #modalConfigFacturacion .integration-pending-details-v3[open] > summary { border-color:#2a4157!important; }
+body.theme-dark #modalConfigFacturacion .integration-footer-v2,
+body.theme-dark #modalConfigFacturacion .billing-config-footer { background:#0f1b2a!important;border-color:#294056!important; }
+@media (max-width: 820px) {
+  #modalConfigFacturacion .integration-live-grid-v2 { grid-template-columns:1fr; }
+  #modalConfigFacturacion .integration-future-grid-v2 { grid-template-columns:1fr; }
+  #modalConfigFacturacion .integration-secret-hint { max-width:none!important;text-align:left!important; }
+}
+@media (max-width: 580px) {
+  #modalConfigFacturacion .modal-dialog { width:calc(100vw - 12px); margin:6px auto; }
+  #modalConfigFacturacion .modal-content { max-height:calc(100dvh - 12px); }
+  #modalConfigFacturacion .integration-toolbar-v2 { display:grid; gap:.55rem; }
+  #modalConfigFacturacion .integration-verify-btn { width:100%; }
+  #modalConfigFacturacion .integration-card-footer-v2 { align-items:flex-start!important; flex-direction:column; }
+}

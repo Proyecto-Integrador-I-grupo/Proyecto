@@ -1106,3 +1106,56 @@ background: linear-gradient(
   background: #f7e5e7;
   color: #a95c66;
 }
+
+/* =========================================================
+   ENCABEZADO FINAL - CENTRO DE CONSULTAS
+   ========================================================= */
+
+#consultas-view .consultas-hero {
+  background: linear-gradient(
+    105deg,
+    #d9f2fb 0%,
+    #dceefa 28%,
+    #dfdef6 60%,
+    #dfc9f3 82%,
+    #dfbff0 100%
+  ) !important;
+
+  border: 1px solid #d2ddec !important;
+  border-left: 4px solid #6495d8 !important;
+}
+
+/* Cuadro grande de la carpeta */
+#consultas-view .consultas-hero-icon {
+  display: grid !important;
+  place-items: center !important;
+
+  width: 72px !important;
+  height: 72px !important;
+  min-width: 72px !important;
+  min-height: 72px !important;
+  flex: 0 0 72px !important;
+
+  border-radius: 16px !important;
+
+  background: linear-gradient(
+    145deg,
+    #6098ec 0%,
+    #778ee5 48%,
+    #947bdc 100%
+  ) !important;
+
+  color: #ffffff !important;
+
+  font-size: 1.8rem !important;
+
+  box-shadow:
+    0 8px 20px rgba(72, 92, 164, 0.18) !important;
+}
+
+/* Fuerza el tamaño del icono de carpeta */
+#consultas-view .consultas-hero-icon i {
+  color: #ffffff !important;
+  font-size: 1.85rem !important;
+  line-height: 1 !important;
+}

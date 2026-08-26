@@ -69,20 +69,28 @@
   font-size: 0.9rem;
 }
 
-.consultas-hero-icon {
-  display: grid;
-  place-items: center;
+.consultas-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 
-  width: 3.7rem;
-  height: 3.7rem;
-  flex: 0 0 3.7rem;
+  padding: 1.5rem 1.65rem;
 
-  border-radius: 12px;
-  background: var(--consulta-navy);
-  color: #ffffff;
-  font-size: 1.35rem;
+  border: 1px solid #cbddea;
+  border-left: 4px solid #4f96c8;
+  border-radius: 14px;
 
-  box-shadow: 0 6px 14px rgba(23, 50, 77, 0.11);
+  background: linear-gradient(
+    110deg,
+    #ffffff 0%,
+    #f2f8fc 38%,
+    #e5f2fb 70%,
+    #d7ebf8 100%
+  );
+
+  box-shadow: 0 5px 15px rgba(24, 55, 82, 0.055);
 }
 
 /* =========================================================
@@ -1036,4 +1044,49 @@
 #consultas-view .consultas-hero h2,
 #consultas-view .consultas-hero h3 {
   line-height: 1.25;
+}
+/* =========================================================
+   COLORES PASTEL PARA ICONOS DE CONSULTAS
+   ========================================================= */
+
+/* Pre-matrícula - azul pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(1) .consulta-stat-icon {
+  background: #e4effc;
+  color: #3478b9;
+}
+
+/* Matriculados - verde pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(2) .consulta-stat-icon {
+  background: #e1f3e9;
+  color: #36936a;
+}
+
+/* Profesores - lila pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(3) .consulta-stat-icon {
+  background: #eee5fa;
+  color: #7956ad;
+}
+
+/* Matrículas - durazno pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(4) .consulta-stat-icon {
+  background: #faecd9;
+  color: #b87531;
+}
+
+/* Asistencia - turquesa pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(5) .consulta-stat-icon {
+  background: #dff1f2;
+  color: #34838c;
+}
+
+/* Grupos - celeste pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(6) .consulta-stat-icon {
+  background: #e3eef9;
+  color: #3c77ad;
+}
+
+/* Auditoría - rosado pastel */
+#consultas-view .row.g-3.mb-4 > div:nth-child(7) .consulta-stat-icon {
+  background: #f7e5e7;
+  color: #a95c66;
 }

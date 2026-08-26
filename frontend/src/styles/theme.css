@@ -34,7 +34,7 @@
 /* Login: usa fondo-login.jpg si el usuario lo agrega; imagen-fondo.jpg queda como respaldo. */
 .login-screen {
   background-color:#0f172a;
-  background-image:linear-gradient(115deg,rgba(15,23,42,.80),rgba(25,61,78,.50)),url('/images/fondo-login.jpg'),url('/images/imagen-fondo.jpg');
+  background-image:linear-gradient(115deg,rgba(15,23,42,.80),rgba(25,61,78,.50)),url('/images/fondo-login.jpeg'),url('/images/imagen-fondo.jpg');
   background-position:center,center,center;
   background-size:cover,cover,cover;
   background-repeat:no-repeat,no-repeat,no-repeat;

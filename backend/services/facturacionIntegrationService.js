@@ -94,43 +94,50 @@ async function columnaConfiguracionExiste(nombre) {
   return Number(row?.existe || 0) > 0;
 }
 
+async function crearTablaConfiguracionIntegraciones() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS configuracion_integracion_servicios (
+    id_configuracion TINYINT NOT NULL PRIMARY KEY,
+    factura_bonita_url VARCHAR(500) NULL,
+    factura_bonita_api_key LONGTEXT NULL,
+    banco_checkout_url VARCHAR(500) NULL,
+    banco_login_url VARCHAR(500) NULL,
+    banco_registro_url VARCHAR(500) NULL,
+    banco_merchant_id VARCHAR(160) NULL,
+    banco_afiliado BOOLEAN NOT NULL DEFAULT FALSE,
+    firma_digital_url VARCHAR(500) NULL,
+    factura_electronica_url VARCHAR(500) NULL,
+    tributacion_url VARCHAR(500) NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
+async function crearTablaDocumentosIntegrados() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS documento_facturacion_integrada (
+    id_documento BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_cargo INT NOT NULL,
+    tipo ENUM('pdf_visual','factura_electronica','acuse') NOT NULL,
+    estado VARCHAR(40) NOT NULL DEFAULT 'pendiente',
+    identificador_externo VARCHAR(160) NULL,
+    url_documento VARCHAR(1000) NULL,
+    mime_type VARCHAR(120) NULL,
+    contenido LONGTEXT NULL,
+    respuesta_json JSON NULL,
+    error_mensaje VARCHAR(500) NULL,
+    fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_documento_integrado_cargo_tipo (id_cargo, tipo),
+    KEY idx_documento_integrado_estado (estado),
+    CONSTRAINT fk_documento_integrado_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+
 async function asegurarEsquemaIntegracion() {
   if (esquemaIntegracionPromise) return esquemaIntegracionPromise;
   esquemaIntegracionPromise = (async () => {
-    const columnas = [
-      ['factura_bonita_url', "VARCHAR(500) NULL"],
-      ['factura_bonita_api_key', "LONGTEXT NULL"],
-      ['banco_checkout_url', "VARCHAR(500) NULL"],
-      ['banco_login_url', "VARCHAR(500) NULL"],
-      ['banco_registro_url', "VARCHAR(500) NULL"],
-      ['banco_merchant_id', "VARCHAR(160) NULL"],
-      ['banco_afiliado', "BOOLEAN NOT NULL DEFAULT FALSE"],
-      ['firma_digital_url', "VARCHAR(500) NULL"],
-      ['factura_electronica_url', "VARCHAR(500) NULL"],
-      ['tributacion_url', "VARCHAR(500) NULL"]
-    ];
-    for (const [nombre, definicion] of columnas) {
-      if (!(await columnaConfiguracionExiste(nombre))) {
-        await pool.query(`ALTER TABLE configuracion_facturacion ADD COLUMN ${nombre} ${definicion}`);
-      }
-    }
-
-    await pool.query(`CREATE TABLE IF NOT EXISTS documento_facturacion_integrada (
-      id_documento BIGINT AUTO_INCREMENT PRIMARY KEY,
-      id_cargo INT NOT NULL,
-      tipo ENUM('pdf_visual','factura_electronica','acuse') NOT NULL,
-      estado VARCHAR(40) NOT NULL DEFAULT 'pendiente',
-      identificador_externo VARCHAR(160) NULL,
-      url_documento VARCHAR(1000) NULL,
-      mime_type VARCHAR(120) NULL,
-      contenido LONGTEXT NULL,
-      respuesta_json JSON NULL,
-      error_mensaje VARCHAR(500) NULL,
-      fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uq_documento_integrado_cargo_tipo (id_cargo, tipo),
-      KEY idx_documento_integrado_estado (estado),
-      CONSTRAINT fk_documento_integrado_cargo FOREIGN KEY (id_cargo) REFERENCES cargo_estudiante(id_cargo)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    // La tabla de integraciones es la fuente de verdad para credenciales y endpoints.
+    // Se crea primero para que una BD anterior pueda guardar configuraciones aunque
+    // configuracion_facturacion todavía tenga el esquema original.
+    await crearTablaConfiguracionIntegraciones();
+    await crearTablaDocumentosIntegrados();
   })().catch((error) => {
     esquemaIntegracionPromise = null;
     throw error;
@@ -162,7 +169,26 @@ async function obtenerConfigInterna() {
   await asegurarLogoConfiguracion();
   await asegurarEsquemaIntegracion();
   const [rows] = await pool.query(`SELECT * FROM configuracion_facturacion WHERE id_configuracion = 1 LIMIT 1`);
-  return rows[0] || null;
+  let integrationRows;
+  try {
+    [integrationRows] = await pool.query(`SELECT * FROM configuracion_integracion_servicios WHERE id_configuracion = 1 LIMIT 1`);
+  } catch (error) {
+    if (error?.code !== 'ER_NO_SUCH_TABLE') throw error;
+    // Reparación defensiva para instalaciones que fueron creadas con un SQL anterior.
+    await crearTablaConfiguracionIntegraciones();
+    [integrationRows] = await pool.query(`SELECT * FROM configuracion_integracion_servicios WHERE id_configuracion = 1 LIMIT 1`);
+  }
+  const fiscal = rows[0] || {};
+  const integration = integrationRows[0] || {};
+  const camposIntegracion = [
+    'factura_bonita_url','factura_bonita_api_key','banco_checkout_url','banco_login_url','banco_registro_url',
+    'banco_merchant_id','banco_afiliado','firma_digital_url','factura_electronica_url','tributacion_url'
+  ];
+  const merged = { ...fiscal };
+  for (const campo of camposIntegracion) {
+    if (integration[campo] !== undefined && integration[campo] !== null) merged[campo] = integration[campo];
+  }
+  return Object.keys(merged).length ? merged : null;
 }
 
 function apiKeyFacturaBonita(config) {
@@ -276,23 +302,35 @@ function normalizarLogoData(valor) {
 }
 
 export async function obtenerConfiguracionFacturacion() {
-  return ocultarApiKey(await obtenerConfigInterna());
+  const actual = await obtenerConfigInterna();
+  const base = actual || {
+    institucion_nombre: 'EduControl',
+    tipo_identificacion: '02',
+    numero_identificacion: '',
+    correo: '',
+    logo_data: null,
+    factura_bonita_url: process.env.FACTURACION_API_URL || DEFAULT_FACTURACION_API_URL,
+    banco_checkout_url: process.env.BANK_CHECKOUT_URL || DEFAULT_BANK_CHECKOUT_URL,
+    banco_login_url: process.env.BANK_LOGIN_URL || DEFAULT_BANK_LOGIN_URL,
+    banco_registro_url: process.env.BANK_REGISTER_URL || DEFAULT_BANK_REGISTER_URL,
+    banco_merchant_id: process.env.BANK_MERCHANT_ID || null,
+    banco_afiliado: Boolean(process.env.BANK_MERCHANT_ID),
+    firma_digital_url: null,
+    factura_electronica_url: null,
+    tributacion_url: null
+  };
+  return ocultarApiKey(base);
 }
 
 export async function actualizarConfiguracionFacturacion(datos) {
   await asegurarLogoConfiguracion();
   await asegurarEsquemaIntegracion();
 
-  const nombre = String(datos.institucion_nombre || "").trim().slice(0, 100);
-  const tipo = String(datos.tipo_identificacion || "").trim();
-  const numeroId = String(datos.numero_identificacion || "").trim().slice(0, 30);
-  const correo = String(datos.correo || "").trim().toLowerCase().slice(0, 150);
-
-  if (!nombre || !tipo || !numeroId || !correo) {
-    throw new Error("Completa nombre, identificación y correo de facturación.");
-  }
-
-  const actual = await obtenerConfigInterna();
+  const actual = (await obtenerConfigInterna()) || {};
+  const nombre = String(datos.institucion_nombre ?? actual.institucion_nombre ?? 'EduControl').trim().slice(0, 100);
+  const tipo = String(datos.tipo_identificacion ?? actual.tipo_identificacion ?? '02').trim();
+  const numeroId = String(datos.numero_identificacion ?? actual.numero_identificacion ?? '').trim().slice(0, 30);
+  const correo = String(datos.correo ?? actual.correo ?? '').trim().toLowerCase().slice(0, 150);
   const logoData = Object.prototype.hasOwnProperty.call(datos || {}, "logo_data")
     ? normalizarLogoData(datos.logo_data)
     : (actual?.logo_data || null);
@@ -315,8 +353,11 @@ export async function actualizarConfiguracionFacturacion(datos) {
     apiKeyCifrada = cifrarSecreto(nuevaApiKey);
   }
 
-  const bancoMerchantId = String(datos.banco_merchant_id ?? actual?.banco_merchant_id ?? "").trim().slice(0, 160) || null;
-  const bancoAfiliado = datos.banco_afiliado === true || String(datos.banco_afiliado ?? actual?.banco_afiliado ?? '').toLowerCase() === 'true';
+  const merchantEntrante = String(datos.banco_merchant_id ?? '').trim();
+  const bancoMerchantId = String(merchantEntrante || actual?.banco_merchant_id || process.env.BANK_MERCHANT_ID || '').trim().slice(0, 160) || null;
+  const bancoAfiliado = Object.prototype.hasOwnProperty.call(datos || {}, 'banco_afiliado')
+    ? (datos.banco_afiliado === true || String(datos.banco_afiliado).toLowerCase() === 'true' || Number(datos.banco_afiliado) === 1)
+    : Boolean(actual?.banco_afiliado || process.env.BANK_MERCHANT_ID);
   if (bancoAfiliado && !bancoMerchantId) {
     throw new Error("Indica el identificador de comercio del servicio de pago antes de marcarlo como afiliado.");
   }
@@ -325,31 +366,34 @@ export async function actualizarConfiguracionFacturacion(datos) {
   }
 
   await pool.query(
+    `INSERT INTO configuracion_integracion_servicios
+      (id_configuracion, factura_bonita_url, factura_bonita_api_key, banco_checkout_url, banco_login_url, banco_registro_url,
+       banco_merchant_id, banco_afiliado, firma_digital_url, factura_electronica_url, tributacion_url)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       factura_bonita_url=VALUES(factura_bonita_url), factura_bonita_api_key=VALUES(factura_bonita_api_key),
+       banco_checkout_url=VALUES(banco_checkout_url), banco_login_url=VALUES(banco_login_url), banco_registro_url=VALUES(banco_registro_url),
+       banco_merchant_id=VALUES(banco_merchant_id), banco_afiliado=VALUES(banco_afiliado),
+       firma_digital_url=VALUES(firma_digital_url), factura_electronica_url=VALUES(factura_electronica_url), tributacion_url=VALUES(tributacion_url)`,
+    [facturaBonitaUrl, apiKeyCifrada, bancoCheckoutUrl, bancoLoginUrl, bancoRegistroUrl, bancoMerchantId, bancoAfiliado ? 1 : 0,
+     firmaDigitalUrl, facturaElectronicaUrl, tributacionUrl]
+  );
+
+  // Los datos fiscales se guardan en su tabla propia. Los endpoints/credenciales
+  // permanecen únicamente en configuracion_integracion_servicios para evitar
+  // duplicación y diferencias entre versiones de la base de datos.
+  if (nombre && tipo && numeroId && correo) await pool.query(
     `INSERT INTO configuracion_facturacion
-      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado,
-       factura_bonita_url, factura_bonita_api_key, banco_checkout_url, banco_login_url, banco_registro_url, banco_merchant_id, banco_afiliado,
-       firma_digital_url, factura_electronica_url, tributacion_url)
-     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
+     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE)
      ON DUPLICATE KEY UPDATE
        institucion_nombre = VALUES(institucion_nombre),
        tipo_identificacion = VALUES(tipo_identificacion),
        numero_identificacion = VALUES(numero_identificacion),
        correo = VALUES(correo),
        logo_data = VALUES(logo_data),
-       estado = TRUE,
-       factura_bonita_url = VALUES(factura_bonita_url),
-       factura_bonita_api_key = VALUES(factura_bonita_api_key),
-       banco_checkout_url = VALUES(banco_checkout_url),
-       banco_login_url = VALUES(banco_login_url),
-       banco_registro_url = VALUES(banco_registro_url),
-       banco_merchant_id = VALUES(banco_merchant_id),
-       banco_afiliado = VALUES(banco_afiliado),
-       firma_digital_url = VALUES(firma_digital_url),
-       factura_electronica_url = VALUES(factura_electronica_url),
-       tributacion_url = VALUES(tributacion_url)`,
-    [nombre, tipo, numeroId, correo, logoData, facturaBonitaUrl, apiKeyCifrada,
-     bancoCheckoutUrl, bancoLoginUrl, bancoRegistroUrl, bancoMerchantId, bancoAfiliado ? 1 : 0,
-     firmaDigitalUrl, facturaElectronicaUrl, tributacionUrl]
+       estado = TRUE`,
+    [nombre, tipo, numeroId, correo, logoData]
   );
 
   return obtenerConfiguracionFacturacion();
@@ -841,6 +885,7 @@ export async function obtenerEstadoServiciosFacturacion() {
       url: bancoUrl,
       afiliado: Boolean(config?.banco_afiliado),
       merchant_configurado: Boolean(config?.banco_merchant_id),
+      listo_cobro: Boolean(config?.banco_afiliado && config?.banco_merchant_id && response.status >= 200 && response.status < 500),
       login_url: config?.banco_login_url || DEFAULT_BANK_LOGIN_URL,
       registro_url: config?.banco_registro_url || DEFAULT_BANK_REGISTER_URL,
       detalle: config?.banco_afiliado
@@ -852,6 +897,7 @@ export async function obtenerEstadoServiciosFacturacion() {
       configurado: true, disponible: false, estado: error?.name === 'AbortError' ? 'timeout' : 'error',
       url: bancoUrl, afiliado: Boolean(config?.banco_afiliado),
       merchant_configurado: Boolean(config?.banco_merchant_id),
+      listo_cobro: false,
       login_url: config?.banco_login_url || DEFAULT_BANK_LOGIN_URL,
       registro_url: config?.banco_registro_url || DEFAULT_BANK_REGISTER_URL,
       detalle: 'No fue posible comprobar el servicio de pago en este momento.'
@@ -883,10 +929,10 @@ export async function obtenerEstadoServiciosFacturacion() {
     factura_electronica: pendiente(config?.factura_electronica_url, 'Facturación Electrónica'),
     tributacion: pendiente(config?.tributacion_url, 'Tributación'),
     flujo: {
-      listo_actual: Boolean(facturacion.disponible && config?.factura_bonita_api_key && banco.disponible),
+      listo_actual: Boolean(facturacion.disponible && config?.factura_bonita_api_key && banco.listo_cobro),
       listo_completo: Boolean(
         facturacion.disponible && config?.factura_bonita_api_key &&
-        banco.disponible && config?.banco_afiliado &&
+        banco.listo_cobro &&
         config?.firma_digital_url && config?.factura_electronica_url && config?.tributacion_url
       )
     }
@@ -1079,7 +1125,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
       let formatoEntregado = formatoNormalizado;
 
       try {
-        const url = `${baseDocumento}?formato=${formatoNormalizado}&plantilla=educontrol`;
+        const url = `${baseDocumento}?formato=${formatoNormalizado}&plantilla=auto`;
         descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
       } catch (errorPdf) {
         // Si Puppeteer/Chrome está frío o temporalmente sin capacidad, Factura Bonita
@@ -1089,7 +1135,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
         console.warn(`Facturación: PDF no disponible para ${idFactura}; intentando vista HTML.`, errorPdf?.message || errorPdf);
         try {
-          const htmlUrl = `${baseDocumento}?formato=html&plantilla=educontrol`;
+          const htmlUrl = `${baseDocumento}?formato=html&plantilla=auto`;
           descargado = await descargarDocumentoFactura(htmlUrl, 'html', Math.min(timeoutMs, 30000));
           formatoEntregado = 'html';
         } catch (errorHtml) {

@@ -273,6 +273,7 @@ export const obtenerMiPerfil = async (req, res) => {
             apellido1: usuario.apellido1,
             apellido2: usuario.apellido2,
             correo: usuario.correo,
+            foto: usuario.foto ?? null,
             rol: usuario.nom_rol,
             id_profesor: usuario.id_profesor ?? null
         });
@@ -315,7 +316,8 @@ export const actualizarMiPerfil = async (req, res) => {
             nombre: nombre.trim(),
             apellido1: apellido1.trim(),
             apellido2: apellido2?.trim() || "",
-            correo: correoInstitucional
+            correo: correoInstitucional,
+            foto: typeof req.body.foto === "string" && req.body.foto.trim() ? req.body.foto : null
         };
 
         await usuarioModel.actualizarDatosPerfil(idUsuario, datosNuevos);
@@ -347,13 +349,25 @@ export const actualizarMiPerfil = async (req, res) => {
                 apellido1: perfilActualizado.apellido1,
                 apellido2: perfilActualizado.apellido2,
                 correo: perfilActualizado.correo,
+                foto: perfilActualizado.foto ?? null,
                 rol: perfilActualizado.nom_rol
             }
         });
     } catch (error) {
         console.error("Error al actualizar el perfil:", error);
-        const esDominio = String(error.message || "").includes("correos institucionales");
-        res.status(esDominio ? 400 : 500).json({ mensaje: esDominio ? error.message : "Error al actualizar el perfil." });
+        const mensaje = String(error?.message || "");
+        const esDominio = mensaje.includes("correos institucionales");
+        const esDuplicado = error?.code === "ER_DUP_ENTRY";
+        const noEncontrado = error?.code === "USUARIO_NO_ENCONTRADO";
+
+        if (esDominio) return res.status(400).json({ mensaje });
+        if (esDuplicado) return res.status(409).json({ mensaje: "Ya existe otro usuario con ese correo." });
+        if (noEncontrado) return res.status(404).json({ mensaje });
+
+        res.status(500).json({
+            mensaje: "No se pudo actualizar el perfil. Inténtalo nuevamente.",
+            detalle: process.env.NODE_ENV === "production" ? undefined : mensaje
+        });
     }
 };
 

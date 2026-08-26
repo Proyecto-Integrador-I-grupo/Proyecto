@@ -149,37 +149,50 @@ export const obtenerUsuarioPorId = async (id) => {
     return rows[0];
 };
 
-export const actualizarDatosPerfil = async (
-    idUsuario,
-    datosPerfil
-) => {
-    const sql = `
-        UPDATE usuario u
-        JOIN persona p
-          ON p.id_persona = u.id_persona
-        SET
-            u.correo = ?,
-            p.nombre = ?,
-            p.apellido1 = ?,
-            p.apellido2 = ?,
-            p.foto = COALESCE(?, p.foto)
-        WHERE u.id_usuario = ?;
-    `;
+export const actualizarDatosPerfil = async (idUsuario, datosPerfil) => {
+    const connection = await conexion.getConnection();
+    try {
+        await connection.beginTransaction();
+        await connection.query("SET @id_usuario_sesion = ?", [idUsuario ?? 0]);
 
-    const resultado = await queryConSesion(
-        sql,
-        [
-            datosPerfil.correo,
-            datosPerfil.nombre,
-            datosPerfil.apellido1,
-            datosPerfil.apellido2 ?? "",
-            datosPerfil.foto || null,
-            idUsuario
-        ],
-        idUsuario
-    );
+        const [usuarios] = await connection.query(
+            `SELECT id_persona FROM usuario WHERE id_usuario = ? AND estado = TRUE LIMIT 1`,
+            [idUsuario]
+        );
 
-    return resultado;
+        const idPersona = usuarios[0]?.id_persona;
+        if (!idPersona) {
+            const error = new Error("Usuario no encontrado o inactivo.");
+            error.code = "USUARIO_NO_ENCONTRADO";
+            throw error;
+        }
+
+        await connection.query(
+            `UPDATE persona
+             SET nombre = ?, apellido1 = ?, apellido2 = ?, foto = COALESCE(?, foto)
+             WHERE id_persona = ?`,
+            [
+                datosPerfil.nombre,
+                datosPerfil.apellido1,
+                datosPerfil.apellido2 ?? "",
+                datosPerfil.foto || null,
+                idPersona
+            ]
+        );
+
+        await connection.query(
+            `UPDATE usuario SET correo = ? WHERE id_usuario = ?`,
+            [datosPerfil.correo, idUsuario]
+        );
+
+        await connection.commit();
+        return { affectedRows: 1, id_persona: idPersona };
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 export const actualizarContrasenaPerfil = async (

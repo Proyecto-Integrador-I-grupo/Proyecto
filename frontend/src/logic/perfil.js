@@ -739,7 +739,9 @@ import {
 
     // 1. Prioridad: Foto que devolvió el backend en el perfil
     if (perfil.foto) {
-      fotoPerfilTemporal = perfil.foto;
+      // La foto ya está persistida en el backend. No la marcamos como
+      // "temporal" para evitar reenviar un base64 grande en cada cambio de perfil.
+      fotoPerfilTemporal = null;
       actualizarImagenPerfil(perfil.foto);
       return;
     }
@@ -748,7 +750,7 @@ import {
     try {
       const fotoGuardada = localStorage.getItem(obtenerClaveFoto(perfil.id_usuario));
       if (fotoGuardada) {
-        fotoPerfilTemporal = fotoGuardada;
+        fotoPerfilTemporal = null;
         actualizarImagenPerfil(fotoGuardada);
         return;
       }
@@ -758,7 +760,7 @@ import {
 
     // 3. Tercera opción: Foto en la sesión global (currentUser)
     if (typeof currentUser !== 'undefined' && currentUser?.foto) {
-      fotoPerfilTemporal = currentUser.foto;
+      fotoPerfilTemporal = null;
       actualizarImagenPerfil(currentUser.foto);
       return;
     }

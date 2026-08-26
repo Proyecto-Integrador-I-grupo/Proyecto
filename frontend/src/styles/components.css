@@ -952,7 +952,7 @@ body.high-contrast .accessibility-toggle {
   background-color:#0f172a;
   background-image:
     linear-gradient(115deg, rgba(15,23,42,.84), rgba(25,61,78,.58)),
-    url('/images/fondo-login.jpg'),
+    url('/images/fondo-login.jpeg'),
     url('/images/imagen-fondo.jpg');
   background-position:center, center, center;
   background-size:cover, cover, cover;

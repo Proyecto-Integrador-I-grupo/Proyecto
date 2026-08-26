@@ -1,29 +1,4 @@
-<<<<<<< HEAD
 /* Estilos específicos para el Módulo de Consultas */
-=======
-/* =========================================================
-   MÓDULO DE CONSULTAS - ESTILO LIMPIO Y UNIFICADO
-   ========================================================= */
-
-#consultas-view {
-  --consulta-navy: #164f82;
-  --consulta-blue: #2585c4;
-  --consulta-blue-soft: #cceafd;
-  --consulta-blue-faint: #e8f5fd;
-  --consulta-border: #dce7f0;
-  --consulta-border-soft: #e9eff5;
-  --consulta-text: #29465f;
-  --consulta-muted: #637b8f;
-  --consulta-white: #ffffff;
-  --consulta-success-bg: #eaf6ef;
-  --consulta-success-text: #397553;
-  --consulta-danger-bg: #faeeee;
-  --consulta-danger-text: #a05252;
-  --consulta-warning-bg: #fff6df;
-  --consulta-warning-text: #8d6c26;
-  color: var(--consulta-text);
-}
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 
 .consultas-container {
   display: flex;
@@ -141,20 +116,6 @@
     0 6px 18px rgba(15, 39, 71, 0.04);
 
   overflow: hidden;
-<<<<<<< HEAD
-=======
-  border: 1px solid #d7e6f2;
-  border-left: 5px solid #2585c4;
-  border-radius: 16px;
-  background:
-    linear-gradient(
-      115deg,
-      #ffffff 0%,
-      #e0f3ff 42%,
-      #bfe3f8 100%
-    );
-  box-shadow: 0 5px 18px rgba(35, 79, 125, 0.05);
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 /* Forma azul suave del lado derecho */
@@ -169,7 +130,6 @@
   bottom: -150px;
 
   border-radius: 50%;
-<<<<<<< HEAD
 
   background: rgba(76, 151, 232, 0.08);
 
@@ -199,9 +159,6 @@
 
   opacity: 0.65;
 
-=======
-  background: rgba(47, 134, 197, 0.18);
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
   pointer-events: none;
 }
 
@@ -212,43 +169,21 @@
 
 .consultas-eyebrow {
   display: block;
-<<<<<<< HEAD
 
   margin-bottom: 0.45rem;
 
   font-size: 0.75rem;
   font-weight: 800;
 
-=======
-  margin-bottom: 0.35rem;
-  color: #2774a8;
-  font-size: 0.7rem;
-  font-weight: 700;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
   letter-spacing: 0.08em;
   text-transform: uppercase;
 
-<<<<<<< HEAD
   color: #3374b9;
-=======
-.consultas-hero h1,
-.consultas-hero h2,
-.consultas-hero h3 {
-  color: #294a68;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-
-.consultas-hero .text-muted {
-  color: #5f788e !important;
-  font-size: 0.9rem;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 .consultas-hero-icon {
   display: grid;
   place-items: center;
-<<<<<<< HEAD
 
   width: 4.3rem;
   height: 4.3rem;
@@ -269,16 +204,6 @@
 
   box-shadow:
     0 8px 20px rgba(15, 46, 88, 0.12);
-=======
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: 0 0 3.5rem;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #4fa3db, #236fa7);
-  color: #fff;
-  font-size: 1.3rem;
-  box-shadow: 0 7px 18px rgba(35, 111, 167, 0.2);
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 
@@ -322,7 +247,6 @@
 .consulta-stat-icon {
   display: grid;
   place-items: center;
-<<<<<<< HEAD
 
   width: 3rem;
   height: 3rem;
@@ -336,41 +260,19 @@
   color: #2467aa;
 
   font-size: 1.2rem;
-=======
-  width: 2.55rem;
-  height: 2.55rem;
-  flex: 0 0 2.55rem;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #d7f0ff, #c4e6fb);
-  color: #2278b2;
-  font-size: 1rem;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 /* Nombre de la consulta */
 .consulta-stat .text-muted {
-<<<<<<< HEAD
   color: #44556a !important;
   font-size: 0.88rem;
-=======
-  color: #627b90 !important;
-  font-size: 0.75rem !important;
-  font-weight: 500;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 /* Número */
 .consulta-stat .fs-3 {
-<<<<<<< HEAD
   margin-top: 0.2rem !important;
   color: #102f55;
   font-weight: 700 !important;
-=======
-  margin-top: 0.1rem !important;
-  color: #176da8;
-  font-size: 1.32rem !important;
-  font-weight: 600 !important;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
   line-height: 1;
 }
 
@@ -400,442 +302,9 @@
   }
 }
 
-<<<<<<< HEAD
 /* ==========================================
    VISTA PREVIA DE DOCUMENTOS
    ========================================== */
-=======
-#consultas-view .row.g-3.mb-4 > div:nth-child(2) .consulta-stat-icon {
-  background: #e7f6f4;
-  color: #3b8b82;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(3) .consulta-stat-icon {
-  background: #edf0ff;
-  color: #6475b8;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(4) .consulta-stat-icon {
-  background: #e6f1fb;
-  color: #4e7fae;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(5) .consulta-stat-icon {
-  background: #eef5ff;
-  color: #527fbd;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(6) .consulta-stat-icon {
-  background: #e6f6fb;
-  color: #3985a4;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(7) .consulta-stat-icon {
-  background: #e9f2ff;
-  color: #4c79ad;
-}
-
-#consultas-view .row.g-3.mb-4 .consulta-stat {
-  position: relative;
-  overflow: hidden;
-}
-
-#consultas-view .row.g-3.mb-4 .consulta-stat::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 2px;
-  background: linear-gradient(90deg, #7cb7dc, #d8eefb);
-}
-
-/* =========================================================
-   CONTEXTO DEL PROFESOR
-   ========================================================= */
-
-.consulta-profesor-contexto {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  padding: 0.95rem 1.05rem;
-  border: 1px solid #d9e8f4;
-  border-radius: 13px;
-  background: #f6fbff;
-}
-
-.consulta-profesor-contexto.hidden {
-  display: none !important;
-}
-
-.consulta-profesor-contexto-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  border-radius: 10px;
-  background: #e3f1fb;
-  color: #4a7da6;
-  font-size: 1rem;
-}
-
-#consulta-profesor-grupos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  line-height: 1.45;
-}
-
-.consulta-profesor-grupo-chip {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.08rem;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid #d5e5f2;
-  border-radius: 9px;
-  background: #fff;
-  color: #455f75;
-  line-height: 1.2;
-}
-
-.consulta-profesor-grupo-chip strong {
-  color: #3e719c;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.consulta-profesor-grupo-chip span {
-  color: #7e8e9c;
-  font-size: 0.72rem;
-}
-
-/* =========================================================
-   TARJETA PRINCIPAL / FILTROS
-   ========================================================= */
-
-#consultas-view .card,
-.consulta-result-card {
-  border: 1px solid var(--consulta-border-soft) !important;
-  border-radius: 15px !important;
-  background: #fff;
-  box-shadow: 0 4px 15px rgba(33, 62, 88, 0.045) !important;
-}
-
-#consultas-view .card-body {
-  padding: 1.3rem;
-}
-
-.consultas-toolbar {
-  padding: 1rem;
-  margin-bottom: 0.9rem;
-  border: 1px solid #e4edf4;
-  border-radius: 13px;
-  background: linear-gradient(180deg, #edf8ff, #dceefa);
-}
-
-.consulta-filtros-avanzados {
-  padding: 0.95rem;
-  border: 1px solid #e6edf3;
-  border-radius: 12px;
-  background: #eaf6fd;
-}
-
-#consultas-view .form-label {
-  margin-bottom: 0.33rem;
-  color: #46677f;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-#consultas-view .form-control,
-#consultas-view .form-select,
-#consultas-view .input-group-text {
-  min-height: 38px;
-  border: 1px solid #d9e4ec;
-  border-radius: 9px;
-  background-color: #fff;
-  color: #304f68;
-  font-size: 0.83rem;
-  font-weight: 400;
-  box-shadow: none;
-}
-
-#consultas-view .form-control::placeholder {
-  color: #7f94a5;
-}
-
-#consultas-view .form-control:focus,
-#consultas-view .form-select:focus {
-  border-color: #8eb6d6;
-  box-shadow: 0 0 0 3px rgba(86, 142, 188, 0.1);
-}
-
-/* =========================================================
-   BOTONES
-   ========================================================= */
-
-#consulta-limpiar,
-#consulta-refrescar,
-.consulta-ver-estudiante,
-.consulta-ver-matriculado,
-.consulta-ver-profesor,
-.consulta-ver-matricula,
-.consulta-ver-asistencia,
-.consulta-ver-grupo,
-.consulta-ver-auditoria,
-#consulta-descargar-pdf,
-#modalDetalleConsulta .modal-footer .btn-secondary {
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  font-weight: 500 !important;
-  line-height: 1.15 !important;
-}
-
-#consulta-limpiar {
-  min-height: 34px;
-  padding: 0.28rem 0.72rem !important;
-  border-color: #d2dde6 !important;
-  background: #fff !important;
-  color: #607487 !important;
-  font-size: 0.76rem !important;
-}
-
-#consulta-limpiar:hover {
-  background: #f4f8fb !important;
-  border-color: #bdccd8 !important;
-  color: #435c72 !important;
-}
-
-#consulta-refrescar {
-  min-height: 31px;
-  padding: 0.26rem 0.66rem !important;
-  border: 1px solid #4f98c9 !important;
-  background: #dff1fc !important;
-  color: #1e6f9f !important;
-  font-size: 0.74rem !important;
-}
-
-#consulta-refrescar:hover {
-  border-color: #3d87ba !important;
-  background: #cfeafb !important;
-  color: #205f8e !important;
-}
-
-.consulta-ver-estudiante,
-.consulta-ver-matriculado,
-.consulta-ver-profesor,
-.consulta-ver-matricula,
-.consulta-ver-asistencia,
-.consulta-ver-grupo,
-.consulta-ver-auditoria {
-  min-height: 29px;
-  padding: 0.24rem 0.58rem !important;
-  border: 1px solid #9fc4de !important;
-  background: #f4faff !important;
-  color: #376c92 !important;
-  font-size: 0.72rem !important;
-  white-space: nowrap;
-}
-
-.consulta-ver-estudiante:hover,
-.consulta-ver-matriculado:hover,
-.consulta-ver-profesor:hover,
-.consulta-ver-matricula:hover,
-.consulta-ver-asistencia:hover,
-.consulta-ver-grupo:hover,
-.consulta-ver-auditoria:hover {
-  border-color: #5b9bc6 !important;
-  background: #dceffc !important;
-  color: #286b9b !important;
-}
-
-#consulta-refrescar i,
-#consulta-limpiar i,
-.consulta-ver-estudiante i,
-.consulta-ver-matriculado i,
-.consulta-ver-profesor i,
-.consulta-ver-matricula i,
-.consulta-ver-asistencia i,
-.consulta-ver-grupo i,
-.consulta-ver-auditoria i {
-  margin-right: 0.18rem;
-  font-size: 0.76rem;
-}
-
-/* =========================================================
-   ENCABEZADO DE RESULTADOS
-   ========================================================= */
-
-.consulta-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.8rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid #edf1f4;
-}
-
-#consulta-titulo-tabla {
-  margin: 0;
-  color: #314d65;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-#consulta-cantidad,
-.consulta-meta {
-  color: #657e91 !important;
-  font-size: 0.72rem !important;
-  font-weight: 400;
-}
-
-/* =========================================================
-   TABLA PRINCIPAL
-   ========================================================= */
-
-#consultas-view .table-responsive {
-  border: 1px solid #e4ebf1;
-  border-radius: 12px;
-  overflow: auto;
-  background: #fff;
-}
-
-#consulta-tabla {
-  min-width: 820px;
-  margin: 0;
-  color: #40576b;
-  font-size: 0.8rem;
-}
-
-#consulta-tabla thead th {
-  padding: 0.72rem 0.78rem;
-  border-bottom: 1px solid #dfe8ef;
-  background: #cce9f9;
-  color: #285f87;
-  font-size: 0.67rem;
-  font-weight: 650;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-#consulta-tabla tbody td {
-  padding: 0.72rem 0.78rem;
-  border-color: #eef2f5;
-  color: #314f66;
-  font-size: 0.8rem;
-  font-weight: 400;
-  vertical-align: middle;
-}
-
-#consulta-tabla tbody tr {
-  transition: background 0.14s ease;
-}
-
-#consulta-tabla tbody tr:hover {
-  background: #f2f9fd;
-}
-
-#consulta-tabla tbody strong {
-  color: #214b69;
-  font-weight: 600;
-}
-
-.consulta-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid #d8e7f3;
-  border-radius: 999px;
-  background: #d7effc;
-  color: #226f9f;
-  font-size: 0.73rem;
-  font-weight: 600;
-}
-
-.consulta-date {
-  white-space: nowrap;
-  color: #687d90;
-  font-size: 0.78rem;
-}
-
-.consulta-audit-detail {
-  display: block;
-  max-width: 340px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #627587;
-}
-
-/* =========================================================
-   ESTADOS
-   ========================================================= */
-
-#consulta-tabla .badge,
-.consulta-documento .badge {
-  padding: 0.27rem 0.5rem !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  font-size: 0.66rem !important;
-  font-weight: 600 !important;
-}
-
-#consulta-tabla .bg-success,
-.consulta-documento .bg-success {
-  background: var(--consulta-success-bg) !important;
-  color: var(--consulta-success-text) !important;
-}
-
-#consulta-tabla .bg-secondary,
-.consulta-documento .bg-secondary {
-  background: #eef2f5 !important;
-  color: #687987 !important;
-}
-
-#consulta-tabla .bg-danger,
-.consulta-documento .bg-danger {
-  background: var(--consulta-danger-bg) !important;
-  color: var(--consulta-danger-text) !important;
-}
-
-#consulta-tabla .bg-warning,
-.consulta-documento .bg-warning {
-  background: var(--consulta-warning-bg) !important;
-  color: var(--consulta-warning-text) !important;
-}
-
-/* =========================================================
-   MODAL Y VISTA PREVIA
-   ========================================================= */
-
-#modalDetalleConsulta .modal-content {
-  overflow: hidden;
-  border: 0;
-  border-radius: 16px;
-  box-shadow: 0 20px 55px rgba(24, 53, 79, 0.16);
-}
-
-#modalDetalleConsulta .modal-header {
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid #e7eef4;
-  background: #eaf6fd;
-}
-
-#modalDetalleConsulta .modal-title,
-#consulta-detalle-titulo {
-  color: #304d66;
-  font-weight: 600;
-}
-
-#modalDetalleConsulta .modal-footer {
-  gap: 0.45rem;
-  padding: 0.75rem 1.05rem;
-  border-top: 1px solid #e7eef4;
-  background: #eaf6fd;
-}
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 
 .consulta-preview-area {
   padding: 2rem;
@@ -880,7 +349,6 @@
 .consulta-documento-logo {
   display: grid;
   place-items: center;
-<<<<<<< HEAD
 
   width: 3.8rem;
   height: 3.8rem;
@@ -911,22 +379,6 @@
   font-weight: 800;
 
   letter-spacing: 0.12em;
-=======
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: 0 0 3.5rem;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #4b97ce, #2b6f9e);
-  color: #fff;
-  font-size: 1.35rem;
-}
-
-.consulta-documento-institucion {
-  color: #2774a8;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
   text-transform: uppercase;
 }
 
@@ -967,7 +419,6 @@
 /* Línea divisoria */
 .consulta-documento-linea {
   height: 1px;
-<<<<<<< HEAD
 
   margin: 1.5rem 0 1.75rem;
 
@@ -977,10 +428,6 @@
       #2f80ed,
       #dbe8f5
     );
-=======
-  margin: 1.25rem 0 1.5rem;
-  background: linear-gradient(90deg, #4f96c8, #d5eafa);
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 /* Contenido */
@@ -993,7 +440,6 @@
 }
 
 .consulta-documento-seccion-titulo {
-<<<<<<< HEAD
   margin-bottom: 1rem;
 
   padding-bottom: 0.55rem;
@@ -1006,15 +452,6 @@
   font-weight: 800;
 
   letter-spacing: 0.07em;
-=======
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid #e5edf3;
-  color: #356f99;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
   text-transform: uppercase;
 }
 
@@ -1029,19 +466,12 @@
 }
 
 .consulta-documento-campo {
-<<<<<<< HEAD
   padding: 0.75rem 0.9rem;
 
   border: 1px solid #e8edf3;
   border-radius: 0.65rem;
 
   background: #fbfcfe;
-=======
-  padding: 0.72rem 0.82rem;
-  border: 1px solid #e8eef3;
-  border-radius: 10px;
-  background: #eaf6fd;
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 }
 
 .consulta-documento-campo.completo {
@@ -1092,135 +522,6 @@
   color: #234f7d;
 }
 
-<<<<<<< HEAD
-=======
-/* =========================================================
-   BOTONES DEL MODAL
-   ========================================================= */
-
-#consulta-descargar-pdf {
-  padding: 0.31rem 0.72rem !important;
-  border: 1px solid #2f86c5 !important;
-  background: #2f86c5 !important;
-  color: #fff !important;
-  font-size: 0.73rem !important;
-}
-
-#consulta-descargar-pdf:hover {
-  border-color: #236fa7 !important;
-  background: #236fa7 !important;
-}
-
-#modalDetalleConsulta .modal-footer .btn-secondary {
-  padding: 0.31rem 0.72rem !important;
-  border: 1px solid #d3dde5 !important;
-  background: #fff !important;
-  color: #607386 !important;
-  font-size: 0.73rem !important;
-}
-
-#modalDetalleConsulta .modal-footer .btn-secondary:hover {
-  background: #f3f7fa !important;
-  color: #425a70 !important;
-}
-
-/* =========================================================
-   LISTA DE GRUPOS
-   ========================================================= */
-
-.consulta-lista-grupo {
-  margin-bottom: 0;
-  border: 1px solid #e5edf3;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.consulta-lista-grupo thead th {
-  padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid #dfe8ef;
-  background: #f7fafc;
-  color: #6c8193;
-  font-size: 0.66rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.consulta-lista-grupo tbody td {
-  padding: 0.65rem 0.75rem;
-  border-color: #edf2f5;
-  color: #465e71;
-  font-size: 0.78rem;
-  vertical-align: middle;
-}
-
-.consulta-lista-grupo tbody tr:hover {
-  background: #f2f9fd;
-}
-
-.consulta-profesores-grupo {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.consulta-profesor-grupo {
-  display: flex;
-  align-items: center;
-  min-height: 58px;
-  padding: 0.72rem 0.82rem;
-  border: 1px solid #e5edf3;
-  border-radius: 10px;
-  background: #eaf6fd;
-}
-
-.consulta-profesor-grupo strong {
-  color: #3b5368;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-/* =========================================================
-   AUDITORÍA
-   ========================================================= */
-
-.consulta-json {
-  margin: 0.3rem 0 0;
-  max-height: 250px;
-  overflow: auto;
-  padding: 0.75rem;
-  border: 1px solid #e1e8ee;
-  border-radius: 9px;
-  background: #f6f8fa;
-  color: #3e5265;
-  font-size: 0.73rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* =========================================================
-   UTILIDADES
-   ========================================================= */
-
-.hidden {
-  display: none !important;
-}
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media (max-width: 991.98px) {
-  .consulta-stat {
-    min-height: 78px;
-  }
-
-  .consultas-hero {
-    padding: 1.25rem 1.35rem;
-  }
-}
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -1735,282 +1036,4 @@
   #consulta-refrescar {
     width: auto;
   }
-<<<<<<< HEAD
 }
-=======
-
-  #consulta-tabla {
-    min-width: 760px;
-  }
-}
-
-
-/* Intensidad visual adicional sin perder elegancia */
-#consultas-view .consulta-stat {
-  border-color: #d7e5ef;
-}
-
-#consultas-view .consulta-stat::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: linear-gradient(180deg, #4f9bd0, #8fc6e8);
-  opacity: 0.9;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(1) .consulta-stat-icon {
-  background: #d4efff;
-  color: #1f7fba;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(2) .consulta-stat-icon {
-  background: #dcf3f0;
-  color: #2f857b;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(3) .consulta-stat-icon {
-  background: #e4e8ff;
-  color: #596db4;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(4) .consulta-stat-icon {
-  background: #dcecfb;
-  color: #3f76a8;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(5) .consulta-stat-icon {
-  background: #e1edff;
-  color: #3f73b1;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(6) .consulta-stat-icon {
-  background: #d8f1f7;
-  color: #2e809e;
-}
-
-#consultas-view .row.g-3.mb-4 > div:nth-child(7) .consulta-stat-icon {
-  background: #dceaff;
-  color: #3f70aa;
-}
-
-#consulta-tabla thead th {
-  background: linear-gradient(180deg, #eaf6fd, #dceffc);
-}
-
-#consultas-view .form-select,
-#consultas-view .form-control {
-  background-color: #fbfdff;
-}
-
-.consulta-documento-campo {
-  background: #f7fbfe;
-}
-
-
-/* =========================================================
-   AJUSTE FINAL DE CONTRASTE Y TAMAÑO
-   ========================================================= */
-
-#consultas-view {
-  color: #29465f;
-}
-
-.consultas-hero {
-  border-color: #b9dced !important;
-  box-shadow: 0 7px 20px rgba(35, 112, 165, 0.10) !important;
-}
-
-.consultas-hero h1,
-.consultas-hero h2,
-.consultas-hero h3 {
-  color: #174f7a !important;
-}
-
-.consultas-eyebrow {
-  color: #237bb5 !important;
-}
-
-.consulta-stat {
-  border-color: #cfe1ed !important;
-  box-shadow: 0 4px 12px rgba(34, 102, 149, 0.07) !important;
-}
-
-.consulta-stat .text-muted {
-  color: #5e788e !important;
-  font-size: 0.78rem !important;
-}
-
-.consulta-stat .fs-3 {
-  color: #176ca5 !important;
-  font-size: 1.42rem !important;
-  font-weight: 650 !important;
-}
-
-.consultas-toolbar,
-.consulta-filtros-avanzados {
-  border-color: #cfe3f0 !important;
-}
-
-#consultas-view .form-label {
-  color: #3f637f !important;
-  font-size: 0.79rem !important;
-  font-weight: 650 !important;
-}
-
-#consultas-view .form-control,
-#consultas-view .form-select {
-  color: #294c67 !important;
-  border-color: #c5dce9 !important;
-  font-size: 0.86rem !important;
-}
-
-/* Limpiar: visible, pero secundario */
-#consulta-limpiar {
-  min-height: 37px !important;
-  padding: 0.38rem 0.82rem !important;
-  border: 1px solid #9dbdd2 !important;
-  background: #f2f9fd !important;
-  color: #315f80 !important;
-  font-size: 0.81rem !important;
-  font-weight: 600 !important;
-}
-
-#consulta-limpiar:hover {
-  background: #dfeffa !important;
-  border-color: #78a8c8 !important;
-  color: #1e5277 !important;
-}
-
-/* Actualizar: azul/celeste normal, ya no pálido */
-#consulta-refrescar {
-  min-height: 36px !important;
-  padding: 0.36rem 0.82rem !important;
-  border: 1px solid #2f86bd !important;
-  background: #3f94ca !important;
-  color: #ffffff !important;
-  font-size: 0.80rem !important;
-  font-weight: 600 !important;
-}
-
-#consulta-refrescar:hover {
-  border-color: #246f9f !important;
-  background: #2f80b5 !important;
-  color: #ffffff !important;
-}
-
-/* Vista previa: más grande y claramente visible */
-.consulta-ver-estudiante,
-.consulta-ver-matriculado,
-.consulta-ver-profesor,
-.consulta-ver-matricula,
-.consulta-ver-asistencia,
-.consulta-ver-grupo,
-.consulta-ver-auditoria {
-  min-height: 35px !important;
-  padding: 0.35rem 0.78rem !important;
-  border: 1px solid #6fa6c9 !important;
-  background: #e2f2fc !important;
-  color: #245f88 !important;
-  font-size: 0.79rem !important;
-  font-weight: 600 !important;
-}
-
-.consulta-ver-estudiante:hover,
-.consulta-ver-matriculado:hover,
-.consulta-ver-profesor:hover,
-.consulta-ver-matricula:hover,
-.consulta-ver-asistencia:hover,
-.consulta-ver-grupo:hover,
-.consulta-ver-auditoria:hover {
-  border-color: #3e88b8 !important;
-  background: #cce9f9 !important;
-  color: #174f77 !important;
-}
-
-#consulta-refrescar i,
-#consulta-limpiar i,
-.consulta-ver-estudiante i,
-.consulta-ver-matriculado i,
-.consulta-ver-profesor i,
-.consulta-ver-matricula i,
-.consulta-ver-asistencia i,
-.consulta-ver-grupo i,
-.consulta-ver-auditoria i {
-  font-size: 0.82rem !important;
-}
-
-/* Tabla con más presencia */
-#consulta-tabla thead th {
-  background: linear-gradient(180deg, #d8eefb, #c7e5f6) !important;
-  color: #2e6287 !important;
-  font-size: 0.70rem !important;
-}
-
-#consulta-tabla tbody td {
-  color: #304e65 !important;
-  font-size: 0.83rem !important;
-}
-
-#consulta-tabla tbody strong {
-  color: #174e74 !important;
-  font-weight: 650 !important;
-}
-
-#consulta-titulo-tabla {
-  color: #1f557b !important;
-  font-size: 1rem !important;
-  font-weight: 650 !important;
-}
-
-#consulta-cantidad {
-  color: #607c91 !important;
-  font-size: 0.75rem !important;
-}
-
-/* Vista previa con azul más visible */
-.consulta-documento {
-  border-color: #c6ddea !important;
-}
-
-.consulta-documento-seccion-titulo {
-  color: #2772a4 !important;
-  border-bottom-color: #cfe2ef !important;
-}
-
-.consulta-documento-campo {
-  background: #f0f8fd !important;
-  border-color: #d6e6f0 !important;
-}
-
-.consulta-documento-etiqueta {
-  color: #5f7f97 !important;
-}
-
-.consulta-documento-valor {
-  color: #294c66 !important;
-}
-
-#consulta-descargar-pdf {
-  min-height: 36px !important;
-  padding: 0.38rem 0.85rem !important;
-  background: #3188c1 !important;
-  border-color: #3188c1 !important;
-  color: #ffffff !important;
-  font-size: 0.80rem !important;
-  font-weight: 600 !important;
-}
-
-#consulta-descargar-pdf:hover {
-  background: #246f9f !important;
-  border-color: #246f9f !important;
-}
-
-#modalDetalleConsulta .modal-footer .btn-secondary {
-  min-height: 36px !important;
-  padding: 0.38rem 0.85rem !important;
-  color: #405f77 !important;
-  font-size: 0.80rem !important;
-  font-weight: 600 !important;
-}
->>>>>>> 273197ef484c6af2dd1b319d558b6426cfc3ff6c

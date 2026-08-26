@@ -1141,7 +1141,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
       let formatoEntregado = formatoNormalizado;
 
       try {
-        const url = `${baseDocumento}?formato=${formatoNormalizado}&plantilla=educontrol`;
+        const url = `${baseDocumento}?formato=${formatoNormalizado}&plantilla=auto`;
         descargado = await descargarDocumentoFactura(url, formatoNormalizado, timeoutMs);
       } catch (errorPdf) {
         // Si Puppeteer/Chrome está frío o temporalmente sin capacidad, Factura Bonita
@@ -1151,7 +1151,7 @@ export async function obtenerDocumentoDeCargo(idCargo, formato = "pdf") {
 
         console.warn(`Facturación: PDF no disponible para ${idFactura}; intentando vista HTML.`, errorPdf?.message || errorPdf);
         try {
-          const htmlUrl = `${baseDocumento}?formato=html&plantilla=educontrol`;
+          const htmlUrl = `${baseDocumento}?formato=html&plantilla=auto`;
           descargado = await descargarDocumentoFactura(htmlUrl, 'html', Math.min(timeoutMs, 30000));
           formatoEntregado = 'html';
         } catch (errorHtml) {

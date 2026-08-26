@@ -791,20 +791,7 @@ async function comprobarDisponibilidadExtra() {
 
 async function guardarClaseExtra(event) {
   event.preventDefault();
-  let popupBanco = null;
   try {
-    const metodoInicial = String(value('fin-pago-metodo') || '').toLowerCase();
-    if (metodoInicial === 'tarjeta') {
-      // Abrimos la ventana dentro del gesto del usuario para evitar que el
-      // navegador la bloquee mientras esperamos la respuesta del backend.
-      popupBanco = window.open('about:blank', 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
-      if (!popupBanco) throw new Error('El navegador bloqueó el datáfono. Permite ventanas emergentes para EduControl e inténtalo nuevamente.');
-      try {
-        popupBanco.document.title = 'Conectando con el servicio bancario';
-        popupBanco.document.body.innerHTML = '<div style="font-family:system-ui;padding:32px;color:#18324a"><h2>Conectando con el datáfono…</h2><p>EduControl está preparando el cobro seguro. Los datos de la tarjeta se ingresan únicamente en el servicio bancario.</p></div>';
-      } catch {}
-    }
-
     const payload = {
       id_estudiante: value('fin-extra-estudiante'),
       id_profesor: value('fin-extra-profesor'),
@@ -1440,6 +1427,30 @@ async function abrirPago(idCargo) {
 
 async function guardarPago(event) {
   event.preventDefault();
+
+  // El datáfono debe abrirse dentro del gesto directo del usuario. Si se espera
+  // primero una petición al backend, Edge/Chrome pueden bloquear la ventana.
+  let popupBanco = null;
+  const metodoInicial = String(value('fin-pago-metodo') || '').toLowerCase();
+  if (metodoInicial === 'tarjeta') {
+    popupBanco = window.open('about:blank', 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
+    if (!popupBanco) {
+      showToast('El navegador bloqueó el datáfono. Habilita ventanas emergentes para EduControl e inténtalo nuevamente.', 'warning');
+      return;
+    }
+    try {
+      popupBanco.document.title = 'Datáfono bancario';
+      popupBanco.document.body.style.margin = '0';
+      popupBanco.document.body.innerHTML = `
+        <main style="min-height:100vh;display:grid;place-items:center;background:#f5f8fb;font-family:system-ui;color:#18324a;padding:28px;box-sizing:border-box">
+          <section style="max-width:430px;width:100%;background:#fff;border:1px solid #d8e3ed;border-radius:18px;padding:28px;box-shadow:0 14px 36px rgba(24,50,74,.12);text-align:center">
+            <div style="font-size:42px;margin-bottom:10px">💳</div>
+            <h2 style="margin:0 0 8px">Conectando con el datáfono</h2>
+            <p style="margin:0;color:#64788d;line-height:1.5">EduControl está preparando el cobro seguro. La tarjeta del responsable se ingresa únicamente en la interfaz del banco.</p>
+          </section>
+        </main>`;
+    } catch {}
+  }
 
   const form = event.currentTarget;
   const idCargo = Number(value('fin-pago-cargo-id'));

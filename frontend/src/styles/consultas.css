@@ -961,18 +961,16 @@
 
 
 /* =========================================================
-   AJUSTE RESPONSIVE DE TARJETAS Y TIPOGRAFÍA
-   Evita desajustes por resolución, zoom o ancho de pantalla
+   AJUSTE RESPONSIVE SIN CAMBIAR COLORES
    ========================================================= */
 
-/* La fila de tarjetas deja de depender del ancho automático de Bootstrap */
+/* Evita que las tarjetas se compriman demasiado en pantallas más pequeñas */
 #consultas-view .row.g-3.mb-4 {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(135px, 1fr));
   gap: 0.9rem !important;
 }
 
-/* Los hijos ya no fuerzan anchos Bootstrap dentro de esta fila */
 #consultas-view .row.g-3.mb-4 > [class*="col-"] {
   width: auto !important;
   max-width: none !important;
@@ -980,12 +978,9 @@
   flex: none !important;
 }
 
-/* Mantiene cada tarjeta estable y evita que el texto se comprima demasiado */
 #consultas-view .consulta-stat {
-  min-width: 0;
   width: 100%;
-  min-height: 92px;
-  padding: 0.9rem 0.9rem;
+  min-width: 0;
 }
 
 #consultas-view .consulta-stat > div:last-child {
@@ -993,12 +988,8 @@
   flex: 1 1 auto;
 }
 
-/* Nombres de tarjetas con tamaño consistente en cualquier equipo */
 #consultas-view .consulta-stat .text-muted {
   display: block;
-  color: #60758a !important;
-  font-size: 0.78rem !important;
-  font-weight: 500;
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: normal;
@@ -1006,65 +997,43 @@
   hyphens: none;
 }
 
-/* Evita que el número cambie visualmente por el ancho de la tarjeta */
 #consultas-view .consulta-stat .fs-3 {
-  font-size: 1.4rem !important;
-  line-height: 1 !important;
   white-space: nowrap;
 }
 
-/* Evita que el icono se encoja cuando el texto ocupa más espacio */
 #consultas-view .consulta-stat-icon {
-  flex: 0 0 2.65rem !important;
-  width: 2.65rem !important;
-  height: 2.65rem !important;
+  flex-shrink: 0;
 }
 
-/* Pantallas medianas: 4 tarjetas por fila */
+/* 4 tarjetas por fila en resoluciones medianas */
 @media (max-width: 1350px) {
   #consultas-view .row.g-3.mb-4 {
     grid-template-columns: repeat(4, minmax(150px, 1fr));
   }
 }
 
-/* Tablets: 2 tarjetas por fila */
+/* 2 tarjetas por fila en tablets */
 @media (max-width: 850px) {
   #consultas-view .row.g-3.mb-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Móviles: una tarjeta por fila */
+/* 1 tarjeta por fila en móviles */
 @media (max-width: 480px) {
   #consultas-view .row.g-3.mb-4 {
     grid-template-columns: 1fr;
   }
 }
 
-/* Filtros: impide que texto y controles se monten en resoluciones menores */
+/* Evita desajustes visuales en textos y controles */
 #consultas-view .form-label,
 #consultas-view .form-control,
 #consultas-view .form-select,
 #consulta-limpiar,
-#consulta-refrescar {
-  line-height: 1.25;
-}
-
-/* El título principal no se deforma con zoom normal del navegador */
+#consulta-refrescar,
 #consultas-view .consultas-hero h1,
 #consultas-view .consultas-hero h2,
 #consultas-view .consultas-hero h3 {
-  line-height: 1.15;
-}
-
-/* Mejora el comportamiento cuando Windows usa escalado de pantalla */
-@media (min-resolution: 120dpi) {
-  #consultas-view .consulta-stat .text-muted {
-    font-size: 0.76rem !important;
-  }
-
-  #consultas-view .consulta-stat {
-    padding-left: 0.8rem;
-    padding-right: 0.8rem;
-  }
+  line-height: 1.25;
 }

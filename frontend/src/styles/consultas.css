@@ -36,11 +36,12 @@
   border-radius: 14px;
 
   background: linear-gradient(
-    110deg,
-    #ffffff 0%,
-    #f8fbfd 62%,
-    #edf4f8 100%
-  );
+  110deg,
+  #e3edff 0%,
+  #dbe6fb 40%,
+  #dddaf5 70%,
+  #d8cff0 100%
+);
 
   box-shadow: 0 4px 14px rgba(24, 55, 82, 0.045);
 }

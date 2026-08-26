@@ -432,105 +432,113 @@ export default function Pagos() {
 
       <Modal id="modalConfigFacturacion" title={<><i className="bi bi-diagram-3"></i> Servicios de facturación</>} lg>
         <form id="fin-config-form">
-          <div className="modal-body billing-config-modal integration-config-modal integration-config-v2">
-            <div className="integration-toolbar-v2">
-              <div className="integration-toolbar-copy">
-                <span className="integration-toolbar-icon"><i className="bi bi-plug"></i></span>
+          <div className="modal-body billing-config-modal integration-config-modal integration-config-v3">
+            <div className="integration-head-v3">
+              <div className="integration-head-copy-v3">
+                <span className="integration-head-icon-v3"><i className="bi bi-plug"></i></span>
                 <div>
                   <span className="eyebrow">INTEGRACIONES</span>
-                  <strong>Servicios conectados a EduControl</strong>
-                  <small>Administra únicamente las conexiones externas. Las que aún no tienen endpoint quedan preparadas para integrarlas después.</small>
+                  <strong>Conexiones externas de EduControl</strong>
+                  <small>Configura únicamente los servicios que participan en pagos y facturación.</small>
                 </div>
               </div>
-              <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary integration-verify-btn">
-                <i className="bi bi-arrow-repeat"></i><span>Verificar conexiones</span>
+              <button id="fin-integracion-probar" type="button" className="btn btn-outline-primary integration-verify-v3">
+                <i className="bi bi-arrow-repeat"></i> Verificar
               </button>
             </div>
 
-            <section className="integration-block-v2">
-              <div className="integration-block-heading-v2">
-                <div><i className="bi bi-check-circle-fill"></i><strong>Servicios disponibles</strong></div>
-                <small>Estos servicios ya pueden participar en el flujo de pagos y facturación.</small>
-              </div>
+            <div className="integration-tabs-v3 nav nav-pills" role="tablist">
+              <button className="nav-link active" id="fin-tab-activos" data-bs-toggle="pill" data-bs-target="#fin-panel-activos" type="button" role="tab" aria-controls="fin-panel-activos" aria-selected="true">
+                <i className="bi bi-check2-circle"></i><span>Servicios activos</span>
+              </button>
+              <button className="nav-link" id="fin-tab-pendientes" data-bs-toggle="pill" data-bs-target="#fin-panel-pendientes" type="button" role="tab" aria-controls="fin-panel-pendientes" aria-selected="false">
+                <i className="bi bi-hourglass-split"></i><span>Próximas integraciones</span>
+              </button>
+              <button className="nav-link" id="fin-tab-emisor" data-bs-toggle="pill" data-bs-target="#fin-panel-emisor" type="button" role="tab" aria-controls="fin-panel-emisor" aria-selected="false">
+                <i className="bi bi-building"></i><span>Datos del emisor</span>
+              </button>
+            </div>
 
-              <div className="integration-live-grid-v2">
-                <article className="integration-live-card-v2 invoice-service">
-                  <div className="integration-card-top-v2">
-                    <span className="integration-service-icon"><i className="bi bi-file-earmark-pdf"></i></span>
-                    <div className="integration-card-title-v2"><small>FACTURA VISUAL</small><strong>Factura Bonita</strong></div>
-                    <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  </div>
-                  <p id="fin-service-factura-detail" className="integration-card-detail-v2">Comprobando el servicio de factura PDF…</p>
-                  <div className="integration-fields-v2">
-                    <label><span>URL del servicio</span><input id="fin-config-factura-url" className="form-control" placeholder="https://..." /></label>
-                    <label><span>Clave X-Api-Key</span><input id="fin-config-factura-key" type="password" className="form-control" autoComplete="new-password" placeholder="Clave guardada · escribe solo para reemplazar" /></label>
-                  </div>
-                  <div className="integration-card-footer-v2">
-                    <div className="integration-service-actions">
-                      <a id="fin-factura-registro" className="btn btn-primary" href="https://proyecto-kn7p.onrender.com/?registro=1" target="_blank" rel="opener"><i className="bi bi-person-plus"></i> Registrar</a>
-                      <a id="fin-factura-portal" className="btn btn-outline-secondary" href="https://proyecto-kn7p.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Portal</a>
+            <div className="tab-content integration-tab-content-v3">
+              <div className="tab-pane fade show active" id="fin-panel-activos" role="tabpanel" aria-labelledby="fin-tab-activos" tabIndex="0">
+                <div className="integration-active-grid-v3">
+                  <article className="integration-service-v3 invoice-service">
+                    <div className="integration-service-head-v3">
+                      <span className="integration-service-icon-v3"><i className="bi bi-file-earmark-pdf"></i></span>
+                      <div className="integration-service-title-v3"><small>FACTURA VISUAL</small><strong>Factura Bonita</strong><span>Genera el comprobante PDF y aplica el logo de la cuenta registrada.</span></div>
+                      <span id="fin-service-factura-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
                     </div>
-                    <small id="fin-factura-key-hint" className="integration-secret-hint">La clave identifica a EduControl y aplica automáticamente el logo configurado.</small>
-                  </div>
-                </article>
-
-                <article className="integration-live-card-v2 bank-service">
-                  <div className="integration-card-top-v2">
-                    <span className="integration-service-icon bank"><i className="bi bi-credit-card"></i></span>
-                    <div className="integration-card-title-v2"><small>PAGOS</small><strong>Servicio bancario</strong></div>
-                    <span id="fin-service-banco-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  </div>
-                  <p id="fin-service-banco-detail" className="integration-card-detail-v2">Comprobando el endpoint de pago disponible…</p>
-                  <div className="integration-fields-v2 bank-fields-v2">
-                    <label><span>Identificador de comercio</span><input id="fin-config-banco-merchant" className="form-control" maxLength="128" placeholder="Credencial entregada por el banco" /></label>
-                    <label className="integration-affiliation-v2"><input id="fin-config-banco-afiliado" type="checkbox" /><span><strong>Negocio afiliado</strong><small>EduControl puede utilizar el checkout bancario.</small></span></label>
-                  </div>
-                  <div className="integration-card-footer-v2">
-                    <div className="integration-service-actions">
-                      <a id="fin-banco-registro" className="btn btn-primary" href="https://bankyfinanzas.netlify.app/registro/negocio" target="_blank" rel="noreferrer"><i className="bi bi-building-add"></i> Afiliar</a>
-                      <a id="fin-banco-login" className="btn btn-outline-secondary" href="https://bankyfinanzas.netlify.app/login" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Banco</a>
+                    <p id="fin-service-factura-detail" className="integration-service-detail-v3">Comprobando conexión…</p>
+                    <div className="integration-input-grid-v3">
+                      <label><span>URL del servicio</span><input id="fin-config-factura-url" className="form-control" placeholder="https://..." /></label>
+                      <label><span>Clave X-Api-Key</span><input id="fin-config-factura-key" type="password" className="form-control" autoComplete="new-password" placeholder="Clave guardada · escribe solo para reemplazar" /></label>
                     </div>
-                  </div>
-                </article>
-              </div>
-            </section>
+                    <div className="integration-service-foot-v3">
+                      <div className="integration-actions-v3">
+                        <a id="fin-factura-registro" className="btn btn-primary" href="https://proyecto-kn7p.onrender.com/?registro=1" target="_blank" rel="opener"><i className="bi bi-person-plus"></i> Registrar</a>
+                        <a id="fin-factura-portal" className="btn btn-outline-secondary" href="https://proyecto-kn7p.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Abrir portal</a>
+                      </div>
+                      <small id="fin-factura-key-hint" className="integration-hint-v3">La X-Api-Key vincula las facturas con la cuenta de EduControl.</small>
+                    </div>
+                  </article>
 
-            <section className="integration-block-v2 integration-future-block-v2">
-              <div className="integration-block-heading-v2 future-heading-v2">
-                <div><i className="bi bi-hourglass-split"></i><strong>Pendientes de integración</strong></div>
-                <small>Se activarán cuando el equipo entregue cada endpoint y contrato JSON.</small>
+                  <article className="integration-service-v3 bank-service">
+                    <div className="integration-service-head-v3">
+                      <span className="integration-service-icon-v3 bank"><i className="bi bi-credit-card"></i></span>
+                      <div className="integration-service-title-v3"><small>PAGOS</small><strong>Servicio bancario</strong><span>Procesa pagos con el comercio afiliado antes de registrar el movimiento.</span></div>
+                      <span id="fin-service-banco-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    </div>
+                    <p id="fin-service-banco-detail" className="integration-service-detail-v3">Comprobando conexión…</p>
+                    <label className="integration-field-wide-v3"><span>Identificador de comercio</span><input id="fin-config-banco-merchant" className="form-control" maxLength="128" placeholder="Credencial entregada por el banco" /></label>
+                    <label className="integration-affiliation-v3"><input id="fin-config-banco-afiliado" type="checkbox" /><span><strong>Negocio afiliado</strong><small>Habilita el checkout bancario para EduControl.</small></span></label>
+                    <div className="integration-service-foot-v3">
+                      <div className="integration-actions-v3">
+                        <a id="fin-banco-registro" className="btn btn-primary" href="https://bankyfinanzas.netlify.app/registro/negocio" target="_blank" rel="noreferrer"><i className="bi bi-building-add"></i> Afiliar</a>
+                        <a id="fin-banco-login" className="btn btn-outline-secondary" href="https://bankyfinanzas.netlify.app/login" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Abrir banco</a>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+                <div className="integration-flow-note-v3"><i className="bi bi-info-circle"></i><span><strong>Flujo actual:</strong> pago aprobado → EduControl registra el movimiento → al cancelar el saldo se solicita el PDF a Factura Bonita.</span></div>
               </div>
-              <div className="integration-future-grid-v2">
-                <article className="integration-future-card-v2">
-                  <div className="integration-future-main-v2"><span className="integration-service-icon"><i className="bi bi-pen"></i></span><div><small>SEGURIDAD</small><strong>Firma Digital</strong><p id="fin-service-firma-detail">Pendiente de recibir el endpoint y contrato JSON.</p></div></div>
-                  <span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  <input id="fin-config-firma-url" className="form-control form-control-sm" placeholder="Endpoint futuro" aria-label="Endpoint de Firma Digital" />
-                </article>
-                <article className="integration-future-card-v2">
-                  <div className="integration-future-main-v2"><span className="integration-service-icon"><i className="bi bi-filetype-xml"></i></span><div><small>DOCUMENTO FISCAL</small><strong>Factura Electrónica</strong><p id="fin-service-electronica-detail">Pendiente de recibir el endpoint y contrato JSON.</p></div></div>
-                  <span id="fin-service-electronica-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  <input id="fin-config-electronica-url" className="form-control form-control-sm" placeholder="Endpoint futuro" aria-label="Endpoint de Facturación Electrónica" />
-                </article>
-                <article className="integration-future-card-v2">
-                  <div className="integration-future-main-v2"><span className="integration-service-icon"><i className="bi bi-bank2"></i></span><div><small>VALIDACIÓN FISCAL</small><strong>Tributación</strong><p id="fin-service-tributacion-detail">Pendiente del endpoint para enviar el XML y recuperar el acuse.</p></div></div>
-                  <span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
-                  <input id="fin-config-tributacion-url" className="form-control form-control-sm" placeholder="Endpoint futuro" aria-label="Endpoint de Tributación" />
-                </article>
-              </div>
-            </section>
 
-            <details className="integration-emitter-details-v2">
-              <summary><span><i className="bi bi-building"></i><strong>Datos del emisor</strong><small>Información de EduControl enviada en la facturación.</small></span><i className="bi bi-chevron-down"></i></summary>
-              <div className="billing-emitter-grid integration-emitter-grid integration-emitter-grid-v2">
-                <div className="billing-field billing-field-wide"><label className="form-label">Nombre de la institución</label><input id="fin-config-nombre" className="form-control" maxLength="100" required /></div>
-                <div className="billing-field"><label className="form-label">Tipo ID</label><select id="fin-config-tipo-id" className="form-select"><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
-                <div className="billing-field"><label className="form-label">Identificación</label><input id="fin-config-numero-id" className="form-control" maxLength="30" required /></div>
-                <div className="billing-field billing-field-wide"><label className="form-label">Correo de facturación</label><input id="fin-config-correo" type="email" className="form-control" maxLength="150" required /></div>
-                <div className="integration-logo-note integration-logo-note-v2"><i className="bi bi-image"></i><span>El logo se administra en <strong>Factura Bonita</strong> y se aplica al PDF mediante la X-Api-Key.</span></div>
+              <div className="tab-pane fade" id="fin-panel-pendientes" role="tabpanel" aria-labelledby="fin-tab-pendientes" tabIndex="0">
+                <div className="integration-pending-intro-v3"><strong>Preparadas para la siguiente integración</strong><span>Cuando recibas cada endpoint y contrato JSON, solo tendrás que completar la dirección y verificar.</span></div>
+                <div className="integration-pending-list-v3">
+                  <article className="integration-pending-row-v3">
+                    <span className="integration-service-icon-v3"><i className="bi bi-pen"></i></span>
+                    <div className="integration-pending-copy-v3"><small>SEGURIDAD</small><strong>Firma Digital</strong><p id="fin-service-firma-detail">Pendiente de recibir el endpoint y contrato JSON.</p></div>
+                    <span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    <input id="fin-config-firma-url" className="form-control" placeholder="Endpoint de Firma Digital" aria-label="Endpoint de Firma Digital" />
+                  </article>
+                  <article className="integration-pending-row-v3">
+                    <span className="integration-service-icon-v3"><i className="bi bi-filetype-xml"></i></span>
+                    <div className="integration-pending-copy-v3"><small>DOCUMENTO FISCAL</small><strong>Facturación Electrónica</strong><p id="fin-service-electronica-detail">Pendiente de recibir el endpoint y contrato JSON.</p></div>
+                    <span id="fin-service-electronica-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    <input id="fin-config-electronica-url" className="form-control" placeholder="Endpoint de Facturación Electrónica" aria-label="Endpoint de Facturación Electrónica" />
+                  </article>
+                  <article className="integration-pending-row-v3">
+                    <span className="integration-service-icon-v3"><i className="bi bi-bank2"></i></span>
+                    <div className="integration-pending-copy-v3"><small>VALIDACIÓN FISCAL</small><strong>Tributación</strong><p id="fin-service-tributacion-detail">Pendiente del endpoint para enviar el XML y recuperar el acuse.</p></div>
+                    <span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    <input id="fin-config-tributacion-url" className="form-control" placeholder="Endpoint de Tributación" aria-label="Endpoint de Tributación" />
+                  </article>
+                </div>
               </div>
-            </details>
+
+              <div className="tab-pane fade" id="fin-panel-emisor" role="tabpanel" aria-labelledby="fin-tab-emisor" tabIndex="0">
+                <div className="integration-emitter-intro-v3"><i className="bi bi-building-check"></i><div><strong>Datos enviados por EduControl</strong><span>Se incluyen como información del emisor en los comprobantes generados por los servicios conectados.</span></div></div>
+                <div className="integration-emitter-grid-v3">
+                  <label className="wide"><span>Nombre de la institución</span><input id="fin-config-nombre" className="form-control" maxLength="100" required /></label>
+                  <label><span>Tipo de identificación</span><select id="fin-config-tipo-id" className="form-select"><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></label>
+                  <label><span>Identificación</span><input id="fin-config-numero-id" className="form-control" maxLength="30" required /></label>
+                  <label className="wide"><span>Correo de facturación</span><input id="fin-config-correo" type="email" className="form-control" maxLength="150" required /></label>
+                </div>
+                <div className="integration-logo-note-v3"><i className="bi bi-image"></i><span>El logo no se almacena aquí. Se administra en Factura Bonita y se aplica al PDF mediante la cuenta vinculada.</span></div>
+              </div>
+            </div>
           </div>
-          <div className="modal-footer billing-config-footer integration-footer-v2">
+          <div className="modal-footer billing-config-footer integration-footer-v3">
             <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
             <button type="submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar cambios</button>
           </div>

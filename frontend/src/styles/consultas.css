@@ -37,8 +37,10 @@
 
 background: linear-gradient(
   110deg,
-  #c9e7f7 0%,
-  #d9d2f3 100%
+  #c6e7f7 0%,
+  #cbdff4 42%,
+  #cfc3ed 70%,
+  #c3afe7 100%
 );
 
   box-shadow: 0 4px 14px rgba(24, 55, 82, 0.045);

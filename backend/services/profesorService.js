@@ -59,6 +59,27 @@ const validarNombreHumano = (valor, etiqueta, obligatorio = true) => {
   return texto;
 };
 
+const validarFechaIngresoProfesor = (valor) => {
+  const fecha = String(valor || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new Error("La fecha de ingreso no es válida.");
+  }
+
+  const hoyIso = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+  const anioActual = Number(hoyIso.slice(0, 4));
+  const inicioAnio = `${anioActual}-01-01`;
+
+  if (fecha < inicioAnio) {
+    throw new Error(`La fecha de ingreso debe pertenecer al año ${anioActual}.`);
+  }
+  if (fecha > hoyIso) {
+    throw new Error("La fecha de ingreso no puede ser futura.");
+  }
+  return fecha;
+};
+
 const validarMayorEdad = (fechaNacimiento) => {
   const fecha = new Date(`${String(fechaNacimiento || '').slice(0, 10)}T00:00:00`);
   if (Number.isNaN(fecha.getTime())) throw new Error("La fecha de nacimiento no es válida.");
@@ -240,6 +261,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
   const apellido1Limpio = validarNombreHumano(apellido1, "El primer apellido");
   const apellido2Limpio = validarNombreHumano(apellido2, "El segundo apellido", false);
   validarMayorEdad(fecha_nacimiento);
+  const fechaIngresoValidada = validarFechaIngresoProfesor(fecha_ingreso);
   const correoLimpio = validarCorreoInstitucional(correo);
 
   const connection = await conexionPromise.getConnection();
@@ -313,7 +335,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
     const [resProfesor] = await connection.query(queryProfesor, [
       id_persona,
       materiaNormalizada,
-      fecha_ingreso || new Date().toISOString().split("T")[0],
+      fechaIngresoValidada,
       horasMaximas
     ]);
 
@@ -343,7 +365,7 @@ export const crearProfesorService = async (datos, idUsuario = null) => {
       apellido1,
       apellido2,
       materia: materiaNormalizada,
-      fecha_ingreso,
+      fecha_ingreso: fechaIngresoValidada,
       correo: correoLimpio,
       estado: 1
     };
@@ -375,7 +397,7 @@ export const actualizarProfesorService = async (idProfesor, datos) => {
   const materia = normalizarMateriaProfesor(datos.materia);
   const genero = normalizarGeneroProfesor(datos.genero);
   const fechaNacimiento = String(datos.fecha_nacimiento || "").slice(0, 10);
-  const fechaIngreso = String(datos.fecha_ingreso || "").slice(0, 10);
+  const fechaIngreso = validarFechaIngresoProfesor(datos.fecha_ingreso);
   const correo = validarCorreoInstitucional(datos.correo);
   validarMayorEdad(fechaNacimiento);
 
@@ -400,7 +422,7 @@ export const actualizarProfesorService = async (idProfesor, datos) => {
     );
     await connection.query(
       `UPDATE profesor SET materia = ?, fecha_ingreso = ? WHERE id_profesor = ?`,
-      [materia, fechaIngreso || new Date().toISOString().slice(0, 10), id]
+      [materia, fechaIngreso, id]
     );
     await connection.query(`UPDATE usuario SET correo = ? WHERE id_persona = ?`, [correo, profesor.id_persona]);
 

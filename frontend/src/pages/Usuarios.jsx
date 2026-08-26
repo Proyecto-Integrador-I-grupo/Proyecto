@@ -82,7 +82,7 @@ export default function Usuarios() {
                     <i className="bi bi-shield-check text-primary me-2"></i>
                     Gestión de Permisos y Usuarios
                   </h5>
-                  <button type="button" id="btn-refrescar-usuarios" className="btn btn-sm btn-outline-primary">
+                  <button type="button" id="btn-refrescar-usuarios" className="btn btn-outline-secondary">
                     <i className="bi bi-arrow-clockwise me-1"></i> Refrescar
                   </button>
                 </div>

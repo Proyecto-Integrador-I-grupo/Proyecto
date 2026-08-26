@@ -481,3 +481,44 @@ body.theme-dark #modalHorarios .schedule-timeline-day-label {
   border-color: #325570 !important;
   color: #cfeaff !important;
 }
+
+/* 2026-08-26: consistencia final de acciones y hover */
+#usuarios-view #btn-refrescar-usuarios,
+#profesores-view #prof-refrescar,
+#asistencia-view #asis-refrescar,
+#pagos-view #fin-refrescar {
+  min-height: 40px;
+  border-radius: .65rem;
+  font-weight: 600;
+}
+
+#usuarios-view #btn-refrescar-usuarios:hover,
+#usuarios-view #btn-refrescar-usuarios:focus-visible {
+  background: #eef2f6;
+  border-color: #b8c4d1;
+  color: #26384a;
+}
+
+#usuarios-view .table-hover > tbody > tr:hover > * {
+  background-color: #f8fafc;
+  color: inherit;
+}
+
+body.theme-dark #usuarios-view #btn-refrescar-usuarios:hover,
+body.theme-dark #usuarios-view #btn-refrescar-usuarios:focus-visible {
+  background: #1b304a !important;
+  border-color: #5b7088 !important;
+  color: #fff !important;
+}
+
+body.theme-dark #usuarios-view .table-hover > tbody > tr:hover > * {
+  background-color: #1a2e47 !important;
+  color: #e8f0f8 !important;
+}
+
+#prof-fecha-ingreso:invalid,
+#edit-prof-fecha-ingreso:invalid,
+#fin-cargo-descuento:invalid,
+#fin-edit-cargo-descuento:invalid {
+  border-color: #dc3545;
+}

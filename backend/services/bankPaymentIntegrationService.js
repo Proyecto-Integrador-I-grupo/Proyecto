@@ -99,7 +99,7 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
 
   const [[cargo]] = await pool.query(
     `SELECT ce.id_cargo, ce.saldo, ce.estado, ce.descripcion, ce.id_estudiante,
-            CONCAT_WS(' ', p.nombre, p.primer_apellido, p.segundo_apellido) AS estudiante_nombre
+            CONCAT_WS(' ', p.nombre, p.apellido1, p.apellido2) AS estudiante_nombre
        FROM cargo_estudiante ce
        JOIN estudiante e ON e.id_estudiante = ce.id_estudiante
        JOIN persona p ON p.id_persona = e.id_persona

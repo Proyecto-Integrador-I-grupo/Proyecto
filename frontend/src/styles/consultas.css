@@ -36,11 +36,12 @@
   border-radius: 14px;
 
 background: linear-gradient(
-  110deg,
-  #c6e7f7 0%,
-  #cbdff4 42%,
-  #cfc3ed 70%,
-  #c3afe7 100%
+  105deg,
+  #eefaff 0%,
+  #e8f6ff 32%,
+  #e5ebfb 58%,
+  #eadcf8 80%,
+  #efd5f7 100%
 );
 
   box-shadow: 0 4px 14px rgba(24, 55, 82, 0.045);
@@ -955,8 +956,22 @@ background: linear-gradient(
   }
 
   .consultas-hero-icon {
-    display: none;
-  }
+  display: grid;
+  place-items: center;
+
+  width: 3.7rem;
+  height: 3.7rem;
+  flex: 0 0 3.7rem;
+
+  border-radius: 12px;
+
+  background: #12355b;
+  color: #ffffff;
+
+  font-size: 1.35rem;
+
+  box-shadow: 0 6px 14px rgba(18, 53, 91, 0.18);
+}
 
   .consulta-stat {
     min-height: 76px;

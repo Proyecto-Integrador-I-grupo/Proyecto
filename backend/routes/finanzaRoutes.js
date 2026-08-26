@@ -4,7 +4,7 @@ import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, getFacturas, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
   getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
-  getEstadoIntegraciones, getDocumentoFactura, postConfirmarFacturaCliente
+  getEstadoIntegraciones, getDocumentoFactura, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -26,10 +26,14 @@ router.get("/pagos", requireRole("administrador", "asistente"), getPagos);
 router.get("/estado-cuentas", requireRole("administrador", "asistente"), getEstadoCuentas);
 router.get("/estudiantes", requireRole("administrador", "asistente"), getEstudiantesFinanzas);
 router.post("/cargos/:id/pagar", requirePermission("finanzas.registrar_pago"), postPago);
+router.post("/cargos/:id/pago-banco/iniciar", requirePermission("finanzas.registrar_pago"), postIniciarPagoBanco);
+router.post("/cargos/:id/pago-banco/confirmar", requirePermission("finanzas.registrar_pago"), postConfirmarPagoBanco);
+router.post("/cargos/:id/pago-banco/resultado", requirePermission("finanzas.registrar_pago"), postResultadoPagoBanco);
 router.put("/pagos/:id", requirePermission("finanzas.registrar_pago"), putPago);
 router.post("/cargos/:id/facturar", requirePermission("finanzas.facturar_manual"), postFacturar);
 router.post("/cargos/:id/factura-confirmar", requirePermission("finanzas.facturar_manual"), postConfirmarFacturaCliente);
 router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
+router.get("/cargos/:id/documentos-integrados", requireRole("administrador", "asistente"), getDocumentosIntegrados);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);
 router.get("/profesores/:id/estudiantes-extra", requireRole("administrador", "asistente"), getEstudiantesProfesorExtra);

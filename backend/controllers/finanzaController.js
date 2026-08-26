@@ -1,11 +1,13 @@
 import * as finanzaService from "../services/finanzaService.js";
 import { usuarioTienePermiso } from "../models/usuarioModel.js";
+import { iniciarPagoBanco, confirmarPagoBanco, registrarResultadoNoCompletadoBanco } from "../services/bankPaymentIntegrationService.js";
 import {
   obtenerConfiguracionFacturacion,
   actualizarConfiguracionFacturacion,
   obtenerEstadoServiciosFacturacion,
   obtenerDocumentoDeCargo,
-  confirmarFacturaGeneradaDesdeCliente
+  confirmarFacturaGeneradaDesdeCliente,
+  obtenerDocumentosIntegrados
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -175,6 +177,11 @@ export async function getEstadoIntegraciones(req, res) {
   } catch (e) { responderError(res, e, 500); }
 }
 
+export async function getDocumentosIntegrados(req, res) {
+  try { res.json(await obtenerDocumentosIntegrados(req.params.id)); }
+  catch (e) { responderError(res, e, 500); }
+}
+
 export async function getDocumentoFactura(req, res) {
   try {
     const documento = await obtenerDocumentoDeCargo(req.params.id, req.query?.formato || "pdf");
@@ -184,4 +191,22 @@ export async function getDocumentoFactura(req, res) {
     res.setHeader("X-EduControl-Document-Mode", documento.formatoEntregado || (documento.contentType?.includes('html') ? 'html' : 'pdf'));
     res.send(documento.buffer);
   } catch (e) { responderError(res, e, 502); }
+}
+
+export async function postIniciarPagoBanco(req, res) {
+  try {
+    const origin = req.headers.origin || req.body?.origin || '';
+    res.json(await iniciarPagoBanco(req.params.id, req.body || {}, req.usuarioActual?.id_usuario, origin));
+  } catch (e) { responderError(res, e); }
+}
+
+export async function postConfirmarPagoBanco(req, res) {
+  try {
+    res.status(201).json(await confirmarPagoBanco(req.params.id, req.body || {}, req.usuarioActual?.id_usuario));
+  } catch (e) { responderError(res, e); }
+}
+
+export async function postResultadoPagoBanco(req, res) {
+  try { res.json(await registrarResultadoNoCompletadoBanco(req.params.id, req.body || {})); }
+  catch (e) { responderError(res, e); }
 }

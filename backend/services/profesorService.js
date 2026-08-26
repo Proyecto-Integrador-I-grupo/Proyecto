@@ -842,3 +842,104 @@ export const obtenerSuplenciasPendientesService = async () => {
   const [rows] = await conexionPromise.query(query);
   return rows;
 };
+/**
+ * Devuelve la agenda académica usando la asignación real grupo-profesor.
+ * No duplica información de horario: los días, horas y aula viven en `grupo`.
+ */
+export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
+  await asegurarHorarioGruposProfesor();
+  await procesarSuplenciasVencidas();
+
+  const params = [];
+  let filtroProfesor = '';
+  if (idProfesor) {
+    filtroProfesor = 'AND pr.id_profesor = ?';
+    params.push(Number(idProfesor));
+  }
+
+  const [horarios] = await conexionPromise.query(
+    `SELECT
+       gp.id_grupo_profesor,
+       gp.fecha_inicio AS asignacion_desde,
+       gp.fecha_fin AS asignacion_hasta,
+       pr.id_profesor,
+       CONCAT_WS(' ', p.nombre, p.apellido1, NULLIF(p.apellido2, '')) AS profesor_nombre,
+       pr.materia,
+       pr.estado AS profesor_activo,
+       g.id_grupo,
+       g.nombre_grupo,
+       g.aula,
+       g.dias_semana,
+       TIME_FORMAT(g.hora_inicio, '%H:%i') AS hora_inicio,
+       TIME_FORMAT(g.hora_fin, '%H:%i') AS hora_fin,
+       s.id_seccion,
+       s.nombre_seccion,
+       s.nivel,
+       s.periodo_lectivo,
+       pl.estado AS estado_periodo,
+       CASE WHEN EXISTS (
+         SELECT 1
+         FROM profesor_suplencia ps
+         WHERE ps.id_grupo = g.id_grupo
+           AND ps.id_profesor_suplente = pr.id_profesor
+           AND ps.estado = TRUE
+           AND CURDATE() BETWEEN ps.fecha_inicio AND ps.fecha_fin
+       ) THEN TRUE ELSE FALSE END AS es_suplencia
+     FROM grupo_profesor gp
+     INNER JOIN profesor pr ON pr.id_profesor = gp.id_profesor
+     INNER JOIN persona p ON p.id_persona = pr.id_persona AND p.estado = TRUE
+     INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
+     INNER JOIN seccion s ON s.id_seccion = g.id_seccion AND s.estado = TRUE
+     INNER JOIN periodo_lectivo pl ON pl.anio = s.periodo_lectivo
+     WHERE gp.estado = TRUE
+       AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())
+       ${filtroProfesor}
+     ORDER BY s.periodo_lectivo DESC, p.apellido1, p.nombre, g.hora_inicio, g.nombre_grupo`,
+    params
+  );
+
+  const profesoresParams = [];
+  let profesoresFiltro = '';
+  if (idProfesor) {
+    profesoresFiltro = 'AND pr.id_profesor = ?';
+    profesoresParams.push(Number(idProfesor));
+  }
+  const [profesores] = await conexionPromise.query(
+    `SELECT pr.id_profesor,
+            CONCAT_WS(' ', p.nombre, p.apellido1, NULLIF(p.apellido2, '')) AS nombre,
+            pr.materia,
+            pr.estado
+     FROM profesor pr
+     INNER JOIN persona p ON p.id_persona = pr.id_persona AND p.estado = TRUE
+     WHERE 1=1 ${profesoresFiltro}
+     ORDER BY p.apellido1, p.nombre`,
+    profesoresParams
+  );
+
+  const gruposParams = [];
+  let gruposJoinProfesor = '';
+  let gruposFiltroProfesor = '';
+  if (idProfesor) {
+    gruposJoinProfesor = 'INNER JOIN grupo_profesor gp2 ON gp2.id_grupo = g.id_grupo AND gp2.estado = TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin >= CURDATE())';
+    gruposFiltroProfesor = 'AND gp2.id_profesor = ?';
+    gruposParams.push(Number(idProfesor));
+  }
+  const [grupos] = await conexionPromise.query(
+    `SELECT DISTINCT g.id_grupo, g.nombre_grupo, g.aula,
+            s.nombre_seccion, s.nivel, s.periodo_lectivo
+     FROM grupo g
+     INNER JOIN seccion s ON s.id_seccion = g.id_seccion AND s.estado = TRUE
+     ${gruposJoinProfesor}
+     WHERE g.estado = TRUE ${gruposFiltroProfesor}
+     ORDER BY s.periodo_lectivo DESC, g.nombre_grupo, s.nombre_seccion`,
+    gruposParams
+  );
+
+  const [periodos] = await conexionPromise.query(
+    `SELECT anio, estado, fecha_inicio, fecha_fin
+     FROM periodo_lectivo
+     ORDER BY anio DESC`
+  );
+
+  return { horarios, profesores, grupos, periodos };
+};

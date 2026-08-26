@@ -12,6 +12,7 @@ import {
 import './dashboard.js';
 import './estudiantes.js';
 import './profesores.js';
+import './horarios.js';
 import './matricula.js';
 import './asistencia.js';
 import './pagos.js';

@@ -571,10 +571,30 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     const respuesta = await consumirFacturaSmart(config, '/api/v1/facturas/procesar', { method: 'POST', body, timeout: 60000 });
     const id = String(respuesta?.id || respuesta?.facturaId || respuesta?.factura?.id || body.id).trim();
     const root = raizFacturaSmart(config);
+
+    // La factura electrónica no debe quedar solamente "en FacturaSmart". En cuanto
+    // se procesa, EduControl intenta traer el XML y conservar una copia local en
+    // base64. Así el módulo de Facturación puede entregarlo directamente aunque el
+    // servicio externo esté temporalmente dormido más adelante.
+    let xmlLocal = null;
+    let xmlMime = 'application/xml';
+    let errorCopiaXml = null;
+    try {
+      const xml = await fetchFacturaSmartBinario(config, `/api/v1/facturas/${encodeURIComponent(id)}/xml`, 30000);
+      xmlLocal = xml.buffer.toString('base64');
+      xmlMime = xml.contentType || 'application/xml';
+    } catch (errorXml) {
+      errorCopiaXml = errorXml?.message || 'El XML fue generado en FacturaSmart, pero EduControl todavía no pudo copiarlo.';
+    }
+
     await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
-      estado: 'disponible', identificador: id,
+      estado: xmlLocal ? 'disponible' : 'remoto_disponible',
+      identificador: id,
       url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
-      mimeType: 'application/xml', respuesta
+      mimeType: xmlMime,
+      contenido: xmlLocal,
+      respuesta,
+      error: errorCopiaXml
     });
     // FacturaSmart puede generar y conservar el XML desde ahora. El acuse no se
     // marca como error: queda expresamente pendiente hasta que exista firma digital
@@ -621,14 +641,38 @@ export async function obtenerDocumentoElectronicoFacturaSmart(idCargo, formato =
   const config = await obtenerConfigInterna();
   if (!config?.factura_electronica_cuenta_confirmada) throw new Error('La cuenta de FacturaSmart todavía no está vinculada.');
   const [rows] = await pool.query(
-    `SELECT identificador_externo, estado FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`,
+    `SELECT identificador_externo, estado, mime_type, contenido FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`,
     [Number(idCargo)]
   );
-  const id = String(rows[0]?.identificador_externo || '').trim();
-  if (!id || rows[0]?.estado !== 'disponible') throw new Error('La factura electrónica todavía no está disponible para este cargo.');
+  const registro = rows[0] || {};
+  const id = String(registro.identificador_externo || '').trim();
+  if (!id) throw new Error('La factura electrónica todavía no está disponible para este cargo.');
   const limpio = String(formato || 'xml').toLowerCase();
+
+  // El XML se sirve primero desde la copia recibida por EduControl.
+  if (limpio === 'xml' && registro.contenido) {
+    return {
+      buffer: Buffer.from(String(registro.contenido), 'base64'),
+      contentType: registro.mime_type || 'application/xml',
+      filename: `factura-electronica-${id}.xml`
+    };
+  }
+
   const ruta = limpio === 'pdf' ? `/api/v1/facturas/${encodeURIComponent(id)}/pdf` : `/api/v1/facturas/${encodeURIComponent(id)}/xml`;
   const documento = await fetchFacturaSmartBinario(config, ruta, 30000);
+
+  // Si EduControl aún no tenía la copia XML (por ejemplo, FacturaSmart estaba
+  // despertando al momento del pago), la guardamos en el primer acceso exitoso.
+  if (limpio === 'xml') {
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+      estado: 'disponible',
+      identificador: id,
+      mimeType: documento.contentType || 'application/xml',
+      contenido: documento.buffer.toString('base64'),
+      error: null
+    }).catch(() => {});
+  }
+
   return {
     ...documento,
     filename: limpio === 'pdf' ? `factura-electronica-${id}.pdf` : `factura-electronica-${id}.xml`
@@ -1533,7 +1577,7 @@ export async function obtenerDocumentosIntegrados(idCargo) {
     [Number(idCargo)]
   );
   const mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
-  if (mapa.factura_electronica?.estado === 'disponible') {
+  if (['disponible','remoto_disponible'].includes(String(mapa.factura_electronica?.estado || ''))) {
     mapa.factura_electronica.url_xml_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=xml`;
     mapa.factura_electronica.url_pdf_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=pdf`;
   }

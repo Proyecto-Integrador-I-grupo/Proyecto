@@ -12,6 +12,7 @@ let estadoCuentas = [];
 let facturaPreviewUrl = null;
 let facturaPreviewCargoId = null;
 let facturaPreviewFormato = 'pdf';
+const documentosIntegradosPorCargo = new Map();
 let logoFacturaData = null;
 const documentosFacturaEnCurso = new Map();
 const pagosEnCurso = new Set();
@@ -192,6 +193,7 @@ function wirePagosEvents() {
       const descuento = event.target.closest('[data-fin-descuento]');
       const editar = event.target.closest('[data-fin-editar-cargo]');
       const documento = event.target.closest('[data-fin-documento]');
+      const documentoElectronico = event.target.closest('[data-fin-documento-electronico]');
 
       if (descuento) {
         event.preventDefault();
@@ -211,6 +213,11 @@ function wirePagosEvents() {
       if (documento) {
         event.preventDefault();
         await abrirDocumentoFactura(Number(documento.dataset.finDocumento), documento.dataset.formato || 'pdf', documento);
+        return;
+      }
+      if (documentoElectronico) {
+        event.preventDefault();
+        await abrirDocumentoElectronico(Number(documentoElectronico.dataset.finDocumentoElectronico), documentoElectronico);
       }
     });
   }
@@ -877,8 +884,28 @@ async function cargarFacturas() {
   facturas = Array.isArray(data) ? data : [];
   actualizarResumenFacturacion();
 
+  // Los tres documentos pertenecen a EduControl: comprobante visual, XML
+  // electrónico y, cuando llegue la integración externa, acuse DGTD.
+  await cargarDocumentosIntegradosFacturas(facturas).catch(() => {});
+
   const facturacion = document.getElementById('fin-facturacion-collapse');
   if (facturacion?.classList.contains('show')) renderFacturacion();
+}
+
+async function cargarDocumentosIntegradosFacturas(registros = []) {
+  const ids = [...new Set((Array.isArray(registros) ? registros : [])
+    .map((r) => Number(r.id_cargo))
+    .filter((id) => Number.isInteger(id) && id > 0))];
+
+  const pendientes = ids.filter((id) => !documentosIntegradosPorCargo.has(id));
+  const lote = 6;
+  for (let i = 0; i < pendientes.length; i += lote) {
+    const bloque = pendientes.slice(i, i + lote);
+    await Promise.allSettled(bloque.map(async (idCargo) => {
+      const data = await requestJson(`/api/finanzas/cargos/${idCargo}/documentos-integrados`, { cache: 'no-store' });
+      documentosIntegradosPorCargo.set(idCargo, data?.documentos || {});
+    }));
+  }
 }
 
 function renderCargos() {
@@ -1041,10 +1068,23 @@ function renderFacturacion() {
           ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-warning">Reintento automático</span>${detalleErrorFactura}</div>`
           : '<span class="badge rounded-pill text-bg-info">Generando automáticamente</span>');
 
+    const docs = documentosIntegradosPorCargo.get(Number(c.id_cargo)) || {};
+    const xmlEstado = String(docs.factura_electronica?.estado || '').toLowerCase();
+    const xmlDisponible = ['disponible', 'remoto_disponible'].includes(xmlEstado);
+    const acuseDisponible = String(docs.acuse?.estado || '').toLowerCase() === 'disponible';
+
     const acciones = tieneFactura
-      ? `<button class="btn btn-sm btn-primary finance-pdf-only-btn" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir comprobante PDF">
-           <i class="bi bi-file-earmark-pdf"></i> Ver PDF
-         </button>`
+      ? `<div class="finance-document-buttons">
+           <button class="btn btn-sm btn-primary finance-pdf-only-btn" data-fin-documento="${c.id_cargo}" data-formato="pdf" title="Abrir comprobante visual PDF">
+             <i class="bi bi-file-earmark-pdf"></i> PDF
+           </button>
+           ${xmlDisponible
+             ? `<button class="btn btn-sm btn-outline-primary" data-fin-documento-electronico="${c.id_cargo}" title="Abrir factura electrónica XML recibida por EduControl"><i class="bi bi-filetype-xml"></i> XML</button>`
+             : `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Factura electrónica todavía en procesamiento"><i class="bi bi-filetype-xml"></i> XML pendiente</button>`}
+           ${acuseDisponible
+             ? `<span class="badge rounded-pill text-bg-success"><i class="bi bi-patch-check me-1"></i>Acuse disponible</span>`
+             : `<span class="badge rounded-pill text-bg-light border text-muted"><i class="bi bi-hourglass-split me-1"></i>Acuse pendiente</span>`}
+         </div>`
       : '<span class="text-muted small"><i class="bi bi-arrow-repeat me-1"></i>Automático</span>';
 
     return `
@@ -1584,6 +1624,7 @@ async function guardarPago(event) {
     } else if (r.estado_cargo === 'pagado') showToast(`Pago aplicado. ${fact?.mensaje || 'La factura se generará automáticamente.'}`, 'warning');
     else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, 'success');
 
+    documentosIntegradosPorCargo.delete(idCargo);
     await refrescarDespuesDePago();
 
     if (fact?.ok && r.estado_cargo === 'pagado') {
@@ -1674,6 +1715,53 @@ async function reintentarFactura(idCargo, button = null) {
       button.innerHTML = htmlOriginal;
     }
   }
+}
+
+async function abrirDocumentoElectronico(idCargo, button = null) {
+  const clave = `${Number(idCargo)}:xml`;
+  if (documentosFacturaEnCurso.has(clave)) return documentosFacturaEnCurso.get(clave);
+
+  const tarea = (async () => {
+    const htmlOriginal = button?.innerHTML || '';
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Abriendo XML…';
+    }
+    try {
+      const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/factura-electronica?formato=xml`, { method: 'GET' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.mensaje || data.error || 'La factura electrónica todavía no está disponible.');
+      }
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (!bytes.length) throw new Error('FacturaSmart devolvió un XML vacío.');
+      const blob = new Blob([bytes], { type: res.headers.get('content-type') || 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const nueva = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!nueva) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `factura-electronica-${idCargo}.xml`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const docs = documentosIntegradosPorCargo.get(Number(idCargo)) || {};
+      docs.factura_electronica = { ...(docs.factura_electronica || {}), estado: 'disponible' };
+      documentosIntegradosPorCargo.set(Number(idCargo), docs);
+    } catch (error) {
+      showToast(error?.message || 'No se pudo abrir la factura electrónica.', 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = htmlOriginal;
+      }
+    }
+  })().finally(() => documentosFacturaEnCurso.delete(clave));
+
+  documentosFacturaEnCurso.set(clave, tarea);
+  return tarea;
 }
 
 async function abrirDocumentoFactura(idCargo, formato = 'pdf', button = null, abrirModal = true) {

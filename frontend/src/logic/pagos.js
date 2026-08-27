@@ -138,6 +138,10 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
+  wire('fin-config-factura-url', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-banco-merchant', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-electronica-url', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-electronica-correo', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
@@ -1656,6 +1660,8 @@ async function guardarPago(event) {
     const fact = r.facturacion;
     if (fact?.ok && fact?.factura_electronica?.ok) {
       showToast(`Pago aplicado. Factura visual ${fact.id_factura || ''} y factura electrónica generadas correctamente.`, 'success');
+    } else if (fact?.ok && fact?.factura_electronica?.estado === 'procesando') {
+      showToast('Pago aplicado y factura visual generada. El XML se está sincronizando en segundo plano.', 'success');
     } else if (fact?.ok) {
       const detalleElectronico = fact?.factura_electronica?.mensaje || (fact?.factura_electronica?.estado === 'pendiente_credenciales' ? 'FacturaSmart está pendiente de vincular.' : 'La factura electrónica seguirá en reintento.');
       showToast(`Pago aplicado. Factura visual generada. ${detalleElectronico}`, 'warning');
@@ -1987,6 +1993,26 @@ async function guardarEdicionPago(event) {
     await requestJson(`/api/finanzas/pagos/${id}`, {method:'PUT',body:JSON.stringify({metodo_pago:value('fin-edit-pago-metodo'),referencia:value('fin-edit-pago-referencia')})});
     hideModal('modalEditarPago'); showToast('Datos del pago actualizados.', 'success'); await cargarPagos();
   } catch(e){ showToast(e.message,'error'); }
+}
+
+function previsualizarEstadoConfiguracionServicios() {
+  const facturaUrl = String(value('fin-config-factura-url') || '').trim();
+  if (!facturaUrl) {
+    pintarEstadoServicio('factura', { configurado: false, disponible: null, cuenta_vinculada: false, detalle: 'Guarda los cambios para desactivar Factura Bonita.' });
+  }
+
+  const merchant = String(value('fin-config-banco-merchant') || '').trim();
+  if (!merchant) {
+    const afiliado = document.getElementById('fin-config-banco-afiliado');
+    if (afiliado) afiliado.checked = false;
+    pintarEstadoServicio('banco', { configurado: false, disponible: null, afiliado: false, merchant_configurado: false, detalle: 'Guarda los cambios para desactivar el servicio bancario.' });
+  }
+
+  const fsUrl = String(value('fin-config-electronica-url') || '').trim();
+  const fsCorreo = String(value('fin-config-electronica-correo') || '').trim();
+  if (!fsUrl || !fsCorreo) {
+    pintarEstadoServicio('electronica', { configurado: false, disponible: null, cuenta_vinculada: false, estado: 'pendiente_cuenta', detalle: 'Guarda los cambios para desactivar FacturaSmart.' });
+  }
 }
 
 function estadoServicioTexto(servicio, prefijo = '') {
@@ -2338,19 +2364,31 @@ async function guardarConfiguracion(event) {
 
   try {
     const nuevaApiKeyIngresada = String(value('fin-config-factura-key') || '').trim();
+    const facturaBonitaUrl = String(value('fin-config-factura-url') || '').trim();
+    const bancoMerchant = String(value('fin-config-banco-merchant') || '').trim();
+    const facturaSmartUrl = String(value('fin-config-electronica-url') || '').trim();
+    const facturaSmartCorreo = String(value('fin-config-electronica-correo') || '').trim();
+    const facturaSmartPassword = String(value('fin-config-electronica-password') || '').trim();
+    const bancoMarcado = Boolean(document.getElementById('fin-config-banco-afiliado')?.checked);
+
+    // Si el usuario borra manualmente un dato indispensable, la integración se
+    // desactiva de forma explícita al guardar. No conservamos secretos/estados
+    // "fantasma" que hagan aparecer un servicio como Activo sin configuración.
     const payload = {
       institucion_nombre: value('fin-config-nombre'),
       tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'),
       correo: value('fin-config-correo'),
-      factura_bonita_url: value('fin-config-factura-url'),
+      factura_bonita_url: facturaBonitaUrl,
       factura_bonita_api_key: nuevaApiKeyIngresada,
-      banco_merchant_id: value('fin-config-banco-merchant'),
-      banco_afiliado: Boolean(document.getElementById('fin-config-banco-afiliado')?.checked),
+      limpiar_factura_bonita_api_key: !facturaBonitaUrl,
+      banco_merchant_id: bancoMerchant,
+      banco_afiliado: Boolean(bancoMarcado && bancoMerchant),
       firma_digital_url: value('fin-config-firma-url'),
-      factura_electronica_url: value('fin-config-electronica-url'),
-      factura_electronica_correo: value('fin-config-electronica-correo'),
-      factura_electronica_password: value('fin-config-electronica-password'),
+      factura_electronica_url: facturaSmartUrl,
+      factura_electronica_correo: facturaSmartCorreo,
+      factura_electronica_password: facturaSmartPassword,
+      limpiar_factura_electronica_password: !facturaSmartUrl || !facturaSmartCorreo,
       tributacion_url: value('fin-config-tributacion-url')
     };
 
@@ -2375,7 +2413,7 @@ async function guardarConfiguracion(event) {
     const esperadoFacturaUrl = String(value('fin-config-factura-url') || '').trim().replace(/\/+$/, '');
     const guardadoFacturaUrl = String(verificacion?.factura_bonita_url || '').trim().replace(/\/+$/, '');
     const merchantEsperado = String(value('fin-config-banco-merchant') || '').trim();
-    const afiliadoEsperado = Boolean(document.getElementById('fin-config-banco-afiliado')?.checked);
+    const afiliadoEsperado = Boolean(document.getElementById('fin-config-banco-afiliado')?.checked && merchantEsperado);
     const coincideServicios =
       (!esperadoFacturaUrl || guardadoFacturaUrl === esperadoFacturaUrl) &&
       (!merchantEsperado || String(verificacion?.banco_merchant_id || '').trim() === merchantEsperado) &&

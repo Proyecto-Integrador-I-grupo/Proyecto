@@ -93,36 +93,14 @@ export default function Horarios() {
                   </div>
                 </div>
 
-                <div id="horarios-editor-controls" className="schedule-editor-controls hidden">
-                  <div className="schedule-filter-field">
-                    <label htmlFor="horarios-editor-dia">Día</label>
-                    <select id="horarios-editor-dia" className="form-select"></select>
+                <div id="horarios-editor-controls" className="schedule-editor-grid-tools hidden">
+                  <div>
+                    <strong>Horario por bloques</strong>
+                    <span>Selecciona la materia directamente en cada espacio de 30 minutos. Los bloques consecutivos de la misma materia se unen al guardar.</span>
                   </div>
-                  <div className="schedule-filter-field">
-                    <label htmlFor="horarios-editor-inicio">Inicio</label>
-                    <input id="horarios-editor-inicio" type="time" className="form-control" />
-                  </div>
-                  <div className="schedule-filter-field">
-                    <label htmlFor="horarios-editor-fin">Fin</label>
-                    <input id="horarios-editor-fin" type="time" className="form-control" />
-                  </div>
-                  <div className="schedule-filter-field">
-                    <label htmlFor="horarios-editor-materia">Materia</label>
-                    <select id="horarios-editor-materia" className="form-select">
-                      <option value="Español">Español</option>
-                      <option value="Matemáticas">Matemáticas</option>
-                      <option value="Ciencias">Ciencias</option>
-                      <option value="Estudios Sociales">Estudios Sociales</option>
-                      <option value="Inglés">Inglés</option>
-                      <option value="Educación Física">Educación Física</option>
-                      <option value="Informática">Informática</option>
-                      <option value="Artes">Artes</option>
-                    </select>
-                  </div>
-                  <div className="schedule-filter-field schedule-filter-action">
-                    <button type="button" id="horarios-editor-agregar" className="btn btn-outline-primary w-100">
-                      <i className="bi bi-plus-lg me-1"></i> Agregar clase
-                    </button>
+                  <div className="schedule-editor-grid-legend">
+                    <span><i className="bi bi-grid-3x3-gap"></i> 30 min por fila</span>
+                    <span><i className="bi bi-dash-circle"></i> Libre = sin clase</span>
                   </div>
                 </div>
 
@@ -130,7 +108,7 @@ export default function Horarios() {
                 <div id="horarios-editor-week" className="schedule-editor-week"></div>
 
                 <div id="horarios-editor-actions" className="schedule-editor-actions hidden">
-                  <span className="small text-muted">Los cambios no afectan profesores hasta guardar el horario.</span>
+                  <span className="small text-muted">Los cambios se aplican al horario del grupo al guardar. Los profesores verán únicamente los bloques de su materia.</span>
                   <button type="button" id="horarios-editor-guardar" className="btn btn-primary">
                     <i className="bi bi-check2-circle me-1"></i> Guardar horario
                   </button>

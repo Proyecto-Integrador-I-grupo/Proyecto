@@ -22,7 +22,9 @@ const DAY_META = [
 
 let horarioData = { horarios: [], profesores: [], grupos: [], periodos: [], alcance: 'personal' };
 let editorBloques = [];
+let editorCeldas = new Map();
 let editorGrupoId = 0;
+const EDITOR_SLOT_MINUTES = 30;
 let resizeTimer = null;
 
 function normalizeText(value) {
@@ -89,7 +91,6 @@ function wireHorarioEvents() {
   const editorToggle = document.getElementById('horarios-editor-toggle');
   const editorClose = document.getElementById('horarios-editor-close');
   const editorGrupo = document.getElementById('horarios-editor-grupo');
-  const editorAgregar = document.getElementById('horarios-editor-agregar');
   const editorGuardar = document.getElementById('horarios-editor-guardar');
   const editorWeek = document.getElementById('horarios-editor-week');
 
@@ -149,11 +150,6 @@ function wireHorarioEvents() {
     editorGrupo.addEventListener('change', () => cargarEditorGrupo(Number(editorGrupo.value || 0)));
   }
 
-  if (editorAgregar && editorAgregar.dataset.wired !== '1') {
-    editorAgregar.dataset.wired = '1';
-    editorAgregar.addEventListener('click', agregarBloqueEditor);
-  }
-
   if (editorGuardar && editorGuardar.dataset.wired !== '1') {
     editorGuardar.dataset.wired = '1';
     editorGuardar.addEventListener('click', guardarEditorGrupo);
@@ -161,28 +157,16 @@ function wireHorarioEvents() {
 
   if (editorWeek && editorWeek.dataset.wired !== '1') {
     editorWeek.dataset.wired = '1';
-    editorWeek.addEventListener('click', (event) => {
-      const remove = event.target.closest('[data-editor-remove]');
-      if (remove) {
-        const index = Number(remove.dataset.editorRemove);
-        if (Number.isInteger(index) && index >= 0 && index < editorBloques.length) {
-          editorBloques.splice(index, 1);
-          renderEditorHorario();
-        }
-        return;
-      }
-      const add = event.target.closest('[data-editor-day]');
-      if (add) {
-        const day = add.dataset.editorDay;
-        const daySelect = document.getElementById('horarios-editor-dia');
-        if (daySelect && [...daySelect.options].some((o) => o.value === day)) daySelect.value = day;
-        const group = getEditorGrupo();
-        const inicio = document.getElementById('horarios-editor-inicio');
-        const fin = document.getElementById('horarios-editor-fin');
-        if (group && inicio && !inicio.value) inicio.value = String(group.hora_inicio || '').slice(0,5);
-        if (group && fin && !fin.value) fin.value = String(group.hora_fin || '').slice(0,5);
-        inicio?.focus();
-      }
+    editorWeek.addEventListener('change', (event) => {
+      const select = event.target.closest('[data-schedule-cell]');
+      if (!select) return;
+      const key = String(select.dataset.scheduleCell || '');
+      const materia = String(select.value || '').trim();
+      if (!key) return;
+      if (materia) editorCeldas.set(key, materia);
+      else editorCeldas.delete(key);
+      renderEditorCoverage();
+      select.classList.toggle('has-subject', Boolean(materia));
     });
   }
 
@@ -339,9 +323,97 @@ function editorMateriaSet() {
   return ['Español','Matemáticas','Ciencias','Estudios Sociales','Inglés','Educación Física','Informática','Artes'];
 }
 
+function parseClockMinutes(value) {
+  const raw = String(value || '').slice(0, 5);
+  const match = raw.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h > 23 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function clockFromMinutes(total) {
+  const safe = Math.max(0, Math.min(1439, Number(total) || 0));
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function editorWindow(grupo) {
+  let inicio = parseClockMinutes(grupo?.hora_inicio);
+  let fin = parseClockMinutes(grupo?.hora_fin);
+  if (inicio == null || fin == null) return null;
+  // Compatibilidad con grupos antiguos donde 04:30 significaba 4:30 p. m.
+  if (fin <= inicio && fin <= 5 * 60 + 59) fin += 12 * 60;
+  if (fin <= inicio) return null;
+  return { inicio, fin };
+}
+
+function editorSlotRows(grupo) {
+  const window = editorWindow(grupo);
+  if (!window) return [];
+  const rows = [];
+  for (let start = window.inicio; start < window.fin; start += EDITOR_SLOT_MINUTES) {
+    const end = Math.min(start + EDITOR_SLOT_MINUTES, window.fin);
+    if (end <= start) break;
+    rows.push({ inicio: clockFromMinutes(start), fin: clockFromMinutes(end) });
+  }
+  return rows;
+}
+
+function editorCellKey(day, start) {
+  return `${normalizeText(day)}|${String(start || '').slice(0,5)}`;
+}
+
+function expandirBloquesACeldas(grupo, bloques) {
+  const slots = editorSlotRows(grupo);
+  const dias = parseDays(grupo?.dias_semana);
+  const map = new Map();
+  for (const day of dias) {
+    for (const slot of slots) {
+      const slotStart = parseClockMinutes(slot.inicio);
+      const slotEnd = parseClockMinutes(slot.fin);
+      const block = bloques.find((b) => {
+        if (normalizeText(b.dia_semana) !== day) return false;
+        const bStart = parseClockMinutes(b.hora_inicio);
+        const bEnd = parseClockMinutes(b.hora_fin);
+        return bStart != null && bEnd != null && slotStart >= bStart && slotEnd <= bEnd;
+      });
+      if (block?.materia) map.set(editorCellKey(day, slot.inicio), block.materia);
+    }
+  }
+  return map;
+}
+
+function compilarCeldasABloques(grupo) {
+  const dias = parseDays(grupo?.dias_semana);
+  const slots = editorSlotRows(grupo);
+  const bloques = [];
+  for (const day of dias) {
+    let current = null;
+    for (const slot of slots) {
+      const materia = editorCeldas.get(editorCellKey(day, slot.inicio)) || '';
+      if (!materia) {
+        if (current) { bloques.push(current); current = null; }
+        continue;
+      }
+      if (current && current.materia === materia && current.hora_fin === slot.inicio) {
+        current.hora_fin = slot.fin;
+      } else {
+        if (current) bloques.push(current);
+        current = { dia_semana: day, hora_inicio: slot.inicio, hora_fin: slot.fin, materia };
+      }
+    }
+    if (current) bloques.push(current);
+  }
+  return bloques;
+}
+
 async function cargarEditorGrupo(idGrupo) {
   editorGrupoId = Number(idGrupo || 0);
   editorBloques = [];
+  editorCeldas = new Map();
   const controls = document.getElementById('horarios-editor-controls');
   const coverage = document.getElementById('horarios-editor-coverage');
   const actions = document.getElementById('horarios-editor-actions');
@@ -359,28 +431,19 @@ async function cargarEditorGrupo(idGrupo) {
   const grupo = getEditorGrupo();
   if (!grupo) return;
   const dias = parseDays(grupo.dias_semana);
-  const daySelect = document.getElementById('horarios-editor-dia');
-  if (daySelect) {
-    daySelect.innerHTML = dias.map((d) => `<option value="${d}">${escapeHtml(labelDia(d))}</option>`).join('');
+  const window = editorWindow(grupo);
+  if (!window) {
+    controls?.classList.add('hidden');
+    actions?.classList.add('hidden');
+    if (info) info.textContent = 'El grupo no tiene una jornada válida. Edita primero sus horas.';
+    return showToast('El grupo no tiene una jornada válida para construir el horario.', 'error');
   }
-  const inicio = String(grupo.hora_inicio || '').slice(0,5);
-  const fin = String(grupo.hora_fin || '').slice(0,5);
-  ['horarios-editor-inicio','horarios-editor-fin'].forEach((id) => {
-    const input = document.getElementById(id);
-    if (!input) return;
-    input.min = inicio;
-    input.max = fin;
-  });
-  const inputInicio = document.getElementById('horarios-editor-inicio');
-  const inputFin = document.getElementById('horarios-editor-fin');
-  if (inputInicio) inputInicio.value = inicio;
-  if (inputFin) inputFin.value = fin;
 
   controls?.classList.remove('hidden');
   coverage?.classList.remove('hidden');
   actions?.classList.remove('hidden');
   if (info) {
-    info.innerHTML = `<strong>${escapeHtml(grupo.nombre_grupo)}</strong><span>${dias.map(labelDia).join(', ')} · Jornada ${escapeHtml(inicio)}–${escapeHtml(fin)} · ${escapeHtml(grupo.aula || 'Sin aula')}</span>`;
+    info.innerHTML = `<strong>${escapeHtml(grupo.nombre_grupo)}</strong><span>${dias.map(labelDia).join(', ')} · Jornada ${escapeHtml(clockFromMinutes(window.inicio))}–${escapeHtml(clockFromMinutes(window.fin))} · ${escapeHtml(grupo.aula || 'Sin aula')}</span>`;
   }
 
   const week = document.getElementById('horarios-editor-week');
@@ -396,6 +459,7 @@ async function cargarEditorGrupo(idGrupo) {
       hora_fin: String(b.hora_fin || '').slice(0,5),
       materia: String(b.materia || '').trim()
     })) : [];
+    editorCeldas = expandirBloquesACeldas(grupo, editorBloques);
     renderEditorHorario();
   } catch (error) {
     showToast(error.message || 'No se pudo cargar el horario del grupo.', 'error');
@@ -403,38 +467,20 @@ async function cargarEditorGrupo(idGrupo) {
   }
 }
 
-function agregarBloqueEditor() {
-  const grupo = getEditorGrupo();
-  if (!grupo) return showToast('Selecciona un grupo.', 'error');
-  const dia = normalizeText(document.getElementById('horarios-editor-dia')?.value || '');
-  const inicio = String(document.getElementById('horarios-editor-inicio')?.value || '').slice(0,5);
-  const fin = String(document.getElementById('horarios-editor-fin')?.value || '').slice(0,5);
-  const materia = String(document.getElementById('horarios-editor-materia')?.value || '').trim();
-  const dias = parseDays(grupo.dias_semana);
-  const jornadaInicio = String(grupo.hora_inicio || '').slice(0,5);
-  const jornadaFin = String(grupo.hora_fin || '').slice(0,5);
+function renderEditorCoverage() {
+  const coverage = document.getElementById('horarios-editor-coverage');
+  if (!coverage) return;
+  const materias = editorMateriaSet();
+  const cubiertas = new Set([...editorCeldas.values()].filter(Boolean));
+  const faltantes = materias.filter((m) => !cubiertas.has(m));
+  coverage.classList.remove('hidden');
+  coverage.innerHTML = `<strong>${cubiertas.size}/8 materias programadas</strong><span>${faltantes.length ? `Pendientes: ${escapeHtml(faltantes.join(', '))}` : 'Las 8 materias tienen al menos un bloque semanal.'}</span>`;
+}
 
-  if (!dias.includes(dia)) return showToast('Ese día no pertenece a la jornada del grupo.', 'error');
-  if (!inicio || !fin || fin <= inicio) return showToast('Indica un inicio y fin válidos.', 'error');
-  if (jornadaInicio && inicio < jornadaInicio) return showToast(`La clase no puede iniciar antes de ${jornadaInicio}.`, 'error');
-  if (jornadaFin && fin > jornadaFin) return showToast(`La clase no puede terminar después de ${jornadaFin}.`, 'error');
-  if (!editorMateriaSet().includes(materia)) return showToast('Selecciona una materia válida.', 'error');
-
-  const choque = editorBloques.find((b) =>
-    normalizeText(b.dia_semana) === dia &&
-    inicio < String(b.hora_fin) &&
-    fin > String(b.hora_inicio)
-  );
-  if (choque) {
-    return showToast(`Ese bloque se cruza con ${choque.materia} (${choque.hora_inicio}–${choque.hora_fin}).`, 'error');
-  }
-
-  editorBloques.push({ dia_semana: dia, hora_inicio: inicio, hora_fin: fin, materia });
-  editorBloques.sort((a,b) => {
-    const order = DAY_META.findIndex(([k]) => k === a.dia_semana) - DAY_META.findIndex(([k]) => k === b.dia_semana);
-    return order || String(a.hora_inicio).localeCompare(String(b.hora_inicio));
-  });
-  renderEditorHorario();
+function materiaOptions(selected = '') {
+  return `<option value="">Libre</option>` + editorMateriaSet().map((m) =>
+    `<option value="${escapeHtml(m)}" ${m === selected ? 'selected' : ''}>${escapeHtml(m)}</option>`
+  ).join('');
 }
 
 function renderEditorHorario() {
@@ -444,41 +490,45 @@ function renderEditorHorario() {
   const grupo = getEditorGrupo();
   if (!grupo) {
     week.innerHTML = '';
-    if (coverage) coverage.classList.add('hidden');
+    coverage?.classList.add('hidden');
     return;
   }
 
   const dias = parseDays(grupo.dias_semana);
-  const materias = editorMateriaSet();
-  const cubiertas = new Set(editorBloques.map((b) => b.materia));
-  const faltantes = materias.filter((m) => !cubiertas.has(m));
-  if (coverage) {
-    coverage.classList.remove('hidden');
-    coverage.innerHTML = `<strong>${cubiertas.size}/8 materias programadas</strong><span>${faltantes.length ? `Pendientes: ${escapeHtml(faltantes.join(', '))}` : 'Las 8 materias tienen al menos un bloque semanal.'}</span>`;
+  const rows = editorSlotRows(grupo);
+  renderEditorCoverage();
+  if (!dias.length || !rows.length) {
+    week.innerHTML = buildEmptyState({
+      icon: 'bi-calendar2-x',
+      title: 'No se puede construir este horario',
+      description: 'El grupo necesita al menos un día y una jornada válida.'
+    });
+    return;
   }
 
-  week.innerHTML = `<div class="schedule-editor-days">${dias.map((day) => {
-    const slots = editorBloques.map((b, index) => ({...b, index})).filter((b) => normalizeText(b.dia_semana) === day)
-      .sort((a,b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
-    return `<section class="schedule-editor-day">
-      <header><strong>${escapeHtml(labelDia(day))}</strong><small>${slots.length} ${slots.length === 1 ? 'clase' : 'clases'}</small></header>
-      <div class="schedule-editor-slots">
-        ${slots.length ? slots.map((b) => `<article class="schedule-editor-slot">
-          <div><strong>${escapeHtml(b.hora_inicio)}–${escapeHtml(b.hora_fin)}</strong><span>${escapeHtml(b.materia)}</span></div>
-          <button type="button" class="btn btn-sm btn-outline-danger" data-editor-remove="${b.index}" title="Quitar bloque"><i class="bi bi-x-lg"></i></button>
-        </article>`).join('') : '<span class="schedule-editor-empty">Sin clases programadas</span>'}
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-primary schedule-editor-day-add" data-editor-day="${day}">
-        <i class="bi bi-plus-circle me-1"></i> Agregar clase
-      </button>
-    </section>`;
-  }).join('')}</div>`;
+  week.innerHTML = `<div class="schedule-grid-shell">
+    <div class="schedule-grid-note"><i class="bi bi-cursor"></i> Selecciona una materia en cada celda. Deja “Libre” para recreos, almuerzo o espacios sin clase.</div>
+    <div class="schedule-grid-scroll">
+      <table class="schedule-planner-grid" aria-label="Planificador semanal del grupo">
+        <thead><tr><th class="schedule-grid-time-head">Hora</th>${dias.map((day) => `<th>${escapeHtml(labelDia(day))}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map((slot) => `<tr>
+          <th class="schedule-grid-time"><strong>${escapeHtml(fmtHour(slot.inicio))}</strong><span>${escapeHtml(fmtHour(slot.fin))}</span></th>
+          ${dias.map((day) => {
+            const key = editorCellKey(day, slot.inicio);
+            const selected = editorCeldas.get(key) || '';
+            return `<td><select class="form-select schedule-grid-select ${selected ? 'has-subject' : ''}" data-schedule-cell="${escapeHtml(key)}" aria-label="${escapeHtml(labelDia(day))} ${escapeHtml(slot.inicio)} a ${escapeHtml(slot.fin)}">${materiaOptions(selected)}</select></td>`;
+          }).join('')}
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 async function guardarEditorGrupo() {
   const grupo = getEditorGrupo();
   if (!grupo) return showToast('Selecciona un grupo.', 'error');
-  if (!editorBloques.length) return showToast('Agrega al menos una clase antes de guardar.', 'error');
+  const bloques = compilarCeldasABloques(grupo);
+  if (!bloques.length) return showToast('Selecciona al menos una materia en el horario antes de guardar.', 'error');
   const btn = document.getElementById('horarios-editor-guardar');
   const original = btn?.innerHTML;
   if (btn) {
@@ -489,16 +539,20 @@ async function guardarEditorGrupo() {
     const res = await apiFetch(`/api/procesos/grupos/${grupo.id_grupo}/horario`, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ bloques: editorBloques })
+      body: JSON.stringify({ bloques })
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo guardar el horario.');
-    showToast('Horario del grupo guardado correctamente.', 'success');
+    editorBloques = bloques;
+    showToast(`Horario guardado: ${bloques.length} bloque${bloques.length === 1 ? '' : 's'} académico${bloques.length === 1 ? '' : 's'}.`, 'success');
+    // Primero volvemos a leer el horario persistido; después refrescamos la agenda.
+    await cargarEditorGrupo(Number(grupo.id_grupo));
     await loadHorarios();
     const select = document.getElementById('horarios-editor-grupo');
     if (select) select.value = String(grupo.id_grupo);
     await cargarEditorGrupo(Number(grupo.id_grupo));
   } catch (error) {
+    console.error('Error guardando horario académico:', error);
     showToast(error.message || 'No se pudo guardar el horario.', 'error');
   } finally {
     if (btn) {

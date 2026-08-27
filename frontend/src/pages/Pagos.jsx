@@ -107,7 +107,7 @@ export default function Pagos() {
                 </div>
                 <select id="fin-facturas-filtro" className="form-select form-select-sm finance-state-filter" defaultValue="">
                   <option value="">Todos los comprobantes</option>
-                  <option value="facturada">PDF disponible</option>
+                  <option value="facturada">Facturadas</option>
                   <option value="pendiente">Pendientes de generar</option>
                 </select>
                 <input id="fin-facturas-desde" type="date" className="form-control form-control-sm finance-date-filter" title="Desde" />

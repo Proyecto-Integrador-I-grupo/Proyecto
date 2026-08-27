@@ -2,6 +2,18 @@ import pool from '../config/database.js';
 
 const DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
 
+function hoyAplicacionISO() {
+  const zona = String(process.env.APP_TIMEZONE || 'America/Costa_Rica').trim() || 'America/Costa_Rica';
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: zona,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const valores = Object.fromEntries(partes.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+  return `${valores.year}-${valores.month}-${valores.day}`;
+}
+
 function fechaIso(valor) {
   if (!valor) return null;
   if (valor instanceof Date) return valor.toISOString().slice(0, 10);
@@ -67,7 +79,7 @@ export async function validarFechaAsistencia(connection, idGrupo, fecha) {
   if (String(grupo.estado_periodo).toUpperCase() === 'CERRADO') {
     throw new Error(`No se puede registrar ni modificar asistencia: el período ${grupo.periodo_lectivo} está cerrado.`);
   }
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyAplicacionISO();
   if (iso > hoy) throw new Error('No se puede registrar asistencia en una fecha futura.');
   const inicio = fechaIso(grupo.fecha_inicio);
   const fin = fechaIso(grupo.fecha_fin);

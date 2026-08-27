@@ -47,13 +47,18 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("Ya registraste la asistencia para este estudiante en esta fecha.");
     }
 
-    await connection.query(
-      "CALL sp_registrar_asistencia(?, ?, ?, ?, ?, ?)",
+    const [resultado] = await connection.query(
+      `INSERT INTO asistencia
+        (fecha, estado_asistencia, observaciones, id_estudiante, id_grupo, id_profesor, estado)
+       VALUES (?, ?, ?, ?, ?, ?, TRUE)`,
       [fecha, estadoNormalizado, observaciones || null, id_estudiante, id_grupo, id_profesor]
     );
 
     await connection.commit();
-    return { mensaje: "Asistencia registrada correctamente." };
+    return {
+      mensaje: "Asistencia registrada correctamente.",
+      id_asistencia: resultado.insertId
+    };
 
   } catch (error) {
     await connection.rollback();

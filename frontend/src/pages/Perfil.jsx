@@ -27,10 +27,9 @@ export default function Perfil() {
 <div className="perfil-avatar">
 <img id="perfil-foto-preview" src="https://via.placeholder.com/150" alt="Perfil" />
 </div>
-<label htmlFor="perfil-foto-input" className="btn btn-outline-primary btn-sm mt-3">
+<label htmlFor="perfil-foto-input" className="btn btn-outline-primary perfil-photo-trigger mt-3">
 <i className="bi bi-camera"></i>
-            Cambiar fotografía
-
+<span>Cambiar fotografía</span>
           </label>
 <input id="perfil-foto-input" type="file" accept="image/*" className="d-none" />
 <hr />

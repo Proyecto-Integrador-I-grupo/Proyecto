@@ -45,6 +45,11 @@ function mesActualISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function hoyLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function wireAsistenciaEvents() {
   wire('asis-refrescar', 'click', refrescarAsistencia);
   wire('asis-bitacora-grupo', 'change', cargarGrupoSeleccionado);
@@ -277,8 +282,8 @@ function diasLectivosMes() {
   return dias;
 }
 
-async function cargarBitacora() {
-  cambiosPendientes.clear();
+async function cargarBitacora({ conservarCambios = false } = {}) {
+  if (!conservarCambios) cambiosPendientes.clear();
   actualizarCambiosPendientes();
 
   if (!grupoActual || !detalleGrupo) {
@@ -336,9 +341,15 @@ function renderMatriz() {
     const cells = dias.map((d) => {
       const key = `${e.id_estudiante}-${d.fecha}`;
       const registro = porClave.get(key);
-      const estado = registro?.estado_asistencia || '';
-      const observaciones = registro?.observaciones || '';
-      return `<td class="attendance-cell">
+      const pendiente = cambiosPendientes.get(key);
+      const estado = pendiente?.estado ?? registro?.estado_asistencia ?? '';
+      const observaciones = pendiente?.observaciones ?? registro?.observaciones ?? '';
+      const esFechaFutura = d.fecha > hoyLocalISO();
+      const editable = puedeEditar() && !esFechaFutura;
+      const tituloEstado = esFechaFutura
+        ? 'Fecha futura: todavía no se puede registrar asistencia'
+        : (estado ? nombreEstado(estado) : 'Sin registrar');
+      return `<td class="attendance-cell ${esFechaFutura ? 'is-future' : ''}">
         <div class="attendance-cell-stack">
           <button
             type="button"
@@ -348,10 +359,10 @@ function renderMatriz() {
             data-fecha="${d.fecha}"
             data-id-asistencia="${registro?.id_asistencia || ''}"
             data-estado="${estado}"
-            title="${estado ? nombreEstado(estado) : 'Sin registrar'}"
-            ${puedeEditar() ? '' : 'disabled'}
+            title="${tituloEstado}"
+            ${editable ? '' : 'disabled'}
           >${ETIQUETAS[estado] || '·'}</button>
-          ${puedeEditar() ? `<button type="button" class="attendance-note-btn ${observaciones ? 'has-note' : ''}" data-key="${key}" data-id-estudiante="${e.id_estudiante}" data-fecha="${d.fecha}" data-id-asistencia="${registro?.id_asistencia || ''}" title="${observaciones ? 'Editar observación' : 'Agregar observación'}"><i class="bi ${observaciones ? 'bi-chat-left-text-fill' : 'bi-chat-left-text'}"></i></button>` : ''}
+          ${editable ? `<button type="button" class="attendance-note-btn ${observaciones ? 'has-note' : ''}" data-key="${key}" data-id-estudiante="${e.id_estudiante}" data-fecha="${d.fecha}" data-id-asistencia="${registro?.id_asistencia || ''}" title="${observaciones ? 'Editar observación' : 'Agregar observación'}"><i class="bi ${observaciones ? 'bi-chat-left-text-fill' : 'bi-chat-left-text'}"></i></button>` : ''}
         </div>
       </td>`;
     }).join('');
@@ -507,34 +518,42 @@ async function guardarCambiosMes() {
   }
 
   const button = document.getElementById('asis-guardar-mes');
+  if (button?.dataset.busy === '1') return;
   const old = button?.innerHTML;
   if (button) {
+    button.dataset.busy = '1';
     button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Guardando...';
   }
 
   let guardados = 0;
-  let errores = 0;
+  const fallos = [];
+  const pendientes = Array.from(cambiosPendientes.entries());
 
   try {
-    for (const cambio of cambiosPendientes.values()) {
+    for (const [key, cambio] of pendientes) {
       try {
+        if (cambio.fecha > hoyLocalISO()) {
+          throw new Error('No se puede registrar asistencia en una fecha futura.');
+        }
+
+        let res = null;
         if (!cambio.estado && cambio.id_asistencia) {
-          if (!esAdmin()) continue;
-          const res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error();
+          if (!esAdmin()) {
+            throw new Error('Solo un administrador puede eliminar un registro de asistencia.');
+          }
+          res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, { method: 'DELETE' });
         } else if (cambio.id_asistencia) {
           const registro = registrosMes.find((r) => Number(r.id_asistencia) === Number(cambio.id_asistencia));
-          const res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, {
+          res = await apiFetch(`/api/procesos/asistencia/${cambio.id_asistencia}`, {
             method: 'PUT',
             body: JSON.stringify({
               estado_asistencia: cambio.estado,
               observaciones: cambio.observaciones ?? registro?.observaciones ?? null
             })
           });
-          if (!res.ok) throw new Error();
         } else if (cambio.estado) {
-          const res = await apiFetch('/api/procesos/asistencia', {
+          res = await apiFetch('/api/procesos/asistencia', {
             method: 'POST',
             body: JSON.stringify({
               fecha: cambio.fecha,
@@ -545,28 +564,43 @@ async function guardarCambiosMes() {
               id_profesor: idProfesor
             })
           });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.mensaje || 'No se pudo guardar un registro.');
-          }
         }
+
+        if (res && !res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.mensaje || data.error || `No se pudo guardar el registro (${res.status}).`);
+        }
+
+        cambiosPendientes.delete(key);
         guardados += 1;
       } catch (error) {
         console.error('Error guardando celda de asistencia', cambio, error);
-        errores += 1;
+        fallos.push({ key, cambio, mensaje: error?.message || 'Error desconocido al guardar.' });
       }
     }
 
-    await cargarBitacora();
-    await cargarHistorial();
+    await cargarBitacora({ conservarCambios: fallos.length > 0 });
+    if (fallos.length) {
+      // Reponer únicamente los cambios que no se guardaron para que el usuario pueda corregir/reintentar.
+      fallos.forEach(({ key, cambio }) => cambiosPendientes.set(key, cambio));
+      renderMatriz();
+      actualizarCambiosPendientes();
 
-    if (errores) {
-      showResultModal('Guardado parcial', `${guardados} cambios guardados y ${errores} con error.`, false);
+      const detalle = [...new Set(fallos.map((f) => f.mensaje))].slice(0, 3).join(' ');
+      showResultModal(
+        'error',
+        guardados ? 'Guardado parcial' : 'No se pudieron guardar los cambios',
+        `${guardados} cambio(s) guardado(s) y ${fallos.length} con error.${detalle ? ` ${detalle}` : ''}`
+      );
     } else {
-      showToast('Bitácora de asistencia guardada.', 'success');
+      await cargarHistorial();
+      showToast(`${guardados} cambio(s) de asistencia guardado(s) correctamente.`, 'success');
     }
   } finally {
-    if (button) button.innerHTML = old;
+    if (button?.isConnected) {
+      button.innerHTML = old || '<i class="bi bi-cloud-check me-1"></i>Guardar';
+      delete button.dataset.busy;
+    }
     actualizarCambiosPendientes();
   }
 }

@@ -136,13 +136,17 @@ function wireHorarioEvents() {
     editorToggle.addEventListener('click', () => {
       const card = document.getElementById('horarios-editor-card');
       card?.classList.remove('hidden');
-      card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('modalHorarios')?.classList.add('schedule-editor-open');
+      setTimeout(() => document.getElementById('horarios-editor-grupo')?.focus(), 0);
     });
   }
 
   if (editorClose && editorClose.dataset.wired !== '1') {
     editorClose.dataset.wired = '1';
-    editorClose.addEventListener('click', () => document.getElementById('horarios-editor-card')?.classList.add('hidden'));
+    editorClose.addEventListener('click', () => {
+      document.getElementById('horarios-editor-card')?.classList.add('hidden');
+      document.getElementById('modalHorarios')?.classList.remove('schedule-editor-open');
+    });
   }
 
   if (editorGrupo && editorGrupo.dataset.wired !== '1') {
@@ -168,6 +172,20 @@ function wireHorarioEvents() {
       renderEditorCoverage();
       select.classList.toggle('has-subject', Boolean(materia));
     });
+  }
+
+
+  if (document.documentElement.dataset.horariosEditorEscapeWired !== '1') {
+    document.documentElement.dataset.horariosEditorEscapeWired = '1';
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const card = document.getElementById('horarios-editor-card');
+      if (!card || card.classList.contains('hidden')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      card.classList.add('hidden');
+      document.getElementById('modalHorarios')?.classList.remove('schedule-editor-open');
+    }, true);
   }
 
   if (document.documentElement.dataset.horariosResizeWired !== '1') {
@@ -545,12 +563,26 @@ async function guardarEditorGrupo() {
     if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo guardar el horario.');
     editorBloques = bloques;
     showToast(`Horario guardado: ${bloques.length} bloque${bloques.length === 1 ? '' : 's'} académico${bloques.length === 1 ? '' : 's'}.`, 'success');
-    // Primero volvemos a leer el horario persistido; después refrescamos la agenda.
-    await cargarEditorGrupo(Number(grupo.id_grupo));
+
+    // Conservar la selección del usuario y refrescar inmediatamente la agenda docente.
+    const profesorActual = document.getElementById('horarios-profesor-filter')?.value || '';
+    const grupoFiltroActual = document.getElementById('horarios-grupo-filter')?.value || '';
+    const periodoActual = document.getElementById('horarios-periodo-filter')?.value || '';
+
     await loadHorarios();
+
+    const professorFilter = document.getElementById('horarios-profesor-filter');
+    const periodFilter = document.getElementById('horarios-periodo-filter');
+    if (professorFilter && [...professorFilter.options].some((o) => o.value === profesorActual)) professorFilter.value = profesorActual;
+    if (periodFilter && [...periodFilter.options].some((o) => o.value === periodoActual)) periodFilter.value = periodoActual;
+    syncGroupOptions();
+    const groupFilter = document.getElementById('horarios-grupo-filter');
+    if (groupFilter && [...groupFilter.options].some((o) => o.value === grupoFiltroActual)) groupFilter.value = grupoFiltroActual;
+
     const select = document.getElementById('horarios-editor-grupo');
     if (select) select.value = String(grupo.id_grupo);
     await cargarEditorGrupo(Number(grupo.id_grupo));
+    renderHorarios();
   } catch (error) {
     console.error('Error guardando horario académico:', error);
     showToast(error.message || 'No se pudo guardar el horario.', 'error');

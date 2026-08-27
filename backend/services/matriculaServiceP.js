@@ -123,11 +123,13 @@ export async function guardarHorarioAcademicoGrupoService(idGrupo, bloques = [])
       if (diasGrupo.size && !diasGrupo.has(b.dia_semana)) {
         throw new Error(`El ${b.dia_semana} no está habilitado en los días del grupo.`);
       }
-      if (grupo.hora_inicio && b.hora_inicio < grupo.hora_inicio) {
-        throw new Error(`${b.materia} del ${b.dia_semana} inicia antes de la jornada del grupo (${grupo.hora_inicio}).`);
+      const jornadaInicio = grupo.hora_inicio ? normalizarHoraGrupo(grupo.hora_inicio) : null;
+      const jornadaFin = grupo.hora_fin ? normalizarHoraGrupo(grupo.hora_fin) : null;
+      if (jornadaInicio && b.hora_inicio < jornadaInicio) {
+        throw new Error(`${b.materia} del ${b.dia_semana} inicia antes de la jornada del grupo (${String(grupo.hora_inicio).slice(0,5)}).`);
       }
-      if (grupo.hora_fin && b.hora_fin > grupo.hora_fin) {
-        throw new Error(`${b.materia} del ${b.dia_semana} termina después de la jornada del grupo (${grupo.hora_fin}).`);
+      if (jornadaFin && b.hora_fin > jornadaFin) {
+        throw new Error(`${b.materia} del ${b.dia_semana} termina después de la jornada del grupo (${String(grupo.hora_fin).slice(0,5)}).`);
       }
     }
 

@@ -25,7 +25,7 @@ export default function Perfil() {
 <div className="card border-0 shadow-sm perfil-card">
 <div className="card-body text-center p-4">
 <div className="perfil-avatar">
-<img id="perfil-foto-preview" src="https://via.placeholder.com/150" alt="Perfil" />
+<img id="perfil-foto-preview" src="/images/logo1-transparent.png" alt="Perfil" />
 </div>
 <label htmlFor="perfil-foto-input" className="btn btn-outline-primary perfil-photo-trigger mt-3">
 <i className="bi bi-camera"></i>

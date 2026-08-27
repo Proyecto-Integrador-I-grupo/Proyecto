@@ -39,6 +39,21 @@ let estudiantePendienteId = null;
 
 const FECHA_INGRESO_MIN = '2026-01-01';
 
+const EDAD_ESTUDIANTE_MIN = 4;
+const EDAD_ESTUDIANTE_MAX = 15;
+
+function edadEnFecha(fechaNacimiento, referencia = new Date()) {
+  const [y, m, d] = String(fechaNacimiento || '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const nacimiento = new Date(y, m - 1, d);
+  if (Number.isNaN(nacimiento.getTime())) return null;
+  let edad = referencia.getFullYear() - nacimiento.getFullYear();
+  const mes = referencia.getMonth() - nacimiento.getMonth();
+  if (mes < 0 || (mes === 0 && referencia.getDate() < nacimiento.getDate())) edad -= 1;
+  return edad;
+}
+
+
 function hoyLocalISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -52,6 +67,11 @@ function validarPayloadEstudiante(payload, editando = false) {
   const hoy = hoyLocalISO();
   if (payload.fecha_nacimiento > hoy) {
     return 'La fecha de nacimiento no puede estar en el futuro.';
+  }
+
+  const edad = edadEnFecha(payload.fecha_nacimiento);
+  if (edad === null || edad < EDAD_ESTUDIANTE_MIN || edad > EDAD_ESTUDIANTE_MAX) {
+    return `La fecha de nacimiento debe corresponder a un estudiante de escuela entre ${EDAD_ESTUDIANTE_MIN} y ${EDAD_ESTUDIANTE_MAX} años.`;
   }
 
   if (!payload.fecha_ingreso) {
@@ -83,7 +103,14 @@ function wireEstudiantesEvents() {
     ingresoInput.min = FECHA_INGRESO_MIN;
     ingresoInput.max = hoyLocalISO();
   }
-  if (nacimientoInput) nacimientoInput.max = hoyLocalISO();
+  if (nacimientoInput) {
+    const hoy = new Date();
+    const maxNacimiento = new Date(hoy.getFullYear() - EDAD_ESTUDIANTE_MIN, hoy.getMonth(), hoy.getDate());
+    const minNacimiento = new Date(hoy.getFullYear() - EDAD_ESTUDIANTE_MAX - 1, hoy.getMonth(), hoy.getDate() + 1);
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    nacimientoInput.min = iso(minNacimiento);
+    nacimientoInput.max = iso(maxNacimiento);
+  }
 
   if (personaForm && !personaForm.dataset.wired) {
     personaForm.dataset.wired = '1';

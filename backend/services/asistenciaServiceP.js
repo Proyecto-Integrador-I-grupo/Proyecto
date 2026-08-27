@@ -19,12 +19,17 @@ export async function registrarAsistenciaProceso(datos) {
     await validarFechaAsistencia(connection, id_grupo, fecha);
 
     const [profesorGrupo] = await connection.query(
-      `SELECT id_grupo_profesor FROM grupo_profesor
-       WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE`,
-      [id_grupo, id_profesor]
+      `SELECT gp.id_grupo_profesor FROM grupo_profesor gp
+       WHERE gp.id_grupo = ? AND gp.id_profesor = ? AND gp.estado = TRUE
+         AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())
+       UNION
+       SELECT ps.id_suplencia FROM profesor_suplencia ps
+       WHERE ps.id_grupo = ? AND ps.id_profesor_suplente = ? AND ps.estado = TRUE
+         AND CURDATE() BETWEEN ps.fecha_inicio AND ps.fecha_fin`,
+      [id_grupo, id_profesor, id_grupo, id_profesor]
     );
     if (profesorGrupo.length === 0) {
-      throw new Error("El profesor no está asignado activamente a este grupo.");
+      throw new Error("El profesor no está asignado activamente a este grupo ni lo cubre como sustituto.");
     }
 
     const [estudianteGrupo] = await connection.query(
@@ -36,15 +41,20 @@ export async function registrarAsistenciaProceso(datos) {
       throw new Error("El estudiante no pertenece activamente a este grupo.");
     }
 
-    // CORRECCIÓN: Incluir id_profesor en la validación de duplicados.
-    // Esto permite que distintos profesores (materias) tomen asistencia al mismo estudiante el mismo día.
+    // La asistencia es del estudiante en el grupo y día; el profesor identifica al responsable,
+    // no crea una bitácora paralela. Así administrador y profesor ven el mismo registro.
     const [duplicado] = await connection.query(
       `SELECT id_asistencia FROM asistencia
-       WHERE id_estudiante = ? AND id_grupo = ? AND id_profesor = ? AND fecha = ? AND estado = TRUE`,
-      [id_estudiante, id_grupo, id_profesor, fecha]
+       WHERE id_estudiante = ? AND id_grupo = ? AND fecha = ? AND estado = TRUE LIMIT 1`,
+      [id_estudiante, id_grupo, fecha]
     );
     if (duplicado.length > 0) {
-      throw new Error("Ya registraste la asistencia para este estudiante en esta fecha.");
+      await connection.query(
+        `UPDATE asistencia SET estado_asistencia = ?, observaciones = ?, id_profesor = ? WHERE id_asistencia = ?`,
+        [estadoNormalizado, observaciones || null, id_profesor, duplicado[0].id_asistencia]
+      );
+      await connection.commit();
+      return { mensaje: 'Asistencia actualizada correctamente.', id_asistencia: duplicado[0].id_asistencia, actualizada: true };
     }
 
     const [resultado] = await connection.query(
@@ -89,14 +99,15 @@ export async function listarAsistencias(filtros = {}, usuarioActual = null) {
 
   const rol = (usuarioActual?.nom_rol || "").toLowerCase();
 
-  // CORRECCIÓN: Si es profesor, restringir estrictamente por sus registros (a.id_profesor)
+  // El profesor consulta la bitácora compartida de los grupos que imparte o cubre.
   if (rol === "profesor") {
     const idProfesor = usuarioActual.id_profesor;
-    if (!idProfesor) {
-      return [];
-    }
-    condiciones.push("a.id_profesor = ?");
-    valores.push(idProfesor);
+    if (!idProfesor) return [];
+    condiciones.push(`(
+      EXISTS (SELECT 1 FROM grupo_profesor gpv WHERE gpv.id_grupo = a.id_grupo AND gpv.id_profesor = ? AND gpv.estado = TRUE AND (gpv.fecha_fin IS NULL OR gpv.fecha_fin >= CURDATE()))
+      OR EXISTS (SELECT 1 FROM profesor_suplencia psv WHERE psv.id_grupo = a.id_grupo AND psv.id_profesor_suplente = ? AND psv.estado = TRUE AND CURDATE() BETWEEN psv.fecha_inicio AND psv.fecha_fin)
+    )`);
+    valores.push(idProfesor, idProfesor);
   } else if (id_profesor) {
     condiciones.push("a.id_profesor = ?");
     valores.push(id_profesor);

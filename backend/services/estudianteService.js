@@ -198,6 +198,24 @@ export const obtenerEstudiantePorIdService = async (id_estudiante) => {
  * Misma lógica de transacción que profesorService.crearProfesorService, pero apuntando
  * a la tabla `estudiante` en vez de `profesor`.
  */
+
+function validarEdadEstudiante(fechaNacimiento) {
+  const iso = String(fechaNacimiento || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error('La fecha de nacimiento no es válida.');
+  const [y,m,d] = iso.split('-').map(Number);
+  const nacimiento = new Date(y, m - 1, d);
+  if (Number.isNaN(nacimiento.getTime()) || nacimiento.getFullYear() !== y || nacimiento.getMonth() !== m - 1 || nacimiento.getDate() !== d) {
+    throw new Error('La fecha de nacimiento no es una fecha real.');
+  }
+  const hoy = new Date();
+  if (nacimiento > hoy) throw new Error('La fecha de nacimiento no puede estar en el futuro.');
+  let edad = hoy.getFullYear() - y;
+  const dm = hoy.getMonth() - (m - 1);
+  if (dm < 0 || (dm === 0 && hoy.getDate() < d)) edad -= 1;
+  if (edad < 4 || edad > 15) throw new Error('La fecha de nacimiento debe corresponder a un estudiante de escuela entre 4 y 15 años.');
+  return iso;
+}
+
 export const crearEstudianteService = async (datos, idUsuario = null) => {
   const { nombre, apellido1, apellido2, fecha_nacimiento, genero, fecha_ingreso } = datos;
 
@@ -205,6 +223,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
     throw new Error("Faltan campos obligatorios para registrar al estudiante.");
   }
 
+  validarEdadEstudiante(fecha_nacimiento);
   const generoNormalizado = normalizarGenero(genero);
   const fechaIngresoValidada = validarFechaIngreso(fecha_ingreso || hoyLocalISO());
   const connection = await conexionPromise.getConnection();
@@ -270,6 +289,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
  */
 export const actualizarEstudianteService = async (id_estudiante, datos, idUsuario = null) => {
   const { nombre, apellido1, apellido2, fecha_nacimiento, genero, fecha_ingreso } = datos;
+  validarEdadEstudiante(fecha_nacimiento);
   const generoNormalizado = normalizarGenero(genero);
 
   const connection = await conexionPromise.getConnection();

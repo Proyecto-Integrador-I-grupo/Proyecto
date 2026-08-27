@@ -301,3 +301,16 @@
     height: 18px;
   }
 }
+
+
+/* Pulido final: asistencia compartida y usable en vista profesor/admin */
+#asistencia-view .attendance-control-card { border:1px solid #dbe5f0; box-shadow:0 10px 30px rgba(15,23,42,.06)!important; }
+#asistencia-view .attendance-matrix-wrap { max-height:56vh; border:1px solid #dbe5f0; border-radius:14px; background:#fff; }
+#asistencia-view .attendance-matrix thead { position:sticky; top:0; z-index:6; }
+#asistencia-view .attendance-matrix th { background:#f7fafc; }
+#asistencia-view .attendance-cell-btn { width:36px; height:36px; border-radius:10px; }
+#asistencia-view .attendance-note-btn { border:0; background:transparent; color:#7890aa; padding:.15rem; }
+#asistencia-view .attendance-note-btn.has-note { color:#2563eb; }
+#asistencia-view .attendance-cell-stack { display:flex; flex-direction:column; align-items:center; gap:.18rem; }
+#asistencia-view #asis-guardar-mes { min-width:150px; }
+@media (max-width: 991px) { #asistencia-view .attendance-matrix-wrap { max-height:52vh; } }

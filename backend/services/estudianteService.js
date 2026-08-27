@@ -1,5 +1,33 @@
 import conexionPromise from "../config/database.js";
 
+const FECHA_INGRESO_MIN = "2026-01-01";
+
+const hoyLocalISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const validarFechaIngreso = (fechaIngreso) => {
+  if (!fechaIngreso) {
+    throw new Error("La fecha de ingreso es obligatoria.");
+  }
+
+  const fecha = String(fechaIngreso).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || Number.isNaN(new Date(`${fecha}T12:00:00`).getTime())) {
+    throw new Error("La fecha de ingreso no tiene un formato válido.");
+  }
+
+  if (fecha < FECHA_INGRESO_MIN) {
+    throw new Error("La fecha de ingreso no puede ser anterior al 01/01/2026.");
+  }
+
+  if (fecha > hoyLocalISO()) {
+    throw new Error("La fecha de ingreso no puede estar en el futuro.");
+  }
+
+  return fecha;
+};
+
 const normalizarGenero = (genero) => {
   const valor = String(genero ?? "").trim().toLowerCase();
   const mapa = {
@@ -178,6 +206,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
   }
 
   const generoNormalizado = normalizarGenero(genero);
+  const fechaIngresoValidada = validarFechaIngreso(fecha_ingreso || hoyLocalISO());
   const connection = await conexionPromise.getConnection();
 
   try {
@@ -208,7 +237,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
     `;
     const [resEstudiante] = await connection.query(queryEstudiante, [
       id_persona,
-      fecha_ingreso || new Date().toISOString().split("T")[0]
+      fechaIngresoValidada
     ]);
 
     // Reactivamos los triggers
@@ -222,7 +251,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
       nombre,
       apellido1,
       apellido2,
-      fecha_ingreso,
+      fecha_ingreso: fechaIngresoValidada,
       estado: 1
     };
   } catch (error) {
@@ -240,7 +269,7 @@ export const crearEstudianteService = async (datos, idUsuario = null) => {
  * Recibe id_estudiante, resuelve internamente el id_persona correspondiente.
  */
 export const actualizarEstudianteService = async (id_estudiante, datos, idUsuario = null) => {
-  const { nombre, apellido1, apellido2, fecha_nacimiento, genero } = datos;
+  const { nombre, apellido1, apellido2, fecha_nacimiento, genero, fecha_ingreso } = datos;
   const generoNormalizado = normalizarGenero(genero);
 
   const connection = await conexionPromise.getConnection();
@@ -265,6 +294,14 @@ export const actualizarEstudianteService = async (id_estudiante, datos, idUsuari
        WHERE id_persona = ?`,
       [String(nombre).replace(/\s+/g, " ").trim(), String(apellido1).replace(/\s+/g, " ").trim(), apellido2 ? String(apellido2).replace(/\s+/g, " ").trim() : null, fecha_nacimiento, generoNormalizado, id_persona]
     );
+
+    if (fecha_ingreso) {
+      const fechaIngresoValidada = validarFechaIngreso(fecha_ingreso);
+      await connection.query(
+        `UPDATE estudiante SET fecha_ingreso = ? WHERE id_estudiante = ?`,
+        [fechaIngresoValidada, id_estudiante]
+      );
+    }
 
     await connection.commit();
     return { id_estudiante, id_persona, mensaje: "Estudiante actualizado correctamente" };

@@ -1151,15 +1151,52 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     );
     await registrarDocumentosIntegracionInicial(idCargo, respuesta.id, apiRoot, configGuardada);
 
-    // Camino principal: api-factura registra la misma operación en FacturaSmart
-    // y devuelve el XML. Si el despliegue visual todavía no tiene esa versión o
-    // FacturaSmart falla desde allí, mantenemos el adaptador directo como respaldo.
-    let facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(
-      idCargo,
-      respuesta?.facturaElectronica,
-      configGuardada
-    ).catch(() => null);
+    // Sincronización explícita API REST: después de crear el PDF, EduControl llama
+    // a api-factura para que publique ESA MISMA factura en FacturaSmart. Las
+    // credenciales viajan únicamente backend-a-backend por HTTPS y api-factura no
+    // las persiste. Esto evita depender de headers opcionales durante la creación
+    // del PDF y deja la comunicación entre APIs como una operación verificable.
+    let facturaElectronica = null;
+    try {
+      let passwordFacturaSmart = '';
+      try { passwordFacturaSmart = configGuardada?.factura_electronica_password ? descifrarSecreto(configGuardada.factura_electronica_password) : ''; } catch {}
+      if (configGuardada?.factura_electronica_correo && passwordFacturaSmart) {
+        const bodySync = {
+          baseUrl: raizFacturaSmart(configGuardada),
+          correo: String(configGuardada.factura_electronica_correo).trim().toLowerCase(),
+          password: passwordFacturaSmart
+        };
+        try {
+          const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
+          if (tokenFacturaSmart) bodySync.accessToken = tokenFacturaSmart;
+        } catch {}
 
+        const sync = await consumirServicio(
+          `${apiRoot}/api/facturas/${encodeURIComponent(respuesta.id)}/electronica/sincronizar`,
+          {
+            method: 'POST',
+            body: JSON.stringify(bodySync),
+            headers: integrationApiKey ? { 'X-Api-Key': integrationApiKey } : {},
+            timeout: Number(process.env.FACTURACION_ELECTRONICA_TIMEOUT_MS || 90000),
+            retry429: 2
+          }
+        );
+        facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, {
+          ok: Boolean(sync?.ok),
+          id: sync?.facturaSmartId || sync?.id,
+          xmlBase64: sync?.xmlBase64,
+          mimeType: sync?.mimeType,
+          estado: sync?.estado,
+          mensaje: sync?.mensaje
+        }, configGuardada).catch(() => null);
+      }
+    } catch (errorSync) {
+      console.warn(`FacturaSmart vía api-factura (cargo ${idCargo}):`, errorSync?.message || errorSync);
+    }
+
+    // Compatibilidad: si api-factura aún no fue desplegada con el endpoint de
+    // sincronización, EduControl publica directamente en FacturaSmart. Así no se
+    // pierde el XML durante un despliegue escalonado de los dos servicios.
     if (!facturaElectronica?.ok) {
       facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada)
         .catch((error) => ({ ok: false, estado: 'error', mensaje: error?.message }));

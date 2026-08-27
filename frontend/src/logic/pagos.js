@@ -1063,7 +1063,7 @@ function renderFacturacion() {
       : '';
 
     const estadoFactura = tieneFactura
-      ? '<span class="badge rounded-pill finance-invoice-ready"><i class="bi bi-check2-circle me-1"></i>PDF disponible</span>'
+      ? ''
       : (c.estado_factura === 'error'
           ? `<div class="finance-invoice-error"><span class="badge rounded-pill text-bg-warning">Reintento automático</span>${detalleErrorFactura}</div>`
           : '<span class="badge rounded-pill text-bg-info">Generando automáticamente</span>');

@@ -646,6 +646,29 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
   }
 }
 
+async function registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, datos, config) {
+  if (!datos?.ok) return null;
+  const id = String(datos?.id || datos?.facturaSmartId || '').trim();
+  const xmlBase64 = String(datos?.xmlBase64 || '').trim();
+  if (!id || !xmlBase64) return null;
+
+  await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+    estado: 'disponible',
+    identificador: id,
+    url: `${raizFacturaSmart(config)}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
+    mimeType: datos?.mimeType || 'application/xml',
+    contenido: xmlBase64,
+    respuesta: { origen: 'api-factura', servicio: datos?.servicio || raizFacturaSmart(config) },
+    error: null
+  });
+  await upsertDocumentoIntegrado(idCargo, 'acuse', {
+    estado: 'pendiente_firma_dgtd',
+    identificador: id,
+    error: 'Factura electrónica XML disponible. Firma digital y acuse DGTD pendientes de integración externa.'
+  });
+  return { ok: true, id, estado: 'disponible', origen: 'api-factura' };
+}
+
 async function fetchFacturaSmartBinario(config, ruta, timeout = 30000) {
   const root = raizFacturaSmart(config);
   let token = await loginFacturaSmart(config);
@@ -672,16 +695,56 @@ async function fetchFacturaSmartBinario(config, ruta, timeout = 30000) {
   throw new Error('No se pudo autenticar la consulta del documento de FacturaSmart.');
 }
 
+async function obtenerElectronicaCacheadaEnFacturaBonita(idCargo, config) {
+  const [[vinculo]] = await pool.query(
+    `SELECT id_factura_externa FROM factura_cargo WHERE id_cargo=? LIMIT 1`,
+    [Number(idCargo)]
+  );
+  const idVisual = String(vinculo?.id_factura_externa || '').trim();
+  if (!idVisual) return null;
+
+  const root = raizFacturaBonita(config);
+  const headers = { Accept: 'application/json' };
+  const key = apiKeyFacturaBonita(config);
+  if (key) headers['X-Api-Key'] = key;
+
+  let estado = null;
+  try {
+    const response = await fetch(`${root}/api/facturas/${encodeURIComponent(idVisual)}/electronica`, { headers });
+    if (response.ok) estado = await response.json();
+  } catch {}
+  if (!estado?.xmlDisponible) return null;
+
+  const response = await fetch(`${root}/api/facturas/${encodeURIComponent(idVisual)}/electronica/xml`, {
+    headers: { ...headers, Accept: 'application/xml,text/xml,*/*' }
+  });
+  if (!response.ok) return null;
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (!buffer.length) return null;
+  const smartId = String(estado?.facturaSmartId || '').trim();
+  await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+    estado: 'disponible',
+    identificador: smartId || null,
+    mimeType: response.headers.get('content-type') || 'application/xml',
+    contenido: buffer.toString('base64'),
+    respuesta: { origen: 'api-factura-cache', factura_visual: idVisual },
+    error: null
+  }).catch(() => {});
+  return {
+    buffer,
+    contentType: response.headers.get('content-type') || 'application/xml',
+    id: smartId || idVisual
+  };
+}
+
 export async function obtenerDocumentoElectronicoFacturaSmart(idCargo, formato = 'xml') {
   const config = await obtenerConfigInterna();
-  if (!config?.factura_electronica_cuenta_confirmada) throw new Error('La cuenta de FacturaSmart todavía no está vinculada.');
   const [rows] = await pool.query(
     `SELECT identificador_externo, estado, mime_type, contenido FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`,
     [Number(idCargo)]
   );
   const registro = rows[0] || {};
-  const id = String(registro.identificador_externo || '').trim();
-  if (!id) throw new Error('La factura electrónica todavía no está disponible para este cargo.');
+  let id = String(registro.identificador_externo || '').trim();
   const limpio = String(formato || 'xml').toLowerCase();
 
   // El XML se sirve primero desde la copia recibida por EduControl.
@@ -689,9 +752,25 @@ export async function obtenerDocumentoElectronicoFacturaSmart(idCargo, formato =
     return {
       buffer: Buffer.from(String(registro.contenido), 'base64'),
       contentType: registro.mime_type || 'application/xml',
-      filename: `factura-electronica-${id}.xml`
+      filename: `factura-electronica-${id || Number(idCargo)}.xml`
     };
   }
+
+  // Si Factura Bonita ya recibió y guardó el XML desde FacturaSmart, EduControl
+  // puede recuperarlo desde ese puente incluso si la llamada directa se interrumpió.
+  if (limpio === 'xml') {
+    const cacheBonita = await obtenerElectronicaCacheadaEnFacturaBonita(idCargo, config).catch(() => null);
+    if (cacheBonita) {
+      return {
+        buffer: cacheBonita.buffer,
+        contentType: cacheBonita.contentType,
+        filename: `factura-electronica-${cacheBonita.id}.xml`
+      };
+    }
+  }
+
+  if (!config?.factura_electronica_cuenta_confirmada) throw new Error('La cuenta de FacturaSmart todavía no está vinculada.');
+  if (!id) throw new Error('La factura electrónica todavía no está disponible para este cargo.');
 
   const ruta = limpio === 'pdf' ? `/api/v1/facturas/${encodeURIComponent(id)}/pdf` : `/api/v1/facturas/${encodeURIComponent(id)}/xml`;
   const documento = await fetchFacturaSmartBinario(config, ruta, 30000);
@@ -1028,10 +1107,25 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   };
 
   try {
+    const headersFactura = integrationApiKey ? { "X-Api-Key": integrationApiKey } : {};
+
+    // EduControl conserva las credenciales de FacturaSmart. Para que Factura
+    // Bonita también participe en el flujo, le entregamos únicamente el JWT
+    // temporal obtenido por el backend. La contraseña nunca sale de EduControl.
+    if (configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
+      try {
+        const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
+        headersFactura["X-FacturaSmart-Access-Token"] = tokenFacturaSmart;
+        headersFactura["X-FacturaSmart-Base-Url"] = raizFacturaSmart(configGuardada);
+      } catch (errorToken) {
+        console.warn('FacturaSmart: no se pudo preparar el JWT para Factura Bonita:', errorToken?.message || errorToken);
+      }
+    }
+
     const respuesta = await consumirServicio(apiUrl, {
       method: "POST",
       body: JSON.stringify(payload),
-      headers: integrationApiKey ? { "X-Api-Key": integrationApiKey } : {},
+      headers: headersFactura,
       timeout: Number(process.env.FACTURACION_TIMEOUT_MS || 60000),
       retry429: 3
     });
@@ -1048,7 +1142,20 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       null
     );
     await registrarDocumentosIntegracionInicial(idCargo, respuesta.id, apiRoot, configGuardada);
-    const facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada).catch((error) => ({ ok: false, estado: 'error', mensaje: error?.message }));
+
+    // Camino principal: api-factura registra la misma operación en FacturaSmart
+    // y devuelve el XML. Si el despliegue visual todavía no tiene esa versión o
+    // FacturaSmart falla desde allí, mantenemos el adaptador directo como respaldo.
+    let facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(
+      idCargo,
+      respuesta?.facturaElectronica,
+      configGuardada
+    ).catch(() => null);
+
+    if (!facturaElectronica?.ok) {
+      facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada)
+        .catch((error) => ({ ok: false, estado: 'error', mensaje: error?.message }));
+    }
 
     return {
       ok: true,

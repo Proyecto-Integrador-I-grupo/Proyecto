@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import pool from '../config/database.js';
 import { registrarPago } from './finanzaService.js';
 import { obtenerConfiguracionInternaIntegraciones, registrarPagoBankyFacturaSmart } from './facturacionIntegrationService.js';
@@ -9,6 +9,14 @@ let schemaPromise = null;
 
 function clean(value, max = 250) {
   return String(value ?? '').trim().slice(0, max);
+}
+
+function bankyCustomerScope(responsable = {}, estudianteId = null) {
+  const documento = clean(responsable?.numero_identificacion, 80).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+  const correo = clean(responsable?.correo, 180).toLowerCase();
+  const seed = documento || correo || `estudiante:${Number(estudianteId) || 0}`;
+  const hash = createHash('sha256').update(`educontrol|${seed}`).digest('hex').slice(0, 28);
+  return `EDUCLIENT-${hash.toUpperCase()}`;
 }
 
 function money(value, field = 'El monto') {
@@ -162,11 +170,48 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
 
-  // Banky se abre como un datáfono independiente para cada cobro. No enviamos
-  // customerId/customerReference ni banderas de tarjeta guardada: el contrato
-  // original del servicio sólo necesita los datos de la orden/comercio. Enviar
-  // identificadores de cliente hizo que Banky reutilizara una tarjeta almacenada
-  // en el navegador entre responsables distintos.
+  // El bolsillo de tarjetas debe quedar aislado por RESPONSABLE, no por comercio
+  // ni por la pestaña del navegador. Usamos una clave opaca y estable derivada de
+  // identificación/correo: un responsable recurrente puede volver a ver SUS
+  // tarjetas, mientras un responsable nuevo recibe un contexto de cliente nuevo.
+  const responsable = datos?.responsable && typeof datos.responsable === 'object' ? datos.responsable : {};
+  const customerScope = bankyCustomerScope(responsable, cargo.id_estudiante);
+
+  // Banky ha tenido distintas variantes del contrato durante el laboratorio.
+  // Enviamos la misma clave bajo los alias de cliente más habituales para mantener
+  // compatibilidad sin exponer la identificación como identificador principal.
+  const customerAliases = {
+    customerId: customerScope,
+    customerReference: customerScope,
+    clientId: customerScope,
+    clientReference: customerScope,
+    clienteId: customerScope,
+    payerId: customerScope,
+    payerReference: customerScope,
+    walletOwnerId: customerScope,
+    cardOwnerId: customerScope,
+    cardScope: 'customer',
+    walletScope: 'customer',
+    savedCardsScope: 'customer',
+    checkoutSession: token
+  };
+  Object.entries(customerAliases).forEach(([key, value]) => checkout.searchParams.set(key, value));
+
+  const responsableNombre = clean(responsable.nombre, 160);
+  const responsableCorreo = clean(responsable.correo, 180).toLowerCase();
+  const responsableDocumento = clean(responsable.numero_identificacion, 80);
+  if (responsableNombre) {
+    checkout.searchParams.set('customerName', responsableNombre);
+    checkout.searchParams.set('payerName', responsableNombre);
+  }
+  if (responsableCorreo) {
+    checkout.searchParams.set('customerEmail', responsableCorreo);
+    checkout.searchParams.set('payerEmail', responsableCorreo);
+  }
+  if (responsableDocumento) {
+    checkout.searchParams.set('customerDocument', responsableDocumento);
+    checkout.searchParams.set('payerDocument', responsableDocumento);
+  }
 
   return {
     token,
@@ -176,7 +221,8 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
     moneda: 'CRC',
     expectedOrigin: bankOrigin(checkoutUrl),
     channel: BANK_CHANNEL,
-    expiresAt: expiry.toISOString()
+    expiresAt: expiry.toISOString(),
+    customerScope
   };
 }
 

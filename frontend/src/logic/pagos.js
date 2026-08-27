@@ -1476,6 +1476,16 @@ async function abrirPago(idCargo) {
   const contexto = document.getElementById('fin-pago-contexto');
   if (contexto) contexto.innerHTML = `<strong>${esc(cargo.estudiante_nombre)}</strong><span>${esc(cargo.descripcion)}</span><span>Saldo: ${moneda(cargo.saldo)}</span>`;
 
+  // Cada botón Pagar abre un contexto limpio. Si el estudiante todavía no tiene
+  // responsable registrado, nunca deben quedar en pantalla los datos del pago
+  // anterior por un GET 404 o una respuesta tardía.
+  setValue('fin-resp-nombre', '');
+  setValue('fin-resp-parentesco', '');
+  setValue('fin-resp-telefono', '');
+  setValue('fin-resp-correo', '');
+  setValue('fin-resp-tipo-id', '01');
+  setValue('fin-resp-numero-id', '');
+
   try {
     const r = await requestJson(`/api/finanzas/responsables/${cargo.id_estudiante}`);
     setValue('fin-resp-nombre', r.nombre || '');

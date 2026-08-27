@@ -755,9 +755,9 @@ async function validarAsignacionMateriaGrupo(connection, idProfesor, materia, gr
      ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes'), hora_inicio`,
     [grupo.id_grupo, materia]
   );
-  if (!slots.length) {
-    throw new Error(`El grupo ${grupo.nombre_grupo} no tiene ${materia} programada en su horario semanal.`);
-  }
+  // El profesor puede quedar asignado al grupo antes de construir el horario.
+  // Si todavía no existen bloques de su materia, la asignación se conserva
+  // y comenzará a aparecer en Horarios cuando esa materia sea programada.
   const [ocupada] = await connection.query(
     `SELECT gp.id_profesor, CONCAT_WS(' ',p.nombre,p.apellido1) AS profesor_nombre
      FROM grupo_profesor gp
@@ -915,6 +915,7 @@ export const obtenerSuplenciasPendientesService = async () => {
  */
 export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
   await asegurarHorarioGruposProfesor();
+  await asegurarTablaHorarioAcademico();
   await procesarSuplenciasVencidas();
 
   const params = [];
@@ -936,9 +937,9 @@ export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
        g.id_grupo,
        g.nombre_grupo,
        g.aula,
-       COALESCE(gha.dia_semana, g.dias_semana) AS dias_semana,
-       COALESCE(TIME_FORMAT(gha.hora_inicio, '%H:%i'), TIME_FORMAT(g.hora_inicio, '%H:%i')) AS hora_inicio,
-       COALESCE(TIME_FORMAT(gha.hora_fin, '%H:%i'), TIME_FORMAT(g.hora_fin, '%H:%i')) AS hora_fin,
+       gha.dia_semana AS dias_semana,
+       TIME_FORMAT(gha.hora_inicio, '%H:%i') AS hora_inicio,
+       TIME_FORMAT(gha.hora_fin, '%H:%i') AS hora_fin,
        s.id_seccion,
        s.nombre_seccion,
        s.nivel,
@@ -956,7 +957,10 @@ export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
      INNER JOIN profesor pr ON pr.id_profesor = gp.id_profesor
      INNER JOIN persona p ON p.id_persona = pr.id_persona AND p.estado = TRUE
      INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
-     LEFT JOIN grupo_horario_academico gha ON gha.id_grupo = g.id_grupo AND gha.estado = TRUE AND LOWER(TRIM(gha.materia)) = LOWER(TRIM(pr.materia))
+     INNER JOIN grupo_horario_academico gha
+       ON gha.id_grupo = g.id_grupo
+      AND gha.estado = TRUE
+      AND LOWER(TRIM(gha.materia)) = LOWER(TRIM(pr.materia))
      INNER JOIN seccion s ON s.id_seccion = g.id_seccion AND s.estado = TRUE
      INNER JOIN periodo_lectivo pl ON pl.anio = s.periodo_lectivo
      WHERE gp.estado = TRUE
@@ -994,6 +998,9 @@ export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
   }
   const [grupos] = await conexionPromise.query(
     `SELECT DISTINCT g.id_grupo, g.nombre_grupo, g.aula,
+            g.dias_semana,
+            TIME_FORMAT(g.hora_inicio, '%H:%i') AS hora_inicio,
+            TIME_FORMAT(g.hora_fin, '%H:%i') AS hora_fin,
             s.nombre_seccion, s.nivel, s.periodo_lectivo
      FROM grupo g
      INNER JOIN seccion s ON s.id_seccion = g.id_seccion AND s.estado = TRUE

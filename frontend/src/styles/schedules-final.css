@@ -752,3 +752,148 @@ body.is-asistente #profesores-view .schedule-admin-trigger { display:none !impor
     min-height:96px !important;
   }
 }
+
+
+/* Editor académico integrado en Horarios */
+.schedule-editor-card {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid #d7e3ef;
+  border-radius: 1rem;
+  background: #fbfdff;
+}
+.schedule-editor-head,
+.schedule-editor-group-row,
+.schedule-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.schedule-editor-head { margin-bottom: .9rem; }
+.schedule-editor-head p { color: #64748b; font-size: .84rem; }
+.schedule-editor-group-row { align-items: stretch; margin-bottom: .85rem; }
+.schedule-editor-group-info {
+  min-width: 280px;
+  display: grid;
+  align-content: center;
+  gap: .15rem;
+  padding: .7rem .85rem;
+  border-radius: .8rem;
+  border: 1px solid #dbe7f1;
+  background: #f3f8fc;
+  color: #64748b;
+  font-size: .8rem;
+}
+.schedule-editor-group-info strong { color: #0f3557; font-size: .9rem; }
+.schedule-editor-group-info span { display: block; }
+.schedule-editor-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.35fr 1fr;
+  gap: .75rem;
+  align-items: end;
+  padding: .85rem;
+  margin-bottom: .8rem;
+  border-radius: .85rem;
+  border: 1px solid #d9e6f0;
+  background: #f6faff;
+}
+.schedule-editor-coverage {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: .65rem 0;
+  padding: .65rem .8rem;
+  border-radius: .75rem;
+  border: 1px solid #cbe2ef;
+  background: #eef8fc;
+}
+.schedule-editor-coverage strong { color: #0b5878; }
+.schedule-editor-coverage span { color: #64748b; font-size: .8rem; text-align: right; }
+.schedule-editor-days {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0,1fr));
+  gap: .7rem;
+}
+.schedule-editor-day {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dbe5ef;
+  border-radius: .9rem;
+  background: #fff;
+}
+.schedule-editor-day > header {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .7rem .8rem;
+  border-bottom: 1px solid #dbe5ef;
+  background: #f2f7fb;
+}
+.schedule-editor-day header strong { color: #123f68; }
+.schedule-editor-day header small { color: #64748b; }
+.schedule-editor-slots {
+  display: grid;
+  gap: .45rem;
+  min-height: 100px;
+  padding: .6rem;
+}
+.schedule-editor-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .45rem;
+  padding: .55rem .6rem;
+  border: 1px solid #d8e4ee;
+  border-radius: .65rem;
+  background: #fff;
+}
+.schedule-editor-slot > div { min-width: 0; display: grid; gap: .05rem; }
+.schedule-editor-slot strong { font-size: .78rem; color: #174f7b; }
+.schedule-editor-slot span { font-size: .8rem; color: #334155; overflow: hidden; text-overflow: ellipsis; }
+.schedule-editor-empty { color: #7b8da1; font-size: .8rem; padding: .35rem 0; }
+.schedule-editor-day-add { margin: 0 .6rem .65rem; width: calc(100% - 1.2rem); }
+.schedule-editor-actions { margin-top: .9rem; padding-top: .8rem; border-top: 1px solid #e0e8f0; }
+
+@media (max-width: 1150px) {
+  .schedule-editor-controls { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .schedule-editor-days { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 700px) {
+  .schedule-editor-head,
+  .schedule-editor-group-row,
+  .schedule-editor-actions,
+  .schedule-editor-coverage { align-items: stretch; flex-direction: column; }
+  .schedule-editor-group-info { min-width: 0; }
+  .schedule-editor-controls,
+  .schedule-editor-days { grid-template-columns: 1fr; }
+  .schedule-editor-coverage span { text-align: left; }
+}
+
+body.theme-dark .schedule-editor-card,
+body.theme-dark .schedule-editor-day,
+body.theme-dark .schedule-editor-slot {
+  background: #0f172a;
+  border-color: #334155;
+}
+body.theme-dark .schedule-editor-controls,
+body.theme-dark .schedule-editor-group-info,
+body.theme-dark .schedule-editor-day > header {
+  background: #17243a;
+  border-color: #334155;
+}
+body.theme-dark .schedule-editor-coverage {
+  background: #102536;
+  border-color: #334155;
+}
+body.theme-dark .schedule-editor-slot span,
+body.theme-dark .schedule-editor-head p,
+body.theme-dark .schedule-editor-group-info,
+body.theme-dark .schedule-editor-empty {
+  color: #cbd5e1;
+}
+body.theme-dark .schedule-editor-group-info strong,
+body.theme-dark .schedule-editor-day header strong,
+body.theme-dark .schedule-editor-slot strong {
+  color: #dbeafe;
+}

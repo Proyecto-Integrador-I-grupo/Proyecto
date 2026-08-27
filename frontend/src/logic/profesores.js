@@ -999,36 +999,46 @@ function renderChecklistGrupos(grupos) {
   if (!lista) return;
 
   const materiaObjetivo = profesorMateriaAsignacionActual.toLowerCase();
-  const gruposDisponibles = grupos.filter((g) => {
-    const actual = profesorGruposActualesIds.includes(Number(g.id_grupo ?? g.id));
+  if (!Array.isArray(grupos) || !grupos.length) {
+    lista.innerHTML = `<div class="text-center py-4"><i class="bi bi-diagram-3 fs-4 text-muted"></i><p class="text-muted mb-1 mt-2">No hay grupos activos registrados.</p><small class="text-muted">Crea un grupo antes de asignarlo a un profesor.</small></div>`;
+    return;
+  }
+
+  lista.innerHTML = grupos.map((g) => {
+    const id = Number(g.id_grupo ?? g.id);
+    const actual = profesorGruposActualesIds.includes(id);
     const materiasHorario = String(g.materias_horario || '').split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
     const materiasAsignadas = String(g.materias_asignadas || '').split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
     const programada = materiasHorario.includes(materiaObjetivo);
     const ocupadaPorMateria = materiasAsignadas.includes(materiaObjetivo) && !actual;
-    return actual || (programada && !ocupadaPorMateria);
-  });
-  if (!gruposDisponibles.length) {
-    lista.innerHTML = `<div class="text-center py-4"><i class="bi bi-calendar2-x fs-4 text-muted"></i><p class="text-muted mb-1 mt-2">No hay grupos disponibles para ${profesorMateriaAsignacionActual || 'esta materia'}.</p><small class="text-muted">Configura primero esa materia en el horario semanal del grupo o asígnala a otro grupo libre.</small></div>`;
-    return;
-  }
-
-  lista.innerHTML = gruposDisponibles.map((g) => {
-    const id = g.id_grupo ?? g.id;
-    const checked = profesorGruposActualesIds.includes(Number(id)) ? 'checked' : '';
+    const checked = actual ? 'checked' : '';
+    const disabled = ocupadaPorMateria ? 'disabled' : '';
     const horaInicio = g.hora_inicio ? String(g.hora_inicio).slice(0, 5) : '';
     const horaFin = g.hora_fin ? String(g.hora_fin).slice(0, 5) : '';
-    const horario = g.materias_horario ? ' · Horario semanal configurado' : (horaInicio && horaFin ? ` · Jornada ${horaInicio} - ${horaFin}` : ' · Horario semanal pendiente');
-    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · ${profesorMateriaAsignacionActual || 'Materia'} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}${horario}`;
-    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''} ${horaInicio} ${horaFin}`.toLowerCase();
+    const dias = String(g.dias_semana || '').split(',').filter(Boolean).join(', ');
+
+    let estadoMateria = '';
+    if (actual) estadoMateria = '<span class="badge text-bg-primary ms-1">Asignado</span>';
+    else if (ocupadaPorMateria) estadoMateria = '<span class="badge text-bg-light border text-danger ms-1">Materia ocupada</span>';
+    else if (programada) estadoMateria = '<span class="badge text-bg-light border text-success ms-1">Horario listo</span>';
+    else estadoMateria = '<span class="badge text-bg-light border text-secondary ms-1">Horario pendiente</span>';
+
+    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}`;
+    const detalle = `${dias || 'Sin días'}${horaInicio && horaFin ? ` · Jornada ${horaInicio} - ${horaFin}` : ''}`;
+    const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''} ${dias} ${horaInicio} ${horaFin}`.toLowerCase();
+
     return `
-      <label class="form-check d-flex align-items-center gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item" data-busqueda="${busqueda}">
-        <input class="form-check-input mt-0 asignar-grupo-checkbox" type="checkbox" value="${id}" ${checked}>
-        <span class="small">${etiqueta}</span>
+      <label class="form-check d-flex align-items-start gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item ${ocupadaPorMateria ? 'opacity-75' : ''}" data-busqueda="${busqueda}">
+        <input class="form-check-input mt-1 asignar-grupo-checkbox" type="checkbox" value="${id}" ${checked} ${disabled}>
+        <span class="small flex-grow-1">
+          <span class="d-flex align-items-center flex-wrap gap-1"><strong>${etiqueta}</strong>${estadoMateria}</span>
+          <span class="text-muted d-block mt-1">${detalle}${!programada ? ` · ${profesorMateriaAsignacionActual || 'Materia'} aún no tiene bloques; podrás configurarlos desde Horarios.` : ''}</span>
+          ${ocupadaPorMateria ? `<span class="text-danger d-block mt-1">${profesorMateriaAsignacionActual} ya está cubierta por otro profesor en este grupo.</span>` : ''}
+        </span>
       </label>
     `;
   }).join('');
 }
-
 function filtrarChecklistGrupos(termino) {
   const busqueda = (termino || '').trim().toLowerCase();
   document.querySelectorAll('#asignar-grupos-lista .asignar-grupo-item').forEach((item) => {

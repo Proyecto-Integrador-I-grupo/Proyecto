@@ -35,7 +35,6 @@ import {
 
 let allGrupos = [];
 let allSecciones = [];
-let horarioGrupoBloques = [];
 
 function wireMatriculaEvents() {
   configurarDisponibilidadAulas();
@@ -68,101 +67,6 @@ function wireMatriculaEvents() {
   if (grupoForm && !grupoForm.dataset.wired) {
     grupoForm.dataset.wired = '1';
     grupoForm.addEventListener('submit', handleGrupoSubmit);
-  }
-
-
-
-  const horarioGrupoBtn = document.querySelector('[data-bs-target="#modalHorarioGrupo"]');
-  if (horarioGrupoBtn && !horarioGrupoBtn.dataset.wired) {
-    horarioGrupoBtn.dataset.wired = '1';
-    horarioGrupoBtn.addEventListener('click', async () => {
-      await prepararModalHorarioGrupo();
-    });
-  }
-  const horarioGrupoSelect = document.getElementById('horario-grupo-select');
-  if (horarioGrupoSelect && !horarioGrupoSelect.dataset.wired) {
-    horarioGrupoSelect.dataset.wired = '1';
-    horarioGrupoSelect.addEventListener('change', () => cargarHorarioGrupo(Number(horarioGrupoSelect.value || 0)));
-  }
-  const horarioAgregar = document.getElementById('horario-grupo-agregar');
-  if (horarioAgregar && !horarioAgregar.dataset.wired) {
-    horarioAgregar.dataset.wired = '1';
-    horarioAgregar.addEventListener('click', agregarBloqueHorarioGrupo);
-  }
-  const horarioGuardar = document.getElementById('horario-grupo-guardar');
-  if (horarioGuardar && !horarioGuardar.dataset.wired) {
-    horarioGuardar.dataset.wired = '1';
-    horarioGuardar.addEventListener('click', guardarHorarioGrupo);
-  }
-  const horarioResumen = document.getElementById('horario-grupo-resumen');
-  if (horarioResumen && !horarioResumen.dataset.wired) {
-    horarioResumen.dataset.wired = '1';
-    horarioResumen.addEventListener('click', (event) => {
-      const btn = event.target.closest('[data-remove-slot]');
-      if (!btn) return;
-      const idx = Number(btn.dataset.removeSlot);
-      if (Number.isInteger(idx)) { horarioGrupoBloques.splice(idx,1); renderHorarioGrupoEditor(); }
-    });
-  }
-
-  const gestionGrupoForm = document.getElementById('gestion-grupo-form');
-  if (gestionGrupoForm && !gestionGrupoForm.dataset.wired) {
-    gestionGrupoForm.dataset.wired = '1';
-    gestionGrupoForm.addEventListener('submit', handleGestionGrupoSubmit);
-  }
-
-  const btnBorrarGrupo = document.getElementById('btn-borrar-grupo');
-  if (btnBorrarGrupo && !btnBorrarGrupo.dataset.wired) {
-    btnBorrarGrupo.dataset.wired = '1';
-    btnBorrarGrupo.addEventListener('click', async (e) => {
-      e.preventDefault();
-      
-      const rawValue = document.getElementById('gestion-grupo-select')?.value;
-      if (!rawValue) {
-        showToast('Selecciona un grupo para borrar.', 'error');
-        return;
-      }
-
-      const idGrupo = String(rawValue).split(':')[0].trim();
-
-      if (!idGrupo || isNaN(idGrupo)) {
-        showToast('ID de grupo inválido.', 'error');
-        return;
-      }
-
-      const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
-      if (confirmarModalEl) {
-        const btnConfirmarAccion = document.getElementById('btn-confirmar-borrado-grupo');
-        if (btnConfirmarAccion) btnConfirmarAccion.dataset.idGrupo = idGrupo;
-        
-        const modalConfirm = new bootstrap.Modal(confirmarModalEl);
-        modalConfirm.show();
-      }
-    });
-  }
-
-  const btnConfirmarBorradoGrupo = document.getElementById('btn-confirmar-borrado-grupo');
-  if (btnConfirmarBorradoGrupo && !btnConfirmarBorradoGrupo.dataset.wired) {
-    btnConfirmarBorradoGrupo.dataset.wired = '1';
-    btnConfirmarBorradoGrupo.addEventListener('click', async () => {
-      const idGrupo = btnConfirmarBorradoGrupo.dataset.idGrupo;
-      if (!idGrupo || btnConfirmarBorradoGrupo.dataset.busy === '1') return;
-      const original = btnConfirmarBorradoGrupo.innerHTML;
-      btnConfirmarBorradoGrupo.dataset.busy = '1';
-      btnConfirmarBorradoGrupo.disabled = true;
-      btnConfirmarBorradoGrupo.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Eliminando…';
-      try {
-        const confirmarModalEl = document.getElementById('modalConfirmarEliminacion');
-        if (confirmarModalEl) bootstrap.Modal.getInstance(confirmarModalEl)?.hide();
-        await borrarGrupo(idGrupo);
-      } finally {
-        if (btnConfirmarBorradoGrupo.isConnected) {
-          btnConfirmarBorradoGrupo.disabled = false;
-          btnConfirmarBorradoGrupo.innerHTML = original;
-          delete btnConfirmarBorradoGrupo.dataset.busy;
-        }
-      }
-    });
   }
 
   const gestionGrupoBtn = document.querySelector('[data-bs-target="#modalGestionGrupo"]');
@@ -1207,82 +1111,6 @@ function marcarDiasSeleccionados(contenedorId, diasValor) {
 }
 
 
-async function prepararModalHorarioGrupo(preseleccionado = null) {
-  await populateGruposSelects();
-  const select = document.getElementById('horario-grupo-select');
-  if (!select) return;
-  const previo = preseleccionado || select.value;
-  select.innerHTML = '<option value="">Seleccionar grupo</option>' + allGrupos.map((g) => `<option value="${g.id_grupo}">${g.nombre_grupo} · ${g.nombre_seccion || g.nivel || ''}</option>`).join('');
-  if (previo && [...select.options].some((o) => String(o.value) === String(previo))) select.value = String(previo);
-  horarioGrupoBloques = [];
-  renderHorarioGrupoEditor();
-  if (select.value) await cargarHorarioGrupo(Number(select.value));
-}
-
-async function cargarHorarioGrupo(idGrupo) {
-  horarioGrupoBloques = [];
-  if (!idGrupo) { renderHorarioGrupoEditor(); return; }
-  try {
-    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/horario`);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || 'No se pudo cargar el horario semanal.');
-    horarioGrupoBloques = Array.isArray(json.bloques) ? json.bloques.map((b) => ({
-      dia_semana: b.dia_semana,
-      hora_inicio: String(b.hora_inicio || '').slice(0,5),
-      hora_fin: String(b.hora_fin || '').slice(0,5),
-      materia: b.materia
-    })) : [];
-    renderHorarioGrupoEditor();
-  } catch (error) { showToast(error.message || 'No se pudo cargar el horario.', 'error'); }
-}
-
-function agregarBloqueHorarioGrupo() {
-  const idGrupo = Number(document.getElementById('horario-grupo-select')?.value || 0);
-  const dia = document.getElementById('horario-grupo-dia')?.value || '';
-  const inicio = document.getElementById('horario-grupo-inicio')?.value || '';
-  const fin = document.getElementById('horario-grupo-fin')?.value || '';
-  const materia = document.getElementById('horario-grupo-materia')?.value || '';
-  if (!idGrupo) return showToast('Selecciona primero un grupo.', 'error');
-  if (!dia || !inicio || !fin || !materia) return showToast('Completa día, horas y materia.', 'error');
-  if (fin <= inicio) return showToast('La hora final debe ser posterior a la inicial.', 'error');
-  const choque = horarioGrupoBloques.some((b) => b.dia_semana === dia && inicio < b.hora_fin && fin > b.hora_inicio);
-  if (choque) return showToast('Ese bloque se cruza con otra materia del mismo día.', 'error');
-  horarioGrupoBloques.push({ dia_semana: dia, hora_inicio: inicio, hora_fin: fin, materia });
-  horarioGrupoBloques.sort((a,b) => ['lunes','martes','miercoles','jueves','viernes'].indexOf(a.dia_semana)-['lunes','martes','miercoles','jueves','viernes'].indexOf(b.dia_semana) || a.hora_inicio.localeCompare(b.hora_inicio));
-  renderHorarioGrupoEditor();
-}
-
-function renderHorarioGrupoEditor() {
-  const cont = document.getElementById('horario-grupo-resumen');
-  if (!cont) return;
-  const dias = [['lunes','Lunes'],['martes','Martes'],['miercoles','Miércoles'],['jueves','Jueves'],['viernes','Viernes']];
-  const materiasBase = ['Español','Matemáticas','Ciencias','Estudios Sociales','Inglés','Educación Física','Informática','Artes'];
-  const cubiertas = new Set(horarioGrupoBloques.map((b) => b.materia));
-  const faltantes = materiasBase.filter((m) => !cubiertas.has(m));
-  const resumen = `<div class="weekly-schedule-coverage"><strong>${cubiertas.size}/8 materias programadas</strong><span>${faltantes.length ? `Pendientes: ${faltantes.join(', ')}` : 'Cobertura completa de las 8 materias básicas.'}</span></div>`;
-  cont.innerHTML = resumen + `<div class="weekly-schedule-grid">` + dias.map(([key,label]) => {
-    const slots = horarioGrupoBloques.map((b,i)=>({...b,_idx:i})).filter((b)=>b.dia_semana===key);
-    return `<section class="weekly-schedule-day"><header><strong>${label}</strong><span>${slots.length} bloque${slots.length===1?'':'s'}</span></header><div class="weekly-schedule-slots">${slots.length ? slots.map((b)=>`<div class="weekly-schedule-slot"><div><strong>${b.hora_inicio} - ${b.hora_fin}</strong><span>${b.materia}</span></div><button type="button" class="btn btn-sm btn-outline-danger" data-remove-slot="${b._idx}" aria-label="Quitar"><i class="bi bi-x-lg"></i></button></div>`).join('') : '<span class="text-muted small">Sin clases programadas</span>'}</div></section>`;
-  }).join('') + '</div>';
-}
-
-async function guardarHorarioGrupo() {
-  const idGrupo = Number(document.getElementById('horario-grupo-select')?.value || 0);
-  if (!idGrupo) return showToast('Selecciona un grupo.', 'error');
-  if (!horarioGrupoBloques.length) return showToast('Agrega al menos un bloque al horario semanal.', 'error');
-  const btn = document.getElementById('horario-grupo-guardar');
-  const original = btn?.innerHTML;
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...'; }
-  try {
-    const res = await apiFetch(`/api/procesos/grupos/${idGrupo}/horario`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bloques: horarioGrupoBloques }) });
-    const json = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo guardar el horario.');
-    showToast('Horario semanal guardado correctamente.', 'success');
-    await populateGruposSelects();
-  } catch (error) { showResultModal('error','No se pudo guardar el horario',error.message); }
-  finally { if (btn) { btn.disabled=false; btn.innerHTML=original; } }
-}
-
 async function handleGrupoSubmit(e) {
   e.preventDefault();
   sessionStorage.setItem('educontrol_active_view', 'matricula');
@@ -1362,20 +1190,13 @@ async function handleGrupoSubmit(e) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo crear el grupo.');
 
-    showToast('Grupo creado correctamente. Ahora puedes organizar sus materias por día y hora.', 'success');
-    const nuevoGrupoId = Number(json.id_grupo || 0);
+    showToast('Grupo creado correctamente. Puedes configurar sus materias desde Horarios.', 'success');
     e.currentTarget?.reset();
     const searchSeccion = document.getElementById('grupo-seccion-search');
     if (searchSeccion) searchSeccion.value = '';
     await populateGruposSelects();
     await populateSeccionesSelect();
     await actualizarDisponibilidadAulas('crear');
-    if (nuevoGrupoId) {
-      bootstrap.Modal.getInstance(document.getElementById('modalGrupo'))?.hide();
-      await prepararModalHorarioGrupo(nuevoGrupoId);
-      const modalHorario = document.getElementById('modalHorarioGrupo');
-      if (modalHorario) new bootstrap.Modal(modalHorario).show();
-    }
   } catch (error) {
     const mensaje = error?.message || 'Error de conexión al crear el grupo.';
     if (typeof showResultModal === 'function') showResultModal('error', 'No se pudo crear el grupo', mensaje);

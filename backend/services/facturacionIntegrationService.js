@@ -280,6 +280,21 @@ async function asegurarLogoConfiguracion() {
   if (esquemaLogoConfiguracionPromise) return esquemaLogoConfiguracionPromise;
 
   esquemaLogoConfiguracionPromise = (async () => {
+    // Una base recién restaurada puede no traer aún la tabla de configuración.
+    // La integración debe poder recuperarse por sí sola antes de intentar ALTER/SELECT.
+    await pool.query(`CREATE TABLE IF NOT EXISTS configuracion_facturacion (
+      id_configuracion TINYINT NOT NULL PRIMARY KEY,
+      institucion_nombre VARCHAR(100) NOT NULL DEFAULT 'EduControl',
+      tipo_identificacion VARCHAR(10) NOT NULL DEFAULT '02',
+      numero_identificacion VARCHAR(30) NULL,
+      correo VARCHAR(150) NULL,
+      logo_data LONGTEXT NULL,
+      moneda VARCHAR(10) NOT NULL DEFAULT 'CRC',
+      condicion_venta VARCHAR(10) NOT NULL DEFAULT '01',
+      estado BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
     const [[row]] = await pool.query(
       `SELECT COUNT(*) AS existe, MAX(DATA_TYPE) AS data_type
        FROM information_schema.COLUMNS

@@ -492,34 +492,24 @@ export default function Pagos() {
 
                   <article className="integration-service-card invoice-service electronic-service">
                     <div className="integration-card-head">
-                      <span className="integration-row-icon"><i className="bi bi-filetype-xml"></i></span>
-                      <div><small>FACTURA ELECTRÓNICA</small><strong>FacturaSmart</strong></div>
+                      <span className="integration-row-icon"><i className="bi bi-receipt"></i></span>
+                      <div><small>SERVICIO DE FACTURACIÓN</small><strong>FacturaSmart</strong></div>
                       <span id="fin-service-electronica-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
                     </div>
-                    <p id="fin-service-electronica-detail" className="integration-card-detail">El registro se realiza únicamente en el portal oficial de FacturaSmart. Después, EduControl vincula esa misma cuenta para emitir y consultar el XML.</p>
-
-                    <div className="facturasmart-official-access">
-                      <div>
-                        <strong>Cuenta oficial de la escuela</strong>
-                        <small>Crear cuenta o iniciar sesión directamente en FacturaSmart. EduControl no muestra ni reemplaza su formulario de registro.</small>
-                      </div>
-                      <a id="fin-facturasmart-portal" className="btn btn-outline-primary" href="https://proyecto-facturaci-n-electr-nica.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Abrir FacturaSmart</a>
-                    </div>
+                    <p id="fin-service-electronica-detail" className="integration-card-detail">Conecta la cuenta de EduControl para registrar automáticamente las facturas generadas por los pagos.</p>
 
                     <input id="fin-config-electronica-url" type="hidden" defaultValue="https://proyecto-facturaci-n-electr-nica.onrender.com" />
                     <div className="row g-2 mt-1">
-                      <div className="col-md-6"><label className="form-label">Correo de la cuenta creada</label><input id="fin-config-electronica-correo" type="email" className="form-control" autoComplete="username" placeholder="facturacion@educontrol.com" /></div>
-                      <div className="col-md-6"><label className="form-label">Contraseña de FacturaSmart</label><input id="fin-config-electronica-password" type="password" className="form-control" autoComplete="new-password" placeholder="Guardada · escribe solo para reemplazar" /></div>
+                      <div className="col-md-6"><label className="form-label">Correo</label><input id="fin-config-electronica-correo" type="email" className="form-control" autoComplete="username" placeholder="facturacion@educontrol.com" /></div>
+                      <div className="col-md-6"><label className="form-label">Contraseña</label><input id="fin-config-electronica-password" type="password" className="form-control" autoComplete="new-password" placeholder="Guardada · escribe solo para reemplazar" /></div>
                     </div>
 
-                    <div className="facturasmart-flow-status mt-3">
-                      <div><i className="bi bi-filetype-xml"></i><span><strong>Factura electrónica XML</strong><small>Se genera en FacturaSmart al cerrar correctamente el pago y queda asociada a la cuenta de EduControl.</small></span></div>
-                      <div className="pending-step"><i className="bi bi-hourglass-split"></i><span><strong>Firma y acuse DGTD</strong><small>Permanecen pendientes hasta que estén disponibles los servicios externos de firma digital y Tributación.</small></span></div>
-                    </div>
-
-                    <div className="integration-card-footer">
-                      <div className="d-flex gap-2 flex-wrap"><button id="fin-facturasmart-vincular" type="button" className="btn btn-primary"><i className="bi bi-link-45deg"></i> Vincular cuenta existente</button><a className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com/swagger-ui/index.html" target="_blank" rel="noreferrer"><i className="bi bi-braces"></i> Swagger</a></div>
-                      <small>EduControl guarda la vinculación de forma segura. El Bearer Token se obtiene automáticamente al iniciar sesión y nunca se muestra en el navegador.</small>
+                    <div className="integration-card-footer facturasmart-simple-footer">
+                      <div className="d-flex gap-2 flex-wrap">
+                        <button id="fin-facturasmart-vincular" type="button" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar y activar</button>
+                        <a id="fin-facturasmart-portal" className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Ir a FacturaSmart</a>
+                      </div>
+                      <small>Los datos quedan guardados en EduControl. Si la cuenta ya existe, al guardar se valida y el servicio queda activo.</small>
                     </div>
                   </article>
 

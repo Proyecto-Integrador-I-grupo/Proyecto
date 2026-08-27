@@ -2090,3 +2090,12 @@ body.theme-dark #modalConfigFacturacion .integration-console-footer{background:#
 }
 [data-theme="dark"] .facturasmart-official-access,
 .dark-mode .facturasmart-official-access { background: rgba(255,255,255,.035); }
+
+/* FacturaSmart simplificado para usuario final */
+.facturasmart-simple-footer {
+  margin-top: 1rem;
+  align-items: center;
+}
+.facturasmart-simple-footer > small {
+  max-width: 420px;
+}

@@ -1505,3 +1505,7 @@ body.theme-dark #usuarios-view .table-hover > tbody > tr:hover > * {
     grid-template-columns: 1fr !important;
   }
 }
+
+
+#mat-ir-financiero { white-space:nowrap; }
+.perfil-photo-trigger { min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:.45rem; }

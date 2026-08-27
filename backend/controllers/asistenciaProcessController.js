@@ -64,8 +64,14 @@ export async function actualizarAsistencia(req, res) {
     await validarFechaAsistencia(db, rowsAntes[0].id_grupo, rowsAntes[0].fecha);
 
     const rol = String(req.usuarioActual?.nom_rol || "").toLowerCase();
-    if (rol === "profesor" && Number(rowsAntes[0].id_profesor) !== Number(req.usuarioActual?.id_profesor)) {
-      return res.status(403).json({ mensaje: "Solo puedes modificar asistencias registradas por tu usuario." });
+    if (rol === "profesor") {
+      const idProfesor = Number(req.usuarioActual?.id_profesor || 0);
+      const [permitido] = await db.query(`
+        SELECT 1 AS ok FROM grupo_profesor WHERE id_grupo = ? AND id_profesor = ? AND estado = TRUE AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+        UNION
+        SELECT 1 AS ok FROM profesor_suplencia WHERE id_grupo = ? AND id_profesor_suplente = ? AND estado = TRUE AND CURDATE() BETWEEN fecha_inicio AND fecha_fin
+        LIMIT 1`, [rowsAntes[0].id_grupo, idProfesor, rowsAntes[0].id_grupo, idProfesor]);
+      if (!permitido.length) return res.status(403).json({ mensaje: 'Solo puedes modificar asistencias de grupos que tienes asignados.' });
     }
 
     const query = 'UPDATE asistencia SET estado_asistencia = ?, observaciones = ? WHERE id_asistencia = ? AND estado = TRUE';

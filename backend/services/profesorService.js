@@ -660,8 +660,16 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     if (!diasDestino.length || !grupoDestino.hora_inicio || !grupoDestino.hora_fin) {
       throw new Error('El grupo debe tener días y horario definidos antes de asignar un profesor o sustituto.');
     }
-    await validarChoqueProfesor(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
-    await validarCargaDocente(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
+    // Para sustituciones validamos la disponibilidad real de la materia cuando existe horario académico.
+    // Si aún no hay bloques, se usa la jornada general del grupo como respaldo.
+    const [bloquesMateria] = await connection.query(`SELECT dia_semana, hora_inicio, hora_fin FROM grupo_horario_academico WHERE id_grupo = ? AND estado = TRUE AND LOWER(TRIM(materia)) = LOWER(TRIM(?))`, [id_grupo, nuevoProf[0].materia]);
+    if (bloquesMateria.length) {
+      for (const b of bloquesMateria) {
+        await validarChoqueProfesor(connection, Number(id_nuevo_profesor), [b.dia_semana], b.hora_inicio, b.hora_fin, Number(id_grupo));
+      }
+    } else {
+      await validarChoqueProfesor(connection, Number(id_nuevo_profesor), diasDestino, grupoDestino.hora_inicio, grupoDestino.hora_fin, Number(id_grupo));
+    }
 
     if (id_profesor_anterior) {
       const [titularRows] = await connection.query(
@@ -696,7 +704,7 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
     if (id_profesor_anterior) {
       const [suplenciaPendiente] = await connection.query(
         `SELECT id_suplencia, fecha_inicio, fecha_fin FROM profesor_suplencia 
-         WHERE id_grupo = ? AND id_profesor_titular = ? AND id_profesor_suplente IS NULL AND estado = TRUE
+         WHERE id_grupo = ? AND id_profesor_titular = ? AND estado = TRUE
          LIMIT 1`,
         [id_grupo, id_profesor_anterior]
       );

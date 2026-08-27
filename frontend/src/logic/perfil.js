@@ -496,7 +496,7 @@ import {
 
     if (!respuesta.ok) {
       throw new Error(
-        datos.mensaje ||
+        datos.mensaje || datos.error ||
           'No se pudo actualizar el perfil.'
       );
     }
@@ -671,7 +671,7 @@ import {
     }
 
     const limiteBytes =
-      2 * 1024 * 1024;
+      1.5 * 1024 * 1024;
 
     if (
       archivo.size > limiteBytes

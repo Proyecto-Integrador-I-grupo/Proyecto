@@ -81,7 +81,9 @@ export const createEstudiante = async (req, res) => {
     });
   } catch (error) {
     console.error("DETALLE DEL ERROR AL CREAR ESTUDIANTE:", error);
-    res.status(500).json({ error: error.message || "Error al registrar el estudiante." });
+    const mensaje = error.message || 'Error al registrar el estudiante.';
+    const esValidacion = /fecha|edad|obligatorio|género|ingreso/i.test(mensaje);
+    res.status(esValidacion ? 400 : 500).json({ error: mensaje });
   }
 };
 

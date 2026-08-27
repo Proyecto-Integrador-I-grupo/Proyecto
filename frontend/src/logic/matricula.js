@@ -2,7 +2,8 @@ import {
   apiFetch,
   currentUser,
   showResultModal,
-  showToast
+  showToast,
+  setActiveView
 } from './ui.js';
 
 import {
@@ -37,6 +38,15 @@ let allGrupos = [];
 let allSecciones = [];
 
 function wireMatriculaEvents() {
+  const irFinanciero = document.getElementById('mat-ir-financiero');
+  if (irFinanciero && !irFinanciero.dataset.wired) {
+    irFinanciero.dataset.wired = '1';
+    irFinanciero.addEventListener('click', () => {
+      bootstrap.Modal.getInstance(document.getElementById('modalMatricula'))?.hide();
+      setActiveView('pagos');
+    });
+  }
+
   configurarDisponibilidadAulas();
   const matForm = document.getElementById('matricula-form');
   if (matForm && !matForm.dataset.wired) {
@@ -832,7 +842,8 @@ async function handleGestionGrupoSubmit(e) {
   const capacidad = Number(document.getElementById('gestion-grupo-capacidad')?.value || 0);
   const aula = document.getElementById('gestion-grupo-aula')?.value || null;
   const horaInicio = document.getElementById('gestion-grupo-hora-inicio')?.value || null;
-  const horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
+  let horaFin = document.getElementById('gestion-grupo-hora-fin')?.value || null;
+  horaFin = normalizarFinJornadaUI(horaInicio, horaFin);
   const diasSemana = obtenerDiasSeleccionados('gestion-grupo-dias');
   
   if (!idGrupo || !capacidad) {
@@ -847,6 +858,8 @@ async function handleGestionGrupoSubmit(e) {
     showToast('Indica la hora de inicio y la hora de finalización.', 'error');
     return;
   }
+  const finInputGestion = document.getElementById('gestion-grupo-hora-fin');
+  if (finInputGestion && horaFin && finInputGestion.value !== horaFin) finInputGestion.value = horaFin;
   if (horaFin <= horaInicio) {
     showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
     return;
@@ -1049,6 +1062,22 @@ async function handleMatriculaSubmit(e) {
   }
 }
 
+
+function normalizarFinJornadaUI(inicio, fin) {
+  if (!inicio || !fin) return fin;
+  const [hi, mi] = inicio.split(':').map(Number);
+  let [hf, mf] = fin.split(':').map(Number);
+  const ini = hi * 60 + mi;
+  let end = hf * 60 + mf;
+  // Si el usuario eligió 01:00-07:59 como fin de una jornada iniciada en la mañana,
+  // lo interpretamos como hora de la tarde (13:00-19:59), que es el uso esperado en escuela.
+  if (end <= ini && hi < 12 && hf >= 1 && hf <= 7) {
+    hf += 12;
+    return `${String(hf).padStart(2,'0')}:${String(mf).padStart(2,'0')}`;
+  }
+  return fin;
+}
+
 function minutosHora(hora) {
   if (!hora) return null;
   const [h,m] = String(hora).slice(0,5).split(':').map(Number);
@@ -1120,7 +1149,8 @@ async function handleGrupoSubmit(e) {
   const idSeccion = parseInt(document.getElementById('grupo-seccion')?.value || '', 10);
   const aula = document.getElementById('grupo-aula')?.value || null;
   const horaInicio = document.getElementById('grupo-hora-inicio')?.value || null;
-  const horaFin = document.getElementById('grupo-hora-fin')?.value || null;
+  let horaFin = document.getElementById('grupo-hora-fin')?.value || null;
+  horaFin = normalizarFinJornadaUI(horaInicio, horaFin);
   const diasSemana = obtenerDiasSeleccionados('grupo-dias');
 
   if (!nombre) {
@@ -1147,6 +1177,8 @@ async function handleGrupoSubmit(e) {
     showToast('Indica la hora de inicio y la hora de finalización.', 'error');
     return;
   }
+  const finInputCrear = document.getElementById('grupo-hora-fin');
+  if (finInputCrear && horaFin && finInputCrear.value !== horaFin) finInputCrear.value = horaFin;
   if (horaFin <= horaInicio) {
     showToast('La hora de finalización debe ser posterior a la hora de inicio.', 'error');
     return;

@@ -162,39 +162,11 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
 
-  // Cada cobro se identifica también por responsable/estudiante. El datáfono puede
-  // usar estos valores para no reutilizar una tarjeta guardada de otro cliente.
-  // Los flags de sesión fresca son compatibles hacia atrás: si el proveedor no los
-  // reconoce, simplemente los ignora.
-  const responsable = datos?.responsable && typeof datos.responsable === 'object' ? datos.responsable : {};
-  const customerKey = clean(
-    responsable.numero_identificacion || responsable.correo || `estudiante-${cargo.id_estudiante}`,
-    120
-  );
-
-  // El identificador de cliente del checkout es deliberadamente EFÍMERO. La
-  // referencia estable del responsable viaja aparte. De esta forma un proveedor
-  // que almacene tarjetas por customerId no puede mezclar tarjetas de pagos
-  // anteriores, ni siquiera entre dos cobros consecutivos del mismo responsable.
-  const checkoutCustomerId = `edu-${token}`;
-  checkout.searchParams.set('customerId', checkoutCustomerId);
-  checkout.searchParams.set('customerReference', customerKey);
-  checkout.searchParams.set('customerName', clean(responsable.nombre || cargo.estudiante_nombre, 160));
-  if (responsable.correo) checkout.searchParams.set('customerEmail', clean(responsable.correo, 180));
-  if (responsable.numero_identificacion) checkout.searchParams.set('customerDocument', clean(responsable.numero_identificacion, 60));
-
-  // Contrato explícito de checkout nuevo. Banky puede ignorar parámetros que no
-  // conozca, pero EduControl nunca solicita reutilizar una tarjeta guardada.
-  checkout.searchParams.set('checkoutSession', token);
-  checkout.searchParams.set('freshCheckout', '1');
-  checkout.searchParams.set('forceCardEntry', '1');
-  checkout.searchParams.set('forceNewCard', '1');
-  checkout.searchParams.set('newCardOnly', '1');
-  checkout.searchParams.set('allowSavedCards', 'false');
-  checkout.searchParams.set('useSavedCard', 'false');
-  checkout.searchParams.set('rememberCard', 'false');
-  checkout.searchParams.set('saveCard', 'false');
-  checkout.searchParams.set('clearSavedCard', '1');
+  // Banky se abre como un datáfono independiente para cada cobro. No enviamos
+  // customerId/customerReference ni banderas de tarjeta guardada: el contrato
+  // original del servicio sólo necesita los datos de la orden/comercio. Enviar
+  // identificadores de cliente hizo que Banky reutilizara una tarjeta almacenada
+  // en el navegador entre responsables distintos.
 
   return {
     token,
@@ -204,9 +176,7 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
     moneda: 'CRC',
     expectedOrigin: bankOrigin(checkoutUrl),
     channel: BANK_CHANNEL,
-    expiresAt: expiry.toISOString(),
-    customerKey,
-    checkoutCustomerId
+    expiresAt: expiry.toISOString()
   };
 }
 

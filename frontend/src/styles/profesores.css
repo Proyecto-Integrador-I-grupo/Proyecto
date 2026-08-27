@@ -262,3 +262,17 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Lista docente compacta: filtros útiles y paginación para no estirar la vista. */
+.profesor-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(180px, .75fr) minmax(170px, .7fr);
+  gap: .75rem;
+  align-items: center;
+}
+.profesor-filter-bar .search-box { width: 100%; max-width: none; }
+.profesores-table-wrap { max-height: 620px; overflow: auto; border: 1px solid rgba(148,163,184,.18); border-radius: .85rem; }
+#profesores-table thead { position: sticky; top: 0; z-index: 2; background: var(--bs-body-bg, #fff); }
+.profesor-pagination { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+@media (max-width: 900px) { .profesor-filter-bar { grid-template-columns: 1fr 1fr; } .profesor-filter-bar .search-box { grid-column: 1 / -1; } }
+@media (max-width: 620px) { .profesor-filter-bar { grid-template-columns: 1fr; } .profesor-filter-bar .search-box { grid-column:auto; } .profesor-pagination { align-items:stretch; flex-direction:column; } }

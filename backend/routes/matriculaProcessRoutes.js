@@ -9,7 +9,9 @@ import {
   eliminarGrupo,
   obtenerDetalleGrupo,
   retirarEstudianteGrupo,
-  transferirEstudianteGrupo
+  transferirEstudianteGrupo,
+  obtenerHorarioGrupo,
+  guardarHorarioGrupo
 } from "../controllers/matriculaProcessController.js";
 import { validarCampos } from "../middleware/validationMiddleware.js";
 import { requireAuth, requireRole, requirePermission } from "../middleware/authMiddleware.js";
@@ -74,6 +76,8 @@ router.post("/grupos", requireAuth, requirePermission("grupos.crear"), validarGr
 router.put("/grupos/:id", requireAuth, requirePermission("grupos.modificar"), validarGrupoUpdate, validarCampos, actualizarGrupo);
 router.delete("/grupos/:id", requireAuth, requireRole("Administrador"), eliminarGrupo);
 router.get("/grupos/:id/detalle", requireAuth, obtenerDetalleGrupo);
+router.get("/grupos/:id/horario", requireAuth, obtenerHorarioGrupo);
+router.put("/grupos/:id/horario", requireAuth, requirePermission("grupos.modificar"), guardarHorarioGrupo);
 router.put("/grupos/:id/retirar-estudiante", requireAuth, requirePermission("matricula.transferir"), validarRetiroEstudiante, validarCampos, retirarEstudianteGrupo);
 
 export default router;

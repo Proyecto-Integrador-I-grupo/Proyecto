@@ -21,6 +21,87 @@ async function asegurarCamposHorarioGrupo() {
 
 
 
+let grupoHorarioAcademicoSchemaPromise = null;
+export async function asegurarTablaHorarioAcademico() {
+  if (grupoHorarioAcademicoSchemaPromise) return grupoHorarioAcademicoSchemaPromise;
+  grupoHorarioAcademicoSchemaPromise = (async () => {
+    await pool.query(`CREATE TABLE IF NOT EXISTS grupo_horario_academico (
+      id_horario INT AUTO_INCREMENT PRIMARY KEY,
+      id_grupo INT NOT NULL,
+      dia_semana VARCHAR(20) NOT NULL,
+      hora_inicio TIME NOT NULL,
+      hora_fin TIME NOT NULL,
+      materia VARCHAR(60) NOT NULL,
+      estado BOOLEAN NOT NULL DEFAULT TRUE,
+      creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_grupo_horario_academico_grupo FOREIGN KEY (id_grupo) REFERENCES grupo(id_grupo) ON DELETE CASCADE,
+      INDEX idx_gha_grupo (id_grupo),
+      INDEX idx_gha_dia_hora (dia_semana, hora_inicio, hora_fin),
+      INDEX idx_gha_materia (materia)
+    )`);
+  })().catch((error) => { grupoHorarioAcademicoSchemaPromise = null; throw error; });
+  return grupoHorarioAcademicoSchemaPromise;
+}
+
+const MATERIAS_HORARIO = new Map([
+  ['español','Español'],['espanol','Español'],
+  ['matemáticas','Matemáticas'],['matematicas','Matemáticas'],
+  ['ciencias','Ciencias'],
+  ['estudios sociales','Estudios Sociales'],
+  ['inglés','Inglés'],['ingles','Inglés'],
+  ['educación física','Educación Física'],['educacion fisica','Educación Física'],
+  ['informática','Informática'],['informatica','Informática'],
+  ['artes','Artes']
+]);
+function normalizarMateriaHorario(valor) {
+  const key = sinTildes(valor).trim();
+  const materia = MATERIAS_HORARIO.get(key);
+  if (!materia) throw new Error('Selecciona una de las 8 materias básicas.');
+  return materia;
+}
+
+export async function obtenerHorarioAcademicoGrupoService(idGrupo) {
+  await asegurarTablaHorarioAcademico();
+  const [rows] = await pool.query(`SELECT id_horario, id_grupo, dia_semana, TIME_FORMAT(hora_inicio,'%H:%i') AS hora_inicio, TIME_FORMAT(hora_fin,'%H:%i') AS hora_fin, materia FROM grupo_horario_academico WHERE id_grupo = ? AND estado = TRUE ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes'), hora_inicio, materia`, [Number(idGrupo)]);
+  return rows;
+}
+
+export async function guardarHorarioAcademicoGrupoService(idGrupo, bloques = []) {
+  await asegurarTablaHorarioAcademico();
+  if (!Array.isArray(bloques)) throw new Error('El horario semanal no tiene un formato válido.');
+  const lista = bloques.map((b) => ({
+    dia_semana: sinTildes(b.dia_semana).trim(),
+    hora_inicio: normalizarHoraGrupo(b.hora_inicio),
+    hora_fin: normalizarHoraGrupo(b.hora_fin),
+    materia: normalizarMateriaHorario(b.materia)
+  }));
+  for (const b of lista) {
+    if (!['lunes','martes','miercoles','jueves','viernes'].includes(b.dia_semana)) throw new Error('El día de clase no es válido.');
+    if (!b.hora_inicio || !b.hora_fin || b.hora_fin <= b.hora_inicio) throw new Error('Cada bloque debe tener una hora de inicio y fin válidas.');
+  }
+  for (let i=0;i<lista.length;i++) for (let j=i+1;j<lista.length;j++) {
+    const a=lista[i], b=lista[j];
+    if (a.dia_semana===b.dia_semana && horariosSeSuperponen(a.hora_inicio,a.hora_fin,b.hora_inicio,b.hora_fin)) {
+      throw new Error(`Hay dos materias que se cruzan el ${a.dia_semana}. Ajusta las horas antes de guardar.`);
+    }
+  }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[grupo]] = await connection.query(`SELECT g.id_grupo, g.estado, g.dias_semana, g.aula, s.periodo_lectivo FROM grupo g INNER JOIN seccion s ON s.id_seccion=g.id_seccion WHERE g.id_grupo=? FOR UPDATE`, [Number(idGrupo)]);
+    if (!grupo || !grupo.estado) throw new Error('El grupo no existe o está inactivo.');
+    await validarPeriodoNoCerrado(connection, Number(grupo.periodo_lectivo));
+    const diasGrupo = new Set(normalizarDiasSemana(grupo.dias_semana));
+    for (const b of lista) if (diasGrupo.size && !diasGrupo.has(b.dia_semana)) throw new Error(`El ${b.dia_semana} no está habilitado en los días del grupo.`);
+    await connection.query('DELETE FROM grupo_horario_academico WHERE id_grupo=?', [Number(idGrupo)]);
+    for (const b of lista) await connection.query(`INSERT INTO grupo_horario_academico (id_grupo,dia_semana,hora_inicio,hora_fin,materia,estado) VALUES (?,?,?,?,?,TRUE)`, [Number(idGrupo),b.dia_semana,b.hora_inicio,b.hora_fin,b.materia]);
+    await connection.commit();
+    return { mensaje: 'Horario semanal guardado correctamente.', bloques: lista.length };
+  } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+}
+
+
 const DIAS_SEMANA_VALIDOS = ['lunes','martes','miercoles','jueves','viernes','sabado'];
 
 function sinTildes(valor) {
@@ -193,7 +274,9 @@ export async function procesarMatricula(datos) {
     }
 
     const [grupoRows] = await connection.query(
-      `SELECT g.capacidad, g.estado, s.periodo_lectivo, fn_estudiantes_grupo(g.id_grupo) AS ocupados
+      `SELECT g.capacidad, g.estado, s.periodo_lectivo, fn_estudiantes_grupo(g.id_grupo) AS ocupados,
+          (SELECT GROUP_CONCAT(DISTINCT gha.materia ORDER BY gha.materia SEPARATOR ', ') FROM grupo_horario_academico gha WHERE gha.id_grupo=g.id_grupo AND gha.estado=TRUE) AS materias_horario,
+          (SELECT GROUP_CONCAT(DISTINCT pr2.materia ORDER BY pr2.materia SEPARATOR ', ') FROM grupo_profesor gp2 INNER JOIN profesor pr2 ON pr2.id_profesor=gp2.id_profesor WHERE gp2.id_grupo=g.id_grupo AND gp2.estado=TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin>=CURDATE())) AS materias_asignadas
        FROM grupo g INNER JOIN seccion s ON s.id_seccion = g.id_seccion
        WHERE g.id_grupo = ? FOR UPDATE`,
       [id_grupo]
@@ -268,6 +351,7 @@ export async function procesarMatricula(datos) {
    ========================================== */
 export async function obtenerGruposService(usuarioActual = null) {
   await asegurarCamposHorarioGrupo();
+  await asegurarTablaHorarioAcademico();
   const rol = (usuarioActual?.nom_rol || usuarioActual?.rol || "").toLowerCase();
 
   if (rol === "profesor") {
@@ -289,7 +373,9 @@ export async function obtenerGruposService(usuarioActual = null) {
           s.nombre_seccion,
           s.nivel,
           s.periodo_lectivo,
-          fn_estudiantes_grupo(g.id_grupo) AS ocupados
+          fn_estudiantes_grupo(g.id_grupo) AS ocupados,
+          (SELECT GROUP_CONCAT(DISTINCT gha.materia ORDER BY gha.materia SEPARATOR ', ') FROM grupo_horario_academico gha WHERE gha.id_grupo=g.id_grupo AND gha.estado=TRUE) AS materias_horario,
+          (SELECT GROUP_CONCAT(DISTINCT pr2.materia ORDER BY pr2.materia SEPARATOR ', ') FROM grupo_profesor gp2 INNER JOIN profesor pr2 ON pr2.id_profesor=gp2.id_profesor WHERE gp2.id_grupo=g.id_grupo AND gp2.estado=TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin>=CURDATE())) AS materias_asignadas
        FROM grupo g
        INNER JOIN seccion s ON g.id_seccion = s.id_seccion
        LEFT JOIN grupo_profesor gp ON gp.id_grupo = g.id_grupo
@@ -317,7 +403,9 @@ export async function obtenerGruposService(usuarioActual = null) {
         s.nombre_seccion,
         s.nivel,
         s.periodo_lectivo,
-        fn_estudiantes_grupo(g.id_grupo) AS ocupados
+        fn_estudiantes_grupo(g.id_grupo) AS ocupados,
+        (SELECT GROUP_CONCAT(DISTINCT gha.materia ORDER BY gha.materia SEPARATOR ', ') FROM grupo_horario_academico gha WHERE gha.id_grupo=g.id_grupo AND gha.estado=TRUE) AS materias_horario,
+        (SELECT GROUP_CONCAT(DISTINCT pr2.materia ORDER BY pr2.materia SEPARATOR ', ') FROM grupo_profesor gp2 INNER JOIN profesor pr2 ON pr2.id_profesor=gp2.id_profesor WHERE gp2.id_grupo=g.id_grupo AND gp2.estado=TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin>=CURDATE())) AS materias_asignadas
      FROM grupo g
      INNER JOIN seccion s ON g.id_seccion = s.id_seccion
      WHERE g.estado = TRUE
@@ -461,7 +549,9 @@ export async function actualizarGrupoService(idGrupo, datos) {
           g.hora_fin,
           g.dias_semana,
           s.periodo_lectivo,
-          fn_estudiantes_grupo(g.id_grupo) AS ocupados
+          fn_estudiantes_grupo(g.id_grupo) AS ocupados,
+          (SELECT GROUP_CONCAT(DISTINCT gha.materia ORDER BY gha.materia SEPARATOR ', ') FROM grupo_horario_academico gha WHERE gha.id_grupo=g.id_grupo AND gha.estado=TRUE) AS materias_horario,
+          (SELECT GROUP_CONCAT(DISTINCT pr2.materia ORDER BY pr2.materia SEPARATOR ', ') FROM grupo_profesor gp2 INNER JOIN profesor pr2 ON pr2.id_profesor=gp2.id_profesor WHERE gp2.id_grupo=g.id_grupo AND gp2.estado=TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin>=CURDATE())) AS materias_asignadas
        FROM grupo g
        INNER JOIN seccion s ON s.id_seccion = g.id_seccion
        WHERE g.id_grupo = ? AND g.estado = TRUE
@@ -843,7 +933,9 @@ export async function transferirEstudianteGrupoService(datos) {
 
     const [[destino]] = await connection.query(
       `SELECT g.id_grupo, g.capacidad, g.estado, s.periodo_lectivo,
-              fn_estudiantes_grupo(g.id_grupo) AS ocupados
+              fn_estudiantes_grupo(g.id_grupo) AS ocupados,
+          (SELECT GROUP_CONCAT(DISTINCT gha.materia ORDER BY gha.materia SEPARATOR ', ') FROM grupo_horario_academico gha WHERE gha.id_grupo=g.id_grupo AND gha.estado=TRUE) AS materias_horario,
+          (SELECT GROUP_CONCAT(DISTINCT pr2.materia ORDER BY pr2.materia SEPARATOR ', ') FROM grupo_profesor gp2 INNER JOIN profesor pr2 ON pr2.id_profesor=gp2.id_profesor WHERE gp2.id_grupo=g.id_grupo AND gp2.estado=TRUE AND (gp2.fecha_fin IS NULL OR gp2.fecha_fin>=CURDATE())) AS materias_asignadas
        FROM grupo g
        INNER JOIN seccion s ON s.id_seccion = g.id_seccion
        WHERE g.id_grupo = ? LIMIT 1 FOR UPDATE`,

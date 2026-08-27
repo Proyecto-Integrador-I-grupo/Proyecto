@@ -38,6 +38,10 @@ let profesorPendienteId = null;
 let profesorReintegrarId = null;
 let profesorFiltroEstado = 'todos';
 let profesorBusqueda = '';
+let profesorFiltroMateria = 'todas';
+let profesorPagina = 1;
+const PROFESORES_POR_PAGINA = 8;
+let profesorMateriaAsignacionActual = '';
 const SCHOOL_EMAIL_DOMAIN = String(import.meta.env.VITE_SCHOOL_EMAIL_DOMAIN || 'educontrol.com')
   .trim().toLowerCase().replace(/^@+/, '');
 const isSchoolEmail = (email) => String(email || '').trim().toLowerCase().endsWith(`@${SCHOOL_EMAIL_DOMAIN}`);
@@ -186,8 +190,30 @@ function wireProfesoresEvents() {
     profFiltroEstado.dataset.wired = '1';
     profFiltroEstado.addEventListener('change', () => {
       profesorFiltroEstado = profFiltroEstado.value;
+      profesorPagina = 1;
       renderProfesoresTable(filtrarProfesores(allProfesores));
     });
+  }
+
+  const profFiltroMateria = document.getElementById('prof-filtro-materia');
+  if (profFiltroMateria && !profFiltroMateria.dataset.wired) {
+    profFiltroMateria.dataset.wired = '1';
+    profFiltroMateria.addEventListener('change', () => {
+      profesorFiltroMateria = profFiltroMateria.value || 'todas';
+      profesorPagina = 1;
+      renderProfesoresTable(filtrarProfesores(allProfesores));
+    });
+  }
+
+  const profPrev = document.getElementById('prof-page-prev');
+  const profNext = document.getElementById('prof-page-next');
+  if (profPrev && !profPrev.dataset.wired) {
+    profPrev.dataset.wired = '1';
+    profPrev.addEventListener('click', () => { profesorPagina = Math.max(1, profesorPagina - 1); renderProfesoresTable(filtrarProfesores(allProfesores)); });
+  }
+  if (profNext && !profNext.dataset.wired) {
+    profNext.dataset.wired = '1';
+    profNext.addEventListener('click', () => { profesorPagina += 1; renderProfesoresTable(filtrarProfesores(allProfesores)); });
   }
 
   const profRefrescar = document.getElementById('prof-refrescar');
@@ -211,6 +237,7 @@ function wireProfesoresEvents() {
     profSearch.dataset.wired = '1';
     profSearch.addEventListener('input', () => {
       profesorBusqueda = profSearch.value.trim().toLowerCase();
+      profesorPagina = 1;
       renderProfesoresTable(filtrarProfesores(allProfesores));
     });
   }
@@ -324,6 +351,10 @@ function filtrarProfesores(profesores) {
     resultado = resultado.filter((p) => !(p.estado == 1 || p.estado === true));
   }
 
+  if (profesorFiltroMateria !== 'todas') {
+    resultado = resultado.filter((p) => String(p.materia || '').trim().toLowerCase() === profesorFiltroMateria.toLowerCase());
+  }
+
   if (profesorBusqueda) {
     resultado = resultado.filter((p) => {
       const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.toLowerCase();
@@ -366,10 +397,23 @@ function renderProfesoresTable(profesores) {
       ? 'No hay profesores que coincidan con la búsqueda o el filtro seleccionado.'
       : 'No hay profesores registrados.';
     profTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center py-4">${mensaje}</td></tr>`;
+    const info = document.getElementById('prof-page-info'); if (info) info.textContent = '0 profesores';
+    const prev = document.getElementById('prof-page-prev'); const next = document.getElementById('prof-page-next'); if (prev) prev.disabled = true; if (next) next.disabled = true;
     return;
   }
 
-  profesores.forEach((p) => {
+  const totalPaginas = Math.max(1, Math.ceil(profesores.length / PROFESORES_POR_PAGINA));
+  if (profesorPagina > totalPaginas) profesorPagina = totalPaginas;
+  const inicioPagina = (profesorPagina - 1) * PROFESORES_POR_PAGINA;
+  const profesoresPagina = profesores.slice(inicioPagina, inicioPagina + PROFESORES_POR_PAGINA);
+  const info = document.getElementById('prof-page-info');
+  if (info) info.textContent = `${inicioPagina + 1}-${Math.min(inicioPagina + PROFESORES_POR_PAGINA, profesores.length)} de ${profesores.length} profesor(es)`;
+  const prev = document.getElementById('prof-page-prev');
+  const next = document.getElementById('prof-page-next');
+  if (prev) prev.disabled = profesorPagina <= 1;
+  if (next) next.disabled = profesorPagina >= totalPaginas;
+
+  profesoresPagina.forEach((p) => {
     const idProf = p.id_profesor ?? p.id;
     const nombreComp = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
     const materia = p.materia ?? 'N/A';
@@ -920,6 +964,7 @@ async function abrirModalAsignarGrupos(idProf, nombreProf, materiaProf) {
   if (nombreEl) nombreEl.textContent = nombreProf || '';
   const materiaEl = document.getElementById('asignar-grupos-materia');
   if (materiaEl) materiaEl.textContent = materiaProf || 'su materia';
+  profesorMateriaAsignacionActual = String(materiaProf || '').trim();
 
   const btnConfirmar = document.getElementById('confirmar-asignar-grupos-btn');
   if (btnConfirmar) btnConfirmar.dataset.idProf = idProf;
@@ -953,18 +998,27 @@ function renderChecklistGrupos(grupos) {
   const lista = document.getElementById('asignar-grupos-lista');
   if (!lista) return;
 
-  if (!grupos.length) {
-    lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">No hay grupos creados todavía. Crea uno desde Matrícula.</p>';
+  const materiaObjetivo = profesorMateriaAsignacionActual.toLowerCase();
+  const gruposDisponibles = grupos.filter((g) => {
+    const actual = profesorGruposActualesIds.includes(Number(g.id_grupo ?? g.id));
+    const materiasHorario = String(g.materias_horario || '').split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
+    const materiasAsignadas = String(g.materias_asignadas || '').split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
+    const programada = materiasHorario.includes(materiaObjetivo);
+    const ocupadaPorMateria = materiasAsignadas.includes(materiaObjetivo) && !actual;
+    return actual || (programada && !ocupadaPorMateria);
+  });
+  if (!gruposDisponibles.length) {
+    lista.innerHTML = `<div class="text-center py-4"><i class="bi bi-calendar2-x fs-4 text-muted"></i><p class="text-muted mb-1 mt-2">No hay grupos disponibles para ${profesorMateriaAsignacionActual || 'esta materia'}.</p><small class="text-muted">Configura primero esa materia en el horario semanal del grupo o asígnala a otro grupo libre.</small></div>`;
     return;
   }
 
-  lista.innerHTML = grupos.map((g) => {
+  lista.innerHTML = gruposDisponibles.map((g) => {
     const id = g.id_grupo ?? g.id;
     const checked = profesorGruposActualesIds.includes(Number(id)) ? 'checked' : '';
     const horaInicio = g.hora_inicio ? String(g.hora_inicio).slice(0, 5) : '';
     const horaFin = g.hora_fin ? String(g.hora_fin).slice(0, 5) : '';
-    const horario = horaInicio && horaFin ? ` · Horario ${horaInicio} - ${horaFin}` : ' · Horario no definido';
-    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}${horario}`;
+    const horario = g.materias_horario ? ' · Horario semanal configurado' : (horaInicio && horaFin ? ` · Jornada ${horaInicio} - ${horaFin}` : ' · Horario semanal pendiente');
+    const etiqueta = `${g.nombre_grupo ?? 'Grupo'} · ${g.nombre_seccion || g.nivel || ''} · ${profesorMateriaAsignacionActual || 'Materia'} · Cupo ${g.ocupados ?? 0}/${g.capacidad ?? 0}${horario}`;
     const busqueda = `${g.nombre_grupo ?? ''} ${g.nombre_seccion ?? ''} ${g.nivel ?? ''} ${horaInicio} ${horaFin}`.toLowerCase();
     return `
       <label class="form-check d-flex align-items-center gap-2 border rounded-3 p-2 mb-0 asignar-grupo-item" data-busqueda="${busqueda}">

@@ -7,7 +7,9 @@ import {
   obtenerDetalleGrupoService,
   listarMatriculasService,
   retirarEstudianteGrupoService,
-  transferirEstudianteGrupoService
+  transferirEstudianteGrupoService,
+  obtenerHorarioAcademicoGrupoService,
+  guardarHorarioAcademicoGrupoService
 } from "../services/matriculaServiceP.js";
 
 import * as auditoriaModel from "../models/auditoriaModel.js";
@@ -314,3 +316,21 @@ export async function transferirEstudianteGrupo(req, res) {
 }
 
 export default crearMatricula;
+
+export async function obtenerHorarioGrupo(req, res) {
+  try {
+    const bloques = await obtenerHorarioAcademicoGrupoService(Number(req.params.id));
+    res.json({ bloques });
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'No se pudo consultar el horario del grupo.' });
+  }
+}
+
+export async function guardarHorarioGrupo(req, res) {
+  try {
+    const resultado = await guardarHorarioAcademicoGrupoService(Number(req.params.id), req.body?.bloques || []);
+    res.json(resultado);
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'No se pudo guardar el horario del grupo.' });
+  }
+}

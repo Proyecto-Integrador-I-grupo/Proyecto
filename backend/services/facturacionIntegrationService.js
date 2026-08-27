@@ -544,8 +544,19 @@ export async function vincularCuentaFacturaSmart() {
   // crea en su portal oficial; aquí únicamente comprobamos el login y persistimos
   // que esta instalación de EduControl quedó vinculada con esa cuenta.
   const token = await loginFacturaSmart(config, { force: true });
-  const perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 });
+
+  // Un login correcto ya demuestra que las credenciales pertenecen a una cuenta
+  // válida. Marcamos la integración como activa antes de consultar el perfil para
+  // que una demora o fallo secundario de /clientes/me no deje el estado en
+  // "Pendiente" aunque la autenticación haya sido exitosa.
   await pool.query(`UPDATE configuracion_integracion_servicios SET factura_electronica_cuenta_confirmada=TRUE WHERE id_configuracion=1`);
+
+  let perfil = null;
+  try {
+    perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 });
+  } catch {
+    perfil = null;
+  }
   return { ok: true, correo, url: root, perfil };
 }
 

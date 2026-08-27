@@ -137,7 +137,6 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
-  wire('fin-facturasmart-vincular', 'click', vincularFacturaSmart);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
@@ -2166,7 +2165,7 @@ async function cargarConfiguracion() {
       detalle: c.factura_electronica_cuenta_confirmada
         ? 'FacturaSmart está activo y listo para registrar facturas.'
         : (c.factura_electronica_correo && c.factura_electronica_password_configurada
-          ? 'Datos guardados. Pulsa Guardar y activar para validar la cuenta.'
+          ? 'Datos guardados. Pulsa Guardar cambios para validar la cuenta.'
           : 'Ingresa la cuenta de FacturaSmart para activar el servicio.')
     });
 
@@ -2294,38 +2293,6 @@ function quitarLogoFactura() {
   renderLogoFacturaPreview();
 }
 
-async function vincularFacturaSmart() {
-  const button = document.getElementById('fin-facturasmart-vincular');
-  const original = button?.innerHTML || '';
-  try {
-    const payload = {
-      institucion_nombre: value('fin-config-nombre'),
-      tipo_identificacion: value('fin-config-tipo-id'),
-      numero_identificacion: value('fin-config-numero-id'),
-      correo: value('fin-config-correo'),
-      factura_electronica_url: 'https://proyecto-facturaci-n-electr-nica.onrender.com',
-      factura_electronica_correo: value('fin-config-electronica-correo'),
-      factura_electronica_password: value('fin-config-electronica-password')
-    };
-    if (!payload.factura_electronica_correo) throw new Error('Indica el correo de la cuenta que ya creaste en FacturaSmart.');
-    if (!payload.factura_electronica_password) {
-      const configuracion = await requestJson('/api/finanzas/configuracion');
-      if (!configuracion?.factura_electronica_password_configurada) throw new Error('Indica la contraseña de la cuenta de FacturaSmart.');
-    }
-    if (button) { button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando…'; }
-    await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify(payload) });
-    const data = await requestJson('/api/finanzas/integraciones/facturasmart/vincular', { method: 'POST', body: '{}', timeout: 65000 });
-    setValue('fin-config-electronica-password', '');
-    showToast(`FacturaSmart activado${data?.perfil?.nombreRazonSocial ? ` para ${data.perfil.nombreRazonSocial}` : ''}. Los datos quedaron guardados.`, 'success');
-    await cargarConfiguracion();
-    await cargarEstadoIntegraciones(true);
-  } catch (error) {
-    showToast(error?.message || 'Los datos no pudieron validarse con FacturaSmart.', 'error');
-  } finally {
-    if (button?.isConnected) { button.disabled = false; button.innerHTML = original; }
-  }
-}
-
 async function guardarConfiguracion(event) {
   event.preventDefault();
   const submit = event.currentTarget?.querySelector('button[type="submit"]');
@@ -2358,18 +2325,10 @@ async function guardarConfiguracion(event) {
       body: JSON.stringify(payload)
     });
 
-    // FacturaSmart se comporta como los demás servicios: al guardar sus
-    // credenciales, EduControl intenta validar la cuenta y la deja activa.
-    const tieneCuentaFacturaSmart = Boolean(
-      String(payload.factura_electronica_correo || '').trim() &&
-      (String(payload.factura_electronica_password || '').trim() || guardada?.factura_electronica_password_configurada)
-    );
-    if (tieneCuentaFacturaSmart) {
-      try {
-        await requestJson('/api/finanzas/integraciones/facturasmart/vincular', { method: 'POST', body: '{}', timeout: 65000 });
-      } catch (errorFacturaSmart) {
-        showToast(errorFacturaSmart?.message || 'Los datos se guardaron, pero FacturaSmart no pudo validarse en este momento.', 'warning');
-      }
+    // El backend valida FacturaSmart dentro del mismo Guardar cambios.
+    // Así existe una sola acción de guardado para todos los servicios.
+    if (guardada?.facturasmart_validacion?.ok === false) {
+      showToast(guardada.facturasmart_validacion.error || 'Los datos se guardaron, pero FacturaSmart no pudo iniciar sesión.', 'warning');
     }
 
     setValue('fin-config-factura-key', '');

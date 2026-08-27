@@ -167,7 +167,26 @@ export async function getConfiguracion(req, res) {
 }
 
 export async function putConfiguracion(req, res) {
-  try { res.json(await actualizarConfiguracionFacturacion(req.body)); }
+  try {
+    let configuracion = await actualizarConfiguracionFacturacion(req.body);
+    let facturasmartValidacion = null;
+
+    // Guardar cambios es la única acción de persistencia. Si FacturaSmart ya
+    // tiene correo y contraseña guardados, se valida automáticamente en el
+    // mismo flujo y el estado queda persistido como Activo cuando el login es
+    // correcto.
+    if (configuracion?.factura_electronica_correo && configuracion?.factura_electronica_password_configurada) {
+      try {
+        const vinculacion = await vincularCuentaFacturaSmart();
+        facturasmartValidacion = { ok: true, correo: vinculacion?.correo || configuracion.factura_electronica_correo };
+      } catch (errorFacturaSmart) {
+        facturasmartValidacion = { ok: false, error: errorFacturaSmart?.message || 'No se pudo validar la cuenta de FacturaSmart.' };
+      }
+      configuracion = await obtenerConfiguracionFacturacion();
+    }
+
+    res.json({ ...configuracion, facturasmart_validacion: facturasmartValidacion });
+  }
   catch (e) { responderError(res, e); }
 }
 

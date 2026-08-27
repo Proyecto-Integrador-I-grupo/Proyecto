@@ -1109,16 +1109,24 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   try {
     const headersFactura = integrationApiKey ? { "X-Api-Key": integrationApiKey } : {};
 
-    // EduControl conserva las credenciales de FacturaSmart. Para que Factura
-    // Bonita también participe en el flujo, le entregamos únicamente el JWT
-    // temporal obtenido por el backend. La contraseña nunca sale de EduControl.
+    // Factura Bonita es el puente hacia FacturaSmart. EduControl le envía por HTTPS
+    // el endpoint y las credenciales de la cuenta configurada exclusivamente en esta
+    // llamada servidor-a-servidor. api-factura no las persiste: las usa para obtener
+    // su propio Bearer Token y publicar la factura electrónica. También enviamos un
+    // JWT ya obtenido cuando está disponible para evitar un login extra.
     if (configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
+      let passwordFacturaSmart = '';
+      try { passwordFacturaSmart = descifrarSecreto(configGuardada.factura_electronica_password); } catch {}
+      if (passwordFacturaSmart) {
+        headersFactura["X-FacturaSmart-Email"] = String(configGuardada.factura_electronica_correo).trim().toLowerCase();
+        headersFactura["X-FacturaSmart-Password"] = passwordFacturaSmart;
+        headersFactura["X-FacturaSmart-Base-Url"] = raizFacturaSmart(configGuardada);
+      }
       try {
         const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
-        headersFactura["X-FacturaSmart-Access-Token"] = tokenFacturaSmart;
-        headersFactura["X-FacturaSmart-Base-Url"] = raizFacturaSmart(configGuardada);
+        if (tokenFacturaSmart) headersFactura["X-FacturaSmart-Access-Token"] = tokenFacturaSmart;
       } catch (errorToken) {
-        console.warn('FacturaSmart: no se pudo preparar el JWT para Factura Bonita:', errorToken?.message || errorToken);
+        console.warn('FacturaSmart: api-factura intentará autenticarse con las credenciales configuradas:', errorToken?.message || errorToken);
       }
     }
 

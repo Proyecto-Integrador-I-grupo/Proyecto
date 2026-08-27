@@ -16,6 +16,7 @@ const documentosIntegradosPorCargo = new Map();
 let logoFacturaData = null;
 const documentosFacturaEnCurso = new Map();
 const pagosEnCurso = new Set();
+let pagoModalRequestSeq = 0;
 
 (function registerModule() {
   const moduleName = 'pagos';
@@ -1341,10 +1342,6 @@ async function guardarEdicionCargo(event) {
       showToast('Cargo actualizado correctamente.', 'success');
     }
     await loadPagosData();
-    if (r.exoneracion_total && r.facturacion?.ok) {
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      await abrirDocumentoFactura(id, 'pdf', null, true).catch(() => {});
-    }
   } catch(e) {
     showToast(e.message,'error');
   } finally {
@@ -1389,10 +1386,6 @@ async function guardarCargo(event) {
       showToast('Cargo registrado correctamente.', 'success');
     }
     await loadPagosData();
-    if (r.exoneracion_total && r.facturacion?.ok && r.id_cargo) {
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      await abrirDocumentoFactura(Number(r.id_cargo), 'pdf', null, true).catch(() => {});
-    }
   } catch (e) {
     showToast(e.message, 'error');
   } finally {
@@ -1451,6 +1444,7 @@ function alternarPlazoPago() {
 }
 
 async function abrirPago(idCargo) {
+  const requestSeq = ++pagoModalRequestSeq;
   const cargo = cargos.find((c) => Number(c.id_cargo) === Number(idCargo));
   if (!cargo) return;
   if (pagosEnCurso.has(Number(idCargo))) {
@@ -1488,6 +1482,10 @@ async function abrirPago(idCargo) {
 
   try {
     const r = await requestJson(`/api/finanzas/responsables/${cargo.id_estudiante}`);
+    // Si el usuario cambió a otro botón Pagar mientras esta solicitud estaba en
+    // vuelo, se descarta la respuesta anterior. Así un responsable viejo jamás
+    // puede volver a llenar el modal del estudiante nuevo por una carrera async.
+    if (requestSeq !== pagoModalRequestSeq || Number(value('fin-pago-cargo-id')) !== Number(cargo.id_cargo)) return;
     setValue('fin-resp-nombre', r.nombre || '');
     setValue('fin-resp-parentesco', r.parentesco || '');
     setValue('fin-resp-telefono', r.telefono || '');
@@ -1496,7 +1494,7 @@ async function abrirPago(idCargo) {
     setValue('fin-resp-numero-id', r.numero_identificacion || '');
   } catch {}
 
-  showModal('modalRegistrarPago');
+  if (requestSeq === pagoModalRequestSeq) showModal('modalRegistrarPago');
 }
 
 async function guardarPago(event) {
@@ -1507,8 +1505,8 @@ async function guardarPago(event) {
   let popupBanco = null;
   const metodoInicial = String(value('fin-pago-metodo') || '').toLowerCase();
   if (metodoInicial === 'tarjeta') {
-    const nombrePopupBanco = `educontrolBankCheckout_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    popupBanco = window.open('about:blank', nombrePopupBanco, 'width=620,height=820,resizable=yes,scrollbars=yes');
+    const popupBancoNombre = `educontrolBankCheckout_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    popupBanco = window.open('about:blank', popupBancoNombre, 'width=620,height=820,resizable=yes,scrollbars=yes');
     if (!popupBanco) {
       showToast('El navegador bloqueó el datáfono. Habilita ventanas emergentes para EduControl e inténtalo nuevamente.', 'warning');
       return;
@@ -1637,10 +1635,6 @@ async function guardarPago(event) {
     documentosIntegradosPorCargo.delete(idCargo);
     await refrescarDespuesDePago();
 
-    if (fact?.ok && r.estado_cargo === 'pagado') {
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
-      await abrirDocumentoFactura(idCargo, 'pdf', null, true);
-    }
   } catch (e) {
     if (popupBanco && !popupBanco.closed) {
       try {
@@ -1715,8 +1709,7 @@ async function reintentarFactura(idCargo, button = null) {
     await Promise.allSettled([cargarCargos(), cargarFacturas(), cargarPagos()]);
     renderFacturacion();
 
-    // El comprobante se presenta dentro de EduControl; no se abre una pestaña externa.
-    await abrirDocumentoFactura(idCargo, 'pdf', null, true);
+    // El comprobante queda disponible en Facturación y solo se abre cuando el usuario pulsa PDF.
   } catch (e) {
     showToast(e.message, 'error');
   } finally {

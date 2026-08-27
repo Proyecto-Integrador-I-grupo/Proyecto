@@ -1049,3 +1049,93 @@ body.theme-dark .schedule-editor-grid-tools span,
 body.theme-dark .schedule-grid-note,
 body.theme-dark .schedule-grid-time span { color:#a9bad0; }
 body.theme-dark .schedule-editor-grid-legend span { background:#111c2f; border-color:#334155; }
+
+
+/* ===== Editor de horario como ventana emergente ===== */
+#modalHorarios.schedule-editor-open .schedule-modal-body::after {
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(15, 23, 42, .38);
+  backdrop-filter:blur(2px);
+  z-index:1062;
+  pointer-events:none;
+}
+#modalHorarios .schedule-editor-dialog {
+  position:fixed;
+  z-index:1065;
+  top:4.7rem;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(1180px, calc(100vw - 2.2rem));
+  max-height:calc(100vh - 6rem);
+  overflow:auto;
+  margin:0 !important;
+  border:1px solid #d9e5ef;
+  border-radius:1rem;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
+}
+#modalHorarios .schedule-editor-dialog.hidden { display:none !important; }
+#modalHorarios .schedule-editor-dialog .schedule-editor-head {
+  position:sticky;
+  top:0;
+  z-index:8;
+  background:#fff;
+  padding:.9rem 1rem;
+  border-bottom:1px solid #e6edf4;
+}
+#modalHorarios .schedule-editor-dialog .schedule-editor-group-row,
+#modalHorarios .schedule-editor-dialog .schedule-editor-grid-tools,
+#modalHorarios .schedule-editor-dialog .schedule-editor-coverage,
+#modalHorarios .schedule-editor-dialog .schedule-editor-week,
+#modalHorarios .schedule-editor-dialog .schedule-editor-actions {
+  margin-left:1rem;
+  margin-right:1rem;
+}
+#modalHorarios .schedule-editor-dialog .schedule-editor-actions {
+  position:sticky;
+  bottom:0;
+  z-index:8;
+  background:#fff;
+  border-top:1px solid #e6edf4;
+  padding:.85rem 0 1rem;
+}
+#modalHorarios .schedule-editor-dialog .schedule-grid-scroll {
+  max-height:52vh;
+  border-radius:.8rem;
+}
+#modalHorarios .schedule-editor-dialog .schedule-planner-grid thead th {
+  position:sticky;
+  top:0;
+  z-index:3;
+}
+#modalHorarios .schedule-editor-dialog .schedule-grid-time {
+  position:sticky;
+  left:0;
+  z-index:2;
+}
+#modalHorarios .schedule-editor-dialog .schedule-grid-time-head {
+  position:sticky;
+  left:0;
+  top:0;
+  z-index:5;
+}
+@media (max-width: 760px) {
+  #modalHorarios .schedule-editor-dialog {
+    top:.6rem;
+    width:calc(100vw - 1rem);
+    max-height:calc(100vh - 1.2rem);
+    border-radius:.8rem;
+  }
+  #modalHorarios .schedule-editor-dialog .schedule-editor-group-row {
+    flex-direction:column;
+    align-items:stretch;
+  }
+}
+body.theme-dark #modalHorarios .schedule-editor-dialog,
+body.theme-dark #modalHorarios .schedule-editor-dialog .schedule-editor-head,
+body.theme-dark #modalHorarios .schedule-editor-dialog .schedule-editor-actions {
+  background:#0f172a;
+  border-color:#334155;
+}

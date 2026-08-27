@@ -69,15 +69,15 @@ export default function Horarios() {
                 </div>
               </div>
 
-              <div id="horarios-editor-card" className="schedule-editor-card hidden">
+              <div id="horarios-editor-card" className="schedule-editor-card schedule-editor-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="horarios-editor-title">
                 <div className="schedule-editor-head">
                   <div>
                     <span className="schedule-board-kicker">Planificación semanal</span>
-                    <h6 className="mb-1">Construir horario del grupo</h6>
+                    <h6 className="mb-1" id="horarios-editor-title">Construir horario del grupo</h6>
                     <p className="mb-0">Selecciona un grupo y distribuye sus materias únicamente dentro de los días y la jornada configurados al crear el grupo.</p>
                   </div>
                   <button type="button" id="horarios-editor-close" className="btn btn-sm btn-outline-secondary">
-                    <i className="bi bi-chevron-up me-1"></i> Ocultar
+                    <i className="bi bi-x-lg me-1"></i> Cerrar
                   </button>
                 </div>
 

@@ -485,8 +485,8 @@ export default function Pagos() {
                       <div className="col-md-6"><label className="form-label">Clave X-Api-Key</label><input id="fin-config-factura-key" type="password" className="form-control" autoComplete="new-password" placeholder="Clave guardada · escribe solo para reemplazar" /></div>
                     </div>
                     <div className="integration-card-footer">
-                      <div className="d-flex gap-2 flex-wrap"><button type="submit" className="btn btn-primary integration-card-save"><i className="bi bi-floppy"></i> Guardar</button><a id="fin-factura-registro" className="btn btn-outline-primary" href="https://proyecto-kn7p.onrender.com/?registro=1" target="_blank" rel="opener"><i className="bi bi-person-plus"></i> Registrar</a><a id="fin-factura-portal" className="btn btn-outline-secondary" href="https://proyecto-kn7p.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Portal</a></div>
-                      <small id="fin-factura-key-hint">La X-Api-Key vincula la cuenta, el logo y los comprobantes. Al guardar, el estado queda persistido.</small>
+                      <div className="d-flex gap-2 flex-wrap"><a id="fin-factura-registro" className="btn btn-outline-primary" href="https://proyecto-kn7p.onrender.com/?registro=1" target="_blank" rel="opener"><i className="bi bi-person-plus"></i> Registrar</a><a id="fin-factura-portal" className="btn btn-outline-secondary" href="https://proyecto-kn7p.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Portal</a></div>
+                      <small id="fin-factura-key-hint">La X-Api-Key vincula la cuenta, el logo y los comprobantes. Usa Guardar cambios para aplicar toda la configuración.</small>
                     </div>
                   </article>
 
@@ -506,10 +506,9 @@ export default function Pagos() {
 
                     <div className="integration-card-footer facturasmart-simple-footer">
                       <div className="d-flex gap-2 flex-wrap">
-                        <button id="fin-facturasmart-vincular" type="button" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar y activar</button>
                         <a id="fin-facturasmart-portal" className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Ir a FacturaSmart</a>
                       </div>
-                      <small>Los datos quedan guardados en EduControl. Si la cuenta ya existe, al guardar se valida y el servicio queda activo.</small>
+                      <small>Los datos se guardan y validan con el botón general Guardar cambios.</small>
                     </div>
                   </article>
 
@@ -525,8 +524,8 @@ export default function Pagos() {
                       <div className="col-md-5"><label className="integration-affiliation-box"><input id="fin-config-banco-afiliado" type="checkbox" /><span><strong>EduControl afiliado</strong><small>Habilita el datáfono para pagos con tarjeta.</small></span></label></div>
                     </div>
                     <div className="integration-card-footer">
-                      <div className="d-flex gap-2 flex-wrap"><button type="submit" className="btn btn-primary integration-card-save"><i className="bi bi-floppy"></i> Guardar</button><a id="fin-banco-registro" className="btn btn-outline-primary" href="https://bankyfinanzas.netlify.app/registro/negocio" target="_blank" rel="noreferrer"><i className="bi bi-building-add"></i> Afiliar</a><a id="fin-banco-login" className="btn btn-outline-secondary" href="https://bankyfinanzas.netlify.app/login" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Banco</a></div>
-                      <small>La afiliación queda guardada en EduControl. La tarjeta de cada responsable se ingresa en el datáfono.</small>
+                      <div className="d-flex gap-2 flex-wrap"><a id="fin-banco-registro" className="btn btn-outline-primary" href="https://bankyfinanzas.netlify.app/registro/negocio" target="_blank" rel="noreferrer"><i className="bi bi-building-add"></i> Afiliar</a><a id="fin-banco-login" className="btn btn-outline-secondary" href="https://bankyfinanzas.netlify.app/login" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Banco</a></div>
+                      <small>La afiliación se guarda con Guardar cambios. La tarjeta de cada responsable se ingresa en el datáfono.</small>
                     </div>
                   </article>
                 </div>

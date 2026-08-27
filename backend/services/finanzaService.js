@@ -1291,10 +1291,19 @@ export async function registrarPago(idCargo, datos, idUsuario) {
 
 async function upsertResponsable(connection, idEstudiante, datos) {
   const nombre = String(datos.nombre || '').trim();
+  const parentesco = String(datos.parentesco || '').trim();
+  const telefono = String(datos.telefono || '').trim();
   const correo = String(datos.correo || '').trim().toLowerCase();
+  const tipoId = String(datos.tipo_identificacion || '').trim();
   const numeroId = String(datos.numero_identificacion || '').trim();
-  if (!nombre || !correo) {
-    throw new Error("Nombre y correo del responsable de pago son obligatorios para facturación.");
+  if (!nombre || !parentesco || !telefono || !correo || !tipoId || !numeroId) {
+    throw new Error("Completa todos los datos del responsable de facturación: nombre, parentesco, correo, teléfono, tipo de identificación e identificación.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+    throw new Error("El correo del responsable de facturación no es válido.");
+  }
+  if (telefono.replace(/\D/g, '').length < 8) {
+    throw new Error("El teléfono del responsable de facturación debe contener al menos 8 dígitos.");
   }
 
   await connection.query(
@@ -1315,10 +1324,10 @@ async function upsertResponsable(connection, idEstudiante, datos) {
        WHERE id_responsable = ?`,
       [
         nombre,
-        String(datos.parentesco || '').trim() || null,
-        String(datos.telefono || '').trim() || null,
-        String(datos.tipo_identificacion || '01').trim(),
-        numeroId || null,
+        parentesco,
+        telefono,
+        tipoId,
+        numeroId,
         rows[0].id_responsable
       ]
     );
@@ -1330,11 +1339,11 @@ async function upsertResponsable(connection, idEstudiante, datos) {
       [
         idEstudiante,
         nombre,
-        String(datos.parentesco || '').trim() || null,
-        String(datos.telefono || '').trim() || null,
+        parentesco,
+        telefono,
         correo,
-        String(datos.tipo_identificacion || '01').trim(),
-        numeroId || null
+        tipoId,
+        numeroId
       ]
     );
   }

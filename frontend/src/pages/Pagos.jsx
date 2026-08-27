@@ -408,11 +408,11 @@ export default function Pagos() {
                 </div>
                 <div className="row g-2">
                   <div className="col-md-7"><label className="form-label">Nombre completo</label><input id="fin-resp-nombre" className="form-control" maxLength="100" required /></div>
-                  <div className="col-md-5"><label className="form-label">Parentesco</label><input id="fin-resp-parentesco" className="form-control" maxLength="40" placeholder="Madre, padre..." /></div>
+                  <div className="col-md-5"><label className="form-label">Parentesco</label><input id="fin-resp-parentesco" className="form-control" maxLength="40" placeholder="Madre, padre..." required /></div>
                   <div className="col-md-6"><label className="form-label">Correo</label><input id="fin-resp-correo" type="email" className="form-control" maxLength="150" required /></div>
-                  <div className="col-md-6"><label className="form-label">Teléfono</label><input id="fin-resp-telefono" className="form-control" maxLength="25" /></div>
-                  <div className="col-md-5"><label className="form-label">Tipo ID</label><select id="fin-resp-tipo-id" className="form-select"><option value="01">Física</option><option value="02">Jurídica</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
-                  <div className="col-md-7"><label className="form-label">Identificación</label><input id="fin-resp-numero-id" className="form-control" maxLength="30" /></div>
+                  <div className="col-md-6"><label className="form-label">Teléfono</label><input id="fin-resp-telefono" className="form-control" maxLength="25" inputMode="tel" required /></div>
+                  <div className="col-md-5"><label className="form-label">Tipo ID</label><select id="fin-resp-tipo-id" className="form-select" required><option value="01">Física</option><option value="02">Jurídica</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
+                  <div className="col-md-7"><label className="form-label">Identificación</label><input id="fin-resp-numero-id" className="form-control" maxLength="30" required /></div>
                 </div>
               </section>
             </div>

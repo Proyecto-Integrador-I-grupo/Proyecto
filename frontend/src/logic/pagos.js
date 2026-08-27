@@ -1500,6 +1500,36 @@ async function abrirPago(idCargo) {
 async function guardarPago(event) {
   event.preventDefault();
 
+  const camposResponsable = [
+    ['fin-resp-nombre', 'nombre completo'],
+    ['fin-resp-parentesco', 'parentesco'],
+    ['fin-resp-correo', 'correo'],
+    ['fin-resp-telefono', 'teléfono'],
+    ['fin-resp-tipo-id', 'tipo de identificación'],
+    ['fin-resp-numero-id', 'identificación']
+  ];
+  for (const [id, etiqueta] of camposResponsable) {
+    const control = document.getElementById(id);
+    if (!control || !String(control.value || '').trim()) {
+      showToast(`Completa ${etiqueta} del responsable de facturación.`, 'warning');
+      control?.focus();
+      return;
+    }
+  }
+  const correoControl = document.getElementById('fin-resp-correo');
+  if (correoControl && !correoControl.checkValidity()) {
+    showToast('Ingresa un correo válido para el responsable de facturación.', 'warning');
+    correoControl.focus();
+    return;
+  }
+  const telefonoControl = document.getElementById('fin-resp-telefono');
+  const telefonoDigitos = String(telefonoControl?.value || '').replace(/\D/g, '');
+  if (telefonoDigitos.length < 8) {
+    showToast('Ingresa un teléfono válido de al menos 8 dígitos.', 'warning');
+    telefonoControl?.focus();
+    return;
+  }
+
   // El datáfono debe abrirse dentro del gesto directo del usuario. Si se espera
   // primero una petición al backend, Edge/Chrome pueden bloquear la ventana.
   let popupBanco = null;

@@ -178,10 +178,6 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   checkout.searchParams.set('returnUrl', `${origin}/?paymentReference=${encodeURIComponent(reference)}`);
   checkout.searchParams.set('merchantId', merchant);
   checkout.searchParams.set('merchant', merchant);
-  // Identificador efímero por intento. No cambia el contrato existente de Banky,
-  // pero evita que una integración que use sessionStorage/window.name confunda
-  // dos cobros consecutivos del mismo navegador.
-  checkout.searchParams.set('paymentSession', token);
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
 

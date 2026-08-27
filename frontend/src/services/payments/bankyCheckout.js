@@ -51,7 +51,8 @@ export function pagarConBanky({ checkoutUrl, expectedOrigin, channel = BANKY_CHA
 
     window.addEventListener('message', onMessage);
     if (!popup) {
-      popup = window.open('about:blank', 'educontrolBankCheckout', 'width=620,height=820,resizable=yes,scrollbars=yes');
+      const popupName = `educontrolBankCheckout_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      popup = window.open('about:blank', popupName, 'width=620,height=820,resizable=yes,scrollbars=yes');
     }
     if (!popup) {
       cleanup();

@@ -7,7 +7,8 @@ import {
   obtenerEstadoServiciosFacturacion,
   obtenerDocumentoDeCargo,
   confirmarFacturaGeneradaDesdeCliente,
-  obtenerDocumentosIntegrados
+  obtenerDocumentosIntegrados,
+  vincularCuentaFacturaSmart
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -175,6 +176,11 @@ export async function getEstadoIntegraciones(req, res) {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json(await obtenerEstadoServiciosFacturacion());
   } catch (e) { responderError(res, e, 500); }
+}
+
+export async function postVincularFacturaSmart(req, res) {
+  try { res.json(await vincularCuentaFacturaSmart({ registrar: Boolean(req.body?.registrar) })); }
+  catch (e) { responderError(res, e, 502); }
 }
 
 export async function getDocumentosIntegrados(req, res) {

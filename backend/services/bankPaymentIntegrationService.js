@@ -93,6 +93,25 @@ async function verifyBankIfConfigured({ reference, amount, currency, payload }) 
 
 export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin) {
   await ensureSchema();
+  const responsable = datos?.responsable && typeof datos.responsable === 'object' ? datos.responsable : {};
+  const camposResponsable = {
+    nombre: clean(responsable.nombre, 100),
+    parentesco: clean(responsable.parentesco, 40),
+    telefono: clean(responsable.telefono, 25),
+    correo: clean(responsable.correo, 150).toLowerCase(),
+    tipo_identificacion: clean(responsable.tipo_identificacion, 4),
+    numero_identificacion: clean(responsable.numero_identificacion, 30)
+  };
+  if (Object.values(camposResponsable).some((v) => !v)) {
+    throw new Error('Completa todos los datos del responsable de facturación antes de abrir el datáfono.');
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(camposResponsable.correo)) {
+    throw new Error('El correo del responsable de facturación no es válido.');
+  }
+  if (camposResponsable.telefono.replace(/\D/g, '').length < 8) {
+    throw new Error('El teléfono del responsable de facturación debe contener al menos 8 dígitos.');
+  }
+  datos = { ...datos, responsable: camposResponsable };
   const cargoId = Number(idCargo);
   if (!Number.isInteger(cargoId) || cargoId <= 0) throw new Error('El cargo no es válido.');
   const monto = money(datos?.monto, 'El monto del pago');
@@ -159,10 +178,6 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   checkout.searchParams.set('returnUrl', `${origin}/?paymentReference=${encodeURIComponent(reference)}`);
   checkout.searchParams.set('merchantId', merchant);
   checkout.searchParams.set('merchant', merchant);
-  // Identificador efímero por intento. No cambia el contrato existente de Banky,
-  // pero evita que una integración que use sessionStorage/window.name confunda
-  // dos cobros consecutivos del mismo navegador.
-  checkout.searchParams.set('paymentSession', token);
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
 

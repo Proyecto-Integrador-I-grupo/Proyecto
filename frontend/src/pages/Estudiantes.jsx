@@ -1,6 +1,9 @@
 import React from 'react';
 
 export default function Estudiantes() {
+  const hoy = new Date();
+  const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+  const ingresoMin = '2026-01-01';
   return (
     <section id="estudiantes-view" className="view hidden">
       <div className="card border-0 shadow-sm">
@@ -41,9 +44,9 @@ export default function Estudiantes() {
                   <div className="col-md-6"><label className="form-label" htmlFor="nombre">Nombre</label><input id="nombre" className="form-control" maxLength="60" required /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="apellido1">Primer apellido</label><input id="apellido1" className="form-control" maxLength="60" required /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="apellido2">Segundo apellido</label><input id="apellido2" className="form-control" maxLength="60" /></div>
-                  <div className="col-md-6"><label className="form-label" htmlFor="fecha_nacimiento">Fecha de nacimiento</label><input id="fecha_nacimiento" type="date" className="form-control" required /></div>
+                  <div className="col-md-6"><label className="form-label" htmlFor="fecha_nacimiento">Fecha de nacimiento</label><input id="fecha_nacimiento" type="date" max={hoyISO} className="form-control" required /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="genero">Género</label><select id="genero" className="form-select" required><option value="">Seleccionar</option><option value="M">Masculino</option><option value="F">Femenino</option><option value="O">Otro</option></select></div>
-                  <div className="col-md-6"><label className="form-label" htmlFor="persona-fecha-ingreso">Fecha de ingreso</label><input id="persona-fecha-ingreso" type="date" className="form-control" /></div>
+                  <div className="col-md-6"><label className="form-label" htmlFor="persona-fecha-ingreso">Fecha de ingreso</label><input id="persona-fecha-ingreso" type="date" min={ingresoMin} max={hoyISO} className="form-control" required /><div className="form-text">Solo se permiten fechas desde el 01/01/2026 hasta hoy.</div></div>
                 </div>
               </div>
               <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" id="persona-submit" className="btn btn-primary"><i className="bi bi-check2-circle"></i> Guardar Estudiante</button></div>

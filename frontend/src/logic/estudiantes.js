@@ -37,9 +37,53 @@ let allPersonas = [];
 let personaTableBody = null;
 let estudiantePendienteId = null;
 
+const FECHA_INGRESO_MIN = '2026-01-01';
+
+function hoyLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function validarPayloadEstudiante(payload, editando = false) {
+  if (!payload.nombre || !payload.apellido1 || !payload.fecha_nacimiento || !payload.genero) {
+    return 'Completa todos los campos obligatorios del estudiante.';
+  }
+
+  const hoy = hoyLocalISO();
+  if (payload.fecha_nacimiento > hoy) {
+    return 'La fecha de nacimiento no puede estar en el futuro.';
+  }
+
+  if (!payload.fecha_ingreso) {
+    return 'La fecha de ingreso es obligatoria.';
+  }
+
+  if (payload.fecha_ingreso < FECHA_INGRESO_MIN) {
+    return 'La fecha de ingreso no puede ser anterior al 01/01/2026.';
+  }
+
+  if (payload.fecha_ingreso > hoy) {
+    return 'La fecha de ingreso no puede estar en el futuro.';
+  }
+
+  if (!editando && payload.fecha_ingreso < FECHA_INGRESO_MIN) {
+    return 'No se pueden registrar estudiantes con fecha de ingreso anterior a 2026.';
+  }
+
+  return '';
+}
+
 function wireEstudiantesEvents() {
   personaTableBody = document.querySelector('#personas-table tbody');
   const personaForm = document.getElementById('persona-form');
+  const ingresoInput = document.getElementById('persona-fecha-ingreso');
+  const nacimientoInput = document.getElementById('fecha_nacimiento');
+
+  if (ingresoInput) {
+    ingresoInput.min = FECHA_INGRESO_MIN;
+    ingresoInput.max = hoyLocalISO();
+  }
+  if (nacimientoInput) nacimientoInput.max = hoyLocalISO();
 
   if (personaForm && !personaForm.dataset.wired) {
     personaForm.dataset.wired = '1';
@@ -151,7 +195,12 @@ function resetPersonaForm() {
   document.getElementById('fecha_nacimiento').value = '';
   document.getElementById('genero').value = '';
   const ingresoEl = document.getElementById('persona-fecha-ingreso');
-  if (ingresoEl) ingresoEl.value = '';
+  if (ingresoEl) {
+    ingresoEl.value = '';
+    ingresoEl.min = FECHA_INGRESO_MIN;
+    ingresoEl.max = hoyLocalISO();
+    ingresoEl.setCustomValidity('');
+  }
   const titleEl = document.getElementById('persona-form-title');
   if (titleEl) titleEl.textContent = 'Pre-registro de Estudiante';
   const submitEl = document.getElementById('persona-submit');
@@ -180,6 +229,27 @@ async function handlePersonaSubmit(e) {
     fecha_ingreso: document.getElementById('persona-fecha-ingreso')?.value || null
   };
 
+  const validacion = validarPayloadEstudiante(payload, Boolean(id));
+  if (validacion) {
+    const ingresoEl = document.getElementById('persona-fecha-ingreso');
+    if (ingresoEl && validacion.toLowerCase().includes('ingreso')) {
+      ingresoEl.setCustomValidity(validacion);
+      ingresoEl.reportValidity();
+      ingresoEl.setCustomValidity('');
+    }
+    showResultModal('error', 'Revisa los datos', validacion);
+    return;
+  }
+
+  const submitBtn = document.getElementById('persona-submit');
+  const originalHtml = submitBtn?.innerHTML || '';
+  if (submitBtn?.dataset.busy === '1') return;
+  if (submitBtn) {
+    submitBtn.dataset.busy = '1';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Guardando...';
+  }
+
   try {
     const url = `/api/estudiantes${id ? `/${id}` : ''}`;
     const method = id ? 'PUT' : 'POST';
@@ -202,6 +272,12 @@ async function handlePersonaSubmit(e) {
     }
   } catch {
     showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+  } finally {
+    if (submitBtn?.isConnected) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml || '<i class="bi bi-check2-circle"></i> Guardar Estudiante';
+      delete submitBtn.dataset.busy;
+    }
   }
 }
 
@@ -223,7 +299,12 @@ async function handlePersonaTableClick(e) {
       document.getElementById('fecha_nacimiento').value = p.fecha_nacimiento ? p.fecha_nacimiento.split('T')[0] : '';
       document.getElementById('genero').value = p.genero ?? '';
       const ingresoEl = document.getElementById('persona-fecha-ingreso');
-      if (ingresoEl) ingresoEl.value = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : '';
+      if (ingresoEl) {
+        ingresoEl.value = p.fecha_ingreso ? p.fecha_ingreso.split('T')[0] : '';
+        ingresoEl.min = FECHA_INGRESO_MIN;
+        ingresoEl.max = hoyLocalISO();
+        ingresoEl.setCustomValidity('');
+      }
 
       document.getElementById('persona-form-title').textContent = 'Editar Estudiante';
       const submitEl = document.getElementById('persona-submit');

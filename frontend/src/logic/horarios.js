@@ -268,11 +268,8 @@ function renderHorarios() {
     return;
   }
 
-  const uniqueTeachers = new Set(rows.map((r) => Number(r.id_profesor))).size;
-  const professorSelected = Boolean(document.getElementById('horarios-profesor-filter')?.value);
-  const personal = currentRole() === 'profesor';
-  const useTimeline = window.innerWidth >= 820 && (personal || professorSelected || uniqueTeachers === 1);
-  board.innerHTML = useTimeline ? buildTimeline(rows) : buildAgenda(rows);
+  const ordenadas = [...rows].sort(compararHorarios);
+  board.innerHTML = buildAgenda(ordenadas);
 }
 
 function renderStats(rows) {
@@ -321,11 +318,17 @@ function renderHeading(rows) {
   }
 }
 
+function compararHorarios(a, b) {
+  const inicio = minutes(a.hora_inicio) - minutes(b.hora_inicio);
+  if (inicio !== 0) return inicio;
+  const fin = minutes(a.hora_fin) - minutes(b.hora_fin);
+  if (fin !== 0) return fin;
+  return String(a.nombre_grupo || '').localeCompare(String(b.nombre_grupo || ''), 'es');
+}
+
 function activeDays(rows) {
   const used = new Set(rows.flatMap((r) => parseDays(r.dias_semana)));
-  const standard = DAY_META.slice(0, 5);
-  if (used.has('sabado')) standard.push(DAY_META[5]);
-  return standard;
+  return DAY_META.filter(([key]) => used.has(key));
 }
 
 function eventCard(row, compact = false) {
@@ -342,7 +345,7 @@ function eventCard(row, compact = false) {
 function buildAgenda(rows) {
   const days = activeDays(rows);
   return `<div class="schedule-agenda-week">${days.map(([key, label]) => {
-    const items = rows.filter((r) => parseDays(r.dias_semana).includes(key)).sort((a, b) => minutes(a.hora_inicio) - minutes(b.hora_inicio));
+    const items = rows.filter((r) => parseDays(r.dias_semana).includes(key)).sort(compararHorarios);
     return `<section class="schedule-agenda-day">
       <header><span>${label}</span><small>${items.length} ${items.length === 1 ? 'clase' : 'clases'}</small></header>
       <div class="schedule-agenda-list">${items.length ? items.map((r) => eventCard(r, true)).join('') : '<div class="schedule-day-empty">Sin clases</div>'}</div>
@@ -375,7 +378,7 @@ function buildTimeline(rows) {
   }).join('')}</div>`;
 
   const lanes = days.map(([key]) => {
-    const events = rows.filter((r) => parseDays(r.dias_semana).includes(key));
+    const events = rows.filter((r) => parseDays(r.dias_semana).includes(key)).sort(compararHorarios);
     const eventsHtml = events.map((r) => {
       const top = ((minutes(r.hora_inicio) - start) / 60) * rowHeight;
       const height = Math.max(48, ((minutes(r.hora_fin) - minutes(r.hora_inicio)) / 60) * rowHeight - 6);

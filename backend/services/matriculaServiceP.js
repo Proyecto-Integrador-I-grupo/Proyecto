@@ -70,37 +70,140 @@ export async function obtenerHorarioAcademicoGrupoService(idGrupo) {
 export async function guardarHorarioAcademicoGrupoService(idGrupo, bloques = []) {
   await asegurarTablaHorarioAcademico();
   if (!Array.isArray(bloques)) throw new Error('El horario semanal no tiene un formato válido.');
+
   const lista = bloques.map((b) => ({
     dia_semana: sinTildes(b.dia_semana).trim(),
     hora_inicio: normalizarHoraGrupo(b.hora_inicio),
     hora_fin: normalizarHoraGrupo(b.hora_fin),
     materia: normalizarMateriaHorario(b.materia)
   }));
+
   for (const b of lista) {
-    if (!['lunes','martes','miercoles','jueves','viernes'].includes(b.dia_semana)) throw new Error('El día de clase no es válido.');
-    if (!b.hora_inicio || !b.hora_fin || b.hora_fin <= b.hora_inicio) throw new Error('Cada bloque debe tener una hora de inicio y fin válidas.');
-  }
-  for (let i=0;i<lista.length;i++) for (let j=i+1;j<lista.length;j++) {
-    const a=lista[i], b=lista[j];
-    if (a.dia_semana===b.dia_semana && horariosSeSuperponen(a.hora_inicio,a.hora_fin,b.hora_inicio,b.hora_fin)) {
-      throw new Error(`Hay dos materias que se cruzan el ${a.dia_semana}. Ajusta las horas antes de guardar.`);
+    if (!['lunes','martes','miercoles','jueves','viernes','sabado'].includes(b.dia_semana)) {
+      throw new Error('El día de clase no es válido.');
+    }
+    if (!b.hora_inicio || !b.hora_fin || b.hora_fin <= b.hora_inicio) {
+      throw new Error('Cada bloque debe tener una hora de inicio y fin válidas.');
     }
   }
+
+  for (let i = 0; i < lista.length; i++) {
+    for (let j = i + 1; j < lista.length; j++) {
+      const a = lista[i], b = lista[j];
+      if (
+        a.dia_semana === b.dia_semana &&
+        horariosSeSuperponen(a.hora_inicio, a.hora_fin, b.hora_inicio, b.hora_fin)
+      ) {
+        throw new Error(`Hay dos materias que se cruzan el ${a.dia_semana}. Ajusta las horas antes de guardar.`);
+      }
+    }
+  }
+
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [[grupo]] = await connection.query(`SELECT g.id_grupo, g.estado, g.dias_semana, g.aula, s.periodo_lectivo FROM grupo g INNER JOIN seccion s ON s.id_seccion=g.id_seccion WHERE g.id_grupo=? FOR UPDATE`, [Number(idGrupo)]);
+
+    const [[grupo]] = await connection.query(
+      `SELECT g.id_grupo, g.estado, g.dias_semana, g.aula,
+              TIME_FORMAT(g.hora_inicio,'%H:%i') AS hora_inicio,
+              TIME_FORMAT(g.hora_fin,'%H:%i') AS hora_fin,
+              s.periodo_lectivo
+       FROM grupo g
+       INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+       WHERE g.id_grupo = ?
+       FOR UPDATE`,
+      [Number(idGrupo)]
+    );
+
     if (!grupo || !grupo.estado) throw new Error('El grupo no existe o está inactivo.');
     await validarPeriodoNoCerrado(connection, Number(grupo.periodo_lectivo));
+
     const diasGrupo = new Set(normalizarDiasSemana(grupo.dias_semana));
-    for (const b of lista) if (diasGrupo.size && !diasGrupo.has(b.dia_semana)) throw new Error(`El ${b.dia_semana} no está habilitado en los días del grupo.`);
-    await connection.query('DELETE FROM grupo_horario_academico WHERE id_grupo=?', [Number(idGrupo)]);
-    for (const b of lista) await connection.query(`INSERT INTO grupo_horario_academico (id_grupo,dia_semana,hora_inicio,hora_fin,materia,estado) VALUES (?,?,?,?,?,TRUE)`, [Number(idGrupo),b.dia_semana,b.hora_inicio,b.hora_fin,b.materia]);
+    for (const b of lista) {
+      if (diasGrupo.size && !diasGrupo.has(b.dia_semana)) {
+        throw new Error(`El ${b.dia_semana} no está habilitado en los días del grupo.`);
+      }
+      if (grupo.hora_inicio && b.hora_inicio < grupo.hora_inicio) {
+        throw new Error(`${b.materia} del ${b.dia_semana} inicia antes de la jornada del grupo (${grupo.hora_inicio}).`);
+      }
+      if (grupo.hora_fin && b.hora_fin > grupo.hora_fin) {
+        throw new Error(`${b.materia} del ${b.dia_semana} termina después de la jornada del grupo (${grupo.hora_fin}).`);
+      }
+    }
+
+    // Si ya hay profesores asignados al grupo, validar el nuevo horario contra
+    // sus clases en otros grupos antes de persistirlo.
+    const [profesoresAsignados] = await connection.query(
+      `SELECT gp.id_profesor, pr.materia,
+              CONCAT_WS(' ', p.nombre, p.apellido1, NULLIF(p.apellido2,'')) AS profesor_nombre
+       FROM grupo_profesor gp
+       INNER JOIN profesor pr ON pr.id_profesor = gp.id_profesor AND pr.estado = TRUE
+       INNER JOIN persona p ON p.id_persona = pr.id_persona AND p.estado = TRUE
+       WHERE gp.id_grupo = ?
+         AND gp.estado = TRUE
+         AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())`,
+      [Number(idGrupo)]
+    );
+
+    for (const profesor of profesoresAsignados) {
+      const slotsNuevos = lista.filter(
+        (b) => sinTildes(b.materia).trim() === sinTildes(profesor.materia).trim()
+      );
+      if (!slotsNuevos.length) continue;
+
+      const [otros] = await connection.query(
+        `SELECT g.id_grupo, g.nombre_grupo, gha.dia_semana,
+                TIME_FORMAT(gha.hora_inicio,'%H:%i') AS hora_inicio,
+                TIME_FORMAT(gha.hora_fin,'%H:%i') AS hora_fin
+         FROM grupo_profesor gp
+         INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
+         INNER JOIN seccion s ON s.id_seccion = g.id_seccion
+         INNER JOIN grupo_horario_academico gha
+           ON gha.id_grupo = g.id_grupo
+          AND gha.estado = TRUE
+         WHERE gp.id_profesor = ?
+           AND gp.estado = TRUE
+           AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())
+           AND g.id_grupo <> ?
+           AND s.periodo_lectivo = ?
+           AND LOWER(TRIM(gha.materia)) = LOWER(TRIM(?))`,
+        [profesor.id_profesor, Number(idGrupo), Number(grupo.periodo_lectivo), profesor.materia]
+      );
+
+      for (const nuevo of slotsNuevos) {
+        const choque = otros.find(
+          (o) =>
+            sinTildes(o.dia_semana).trim() === nuevo.dia_semana &&
+            horariosSeSuperponen(nuevo.hora_inicio, nuevo.hora_fin, o.hora_inicio, o.hora_fin)
+        );
+        if (choque) {
+          throw new Error(
+            `${profesor.profesor_nombre} ya imparte ${profesor.materia} en ${choque.nombre_grupo} ` +
+            `el ${nuevo.dia_semana} de ${choque.hora_inicio} a ${choque.hora_fin}.`
+          );
+        }
+      }
+    }
+
+    await connection.query('DELETE FROM grupo_horario_academico WHERE id_grupo = ?', [Number(idGrupo)]);
+    for (const b of lista) {
+      await connection.query(
+        `INSERT INTO grupo_horario_academico
+          (id_grupo, dia_semana, hora_inicio, hora_fin, materia, estado)
+         VALUES (?, ?, ?, ?, ?, TRUE)`,
+        [Number(idGrupo), b.dia_semana, b.hora_inicio, b.hora_fin, b.materia]
+      );
+    }
+
     await connection.commit();
     return { mensaje: 'Horario semanal guardado correctamente.', bloques: lista.length };
-  } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
-
 
 const DIAS_SEMANA_VALIDOS = ['lunes','martes','miercoles','jueves','viernes','sabado'];
 

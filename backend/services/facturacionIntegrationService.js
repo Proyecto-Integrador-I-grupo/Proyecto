@@ -1,4 +1,5 @@
 import pool from "../config/database.js";
+import { createHash } from "node:crypto";
 import { consumirServicio } from "./integracionService.js";
 import { cifrarSecreto, descifrarSecreto } from "../utils/secretBox.js";
 
@@ -6,6 +7,7 @@ const DEFAULT_FACTURACION_API_URL = "https://proyecto-kn7p.onrender.com";
 const DEFAULT_BANK_CHECKOUT_URL = "https://bankyfinanzas.netlify.app/checkout";
 const DEFAULT_BANK_LOGIN_URL = "https://bankyfinanzas.netlify.app/login";
 const DEFAULT_BANK_REGISTER_URL = "https://bankyfinanzas.netlify.app/registro/negocio";
+const DEFAULT_FACTURASMART_URL = "https://proyecto-facturaci-n-electr-nica.onrender.com";
 
 const METODOS_FACTURA = {
   efectivo: "01",
@@ -106,9 +108,29 @@ async function crearTablaConfiguracionIntegraciones() {
     banco_afiliado BOOLEAN NOT NULL DEFAULT FALSE,
     firma_digital_url VARCHAR(500) NULL,
     factura_electronica_url VARCHAR(500) NULL,
+    factura_electronica_correo VARCHAR(180) NULL,
+    factura_electronica_telefono VARCHAR(40) NULL,
+    factura_electronica_password LONGTEXT NULL,
+    factura_electronica_cuenta_confirmada BOOLEAN NOT NULL DEFAULT FALSE,
     tributacion_url VARCHAR(500) NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  const columnas = [
+    ["factura_electronica_correo", "VARCHAR(180) NULL"],
+    ["factura_electronica_telefono", "VARCHAR(40) NULL"],
+    ["factura_electronica_password", "LONGTEXT NULL"],
+    ["factura_electronica_cuenta_confirmada", "BOOLEAN NOT NULL DEFAULT FALSE"]
+  ];
+  for (const [nombre, definicion] of columnas) {
+    const [[row]] = await pool.query(
+      `SELECT COUNT(*) AS existe FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'configuracion_integracion_servicios' AND COLUMN_NAME = ?`,
+      [nombre]
+    );
+    if (!Number(row?.existe || 0)) {
+      await pool.query(`ALTER TABLE configuracion_integracion_servicios ADD COLUMN ${nombre} ${definicion}`);
+    }
+  }
 }
 
 async function crearTablaDocumentosIntegrados() {
@@ -158,10 +180,12 @@ export async function obtenerConfiguracionInternaIntegraciones() {
 
 function ocultarApiKey(config) {
   if (!config) return config;
-  const { factura_bonita_api_key, ...resto } = config;
+  const { factura_bonita_api_key, factura_electronica_password, ...resto } = config;
   return {
     ...resto,
-    factura_bonita_api_key_configurada: Boolean(factura_bonita_api_key)
+    factura_bonita_api_key_configurada: Boolean(factura_bonita_api_key),
+    factura_electronica_password_configurada: Boolean(factura_electronica_password),
+    factura_electronica_cuenta_confirmada: Boolean(config.factura_electronica_cuenta_confirmada)
   };
 }
 
@@ -182,7 +206,7 @@ async function obtenerConfigInterna() {
   const integration = integrationRows[0] || {};
   const camposIntegracion = [
     'factura_bonita_url','factura_bonita_api_key','banco_checkout_url','banco_login_url','banco_registro_url',
-    'banco_merchant_id','banco_afiliado','firma_digital_url','factura_electronica_url','tributacion_url'
+    'banco_merchant_id','banco_afiliado','firma_digital_url','factura_electronica_url','factura_electronica_correo','factura_electronica_telefono','factura_electronica_password','factura_electronica_cuenta_confirmada','tributacion_url'
   ];
   const merged = { ...fiscal };
   for (const campo of camposIntegracion) {
@@ -316,7 +340,11 @@ export async function obtenerConfiguracionFacturacion() {
     banco_merchant_id: process.env.BANK_MERCHANT_ID || null,
     banco_afiliado: Boolean(process.env.BANK_MERCHANT_ID),
     firma_digital_url: null,
-    factura_electronica_url: null,
+    factura_electronica_url: DEFAULT_FACTURASMART_URL,
+    factura_electronica_correo: null,
+    factura_electronica_telefono: null,
+    factura_electronica_password: null,
+    factura_electronica_cuenta_confirmada: false,
     tributacion_url: null
   };
   return ocultarApiKey(base);
@@ -340,7 +368,17 @@ export async function actualizarConfiguracionFacturacion(datos) {
   const bancoLoginUrl = urlOpcional(datos.banco_login_url ?? actual?.banco_login_url ?? DEFAULT_BANK_LOGIN_URL, "Acceso al servicio de pago");
   const bancoRegistroUrl = urlOpcional(datos.banco_registro_url ?? actual?.banco_registro_url ?? DEFAULT_BANK_REGISTER_URL, "Afiliación al servicio de pago");
   const firmaDigitalUrl = urlOpcional(datos.firma_digital_url ?? actual?.firma_digital_url, "Firma Digital");
-  const facturaElectronicaUrl = urlOpcional(datos.factura_electronica_url ?? actual?.factura_electronica_url, "Facturación Electrónica");
+  const facturaElectronicaUrl = urlOpcional(datos.factura_electronica_url ?? actual?.factura_electronica_url ?? DEFAULT_FACTURASMART_URL, "Facturación Electrónica");
+  const facturaElectronicaCorreo = String(datos.factura_electronica_correo ?? actual?.factura_electronica_correo ?? correo).trim().toLowerCase().slice(0, 180) || null;
+  const facturaElectronicaTelefono = String(datos.factura_electronica_telefono ?? actual?.factura_electronica_telefono ?? "").trim().slice(0, 40) || null;
+  let facturaElectronicaPassword = actual?.factura_electronica_password || null;
+  const nuevaPasswordElectronica = String(datos.factura_electronica_password || "").trim();
+  if (nuevaPasswordElectronica) {
+    if (nuevaPasswordElectronica.length < 8) throw new Error("La contraseña de FacturaSmart debe tener al menos 8 caracteres.");
+    facturaElectronicaPassword = cifrarSecreto(nuevaPasswordElectronica);
+  }
+  if (datos.limpiar_factura_electronica_password === true) facturaElectronicaPassword = null;
+  const cuentaElectronicaConfirmada = Boolean(actual?.factura_electronica_cuenta_confirmada) && !nuevaPasswordElectronica;
   const tributacionUrl = urlOpcional(datos.tributacion_url ?? actual?.tributacion_url, "Tributación");
 
   let apiKeyCifrada = actual?.factura_bonita_api_key || null;
@@ -368,15 +406,17 @@ export async function actualizarConfiguracionFacturacion(datos) {
   await pool.query(
     `INSERT INTO configuracion_integracion_servicios
       (id_configuracion, factura_bonita_url, factura_bonita_api_key, banco_checkout_url, banco_login_url, banco_registro_url,
-       banco_merchant_id, banco_afiliado, firma_digital_url, factura_electronica_url, tributacion_url)
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       banco_merchant_id, banco_afiliado, firma_digital_url, factura_electronica_url, factura_electronica_correo, factura_electronica_telefono, factura_electronica_password, factura_electronica_cuenta_confirmada, tributacion_url)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        factura_bonita_url=VALUES(factura_bonita_url), factura_bonita_api_key=VALUES(factura_bonita_api_key),
        banco_checkout_url=VALUES(banco_checkout_url), banco_login_url=VALUES(banco_login_url), banco_registro_url=VALUES(banco_registro_url),
        banco_merchant_id=VALUES(banco_merchant_id), banco_afiliado=VALUES(banco_afiliado),
-       firma_digital_url=VALUES(firma_digital_url), factura_electronica_url=VALUES(factura_electronica_url), tributacion_url=VALUES(tributacion_url)`,
+       firma_digital_url=VALUES(firma_digital_url), factura_electronica_url=VALUES(factura_electronica_url),
+       factura_electronica_correo=VALUES(factura_electronica_correo), factura_electronica_telefono=VALUES(factura_electronica_telefono), factura_electronica_password=VALUES(factura_electronica_password),
+       factura_electronica_cuenta_confirmada=VALUES(factura_electronica_cuenta_confirmada), tributacion_url=VALUES(tributacion_url)`,
     [facturaBonitaUrl, apiKeyCifrada, bancoCheckoutUrl, bancoLoginUrl, bancoRegistroUrl, bancoMerchantId, bancoAfiliado ? 1 : 0,
-     firmaDigitalUrl, facturaElectronicaUrl, tributacionUrl]
+     firmaDigitalUrl, facturaElectronicaUrl, facturaElectronicaCorreo, facturaElectronicaTelefono, facturaElectronicaPassword, cuentaElectronicaConfirmada ? 1 : 0, tributacionUrl]
   );
 
   // Los datos fiscales se guardan en su tabla propia. Los endpoints/credenciales
@@ -397,6 +437,189 @@ export async function actualizarConfiguracionFacturacion(datos) {
   );
 
   return obtenerConfiguracionFacturacion();
+}
+
+
+let facturaSmartTokenCache = { key: '', token: '', expiresAt: 0 };
+
+function raizFacturaSmart(config) {
+  return urlOpcional(config?.factura_electronica_url || DEFAULT_FACTURASMART_URL, 'Facturación Electrónica') || DEFAULT_FACTURASMART_URL;
+}
+
+function uuidFacturaSmartCargo(idCargo) {
+  const hex = createHash('sha256').update(`educontrol:cargo:${Number(idCargo)}`).digest('hex').slice(0, 32).split('');
+  hex[12] = '4';
+  hex[16] = ['8','9','a','b'][parseInt(hex[16], 16) % 4];
+  const h = hex.join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
+}
+
+function tipoIdentificacionFacturaSmart(tipo) {
+  const mapa = { '01': 'CEDULA_FISICA', '02': 'CEDULA_JURIDICA', '03': 'DIMEX', '04': 'NITE' };
+  const limpio = String(tipo || '').trim().toUpperCase();
+  return mapa[limpio] || (['CEDULA_FISICA','CEDULA_JURIDICA','DIMEX','NITE'].includes(limpio) ? limpio : 'CEDULA_FISICA');
+}
+
+async function fetchFacturaSmart(root, ruta, { method = 'GET', body = null, token = null, timeout = 30000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`${String(root).replace(/\/$/, '')}${ruta}`, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text ? { mensaje: text } : null; }
+    if (!response.ok) {
+      const error = new Error(data?.message || data?.mensaje || data?.error || `FacturaSmart respondió HTTP ${response.status}.`);
+      error.statusCode = response.status;
+      error.responseData = data;
+      throw error;
+    }
+    return data;
+  } finally { clearTimeout(timer); }
+}
+
+async function loginFacturaSmart(config, { force = false } = {}) {
+  const root = raizFacturaSmart(config);
+  const correo = String(config?.factura_electronica_correo || config?.correo || '').trim().toLowerCase();
+  let password = '';
+  try { password = config?.factura_electronica_password ? descifrarSecreto(config.factura_electronica_password) : ''; } catch {}
+  if (!correo || !password) throw new Error('Configura el correo y la contraseña de FacturaSmart antes de emitir factura electrónica.');
+  const key = `${root}|${correo}`;
+  if (!force && facturaSmartTokenCache.key === key && facturaSmartTokenCache.token && facturaSmartTokenCache.expiresAt > Date.now() + 30000) {
+    return facturaSmartTokenCache.token;
+  }
+  const data = await fetchFacturaSmart(root, '/api/v1/auth/login', { method: 'POST', body: { correo, password }, timeout: 30000 });
+  const token = String(data?.accessToken || data?.token || '').trim();
+  if (!token) throw new Error('FacturaSmart inició sesión, pero no devolvió accessToken.');
+  facturaSmartTokenCache = { key, token, expiresAt: Date.now() + 45 * 60 * 1000 };
+  return token;
+}
+
+async function consumirFacturaSmart(config, ruta, options = {}) {
+  const root = raizFacturaSmart(config);
+  let token = await loginFacturaSmart(config);
+  try {
+    return await fetchFacturaSmart(root, ruta, { ...options, token });
+  } catch (error) {
+    if (Number(error?.statusCode) !== 401) throw error;
+    token = await loginFacturaSmart(config, { force: true });
+    return fetchFacturaSmart(root, ruta, { ...options, token });
+  }
+}
+
+export async function vincularCuentaFacturaSmart({ registrar = false } = {}) {
+  await asegurarEsquemaIntegracion();
+  const config = await obtenerConfigInterna();
+  const root = raizFacturaSmart(config);
+  const correo = String(config?.factura_electronica_correo || config?.correo || '').trim().toLowerCase();
+  let password = '';
+  try { password = config?.factura_electronica_password ? descifrarSecreto(config.factura_electronica_password) : ''; } catch {}
+  if (!correo || !password) throw new Error('Guarda primero el correo y la contraseña de FacturaSmart.');
+  if (registrar && !String(config?.factura_electronica_telefono || '').trim()) throw new Error('Indica el teléfono antes de registrar la cuenta de FacturaSmart.');
+
+  let registro = null;
+  if (registrar) {
+    const body = {
+      nombreRazonSocial: String(config?.institucion_nombre || 'EduControl').trim(),
+      tipoIdentificacion: tipoIdentificacionFacturaSmart(config?.tipo_identificacion || '02'),
+      numeroIdentificacion: String(config?.numero_identificacion || '').trim(),
+      correo,
+      telefono: String(config?.factura_electronica_telefono || '').trim(),
+      password
+    };
+    try {
+      registro = await fetchFacturaSmart(root, '/api/v1/auth/registro', { method: 'POST', body, timeout: 30000 });
+    } catch (error) {
+      if (![400, 409].includes(Number(error?.statusCode))) throw error;
+      registro = { existente: true, detalle: error.message };
+    }
+  }
+
+  const token = await loginFacturaSmart(config, { force: true });
+  const perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 }).catch(() => null);
+  await pool.query(`UPDATE configuracion_integracion_servicios SET factura_electronica_cuenta_confirmada=TRUE WHERE id_configuracion=1`);
+  return { ok: true, registrado: Boolean(registrar && !registro?.existente), cuenta_existente: Boolean(registro?.existente), correo, url: root, perfil };
+}
+
+async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, config) {
+  if (!config?.factura_electronica_url) return { ok: false, estado: 'pendiente_endpoint' };
+  if (!config?.factura_electronica_password || !config?.factura_electronica_correo) {
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'pendiente_credenciales', error: 'Falta vincular la cuenta de FacturaSmart.' });
+    return { ok: false, estado: 'pendiente_credenciales' };
+  }
+
+  const [rows] = await pool.query(`SELECT identificador_externo, estado FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`, [Number(idCargo)]);
+  if (rows[0]?.identificador_externo && rows[0]?.estado === 'disponible') {
+    return { ok: true, id: rows[0].identificador_externo, estado: 'disponible' };
+  }
+
+  const body = {
+    id: uuidFacturaSmartCargo(idCargo),
+    fecha: payloadBase.fecha,
+    moneda: payloadBase.moneda,
+    condicionVenta: payloadBase.condicionVenta,
+    medioPago: payloadBase.medioPago,
+    tipoDocumento: 'FACTURA_ELECTRONICA',
+    emisor: {
+      nombre: payloadBase.emisor.nombre,
+      identificacion: { tipo: tipoIdentificacionFacturaSmart(payloadBase.emisor.identificacion?.tipo), numero: payloadBase.emisor.identificacion?.numero },
+      correo: payloadBase.emisor.correo
+    },
+    receptor: {
+      nombre: payloadBase.receptor.nombre,
+      identificacion: payloadBase.receptor.identificacion ? { tipo: tipoIdentificacionFacturaSmart(payloadBase.receptor.identificacion.tipo), numero: payloadBase.receptor.identificacion.numero } : null,
+      correo: payloadBase.receptor.correo
+    },
+    items: payloadBase.items,
+    totales: payloadBase.totales
+  };
+
+  try {
+    const respuesta = await consumirFacturaSmart(config, '/api/v1/facturas/procesar', { method: 'POST', body, timeout: 60000 });
+    const id = String(respuesta?.id || respuesta?.facturaId || respuesta?.factura?.id || body.id).trim();
+    const root = raizFacturaSmart(config);
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+      estado: 'disponible', identificador: id,
+      url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/pdf-bonita`,
+      mimeType: 'application/pdf', respuesta
+    });
+    return { ok: true, id, estado: 'disponible', respuesta };
+  } catch (error) {
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: error?.message || 'No se pudo procesar la factura electrónica.' });
+    return { ok: false, estado: 'error', mensaje: error?.message || 'No se pudo procesar la factura electrónica.' };
+  }
+}
+
+export async function registrarPagoBankyFacturaSmart(idCargo, payload = {}) {
+  const config = await obtenerConfigInterna().catch(() => null);
+  if (!config?.factura_electronica_url || !config?.factura_electronica_password) return { ok: false, omitido: true };
+  const [rows] = await pool.query(`SELECT identificador_externo FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' AND estado='disponible' LIMIT 1`, [Number(idCargo)]);
+  const id = String(rows[0]?.identificador_externo || '').trim();
+  if (!id) return { ok: false, pendiente: true };
+  const body = {
+    status: String(payload?.status || 'completed').toLowerCase(),
+    transactionCode: String(payload?.transactionCode || payload?.transaction_code || '').trim(),
+    cardBrand: payload?.cardBrand || payload?.card_brand || null,
+    cardLastFourDigits: payload?.cardLastFourDigits || payload?.card_last_four_digits || payload?.last4 || null,
+    cardholderName: payload?.cardholderName || payload?.cardholder_name || null
+  };
+  if (!body.transactionCode) return { ok: false, omitido: true };
+  try {
+    const respuesta = await consumirFacturaSmart(config, `/api/v1/facturas/${encodeURIComponent(id)}/pago-banky`, { method: 'POST', body, timeout: 30000 });
+    return { ok: true, id, respuesta };
+  } catch (error) {
+    console.warn(`FacturaSmart: no se pudo registrar Banky para cargo ${idCargo}:`, error?.message || error);
+    return { ok: false, id, mensaje: error?.message || 'No se pudo registrar el pago Banky.' };
+  }
 }
 
 async function verificarFacturaRemota(idFactura) {
@@ -508,14 +731,28 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       const configExistente = await obtenerConfigInterna().catch(() => null);
       const rootExistente = configExistente ? raizFacturaBonita(configExistente) : obtenerRaizFacturacion();
       await registrarDocumentosIntegracionInicial(idCargo, existente[0].id_factura_externa, rootExistente, configExistente).catch(() => {});
-      return {
-        ok: true,
-        estado: existente[0].estado_factura,
-        id_factura: existente[0].id_factura_externa,
-        mensaje: estadoRemoto === true
-          ? "El cargo ya fue facturado."
-          : "La factura ya está registrada localmente; se conserva mientras el servicio remoto vuelve a responder."
-      };
+      const [[docElectronico]] = await pool.query(
+        `SELECT estado FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`,
+        [Number(idCargo)]
+      );
+      const requiereElectronica = Boolean(
+        configExistente?.factura_electronica_url &&
+        configExistente?.factura_electronica_password &&
+        String(docElectronico?.estado || '') !== 'disponible'
+      );
+      if (!requiereElectronica) {
+        return {
+          ok: true,
+          estado: existente[0].estado_factura,
+          id_factura: existente[0].id_factura_externa,
+          mensaje: estadoRemoto === true
+            ? "El cargo ya fue facturado."
+            : "La factura ya está registrada localmente; se conserva mientras el servicio remoto vuelve a responder."
+        };
+      }
+      // Si la factura visual ya existe pero la electrónica quedó pendiente,
+      // continuamos. Factura Bonita es idempotente por cargo y devolverá la misma
+      // factura visual; después se procesa FacturaSmart sin duplicar el comprobante.
     }
 
     // La base de EduControl conserva el identificador, pero la factura ya no existe
@@ -693,12 +930,14 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       null
     );
     await registrarDocumentosIntegracionInicial(idCargo, respuesta.id, apiRoot, configGuardada);
+    const facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada).catch((error) => ({ ok: false, estado: 'error', mensaje: error?.message }));
 
     return {
       ok: true,
       estado: "generada",
       id_factura: respuesta.id,
       factura: respuesta,
+      factura_electronica: facturaElectronica,
       servicio: apiRoot
     };
   } catch (error) {
@@ -926,14 +1165,16 @@ export async function obtenerEstadoServiciosFacturacion() {
     documentos: { ...documentos, url: documentosRoot },
     banco,
     firma_digital: pendiente(config?.firma_digital_url, 'Firma Digital'),
-    factura_electronica: pendiente(config?.factura_electronica_url, 'Facturación Electrónica'),
+    factura_electronica: config?.factura_electronica_url
+      ? { configurado: true, disponible: Boolean(config?.factura_electronica_cuenta_confirmada && config?.factura_electronica_password), estado: config?.factura_electronica_cuenta_confirmada ? 'vinculado' : 'pendiente_cuenta', url: config.factura_electronica_url, cuenta_vinculada: Boolean(config?.factura_electronica_cuenta_confirmada), detalle: config?.factura_electronica_cuenta_confirmada ? 'FacturaSmart está vinculada y lista para procesar facturas electrónicas.' : 'Guarda las credenciales y vincula la cuenta de FacturaSmart.' }
+      : pendiente(null, 'Facturación Electrónica'),
     tributacion: pendiente(config?.tributacion_url, 'Tributación'),
     flujo: {
       listo_actual: Boolean(facturacion.disponible && config?.factura_bonita_api_key && banco.listo_cobro),
       listo_completo: Boolean(
         facturacion.disponible && config?.factura_bonita_api_key &&
         banco.listo_cobro &&
-        config?.firma_digital_url && config?.factura_electronica_url && config?.tributacion_url
+        config?.firma_digital_url && config?.factura_electronica_url && config?.factura_electronica_cuenta_confirmada && config?.tributacion_url
       )
     }
   };
@@ -1218,12 +1459,24 @@ async function registrarDocumentosIntegracionInicial(idCargo, idFactura, apiRoot
     url: `${String(apiRoot || '').replace(/\/$/, '')}/api/documentos/facturas/${encodeURIComponent(idFactura)}?formato=pdf&plantilla=auto`,
     mimeType: 'application/pdf'
   });
-  await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
-    estado: config?.factura_electronica_url ? 'pendiente_contrato' : 'pendiente_endpoint'
-  });
-  await upsertDocumentoIntegrado(idCargo, 'acuse', {
-    estado: config?.tributacion_url ? 'pendiente_contrato' : 'pendiente_endpoint'
-  });
+
+  const [existentes] = await pool.query(
+    `SELECT tipo FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo IN ('factura_electronica','acuse')`,
+    [Number(idCargo)]
+  );
+  const tipos = new Set(existentes.map((r) => r.tipo));
+  if (!tipos.has('factura_electronica')) {
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+      estado: config?.factura_electronica_url
+        ? (config?.factura_electronica_password ? 'pendiente_procesar' : 'pendiente_credenciales')
+        : 'pendiente_endpoint'
+    });
+  }
+  if (!tipos.has('acuse')) {
+    await upsertDocumentoIntegrado(idCargo, 'acuse', {
+      estado: config?.tributacion_url ? 'pendiente_contrato' : 'pendiente_endpoint'
+    });
+  }
 }
 
 export async function obtenerDocumentosIntegrados(idCargo) {

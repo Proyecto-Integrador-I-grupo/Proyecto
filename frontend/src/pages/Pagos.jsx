@@ -490,6 +490,25 @@ export default function Pagos() {
                     </div>
                   </article>
 
+                  <article className="integration-service-card invoice-service electronic-service">
+                    <div className="integration-card-head">
+                      <span className="integration-row-icon"><i className="bi bi-filetype-xml"></i></span>
+                      <div><small>FACTURA ELECTRÓNICA</small><strong>FacturaSmart</strong></div>
+                      <span id="fin-service-electronica-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    </div>
+                    <p id="fin-service-electronica-detail" className="integration-card-detail">Configura y vincula la cuenta del grupo para emitir XML y factura electrónica.</p>
+                    <div className="row g-2">
+                      <div className="col-12"><label className="form-label">URL de FacturaSmart</label><input id="fin-config-electronica-url" className="form-control" defaultValue="https://proyecto-facturaci-n-electr-nica.onrender.com" /></div>
+                      <div className="col-md-5"><label className="form-label">Correo de la cuenta</label><input id="fin-config-electronica-correo" type="email" className="form-control" autoComplete="username" placeholder="correo del grupo" /></div>
+                      <div className="col-md-3"><label className="form-label">Teléfono</label><input id="fin-config-electronica-telefono" className="form-control" maxLength="40" placeholder="88888888" /></div>
+                      <div className="col-md-4"><label className="form-label">Contraseña</label><input id="fin-config-electronica-password" type="password" className="form-control" autoComplete="new-password" placeholder="Guardada · escribe solo para reemplazar" /></div>
+                    </div>
+                    <div className="integration-card-footer">
+                      <div className="d-flex gap-2 flex-wrap"><button id="fin-facturasmart-vincular" type="button" className="btn btn-primary"><i className="bi bi-link-45deg"></i> Vincular cuenta</button><button id="fin-facturasmart-registrar" type="button" className="btn btn-outline-primary"><i className="bi bi-person-plus"></i> Registrar y vincular</button><a className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com/swagger-ui/index.html" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Swagger</a></div>
+                      <small>El token Bearer se obtiene automáticamente en el backend y no se expone al navegador.</small>
+                    </div>
+                  </article>
+
                   <article className="integration-service-card bank-service">
                     <div className="integration-card-head">
                       <span className="integration-row-icon bank"><i className="bi bi-credit-card"></i></span>
@@ -512,10 +531,9 @@ export default function Pagos() {
               <div className="tab-pane fade" id="fin-pane-futuros" role="tabpanel" aria-labelledby="fin-tab-futuros" tabIndex="0">
                 <div className="integration-future-grid">
                   <article className="integration-future-card"><div className="integration-future-head"><span><i className="bi bi-pen"></i></span><div><strong>Firma Digital</strong><small id="fin-service-firma-detail">Pendiente de endpoint.</small></div><span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span></div><label className="form-label">Endpoint</label><input id="fin-config-firma-url" className="form-control" placeholder="Se configurará cuando el equipo entregue el endpoint" /></article>
-                  <article className="integration-future-card"><div className="integration-future-head"><span><i className="bi bi-filetype-xml"></i></span><div><strong>Facturación Electrónica</strong><small id="fin-service-electronica-detail">Pendiente de endpoint.</small></div><span id="fin-service-electronica-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span></div><label className="form-label">Endpoint</label><input id="fin-config-electronica-url" className="form-control" placeholder="Se configurará cuando el equipo entregue el endpoint" /></article>
                   <article className="integration-future-card"><div className="integration-future-head"><span><i className="bi bi-bank2"></i></span><div><strong>Tributación</strong><small id="fin-service-tributacion-detail">Pendiente de endpoint.</small></div><span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span></div><label className="form-label">Endpoint</label><input id="fin-config-tributacion-url" className="form-control" placeholder="Se configurará cuando el equipo entregue el endpoint" /></article>
                 </div>
-                <div className="integration-tab-note"><i className="bi bi-info-circle"></i> Estos servicios permanecen preparados, pero no se simulan hasta recibir sus contratos REST/JSON reales.</div>
+                <div className="integration-tab-note"><i className="bi bi-info-circle"></i> Firma Digital y Tributación continúan preparadas para conectarse cuando sus equipos entreguen los contratos REST/JSON definitivos.</div>
               </div>
 
               <div className="tab-pane fade" id="fin-pane-emisor" role="tabpanel" aria-labelledby="fin-tab-emisor" tabIndex="0">

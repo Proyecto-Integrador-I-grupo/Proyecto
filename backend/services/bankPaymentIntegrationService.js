@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import pool from '../config/database.js';
 import { registrarPago } from './finanzaService.js';
-import { obtenerConfiguracionInternaIntegraciones } from './facturacionIntegrationService.js';
+import { obtenerConfiguracionInternaIntegraciones, registrarPagoBankyFacturaSmart } from './facturacionIntegrationService.js';
 
 const DEFAULT_BANK_CHECKOUT_URL = 'https://bankyfinanzas.netlify.app/checkout';
 const BANK_CHANNEL = 'bankyfinanzas:checkout';
@@ -162,6 +162,25 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
 
+  // Cada cobro se identifica también por responsable/estudiante. El datáfono puede
+  // usar estos valores para no reutilizar una tarjeta guardada de otro cliente.
+  // Los flags de sesión fresca son compatibles hacia atrás: si el proveedor no los
+  // reconoce, simplemente los ignora.
+  const responsable = datos?.responsable && typeof datos.responsable === 'object' ? datos.responsable : {};
+  const customerKey = clean(
+    responsable.numero_identificacion || responsable.correo || `estudiante-${cargo.id_estudiante}`,
+    120
+  );
+  checkout.searchParams.set('customerId', customerKey);
+  checkout.searchParams.set('customerReference', customerKey);
+  checkout.searchParams.set('customerName', clean(responsable.nombre || cargo.estudiante_nombre, 160));
+  if (responsable.correo) checkout.searchParams.set('customerEmail', clean(responsable.correo, 180));
+  if (responsable.numero_identificacion) checkout.searchParams.set('customerDocument', clean(responsable.numero_identificacion, 60));
+  checkout.searchParams.set('freshCheckout', '1');
+  checkout.searchParams.set('forceCardEntry', '1');
+  checkout.searchParams.set('rememberCard', 'false');
+  checkout.searchParams.set('checkoutSession', token);
+
   return {
     token,
     checkoutUrl: checkout.toString(),
@@ -170,7 +189,8 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
     moneda: 'CRC',
     expectedOrigin: bankOrigin(checkoutUrl),
     channel: BANK_CHANNEL,
-    expiresAt: expiry.toISOString()
+    expiresAt: expiry.toISOString(),
+    customerKey
   };
 }
 
@@ -298,6 +318,14 @@ export async function confirmarPagoBanco(idCargo, datos, idUsuario) {
     [transactionCode, paymentId, externalIntentId, JSON.stringify(verified), intent.id_intento]
   );
 
+  // Si FacturaSmart ya generó la factura electrónica, asociamos el resultado real
+  // de Banky. Un fallo aquí no revierte el pago de EduControl.
+  const facturaSmartPago = await registrarPagoBankyFacturaSmart(cargoId, {
+    ...verified,
+    status: 'completed',
+    transactionCode
+  }).catch((error) => ({ ok: false, mensaje: error?.message }));
+
   return {
     ...resultado,
     banco: {
@@ -306,7 +334,8 @@ export async function confirmarPagoBanco(idCargo, datos, idUsuario) {
       transactionCode,
       paymentId,
       channel: BANK_CHANNEL
-    }
+    },
+    factura_smart_pago: facturaSmartPago
   };
 }
 

@@ -24,6 +24,7 @@ let horarioData = { horarios: [], profesores: [], grupos: [], periodos: [], alca
 let editorBloques = [];
 let editorCeldas = new Map();
 let editorGrupoId = 0;
+let editorDirty = false;
 const EDITOR_SLOT_MINUTES = 30;
 let resizeTimer = null;
 
@@ -92,6 +93,7 @@ function wireHorarioEvents() {
   const editorClose = document.getElementById('horarios-editor-close');
   const editorGrupo = document.getElementById('horarios-editor-grupo');
   const editorGuardar = document.getElementById('horarios-editor-guardar');
+  const editorEliminarTodo = document.getElementById('horarios-editor-eliminar-todo');
   const editorWeek = document.getElementById('horarios-editor-week');
 
   [professor, group, period].forEach((el) => {
@@ -121,7 +123,12 @@ function wireHorarioEvents() {
       refresh.disabled = true;
       refresh.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span><span>Actualizando...</span>';
       try {
-        await loadHorarios();
+        const editorAbierto = !document.getElementById('horarios-editor-card')?.classList.contains('hidden');
+        if (editorAbierto && editorGrupoId && editorDirty) {
+          await guardarEditorGrupo();
+        } else {
+          await loadHorarios();
+        }
         showToast('Horarios actualizados.', 'success');
       } finally {
         refresh.disabled = false;
@@ -159,6 +166,11 @@ function wireHorarioEvents() {
     editorGuardar.addEventListener('click', guardarEditorGrupo);
   }
 
+  if (editorEliminarTodo && editorEliminarTodo.dataset.wired !== '1') {
+    editorEliminarTodo.dataset.wired = '1';
+    editorEliminarTodo.addEventListener('click', eliminarTodoHorarioGrupo);
+  }
+
   if (editorWeek && editorWeek.dataset.wired !== '1') {
     editorWeek.dataset.wired = '1';
     editorWeek.addEventListener('change', (event) => {
@@ -169,6 +181,7 @@ function wireHorarioEvents() {
       if (!key) return;
       if (materia) editorCeldas.set(key, materia);
       else editorCeldas.delete(key);
+      editorDirty = true;
       renderEditorCoverage();
       select.classList.toggle('has-subject', Boolean(materia));
     });
@@ -432,6 +445,7 @@ async function cargarEditorGrupo(idGrupo) {
   editorGrupoId = Number(idGrupo || 0);
   editorBloques = [];
   editorCeldas = new Map();
+  editorDirty = false;
   const controls = document.getElementById('horarios-editor-controls');
   const coverage = document.getElementById('horarios-editor-coverage');
   const actions = document.getElementById('horarios-editor-actions');
@@ -478,6 +492,7 @@ async function cargarEditorGrupo(idGrupo) {
       materia: String(b.materia || '').trim()
     })) : [];
     editorCeldas = expandirBloquesACeldas(grupo, editorBloques);
+    editorDirty = false;
     renderEditorHorario();
   } catch (error) {
     showToast(error.message || 'No se pudo cargar el horario del grupo.', 'error');
@@ -546,7 +561,6 @@ async function guardarEditorGrupo() {
   const grupo = getEditorGrupo();
   if (!grupo) return showToast('Selecciona un grupo.', 'error');
   const bloques = compilarCeldasABloques(grupo);
-  if (!bloques.length) return showToast('Selecciona al menos una materia en el horario antes de guardar.', 'error');
   const btn = document.getElementById('horarios-editor-guardar');
   const original = btn?.innerHTML;
   if (btn) {
@@ -562,7 +576,8 @@ async function guardarEditorGrupo() {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || json.mensaje || 'No se pudo guardar el horario.');
     editorBloques = bloques;
-    showToast(`Horario guardado: ${bloques.length} bloque${bloques.length === 1 ? '' : 's'} académico${bloques.length === 1 ? '' : 's'}.`, 'success');
+    editorDirty = false;
+    showToast(bloques.length ? `Horario guardado: ${bloques.length} bloque${bloques.length === 1 ? '' : 's'} académico${bloques.length === 1 ? '' : 's'}.` : 'Horario vaciado correctamente.', 'success');
 
     // Conservar la selección del usuario y refrescar inmediatamente la agenda docente.
     const profesorActual = document.getElementById('horarios-profesor-filter')?.value || '';
@@ -592,6 +607,20 @@ async function guardarEditorGrupo() {
       btn.innerHTML = original;
     }
   }
+}
+
+async function eliminarTodoHorarioGrupo() {
+  const grupo = getEditorGrupo();
+  if (!grupo) return showToast('Selecciona un grupo.', 'error');
+  if (!editorCeldas.size && !editorBloques.length) {
+    return showToast('Este grupo ya no tiene materias programadas.', 'info');
+  }
+  if (!window.confirm(`¿Eliminar todo el horario académico de ${grupo.nombre_grupo}? Esta acción vaciará todas las materias programadas del grupo.`)) return;
+
+  editorCeldas = new Map();
+  editorDirty = true;
+  renderEditorHorario();
+  await guardarEditorGrupo();
 }
 
 function getFilteredRows() {

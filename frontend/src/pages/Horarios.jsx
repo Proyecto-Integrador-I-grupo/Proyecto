@@ -109,9 +109,14 @@ export default function Horarios() {
 
                 <div id="horarios-editor-actions" className="schedule-editor-actions hidden">
                   <span className="small text-muted">Los cambios se aplican al horario del grupo al guardar. Los profesores verán únicamente los bloques de su materia.</span>
-                  <button type="button" id="horarios-editor-guardar" className="btn btn-primary">
-                    <i className="bi bi-check2-circle me-1"></i> Guardar horario
-                  </button>
+                  <div className="d-flex gap-2 flex-wrap justify-content-end">
+                    <button type="button" id="horarios-editor-eliminar-todo" className="btn btn-outline-danger">
+                      <i className="bi bi-trash3 me-1"></i> Eliminar todo
+                    </button>
+                    <button type="button" id="horarios-editor-guardar" className="btn btn-primary">
+                      <i className="bi bi-check2-circle me-1"></i> Guardar cambios
+                    </button>
+                  </div>
                 </div>
               </div>
 

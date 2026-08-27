@@ -902,3 +902,536 @@ body.theme-dark #usuarios-view .table-hover > tbody > tr:hover > * {
     min-height: 220px !important;
   }
 }
+
+
+/* ------------------------------------------------------------------
+   Horarios v2: compactar, dar mejor jerarquía visual y evitar vacíos
+   ------------------------------------------------------------------ */
+#modalHorarios .schedule-modal-workspace {
+  padding: 1rem !important;
+  background:
+    radial-gradient(circle at top right, rgba(91, 160, 224, .12), transparent 24%),
+    linear-gradient(180deg, #f6faff 0%, #eff5fb 100%) !important;
+}
+
+#modalHorarios .schedule-filter-card {
+  position: relative;
+  overflow: hidden;
+}
+
+#modalHorarios .schedule-filter-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #2f68df 0%, #1b9aaa 100%);
+}
+
+#modalHorarios .schedule-section-head {
+  padding-left: .35rem;
+}
+
+#modalHorarios .schedule-filter-grid {
+  align-items: end !important;
+}
+
+#modalHorarios .schedule-filter-field .form-select {
+  background-color: #fbfdff !important;
+}
+
+#modalHorarios .schedule-stat-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #d8e5f0 !important;
+}
+
+#modalHorarios .schedule-stat-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(47,104,223,.92), rgba(27,154,170,.92));
+}
+
+#modalHorarios .schedule-stat-card:nth-child(1) {
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%) !important;
+}
+
+#modalHorarios .schedule-stat-card:nth-child(2) {
+  background: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%) !important;
+}
+
+#modalHorarios .schedule-stat-card:nth-child(3) {
+  background: linear-gradient(180deg, #ffffff 0%, #f6fffb 100%) !important;
+}
+
+#modalHorarios .schedule-stat-card:nth-child(4) {
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf2 100%) !important;
+}
+
+#modalHorarios .schedule-board-card {
+  overflow: hidden;
+}
+
+#modalHorarios .schedule-board-heading {
+  padding-bottom: .95rem;
+  margin-bottom: 1rem !important;
+  border-bottom: 1px solid #e2edf6;
+}
+
+#modalHorarios .schedule-board-heading > div:first-child {
+  padding-right: .75rem;
+}
+
+#modalHorarios .schedule-board-heading h3 {
+  font-size: 1.55rem !important;
+  line-height: 1.1;
+}
+
+#modalHorarios .schedule-board-heading p {
+  max-width: 760px;
+}
+
+#modalHorarios .schedule-legend {
+  box-shadow: inset 0 0 0 1px rgba(220, 232, 242, .7);
+}
+
+#modalHorarios .schedule-board {
+  min-height: 0 !important;
+  padding: 1rem !important;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f9fcff 0%, #f2f7fc 100%);
+  border: 1px dashed #cfe0ee;
+}
+
+#modalHorarios .schedule-board > .schedule-empty-state {
+  max-width: 880px;
+  margin: .35rem auto;
+}
+
+#modalHorarios .schedule-empty-state {
+  min-height: 235px !important;
+  padding: 1.8rem 1.25rem !important;
+  background: #fff !important;
+  border: 1px solid #dbe7f1 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 14px 30px rgba(22, 56, 89, .05);
+}
+
+#modalHorarios .schedule-empty-state > i,
+#modalHorarios .schedule-empty-state > .spinner-border {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #eef6ff 0%, #e7f5fb 100%);
+  border: 1px solid #d4e5f2;
+  box-shadow: 0 10px 24px rgba(44, 98, 154, .10);
+}
+
+#modalHorarios .schedule-empty-state strong {
+  font-size: 1.35rem !important;
+  max-width: 720px;
+}
+
+#modalHorarios .schedule-empty-state span {
+  max-width: 720px;
+  font-size: .98rem !important;
+}
+
+#modalHorarios .schedule-empty-tips {
+  gap: .65rem;
+  margin-top: .85rem;
+}
+
+#modalHorarios .schedule-empty-tips li {
+  padding: .62rem .95rem;
+  background: linear-gradient(180deg, #f9fcff 0%, #f1f7fc 100%);
+  border-color: #d6e6f2;
+  color: #476278;
+}
+
+#modalHorarios .schedule-day-empty {
+  display: grid;
+  place-items: center;
+  min-height: 82px;
+  border-radius: 14px;
+  border: 1px dashed #d5e3ee;
+  background: #f8fbff;
+  color: #6b8093;
+  font-weight: 600;
+}
+
+#modalHorarios .schedule-agenda-day {
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(18, 55, 86, .06);
+}
+
+#modalHorarios .schedule-agenda-day > header {
+  padding: .9rem 1rem;
+  border-bottom: 1px solid #e3eef6;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+}
+
+#modalHorarios .schedule-agenda-day > header span {
+  color: #183a5b;
+  font-weight: 800;
+}
+
+#modalHorarios .schedule-agenda-day > header small {
+  color: #6c8295;
+  font-weight: 700;
+}
+
+#modalHorarios .schedule-agenda-list {
+  padding: .85rem;
+}
+
+#modalHorarios .schedule-class-card,
+#modalHorarios .schedule-timeline-event {
+  border-radius: 15px !important;
+  border: 1px solid #d9e7f2 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 6px 18px rgba(17, 54, 84, .06);
+}
+
+#modalHorarios .schedule-class-card strong,
+#modalHorarios .schedule-timeline-event strong {
+  color: #173b5c;
+}
+
+#modalHorarios .schedule-class-time,
+#modalHorarios .schedule-event-time {
+  color: #346892 !important;
+  font-weight: 800;
+}
+
+#modalHorarios .schedule-modal-footer {
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f8fc 100%);
+}
+
+@media (max-width: 991.98px) {
+  #modalHorarios .schedule-board-heading h3 {
+    font-size: 1.35rem !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  #modalHorarios .schedule-empty-state {
+    min-height: 200px !important;
+    padding: 1.25rem 1rem !important;
+  }
+
+  #modalHorarios .schedule-empty-state strong {
+    font-size: 1.08rem !important;
+  }
+
+  #modalHorarios .schedule-empty-state span {
+    font-size: .88rem !important;
+  }
+
+  #modalHorarios .schedule-empty-tips li {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+/* ------------------------------------------------------------------
+   Horarios v3: compacto, visible en pantalla y con salida accesible
+   ------------------------------------------------------------------ */
+#modalHorarios {
+  padding-inline: .35rem;
+}
+
+#modalHorarios .modal-dialog.modal-dialog-centered {
+  min-height: auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+
+#modalHorarios .modal-dialog {
+  width: min(1040px, calc(100vw - 16px)) !important;
+  max-width: min(1040px, calc(100vw - 16px)) !important;
+  margin: .45rem auto !important;
+}
+
+#modalHorarios .modal-content {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: calc(100vh - 14px) !important;
+  min-height: 0 !important;
+  border-radius: 22px !important;
+}
+
+#modalHorarios .schedule-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  min-height: 62px !important;
+  padding: .72rem .9rem !important;
+}
+
+#modalHorarios .schedule-modal-header .modal-title {
+  font-size: 1.02rem !important;
+}
+
+#modalHorarios .schedule-modal-kicker {
+  font-size: .66rem !important;
+  margin-bottom: .1rem !important;
+}
+
+#modalHorarios .schedule-refresh-btn {
+  min-height: 36px !important;
+  height: 36px;
+  padding: .35rem .7rem !important;
+  font-size: .78rem !important;
+}
+
+#modalHorarios .btn-close {
+  width: 34px;
+  height: 34px;
+  padding: .35rem !important;
+}
+
+#modalHorarios .schedule-modal-body {
+  flex: 1 1 auto !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+}
+
+#modalHorarios .schedule-modal-workspace {
+  padding: .8rem !important;
+}
+
+#modalHorarios .schedule-modal-intro {
+  padding: .75rem .85rem !important;
+  margin-bottom: .7rem !important;
+  gap: .7rem;
+}
+
+#modalHorarios .schedule-modal-intro strong {
+  font-size: .9rem !important;
+}
+
+#modalHorarios .schedule-modal-intro span:not(.schedule-modal-badge) {
+  font-size: .75rem !important;
+}
+
+#modalHorarios .schedule-modal-badge {
+  padding: .42rem .65rem !important;
+  font-size: .7rem !important;
+}
+
+#modalHorarios .schedule-filter-card {
+  padding: .8rem !important;
+  margin-bottom: .7rem !important;
+}
+
+#modalHorarios .schedule-section-head {
+  margin-bottom: .55rem !important;
+}
+
+#modalHorarios .schedule-section-head h6 {
+  font-size: .9rem !important;
+}
+
+#modalHorarios .schedule-section-head p {
+  font-size: .74rem !important;
+}
+
+#modalHorarios .schedule-filter-grid {
+  grid-template-columns: 1fr 1fr 1fr auto !important;
+  gap: .55rem !important;
+}
+
+#modalHorarios .schedule-filter-field > label {
+  font-size: .64rem !important;
+  margin-bottom: .22rem !important;
+}
+
+#modalHorarios .schedule-filter-field .form-select,
+#modalHorarios .schedule-filter-field .btn {
+  min-height: 38px !important;
+  height: 38px;
+  font-size: .82rem !important;
+  border-radius: 12px !important;
+}
+
+#modalHorarios .schedule-filter-action .btn {
+  min-width: 96px;
+}
+
+#modalHorarios .schedule-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: .55rem !important;
+  margin-block: .7rem !important;
+}
+
+#modalHorarios .schedule-stat-card {
+  min-height: 72px !important;
+  padding: .72rem .8rem !important;
+  gap: .65rem !important;
+  border-radius: 16px !important;
+}
+
+#modalHorarios .schedule-stat-icon {
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
+  border-radius: 12px !important;
+}
+
+#modalHorarios .schedule-stat-card small {
+  font-size: .68rem !important;
+}
+
+#modalHorarios .schedule-stat-card strong {
+  font-size: 1rem !important;
+}
+
+#modalHorarios .schedule-board-card {
+  padding: .82rem !important;
+  border-radius: 18px !important;
+}
+
+#modalHorarios .schedule-board-heading {
+  gap: .7rem !important;
+  margin-bottom: .75rem !important;
+  padding-bottom: .75rem !important;
+}
+
+#modalHorarios .schedule-board-kicker {
+  font-size: .64rem !important;
+}
+
+#modalHorarios .schedule-board-heading h3 {
+  font-size: 1.12rem !important;
+  margin-bottom: .15rem !important;
+}
+
+#modalHorarios .schedule-board-heading p {
+  font-size: .76rem !important;
+  margin-bottom: 0 !important;
+}
+
+#modalHorarios .schedule-legend {
+  padding: .45rem .7rem !important;
+  border-radius: 999px !important;
+  font-size: .72rem !important;
+  gap: .6rem !important;
+}
+
+#modalHorarios .schedule-board {
+  padding: .75rem !important;
+  border-radius: 16px !important;
+}
+
+#modalHorarios .schedule-empty-state {
+  min-height: 170px !important;
+  padding: 1rem .9rem !important;
+  gap: .35rem !important;
+  border-radius: 16px !important;
+}
+
+#modalHorarios .schedule-empty-state > i,
+#modalHorarios .schedule-empty-state > .spinner-border {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 1.2rem !important;
+}
+
+#modalHorarios .schedule-empty-state strong {
+  font-size: 1.02rem !important;
+}
+
+#modalHorarios .schedule-empty-state span {
+  font-size: .82rem !important;
+  max-width: 620px;
+}
+
+#modalHorarios .schedule-empty-tips {
+  gap: .45rem !important;
+  margin-top: .5rem !important;
+}
+
+#modalHorarios .schedule-empty-tips li {
+  padding: .45rem .7rem !important;
+  font-size: .7rem !important;
+}
+
+#modalHorarios .schedule-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  min-height: 56px !important;
+  padding: .55rem .8rem !important;
+}
+
+#modalHorarios .schedule-modal-footer .btn {
+  min-height: 36px !important;
+  padding: .35rem .8rem !important;
+  font-size: .8rem !important;
+}
+
+#modalHorarios .schedule-modal-help {
+  font-size: .72rem !important;
+}
+
+@media (max-width: 991.98px) {
+  #modalHorarios .modal-dialog {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+  }
+
+  #modalHorarios .schedule-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #modalHorarios .schedule-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  #modalHorarios .modal-dialog {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    margin: .2rem auto !important;
+  }
+
+  #modalHorarios .modal-content {
+    max-height: calc(100vh - 8px) !important;
+    border-radius: 16px !important;
+  }
+
+  #modalHorarios .schedule-modal-header {
+    padding: .65rem .72rem !important;
+  }
+
+  #modalHorarios .schedule-refresh-btn span,
+  #modalHorarios .schedule-modal-help {
+    display: none !important;
+  }
+
+  #modalHorarios .schedule-filter-grid,
+  #modalHorarios .schedule-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalHorarios .schedule-modal-intro,
+  #modalHorarios .schedule-board-heading,
+  #modalHorarios .schedule-modal-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  #modalHorarios .schedule-empty-state {
+    min-height: 150px !important;
+  }
+}

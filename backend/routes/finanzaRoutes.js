@@ -4,7 +4,7 @@ import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, getFacturas, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
   getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
-  getEstadoIntegraciones, getDocumentoFactura, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco, postVincularFacturaSmart
+  getEstadoIntegraciones, getDocumentoFactura, getDocumentoElectronico, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco, postVincularFacturaSmart
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -33,6 +33,7 @@ router.put("/pagos/:id", requirePermission("finanzas.registrar_pago"), putPago);
 router.post("/cargos/:id/facturar", requirePermission("finanzas.facturar_manual"), postFacturar);
 router.post("/cargos/:id/factura-confirmar", requirePermission("finanzas.facturar_manual"), postConfirmarFacturaCliente);
 router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
+router.get("/cargos/:id/factura-electronica", requireRole("administrador", "asistente"), getDocumentoElectronico);
 router.get("/cargos/:id/documentos-integrados", requireRole("administrador", "asistente"), getDocumentosIntegrados);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);

@@ -516,38 +516,22 @@ async function consumirFacturaSmart(config, ruta, options = {}) {
   }
 }
 
-export async function vincularCuentaFacturaSmart({ registrar = false } = {}) {
+export async function vincularCuentaFacturaSmart() {
   await asegurarEsquemaIntegracion();
   const config = await obtenerConfigInterna();
   const root = raizFacturaSmart(config);
   const correo = String(config?.factura_electronica_correo || config?.correo || '').trim().toLowerCase();
   let password = '';
   try { password = config?.factura_electronica_password ? descifrarSecreto(config.factura_electronica_password) : ''; } catch {}
-  if (!correo || !password) throw new Error('Guarda primero el correo y la contraseña de FacturaSmart.');
-  if (registrar && !String(config?.factura_electronica_telefono || '').trim()) throw new Error('Indica el teléfono antes de registrar la cuenta de FacturaSmart.');
+  if (!correo || !password) throw new Error('Primero crea o inicia sesión en el portal oficial de FacturaSmart y guarda aquí ese correo y contraseña.');
 
-  let registro = null;
-  if (registrar) {
-    const body = {
-      nombreRazonSocial: String(config?.institucion_nombre || 'EduControl').trim(),
-      tipoIdentificacion: tipoIdentificacionFacturaSmart(config?.tipo_identificacion || '02'),
-      numeroIdentificacion: String(config?.numero_identificacion || '').trim(),
-      correo,
-      telefono: String(config?.factura_electronica_telefono || '').trim(),
-      password
-    };
-    try {
-      registro = await fetchFacturaSmart(root, '/api/v1/auth/registro', { method: 'POST', body, timeout: 30000 });
-    } catch (error) {
-      if (![400, 409].includes(Number(error?.statusCode))) throw error;
-      registro = { existente: true, detalle: error.message };
-    }
-  }
-
+  // EduControl NO replica el formulario de registro de FacturaSmart. La cuenta se
+  // crea en su portal oficial; aquí únicamente comprobamos el login y persistimos
+  // que esta instalación de EduControl quedó vinculada con esa cuenta.
   const token = await loginFacturaSmart(config, { force: true });
-  const perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 }).catch(() => null);
+  const perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 });
   await pool.query(`UPDATE configuracion_integracion_servicios SET factura_electronica_cuenta_confirmada=TRUE WHERE id_configuracion=1`);
-  return { ok: true, registrado: Boolean(registrar && !registro?.existente), cuenta_existente: Boolean(registro?.existente), correo, url: root, perfil };
+  return { ok: true, correo, url: root, perfil };
 }
 
 async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, config) {
@@ -589,14 +573,66 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     const root = raizFacturaSmart(config);
     await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
       estado: 'disponible', identificador: id,
-      url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/pdf-bonita`,
-      mimeType: 'application/pdf', respuesta
+      url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
+      mimeType: 'application/xml', respuesta
+    });
+    // FacturaSmart puede generar y conservar el XML desde ahora. El acuse no se
+    // marca como error: queda expresamente pendiente hasta que exista firma digital
+    // y el flujo DGTD/Tributación esté habilitado por los otros grupos.
+    await upsertDocumentoIntegrado(idCargo, 'acuse', {
+      estado: 'pendiente_firma_dgtd',
+      identificador: id,
+      error: 'Factura electrónica generada. Firma digital y acuse DGTD pendientes de integración externa.'
     });
     return { ok: true, id, estado: 'disponible', respuesta };
   } catch (error) {
     await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: error?.message || 'No se pudo procesar la factura electrónica.' });
     return { ok: false, estado: 'error', mensaje: error?.message || 'No se pudo procesar la factura electrónica.' };
   }
+}
+
+async function fetchFacturaSmartBinario(config, ruta, timeout = 30000) {
+  const root = raizFacturaSmart(config);
+  let token = await loginFacturaSmart(config);
+  for (let intento = 0; intento < 2; intento += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(`${root}${ruta}`, {
+        headers: { Accept: '*/*', Authorization: `Bearer ${token}` },
+        signal: controller.signal
+      });
+      if (response.status === 401 && intento === 0) {
+        token = await loginFacturaSmart(config, { force: true });
+        continue;
+      }
+      if (!response.ok) throw new Error(`FacturaSmart respondió HTTP ${response.status} al consultar el documento.`);
+      const arrayBuffer = await response.arrayBuffer();
+      return {
+        buffer: Buffer.from(arrayBuffer),
+        contentType: response.headers.get('content-type') || 'application/octet-stream'
+      };
+    } finally { clearTimeout(timer); }
+  }
+  throw new Error('No se pudo autenticar la consulta del documento de FacturaSmart.');
+}
+
+export async function obtenerDocumentoElectronicoFacturaSmart(idCargo, formato = 'xml') {
+  const config = await obtenerConfigInterna();
+  if (!config?.factura_electronica_cuenta_confirmada) throw new Error('La cuenta de FacturaSmart todavía no está vinculada.');
+  const [rows] = await pool.query(
+    `SELECT identificador_externo, estado FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`,
+    [Number(idCargo)]
+  );
+  const id = String(rows[0]?.identificador_externo || '').trim();
+  if (!id || rows[0]?.estado !== 'disponible') throw new Error('La factura electrónica todavía no está disponible para este cargo.');
+  const limpio = String(formato || 'xml').toLowerCase();
+  const ruta = limpio === 'pdf' ? `/api/v1/facturas/${encodeURIComponent(id)}/pdf` : `/api/v1/facturas/${encodeURIComponent(id)}/xml`;
+  const documento = await fetchFacturaSmartBinario(config, ruta, 30000);
+  return {
+    ...documento,
+    filename: limpio === 'pdf' ? `factura-electronica-${id}.pdf` : `factura-electronica-${id}.xml`
+  };
 }
 
 export async function registrarPagoBankyFacturaSmart(idCargo, payload = {}) {
@@ -1165,9 +1201,16 @@ export async function obtenerEstadoServiciosFacturacion() {
     documentos: { ...documentos, url: documentosRoot },
     banco,
     firma_digital: pendiente(config?.firma_digital_url, 'Firma Digital'),
-    factura_electronica: config?.factura_electronica_url
-      ? { configurado: true, disponible: Boolean(config?.factura_electronica_cuenta_confirmada && config?.factura_electronica_password), estado: config?.factura_electronica_cuenta_confirmada ? 'vinculado' : 'pendiente_cuenta', url: config.factura_electronica_url, cuenta_vinculada: Boolean(config?.factura_electronica_cuenta_confirmada), detalle: config?.factura_electronica_cuenta_confirmada ? 'FacturaSmart está vinculada y lista para procesar facturas electrónicas.' : 'Guarda las credenciales y vincula la cuenta de FacturaSmart.' }
-      : pendiente(null, 'Facturación Electrónica'),
+    factura_electronica: {
+      configurado: true,
+      disponible: Boolean(config?.factura_electronica_cuenta_confirmada && config?.factura_electronica_password),
+      estado: config?.factura_electronica_cuenta_confirmada ? 'vinculado' : 'pendiente_cuenta',
+      url: raizFacturaSmart(config),
+      cuenta_vinculada: Boolean(config?.factura_electronica_cuenta_confirmada),
+      detalle: config?.factura_electronica_cuenta_confirmada
+        ? 'Cuenta oficial de FacturaSmart vinculada. Las facturas electrónicas XML se registran en el portal; firma y acuse DGTD siguen pendientes.'
+        : 'Crea o inicia sesión en el portal oficial de FacturaSmart y después vincula esa misma cuenta en EduControl.'
+    },
     tributacion: pendiente(config?.tributacion_url, 'Tributación'),
     flujo: {
       listo_actual: Boolean(facturacion.disponible && config?.factura_bonita_api_key && banco.listo_cobro),
@@ -1474,7 +1517,8 @@ async function registrarDocumentosIntegracionInicial(idCargo, idFactura, apiRoot
   }
   if (!tipos.has('acuse')) {
     await upsertDocumentoIntegrado(idCargo, 'acuse', {
-      estado: config?.tributacion_url ? 'pendiente_contrato' : 'pendiente_endpoint'
+      estado: 'pendiente_firma_dgtd',
+      error: 'Pendiente de firma digital y del flujo DGTD/Tributación.'
     });
   }
 }
@@ -1489,6 +1533,10 @@ export async function obtenerDocumentosIntegrados(idCargo) {
     [Number(idCargo)]
   );
   const mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+  if (mapa.factura_electronica?.estado === 'disponible') {
+    mapa.factura_electronica.url_xml_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=xml`;
+    mapa.factura_electronica.url_pdf_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=pdf`;
+  }
   return {
     completo: ['pdf_visual','factura_electronica','acuse'].every((tipo) => mapa[tipo]?.estado === 'disponible'),
     documentos: mapa

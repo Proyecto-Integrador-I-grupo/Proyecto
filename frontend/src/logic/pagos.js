@@ -136,8 +136,7 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
-  wire('fin-facturasmart-vincular', 'click', () => vincularFacturaSmart(false));
-  wire('fin-facturasmart-registrar', 'click', () => vincularFacturaSmart(true));
+  wire('fin-facturasmart-vincular', 'click', vincularFacturaSmart);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
@@ -1880,6 +1879,12 @@ function estadoServicioTexto(servicio, prefijo = '') {
   if (prefijo === 'banco' && servicio?.afiliado === true && servicio?.merchant_configurado === true) {
     return { texto: 'Afiliado', clase: servicio?.disponible === false ? 'configured' : 'online', icono: 'bi-building-check' };
   }
+  if (prefijo === 'electronica' && servicio?.cuenta_vinculada === true) {
+    return { texto: 'Vinculado', clase: servicio?.disponible === false ? 'configured' : 'online', icono: 'bi-filetype-xml' };
+  }
+  if (prefijo === 'electronica' && remoto === 'pendiente_cuenta') {
+    return { texto: 'Crear / vincular cuenta', clase: 'configured', icono: 'bi-person-lock' };
+  }
 
   if (!servicio?.configurado || remoto === 'pendiente_endpoint') return { texto: 'Pendiente endpoint', clase: 'pending', icono: 'bi-clock' };
   if (remoto === 'configurado_sin_contrato') return { texto: 'Endpoint recibido', clase: 'configured', icono: 'bi-link-45deg' };
@@ -2040,7 +2045,6 @@ async function cargarConfiguracion() {
     setValue('fin-config-firma-url', c.firma_digital_url || '');
     setValue('fin-config-electronica-url', c.factura_electronica_url || 'https://proyecto-facturaci-n-electr-nica.onrender.com');
     setValue('fin-config-electronica-correo', c.factura_electronica_correo || c.correo || '');
-    setValue('fin-config-electronica-telefono', c.factura_electronica_telefono || '');
     setValue('fin-config-electronica-password', '');
     const passFs = document.getElementById('fin-config-electronica-password');
     if (passFs) passFs.placeholder = c.factura_electronica_password_configurada ? 'Contraseña guardada · escribe solo para reemplazar' : 'Contraseña de FacturaSmart';
@@ -2191,31 +2195,33 @@ function quitarLogoFactura() {
   renderLogoFacturaPreview();
 }
 
-async function vincularFacturaSmart(registrar = false) {
-  const button = document.getElementById(registrar ? 'fin-facturasmart-registrar' : 'fin-facturasmart-vincular');
+async function vincularFacturaSmart() {
+  const button = document.getElementById('fin-facturasmart-vincular');
   const original = button?.innerHTML || '';
   try {
-    // Primero persistimos URL/credenciales actuales sin cerrar el modal.
     const payload = {
       institucion_nombre: value('fin-config-nombre'),
       tipo_identificacion: value('fin-config-tipo-id'),
       numero_identificacion: value('fin-config-numero-id'),
       correo: value('fin-config-correo'),
-      factura_electronica_url: value('fin-config-electronica-url'),
+      factura_electronica_url: 'https://proyecto-facturaci-n-electr-nica.onrender.com',
       factura_electronica_correo: value('fin-config-electronica-correo'),
-      factura_electronica_telefono: value('fin-config-electronica-telefono'),
       factura_electronica_password: value('fin-config-electronica-password')
     };
-    if (!payload.factura_electronica_correo) throw new Error('Indica el correo de la cuenta de FacturaSmart.');
-    if (button) { button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Vinculando…'; }
+    if (!payload.factura_electronica_correo) throw new Error('Indica el correo de la cuenta que ya creaste en FacturaSmart.');
+    if (!payload.factura_electronica_password) {
+      const configuracion = await requestJson('/api/finanzas/configuracion');
+      if (!configuracion?.factura_electronica_password_configurada) throw new Error('Indica la contraseña de la cuenta de FacturaSmart.');
+    }
+    if (button) { button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando cuenta…'; }
     await requestJson('/api/finanzas/configuracion', { method: 'PUT', body: JSON.stringify(payload) });
-    const data = await requestJson('/api/finanzas/integraciones/facturasmart/vincular', { method: 'POST', body: JSON.stringify({ registrar }) , timeout: 65000 });
+    const data = await requestJson('/api/finanzas/integraciones/facturasmart/vincular', { method: 'POST', body: '{}', timeout: 65000 });
     setValue('fin-config-electronica-password', '');
-    showToast(data?.cuenta_existente ? 'La cuenta ya existía y quedó vinculada correctamente.' : (registrar ? 'Cuenta FacturaSmart registrada y vinculada.' : 'Cuenta FacturaSmart vinculada correctamente.'), 'success');
+    showToast(`Cuenta FacturaSmart vinculada${data?.perfil?.nombreRazonSocial ? `: ${data.perfil.nombreRazonSocial}` : ''}. Las nuevas facturas electrónicas quedarán registradas en ese portal.`, 'success');
     await cargarConfiguracion();
     await cargarEstadoIntegraciones(true);
   } catch (error) {
-    showToast(error?.message || 'No se pudo vincular FacturaSmart.', 'error');
+    showToast(error?.message || 'No se pudo iniciar sesión con la cuenta de FacturaSmart.', 'error');
   } finally {
     if (button?.isConnected) { button.disabled = false; button.innerHTML = original; }
   }
@@ -2244,7 +2250,6 @@ async function guardarConfiguracion(event) {
       firma_digital_url: value('fin-config-firma-url'),
       factura_electronica_url: value('fin-config-electronica-url'),
       factura_electronica_correo: value('fin-config-electronica-correo'),
-      factura_electronica_telefono: value('fin-config-electronica-telefono'),
       factura_electronica_password: value('fin-config-electronica-password'),
       tributacion_url: value('fin-config-tributacion-url')
     };

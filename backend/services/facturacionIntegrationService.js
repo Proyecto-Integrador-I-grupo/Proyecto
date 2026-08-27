@@ -475,6 +475,15 @@ function tipoIdentificacionFacturaSmart(tipo) {
   return mapa[limpio] || (['CEDULA_FISICA','CEDULA_JURIDICA','DIMEX','NITE'].includes(limpio) ? limpio : 'CEDULA_FISICA');
 }
 
+function fechaFacturaSmart(valor) {
+  const fecha = valor ? new Date(valor) : new Date();
+  const valida = Number.isNaN(fecha.getTime()) ? new Date() : fecha;
+  // El contrato publicado por FacturaSmart usa LocalDateTime (sin Z/offset).
+  // Enviar Date#toISOString() directamente agrega `Z` y puede ser rechazado
+  // antes de que la factura llegue a registrarse en su portal.
+  return valida.toISOString().replace(/\.\d{3}Z$/, '');
+}
+
 async function fetchFacturaSmart(root, ruta, { method = 'GET', body = null, token = null, timeout = 30000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -574,7 +583,7 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
 
   const body = {
     id: uuidFacturaSmartCargo(idCargo),
-    fecha: payloadBase.fecha,
+    fecha: fechaFacturaSmart(payloadBase.fecha),
     moneda: payloadBase.moneda,
     condicionVenta: payloadBase.condicionVenta,
     medioPago: payloadBase.medioPago,
@@ -776,6 +785,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     `SELECT
        c.id_cargo, c.descripcion, c.monto_base, c.descuento, c.impuesto, c.total, c.saldo, c.estado,
        COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS total_pagado,
+       (SELECT pg2.metodo_pago FROM pago pg2 WHERE pg2.id_cargo = c.id_cargo AND pg2.estado = 'aplicado' ORDER BY pg2.fecha_pago DESC, pg2.id_pago DESC LIMIT 1) AS ultimo_metodo_pago,
        ce.impuesto_tarifa,
        e.id_estudiante,
        p.nombre, p.apellido1, p.apellido2,
@@ -861,14 +871,16 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       // factura visual; después se procesa FacturaSmart sin duplicar el comprobante.
     }
 
-    // La base de EduControl conserva el identificador, pero la factura ya no existe
-    // en Factura Bonita (por ejemplo, después de reiniciar/restaurar su base).
-    // Se limpia únicamente el vínculo externo para volver a crearla de forma segura.
-    await pool.query(
-      `UPDATE factura_cargo SET id_factura_externa = NULL, estado_factura = 'pendiente_recrear', url_documento = NULL, error_mensaje = 'La factura remota dejó de existir; se conservará el historial local y se recreará de forma idempotente.', fecha_actualizacion = NOW() WHERE id_cargo = ?`,
-      [idCargo]
-    );
-    cacheDocumentosFactura.clear();
+    if (estadoRemoto === false) {
+      // La base de EduControl conserva el identificador, pero la factura ya no existe
+      // en Factura Bonita (por ejemplo, después de reiniciar/restaurar su base).
+      // Se limpia únicamente el vínculo externo para volver a crearla de forma segura.
+      await pool.query(
+        `UPDATE factura_cargo SET id_factura_externa = NULL, estado_factura = 'pendiente_recrear', url_documento = NULL, error_mensaje = 'La factura remota dejó de existir; se conservará el historial local y se recreará de forma idempotente.', fecha_actualizacion = NOW() WHERE id_cargo = ?`,
+        [idCargo]
+      );
+      cacheDocumentosFactura.clear();
+    }
   }
 
   // Factura Bonita ya garantiza idempotencia con origen + referenciaExterna.
@@ -974,7 +986,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     fecha: new Date().toISOString(),
     moneda: config.moneda || "CRC",
     condicionVenta: config.condicion_venta || "01",
-    medioPago: bonificacionTotal ? "99" : (METODOS_FACTURA[String(metodoPago || "otro").toLowerCase()] || "99"),
+    medioPago: bonificacionTotal ? "99" : (METODOS_FACTURA[String((metodoPago && metodoPago !== 'otro') ? metodoPago : (cargo.ultimo_metodo_pago || 'otro')).toLowerCase()] || "99"),
     emisor: {
       nombre: config.institucion_nombre,
       identificacion: {
@@ -1595,14 +1607,35 @@ async function registrarDocumentosIntegracionInicial(idCargo, idFactura, apiRoot
 
 export async function obtenerDocumentosIntegrados(idCargo) {
   await asegurarEsquemaIntegracion();
-  const [rows] = await pool.query(
+  const cargoId = Number(idCargo);
+  let [rows] = await pool.query(
     `SELECT tipo, estado, identificador_externo, url_documento, mime_type, error_mensaje, fecha_actualizacion
        FROM documento_facturacion_integrada
       WHERE id_cargo=?
       ORDER BY FIELD(tipo,'pdf_visual','factura_electronica','acuse')`,
-    [Number(idCargo)]
+    [cargoId]
   );
-  const mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+  let mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+
+  // Si el PDF ya existe pero la electrónica falló o quedó pendiente, el simple
+  // hecho de consultar la sección de Facturación dispara un único reintento.
+  // Esto recupera cargos ya pagados después de corregir/configurar FacturaSmart,
+  // sin obligar al usuario a volver a cobrar ni a generar otro comprobante visual.
+  const estadoXml = String(mapa.factura_electronica?.estado || '');
+  if (['pendiente_procesar', 'pendiente_credenciales', 'error'].includes(estadoXml)) {
+    const [[vinculo]] = await pool.query(`SELECT id_factura_externa FROM factura_cargo WHERE id_cargo=? LIMIT 1`, [cargoId]);
+    if (vinculo?.id_factura_externa) {
+      await generarFacturaDeCargo(cargoId, 'otro').catch(() => null);
+      [rows] = await pool.query(
+        `SELECT tipo, estado, identificador_externo, url_documento, mime_type, error_mensaje, fecha_actualizacion
+           FROM documento_facturacion_integrada
+          WHERE id_cargo=?
+          ORDER BY FIELD(tipo,'pdf_visual','factura_electronica','acuse')`,
+        [cargoId]
+      );
+      mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+    }
+  }
   if (['disponible','remoto_disponible'].includes(String(mapa.factura_electronica?.estado || ''))) {
     mapa.factura_electronica.url_xml_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=xml`;
     mapa.factura_electronica.url_pdf_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=pdf`;

@@ -1070,6 +1070,7 @@ function renderFacturacion() {
     const docs = documentosIntegradosPorCargo.get(Number(c.id_cargo)) || {};
     const xmlEstado = String(docs.factura_electronica?.estado || '').toLowerCase();
     const xmlDisponible = ['disponible', 'remoto_disponible'].includes(xmlEstado);
+    const xmlDetalle = String(docs.factura_electronica?.error_mensaje || 'Factura electrónica todavía en procesamiento');
     const acuseDisponible = String(docs.acuse?.estado || '').toLowerCase() === 'disponible';
 
     const acciones = tieneFactura
@@ -1079,7 +1080,7 @@ function renderFacturacion() {
            </button>
            ${xmlDisponible
              ? `<button class="btn btn-sm btn-outline-primary" data-fin-documento-electronico="${c.id_cargo}" title="Abrir factura electrónica XML recibida por EduControl"><i class="bi bi-filetype-xml"></i> XML</button>`
-             : `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Factura electrónica todavía en procesamiento"><i class="bi bi-filetype-xml"></i> XML pendiente</button>`}
+             : `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="${esc(xmlDetalle)}"><i class="bi bi-filetype-xml"></i> XML pendiente</button>`}
            ${acuseDisponible
              ? `<span class="badge rounded-pill text-bg-success"><i class="bi bi-patch-check me-1"></i>Acuse disponible</span>`
              : `<span class="badge rounded-pill text-bg-light border text-muted"><i class="bi bi-hourglass-split me-1"></i>Acuse pendiente</span>`}

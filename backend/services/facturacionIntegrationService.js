@@ -587,6 +587,7 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     moneda: payloadBase.moneda,
     condicionVenta: payloadBase.condicionVenta,
     medioPago: payloadBase.medioPago,
+    estadoPago: String(payloadBase.estadoPago || "").trim().toUpperCase() || undefined,
     tipoDocumento: 'FACTURA_ELECTRONICA',
     emisor: {
       nombre: payloadBase.emisor.nombre,
@@ -1066,6 +1067,7 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     moneda: config.moneda || "CRC",
     condicionVenta: config.condicion_venta || "01",
     medioPago: bonificacionTotal ? "99" : (METODOS_FACTURA[String((metodoPago && metodoPago !== 'otro') ? metodoPago : (cargo.ultimo_metodo_pago || 'otro')).toLowerCase()] || "99"),
+    estadoPago: "PAGADO",
     emisor: {
       nombre: config.institucion_nombre,
       identificacion: {

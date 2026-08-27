@@ -910,3 +910,28 @@ body.theme-dark .finance-history-record.is-exemption .finance-history-icon {
   cursor: wait !important;
   opacity: .78;
 }
+
+/* Editor semanal de materias por grupo */
+.weekly-schedule-editor { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.65rem; }
+.weekly-schedule-day { border:1px solid #dbe5ef; border-radius:.85rem; background:#f8fbff; min-width:0; overflow:hidden; }
+.weekly-schedule-day header { display:flex; justify-content:space-between; gap:.5rem; padding:.7rem .8rem; background:#eef5fb; border-bottom:1px solid #dbe5ef; }
+.weekly-schedule-day header strong { color:#123e68; }
+.weekly-schedule-day header span { color:#64748b; font-size:.75rem; }
+.weekly-schedule-slots { display:grid; gap:.45rem; padding:.6rem; min-height:92px; }
+.weekly-schedule-slot { display:flex; align-items:center; justify-content:space-between; gap:.45rem; padding:.55rem .6rem; border:1px solid #d7e3ee; background:#fff; border-radius:.65rem; }
+.weekly-schedule-slot > div { min-width:0; display:grid; }
+.weekly-schedule-slot strong { font-size:.78rem; color:#0f3d66; white-space:nowrap; }
+.weekly-schedule-slot span { font-size:.78rem; color:#475569; overflow:hidden; text-overflow:ellipsis; }
+@media(max-width:1050px){.weekly-schedule-editor{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.weekly-schedule-editor{grid-template-columns:1fr}}
+body.theme-dark .weekly-schedule-day { background:#111c2d; border-color:#334155; }
+body.theme-dark .weekly-schedule-day header { background:#17243a; border-color:#334155; }
+body.theme-dark .weekly-schedule-slot { background:#0f172a; border-color:#334155; }
+.weekly-schedule-editor { display:block; }
+.weekly-schedule-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.65rem; }
+.weekly-schedule-coverage { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.65rem .8rem; margin-bottom:.7rem; border:1px solid #cfe1ef; border-radius:.75rem; background:#eef8fc; }
+.weekly-schedule-coverage strong { color:#0b5373; }
+.weekly-schedule-coverage span { color:#64748b; font-size:.78rem; text-align:right; }
+@media(max-width:1050px){.weekly-schedule-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.weekly-schedule-grid{grid-template-columns:1fr}.weekly-schedule-coverage{align-items:flex-start;flex-direction:column}.weekly-schedule-coverage span{text-align:left}}
+body.theme-dark .weekly-schedule-coverage { background:#102536; border-color:#334155; }

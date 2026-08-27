@@ -1,7 +1,7 @@
 import conexionPromise from "../config/database.js";
 import bcrypt from "bcryptjs";
 import { validarCorreoInstitucional } from "../utils/emailDomain.js";
-import { normalizarDiasSemana, validarChoqueProfesor } from "./matriculaServiceP.js";
+import { normalizarDiasSemana, validarChoqueProfesor, asegurarTablaHorarioAcademico } from "./matriculaServiceP.js";
 import { validarCargaDocente, validarPeriodoNoCerrado, horasSemanalesGrupo } from "./businessRulesService.js";
 
 
@@ -745,6 +745,54 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
  * (cada uno desde este mismo endpoint); grupo_profesor admite muchos
  * profesores por grupo.
  */
+
+async function validarAsignacionMateriaGrupo(connection, idProfesor, materia, grupo) {
+  await asegurarTablaHorarioAcademico();
+  const [slots] = await connection.query(
+    `SELECT dia_semana, TIME_FORMAT(hora_inicio,'%H:%i') AS hora_inicio, TIME_FORMAT(hora_fin,'%H:%i') AS hora_fin
+     FROM grupo_horario_academico
+     WHERE id_grupo = ? AND estado = TRUE AND LOWER(TRIM(materia)) = LOWER(TRIM(?))
+     ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes'), hora_inicio`,
+    [grupo.id_grupo, materia]
+  );
+  if (!slots.length) {
+    throw new Error(`El grupo ${grupo.nombre_grupo} no tiene ${materia} programada en su horario semanal.`);
+  }
+  const [ocupada] = await connection.query(
+    `SELECT gp.id_profesor, CONCAT_WS(' ',p.nombre,p.apellido1) AS profesor_nombre
+     FROM grupo_profesor gp
+     INNER JOIN profesor pr ON pr.id_profesor=gp.id_profesor
+     INNER JOIN persona p ON p.id_persona=pr.id_persona
+     WHERE gp.id_grupo=? AND gp.estado=TRUE AND (gp.fecha_fin IS NULL OR gp.fecha_fin>=CURDATE())
+       AND LOWER(TRIM(pr.materia))=LOWER(TRIM(?)) AND gp.id_profesor<>?
+     LIMIT 1`,
+    [grupo.id_grupo, materia, idProfesor]
+  );
+  if (ocupada.length) throw new Error(`${materia} en ${grupo.nombre_grupo} ya está cubierta por ${ocupada[0].profesor_nombre}.`);
+
+  const [existentes] = await connection.query(
+    `SELECT g.id_grupo,g.nombre_grupo,gha.dia_semana,
+            TIME_FORMAT(gha.hora_inicio,'%H:%i') AS hora_inicio,
+            TIME_FORMAT(gha.hora_fin,'%H:%i') AS hora_fin
+     FROM grupo_profesor gp
+     INNER JOIN grupo g ON g.id_grupo=gp.id_grupo AND g.estado=TRUE
+     INNER JOIN seccion s ON s.id_seccion=g.id_seccion
+     INNER JOIN grupo_horario_academico gha ON gha.id_grupo=g.id_grupo AND gha.estado=TRUE
+     WHERE gp.id_profesor=? AND gp.estado=TRUE AND (gp.fecha_fin IS NULL OR gp.fecha_fin>=CURDATE())
+       AND g.id_grupo<>? AND s.periodo_lectivo=? AND LOWER(TRIM(gha.materia))=LOWER(TRIM(?))`,
+    [idProfesor, grupo.id_grupo, grupo.periodo_lectivo, materia]
+  );
+  for (const slot of slots) {
+    const choque = existentes.find((e) => e.dia_semana === slot.dia_semana && String(slot.hora_inicio) < String(e.hora_fin) && String(slot.hora_fin) > String(e.hora_inicio));
+    if (choque) throw new Error(`El profesor ya tiene ${materia} en ${choque.nombre_grupo} el ${slot.dia_semana} de ${choque.hora_inicio} a ${choque.hora_fin}.`);
+  }
+  const horas = slots.reduce((sum, slot) => {
+    const mins = (v) => { const [h,m]=String(v).split(':').map(Number); return h*60+m; };
+    return sum + Math.max(0, mins(slot.hora_fin)-mins(slot.hora_inicio))/60;
+  },0);
+  return { slots, horas };
+}
+
 export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) => {
   const listaGrupos = Array.isArray(idsGrupos)
     ? [...new Set(idsGrupos.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
@@ -756,7 +804,7 @@ export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) 
     await connection.beginTransaction();
 
     const [profRows] = await connection.query(
-      `SELECT id_profesor, estado FROM profesor WHERE id_profesor = ?`,
+      `SELECT id_profesor, estado, materia FROM profesor WHERE id_profesor = ?`,
       [id_profesor]
     );
     if (profRows.length === 0) {
@@ -767,23 +815,20 @@ export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) 
     }
 
     if (listaGrupos.length > 0) {
+      await asegurarTablaHorarioAcademico();
       const placeholders = listaGrupos.map(() => '?').join(',');
       const [gruposValidos] = await connection.query(
-        `SELECT id_grupo, nombre_grupo, dias_semana, hora_inicio, hora_fin
-         FROM grupo WHERE id_grupo IN (${placeholders}) AND estado = TRUE`,
+        `SELECT g.id_grupo, g.nombre_grupo, g.dias_semana, g.hora_inicio, g.hora_fin, s.periodo_lectivo
+         FROM grupo g INNER JOIN seccion s ON s.id_seccion=g.id_seccion
+         WHERE g.id_grupo IN (${placeholders}) AND g.estado = TRUE`,
         listaGrupos
       );
-      if (gruposValidos.length !== listaGrupos.length) {
-        throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
-      }
+      if (gruposValidos.length !== listaGrupos.length) throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
+      const materiaProfesor = String(profRows[0].materia || '').trim();
       let cargaPropuesta = 0;
       for (const grupo of gruposValidos) {
-        const dias = normalizarDiasSemana(grupo.dias_semana, grupo.nombre_grupo);
-        if (!dias.length || !grupo.hora_inicio || !grupo.hora_fin) {
-          throw new Error(`El grupo ${grupo.nombre_grupo} no tiene días y horario completos. Defínelos antes de asignar profesores.`);
-        }
-        await validarChoqueProfesor(connection, Number(id_profesor), dias, grupo.hora_inicio, grupo.hora_fin, Number(grupo.id_grupo));
-        cargaPropuesta += horasSemanalesGrupo(dias, grupo.hora_inicio, grupo.hora_fin);
+        const validacion = await validarAsignacionMateriaGrupo(connection, Number(id_profesor), materiaProfesor, grupo);
+        cargaPropuesta += validacion.horas;
       }
       const [[limiteCarga]] = await connection.query(`SELECT horas_maximas_semana FROM profesor WHERE id_profesor = ? LIMIT 1`, [id_profesor]);
       const maximo = Number(limiteCarga?.horas_maximas_semana || 40);
@@ -891,9 +936,9 @@ export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
        g.id_grupo,
        g.nombre_grupo,
        g.aula,
-       g.dias_semana,
-       TIME_FORMAT(g.hora_inicio, '%H:%i') AS hora_inicio,
-       TIME_FORMAT(g.hora_fin, '%H:%i') AS hora_fin,
+       COALESCE(gha.dia_semana, g.dias_semana) AS dias_semana,
+       COALESCE(TIME_FORMAT(gha.hora_inicio, '%H:%i'), TIME_FORMAT(g.hora_inicio, '%H:%i')) AS hora_inicio,
+       COALESCE(TIME_FORMAT(gha.hora_fin, '%H:%i'), TIME_FORMAT(g.hora_fin, '%H:%i')) AS hora_fin,
        s.id_seccion,
        s.nombre_seccion,
        s.nivel,
@@ -911,6 +956,7 @@ export const obtenerHorariosService = async ({ idProfesor = null } = {}) => {
      INNER JOIN profesor pr ON pr.id_profesor = gp.id_profesor
      INNER JOIN persona p ON p.id_persona = pr.id_persona AND p.estado = TRUE
      INNER JOIN grupo g ON g.id_grupo = gp.id_grupo AND g.estado = TRUE
+     LEFT JOIN grupo_horario_academico gha ON gha.id_grupo = g.id_grupo AND gha.estado = TRUE AND LOWER(TRIM(gha.materia)) = LOWER(TRIM(pr.materia))
      INNER JOIN seccion s ON s.id_seccion = g.id_seccion AND s.estado = TRUE
      INNER JOIN periodo_lectivo pl ON pl.anio = s.periodo_lectivo
      WHERE gp.estado = TRUE

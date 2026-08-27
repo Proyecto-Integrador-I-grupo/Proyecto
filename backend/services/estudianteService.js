@@ -337,8 +337,46 @@ export const eliminarEstudianteService = async (id_estudiante) => {
       [id_estudiante]
     );
 
-    // La baja académica no borra ni anula obligaciones financieras históricas.
-    // Los cargos, pagos y facturas se conservan íntegros para auditoría y cobro.
+    // Si el estudiante todavía está únicamente en pre-matrícula (sin matrícula
+    // académica activa), sus cargos pendientes de matrícula dejan de tener
+    // sentido operativo. Se anulan para que desaparezcan inmediatamente de
+    // "Pendientes de pago", conservando pagos/facturas históricas ya realizados.
+    const [matriculasActivas] = await connection.query(
+      `SELECT id_matricula
+       FROM matricula
+       WHERE id_estudiante = ?
+         AND LOWER(estado_matricula) IN ('activa','activo','matriculado')
+       LIMIT 1`,
+      [id_estudiante]
+    );
+
+    let cargosPendientesAnulados = 0;
+    if (matriculasActivas.length === 0) {
+      const [cargosPendientes] = await connection.query(
+        `SELECT c.id_cargo
+         FROM cargo_estudiante c
+         LEFT JOIN pago pg
+           ON pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'
+         WHERE c.id_estudiante = ?
+           AND LOWER(c.estado) = 'pendiente'
+         GROUP BY c.id_cargo
+         HAVING COALESCE(SUM(pg.monto), 0) = 0`,
+        [id_estudiante]
+      );
+
+      if (cargosPendientes.length > 0) {
+        const ids = cargosPendientes.map((row) => row.id_cargo);
+        const placeholders = ids.map(() => '?').join(',');
+        await connection.query(
+          `UPDATE cargo_estudiante
+           SET estado = 'anulado', saldo = 0
+           WHERE id_cargo IN (${placeholders})`,
+          ids
+        );
+        cargosPendientesAnulados = ids.length;
+      }
+    }
+
     await connection.query(
       `UPDATE grupo_estudiante SET estado = FALSE
        WHERE id_estudiante = ? AND estado = TRUE`,
@@ -359,7 +397,13 @@ export const eliminarEstudianteService = async (id_estudiante) => {
     );
 
     await connection.commit();
-    return { id_estudiante, mensaje: "Estudiante retirado correctamente; su historial se conserva" };
+    return {
+      id_estudiante,
+      cargos_pendientes_anulados: cargosPendientesAnulados,
+      mensaje: cargosPendientesAnulados > 0
+        ? "Estudiante eliminado de pre-matrícula y pago pendiente anulado correctamente"
+        : "Estudiante retirado correctamente; su historial se conserva"
+    };
   } catch (error) {
     await connection.rollback();
     throw error;

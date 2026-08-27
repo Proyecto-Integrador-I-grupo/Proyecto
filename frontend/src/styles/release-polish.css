@@ -225,3 +225,32 @@ body.theme-dark .section-format-example i { color: #82d2f5 !important; }
   .accessibility-toggle,#accessibility-toggle { width: 52px !important; height: 52px !important; min-width: 52px !important; }
   .modal:not(.finance-invoice-preview-modal) .modal-dialog { margin: .5rem auto !important; }
 }
+
+/* 2026-08-27: estabilidad de acciones y asistencia */
+#asistencia-view .attendance-cell.is-future .attendance-cell-btn,
+#asistencia-view .attendance-cell.is-future .attendance-note-btn {
+  cursor: not-allowed;
+  opacity: .42;
+  box-shadow: none !important;
+}
+
+#asistencia-view .attendance-cell-btn:disabled,
+#asistencia-view .attendance-note-btn:disabled {
+  pointer-events: none;
+}
+
+button[data-busy="1"],
+.btn[data-busy="1"] {
+  cursor: wait !important;
+  pointer-events: none;
+}
+
+#reportes-view button,
+#asistencia-view button {
+  transition: transform .14s ease, box-shadow .14s ease, opacity .14s ease;
+}
+
+#reportes-view button:not(:disabled):active,
+#asistencia-view button:not(:disabled):active {
+  transform: translateY(1px);
+}

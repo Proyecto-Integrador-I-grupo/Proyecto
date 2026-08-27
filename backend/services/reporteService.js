@@ -443,16 +443,18 @@ function construirDetallePorProfesor(detalle = []) {
         }
 
         const item = mapa.get(key);
-        item.asistencias_registradas += 1;
         if (registro.nombre_grupo && !item.grupos_asignados.includes(registro.nombre_grupo)) item.grupos_asignados.push(registro.nombre_grupo);
         if (registro.nombre_seccion && !item.secciones_asignadas.includes(registro.nombre_seccion)) item.secciones_asignadas.push(registro.nombre_seccion);
         if (registro.id_estudiante) item.estudiantes.add(registro.id_estudiante);
 
-        const estado = normalizarEstado(registro.estado_asistencia);
-        if (estado === "presente") item.presentes += 1;
-        if (estado === "ausente") item.ausentes += 1;
-        if (estado === "tardia") item.tardias += 1;
-        if (estado === "justificada") item.justificadas += 1;
+        if (registro.id_asistencia) {
+            item.asistencias_registradas += 1;
+            const estado = normalizarEstado(registro.estado_asistencia);
+            if (estado === "presente") item.presentes += 1;
+            if (estado === "ausente") item.ausentes += 1;
+            if (estado === "tardia") item.tardias += 1;
+            if (estado === "justificada") item.justificadas += 1;
+        }
     });
 
     return Array.from(mapa.values())
@@ -478,9 +480,20 @@ export async function generarReporteCaso(filtros = {}, usuarioActual = null) {
     if (filtrosNormalizados.modo === "estudiantes") detalle_por_grupo = construirDetallePorEstudiante(detalle);
     if (filtrosNormalizados.modo === "profesores") detalle_por_grupo = construirDetallePorProfesor(detalle);
 
+    const resumenFinal = { ...(resumen?.resumen || {}) };
+    if (filtrosNormalizados.modo === "profesores") {
+        resumenFinal.total_profesores = detalle_por_grupo.length;
+        resumenFinal.total_grupos = new Set(
+            detalle.filter((r) => r.id_grupo).map((r) => String(r.id_grupo))
+        ).size;
+        resumenFinal.total_estudiantes = new Set(
+            detalle.filter((r) => r.id_estudiante).map((r) => String(r.id_estudiante))
+        ).size;
+    }
+
     return {
         modo: filtrosNormalizados.modo,
-        resumen: resumen?.resumen || {},
+        resumen: resumenFinal,
         detalle_por_grupo,
         detalle,
         filtros: filtrosNormalizados
@@ -894,6 +907,94 @@ export async function generarReporteDetalle(filtros = {}, usuarioActual = null) 
 
     if (f.modo === "estudiantes") {
         const rows = await generarDetalleEstudiantesAsignados(f);
+        return { modo: f.modo, detalle: rows };
+    }
+
+    if (f.modo === "profesores") {
+        const condiciones = ["1 = 1"];
+        const valores = [];
+
+        if (f.id_grupo) {
+            condiciones.push("gp.id_grupo = ?");
+            valores.push(f.id_grupo);
+        }
+
+        if (f.busqueda) {
+            const texto = construirLikeBusqueda(f.busqueda);
+            condiciones.push(`(
+                ${sqlTextoNormalizado("pp.nombre")} LIKE ?
+                OR ${sqlTextoNormalizado("pp.apellido1")} LIKE ?
+                OR ${sqlTextoNormalizado("pp.apellido2")} LIKE ?
+                OR ${sqlTextoNormalizado("TRIM(CONCAT_WS(' ', pp.nombre, pp.apellido1, pp.apellido2))")} LIKE ?
+                OR CAST(prof.id_profesor AS CHAR) LIKE ?
+                OR ${sqlTextoNormalizado("prof.materia")} LIKE ?
+            )`);
+            valores.push(texto, texto, texto, texto, texto, texto);
+        }
+
+        // Las fechas del reporte de profesores se interpretan como vigencia de la asignación al grupo.
+        if (f.fecha_inicio) {
+            condiciones.push("(gp.id_grupo_profesor IS NULL OR gp.fecha_fin IS NULL OR DATE(gp.fecha_fin) >= ?)");
+            valores.push(f.fecha_inicio);
+        }
+        if (f.fecha_fin) {
+            condiciones.push("(gp.id_grupo_profesor IS NULL OR DATE(gp.fecha_inicio) <= ?)");
+            valores.push(f.fecha_fin);
+        }
+
+        const asistenciaJoin = ["a.id_profesor = prof.id_profesor", "a.estado = TRUE"];
+        const asistenciaValores = [];
+        if (f.id_grupo) asistenciaJoin.push("a.id_grupo = gp.id_grupo");
+        if (f.fecha_inicio) {
+            asistenciaJoin.push("DATE(a.fecha) >= ?");
+            asistenciaValores.push(f.fecha_inicio);
+        }
+        if (f.fecha_fin) {
+            asistenciaJoin.push("DATE(a.fecha) <= ?");
+            asistenciaValores.push(f.fecha_fin);
+        }
+        if (f.estado_asistencia) {
+            asistenciaJoin.push("a.estado_asistencia = ?");
+            asistenciaValores.push(f.estado_asistencia);
+        }
+
+        const [rows] = await pool.query(
+            `SELECT
+                prof.id_profesor,
+                pp.nombre AS profesor_nombre,
+                pp.apellido1 AS profesor_apellido1,
+                pp.apellido2 AS profesor_apellido2,
+                prof.materia AS materia_curso,
+                prof.estado AS profesor_estado,
+                g.id_grupo,
+                g.nombre_grupo,
+                s.nombre_seccion,
+                ge.id_estudiante,
+                a.id_asistencia,
+                a.fecha,
+                a.estado_asistencia,
+                a.observaciones
+             FROM profesor prof
+             INNER JOIN persona pp ON pp.id_persona = prof.id_persona
+             LEFT JOIN grupo_profesor gp
+               ON gp.id_profesor = prof.id_profesor
+              AND gp.estado = TRUE
+             LEFT JOIN grupo g
+               ON g.id_grupo = gp.id_grupo
+              AND g.estado = TRUE
+             LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+             LEFT JOIN grupo_estudiante ge
+               ON ge.id_grupo = g.id_grupo
+              AND ge.estado = TRUE
+             LEFT JOIN asistencia a
+               ON a.id_estudiante = ge.id_estudiante
+              AND a.id_grupo = g.id_grupo
+              AND ${asistenciaJoin.join(" AND ")}
+             WHERE ${condiciones.join(" AND ")}
+             ORDER BY prof.estado DESC, pp.apellido1, pp.apellido2, pp.nombre, g.nombre_grupo, ge.id_estudiante`,
+            [...asistenciaValores, ...valores]
+        );
+
         return { modo: f.modo, detalle: rows };
     }
 

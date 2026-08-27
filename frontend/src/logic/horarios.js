@@ -55,6 +55,19 @@ function currentRole() {
   return String(currentUser?.rol || window.EduControlCurrentUser?.rol || '').trim().toLowerCase();
 }
 
+function buildEmptyState({ icon = 'bi-calendar-x', title, description = '', tips = [], error = false, loading = false } = {}) {
+  const tipItems = Array.isArray(tips) && tips.length
+    ? `<ul class="schedule-empty-tips">${tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`
+    : '';
+
+  return `<div class="schedule-empty-state ${error ? 'is-error' : ''} ${loading ? 'is-loading' : ''}">
+    ${loading ? '<span class="spinner-border" aria-hidden="true"></span>' : `<i class="bi ${icon}"></i>`}
+    <strong>${escapeHtml(title || 'Sin información disponible')}</strong>
+    ${description ? `<span>${escapeHtml(description)}</span>` : ''}
+    ${tipItems}
+  </div>`;
+}
+
 function wireHorarioEvents() {
   const professor = document.getElementById('horarios-profesor-filter');
   const group = document.getElementById('horarios-grupo-filter');
@@ -87,7 +100,7 @@ function wireHorarioEvents() {
     refresh.addEventListener('click', async () => {
       const original = refresh.innerHTML;
       refresh.disabled = true;
-      refresh.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Actualizando...';
+      refresh.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span><span>Actualizando...</span>';
       try {
         await loadHorarios();
         showToast('Horarios actualizados.', 'success');
@@ -116,7 +129,13 @@ function pickDefaultPeriod() {
 
 async function loadHorarios() {
   const board = document.getElementById('horarios-board');
-  if (board) board.innerHTML = '<div class="schedule-empty-state"><span class="spinner-border" aria-hidden="true"></span><strong>Cargando horarios...</strong></div>';
+  if (board) {
+    board.innerHTML = buildEmptyState({
+      title: 'Cargando horarios...',
+      description: 'Espera un momento mientras consultamos las asignaciones activas del sistema.',
+      loading: true
+    });
+  }
 
   try {
     const res = await apiFetch('/api/profesores/horarios');
@@ -132,7 +151,15 @@ async function loadHorarios() {
     populateFilters();
     renderHorarios();
   } catch (error) {
-    if (board) board.innerHTML = `<div class="schedule-empty-state is-error"><i class="bi bi-exclamation-triangle"></i><strong>No se pudieron cargar los horarios</strong><span>${escapeHtml(error.message)}</span></div>`;
+    if (board) {
+      board.innerHTML = buildEmptyState({
+        icon: 'bi-exclamation-triangle',
+        title: 'No se pudieron cargar los horarios',
+        description: error.message,
+        tips: ['Verifica tu sesión', 'Reintenta con el botón Actualizar', 'Confirma que existan asignaciones activas'],
+        error: true
+      });
+    }
   }
 }
 
@@ -145,25 +172,34 @@ function populateFilters() {
   const subtitle = document.getElementById('horarios-subtitle');
 
   professorField?.classList.toggle('hidden', !isAdmin);
-  if (subtitle) subtitle.textContent = isAdmin
-    ? 'Consulta la agenda de todos los profesores y filtra por docente, grupo o período.'
-    : 'Consulta únicamente tus grupos y horas de clase asignadas.';
+  if (subtitle) {
+    subtitle.textContent = isAdmin
+      ? 'Consulta la agenda completa y filtra por docente, grupo o período lectivo.'
+      : 'Consulta únicamente tus grupos, aulas y horas de clase asignadas.';
+  }
 
   if (professor) {
     const previous = professor.value;
     professor.innerHTML = '<option value="">Todos los profesores</option>' + horarioData.profesores.map((p) =>
       `<option value="${p.id_profesor}">${escapeHtml(p.nombre)} · ${escapeHtml(p.materia || 'Sin materia')}</option>`
     ).join('');
-    if (isAdmin && [...professor.options].some((o) => o.value === previous)) professor.value = previous;
+    if (isAdmin && [...professor.options].some((o) => o.value === previous)) {
+      professor.value = previous;
+    }
   }
 
   if (period) {
     const previous = period.value;
     period.innerHTML = '<option value="">Todos los períodos</option>' + horarioData.periodos.map((p) =>
-      `<option value="${p.anio}">${p.anio} · ${escapeHtml(String(p.estado || '').toLowerCase().replace(/^./, c => c.toUpperCase()))}</option>`
+      `<option value="${p.anio}">${p.anio} · ${escapeHtml(String(p.estado || '').toLowerCase().replace(/^./, (c) => c.toUpperCase()))}</option>`
     ).join('');
     const next = previous && [...period.options].some((o) => o.value === previous) ? previous : pickDefaultPeriod();
     period.value = next;
+  }
+
+  if (group && !group.dataset.placeholderApplied) {
+    group.dataset.placeholderApplied = '1';
+    group.innerHTML = '<option value="">Todos los grupos</option>';
   }
 
   syncGroupOptions();
@@ -173,18 +209,26 @@ function syncGroupOptions() {
   const professor = document.getElementById('horarios-profesor-filter');
   const group = document.getElementById('horarios-grupo-filter');
   if (!group) return;
+
   const previous = group.value;
-  const professorId = currentRole() === 'administrador' ? Number(professor?.value || 0) : Number(currentUser?.id_profesor || window.EduControlCurrentUser?.id_profesor || 0);
+  const professorId = currentRole() === 'administrador'
+    ? Number(professor?.value || 0)
+    : Number(currentUser?.id_profesor || window.EduControlCurrentUser?.id_profesor || 0);
   const periodValue = Number(document.getElementById('horarios-periodo-filter')?.value || 0);
+
   const allowed = horarioData.grupos.filter((g) => {
     if (periodValue && Number(g.periodo_lectivo) !== periodValue) return false;
     if (!professorId) return true;
     return horarioData.horarios.some((h) => Number(h.id_profesor) === professorId && Number(h.id_grupo) === Number(g.id_grupo));
   });
+
   group.innerHTML = '<option value="">Todos los grupos</option>' + allowed.map((g) =>
     `<option value="${g.id_grupo}">${escapeHtml(g.nombre_grupo)} · ${escapeHtml(g.nombre_seccion || g.nivel || '')} · ${g.periodo_lectivo}</option>`
   ).join('');
-  if ([...group.options].some((o) => o.value === previous)) group.value = previous;
+
+  if ([...group.options].some((o) => o.value === previous)) {
+    group.value = previous;
+  }
 }
 
 function getFilteredRows() {
@@ -205,8 +249,22 @@ function renderHorarios() {
   renderHeading(rows);
   const board = document.getElementById('horarios-board');
   if (!board) return;
+
   if (!rows.length) {
-    board.innerHTML = '<div class="schedule-empty-state"><i class="bi bi-calendar-x"></i><strong>No hay clases asignadas con estos filtros.</strong><span>Prueba otro profesor, grupo o período lectivo.</span></div>';
+    const hasAnyAssignments = Array.isArray(horarioData.horarios) && horarioData.horarios.length > 0;
+    board.innerHTML = hasAnyAssignments
+      ? buildEmptyState({
+          icon: 'bi-funnel',
+          title: 'No hay clases asignadas con estos filtros',
+          description: 'Prueba otro profesor, grupo o período lectivo para encontrar coincidencias.',
+          tips: ['Limpia los filtros', 'Selecciona un período activo', 'Prueba con otro grupo']
+        })
+      : buildEmptyState({
+          icon: 'bi-calendar2-x',
+          title: 'Aún no hay asignaciones horarias registradas',
+          description: 'Cuando se asignen profesores a grupos con días y horas definidos, la agenda aparecerá en esta ventana.',
+          tips: ['Crea un grupo con horario', 'Asigna el grupo a un profesor', 'Verifica el período lectivo activo']
+        });
     return;
   }
 
@@ -225,7 +283,10 @@ function renderStats(rows) {
     const duration = Math.max(0, minutes(r.hora_fin) - minutes(r.hora_inicio)) / 60;
     return sum + duration * parseDays(r.dias_semana).length;
   }, 0);
-  const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
   set('horarios-stat-asignaciones', String(assignments));
   set('horarios-stat-profesores', String(teachers));
   set('horarios-stat-horas', `${hours.toLocaleString('es-CR', { maximumFractionDigits: 1 })} h`);
@@ -237,15 +298,26 @@ function renderHeading(rows) {
   const desc = document.getElementById('horarios-board-description');
   const kicker = document.getElementById('horarios-board-kicker');
   const teacherIds = [...new Set(rows.map((r) => Number(r.id_profesor)))];
+  const uniqueGroups = [...new Set(rows.map((r) => Number(r.id_grupo)))].filter(Boolean).length;
+
   if (currentRole() === 'profesor' || teacherIds.length === 1) {
     const row = rows[0];
     if (kicker) kicker.textContent = 'Horario personal';
     if (title) title.textContent = row ? row.profesor_nombre : 'Mi horario';
-    if (desc) desc.textContent = row ? `${row.materia} · ${teacherIds.length ? 'Clases ordenadas por hora y día.' : 'Sin asignaciones.'}` : '';
-  } else {
-    if (kicker) kicker.textContent = 'Vista institucional';
-    if (title) title.textContent = 'Agenda de profesores';
-    if (desc) desc.textContent = 'Las clases se ordenan por día y hora. Selecciona un profesor para abrir la línea de tiempo detallada.';
+    if (desc) {
+      desc.textContent = row
+        ? `${row.materia} · ${rows.length} clase(s) visibles en ${uniqueGroups} grupo(s).`
+        : 'Sin asignaciones visibles.';
+    }
+    return;
+  }
+
+  if (kicker) kicker.textContent = 'Vista institucional';
+  if (title) title.textContent = 'Agenda de profesores';
+  if (desc) {
+    desc.textContent = rows.length
+      ? `${teacherIds.length} profesor(es) y ${uniqueGroups} grupo(s) visibles en la consulta actual.`
+      : 'Selecciona un profesor para abrir la línea de tiempo detallada.';
   }
 }
 
@@ -284,7 +356,10 @@ function buildTimeline(rows) {
   const ends = rows.map((r) => minutes(r.hora_fin));
   let start = Math.floor(Math.min(...starts) / 60) * 60;
   let end = Math.ceil(Math.max(...ends) / 60) * 60;
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) { start = 420; end = 1020; }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    start = 420;
+    end = 1020;
+  }
   start = Math.max(300, start - 60);
   end = Math.min(1320, end + 60);
   const rowHeight = 48;
@@ -317,7 +392,7 @@ function buildTimeline(rows) {
 
   return `<div class="schedule-timeline-shell" style="--schedule-days:${days.length}">
     <div class="schedule-timeline-corner">Hora</div>
-    ${days.map(([,label]) => `<div class="schedule-timeline-day-label">${label}</div>`).join('')}
+    ${days.map(([, label]) => `<div class="schedule-timeline-day-label">${label}</div>`).join('')}
     <div class="schedule-time-axis-wrap">${axis}</div>
     ${lanes}
   </div>`;

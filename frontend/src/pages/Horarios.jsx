@@ -14,7 +14,7 @@ export default function Horarios() {
             </div>
             <div className="d-flex align-items-center gap-2">
               <button type="button" id="horarios-refrescar" className="btn btn-sm btn-outline-light schedule-refresh-btn">
-                <i className="bi bi-arrow-clockwise me-1"></i> Actualizar
+                <i className="bi bi-arrow-clockwise me-1"></i> <span>Actualizar</span>
               </button>
               <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -27,10 +27,16 @@ export default function Horarios() {
                   <strong>Consulta de horarios</strong>
                   <span id="horarios-subtitle">Consulta profesores, cursos, grupos, aulas y horas asignadas.</span>
                 </div>
-                <span className="schedule-modal-badge"><i className="bi bi-clock-history"></i> Vista por horas</span>
+                <span className="schedule-modal-badge"><i className="bi bi-clock-history"></i> Vista semanal inteligente</span>
               </div>
 
               <div className="schedule-filter-card schedule-filter-card-compact">
+                <div className="schedule-section-head">
+                  <div>
+                    <h6 className="mb-1">Filtros rápidos</h6>
+                    <p className="mb-0">Ajusta la consulta por profesor, grupo y período lectivo.</p>
+                  </div>
+                </div>
                 <div className="schedule-filter-grid">
                   <div id="horarios-profesor-field" className="schedule-filter-field">
                     <label htmlFor="horarios-profesor-filter">Profesor</label>
@@ -93,6 +99,7 @@ export default function Horarios() {
                   <div className="schedule-empty-state">
                     <i className="bi bi-calendar2-week"></i>
                     <strong>Abre la consulta para cargar los horarios.</strong>
+                    <span>Cuando existan asignaciones activas, aquí verás la agenda semanal organizada por día y por hora.</span>
                   </div>
                 </div>
               </div>
@@ -100,7 +107,7 @@ export default function Horarios() {
           </div>
 
           <div className="modal-footer schedule-modal-footer">
-            <span className="schedule-modal-help"><i className="bi bi-info-circle"></i> Los horarios provienen de las asignaciones activas de cada grupo.</span>
+            <span className="schedule-modal-help"><i className="bi bi-info-circle"></i> Los horarios provienen de las asignaciones activas de cada grupo y se actualizan con el botón de refrescar.</span>
             <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>
         </div>

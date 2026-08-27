@@ -8,7 +8,8 @@ import {
   obtenerDocumentoDeCargo,
   confirmarFacturaGeneradaDesdeCliente,
   obtenerDocumentosIntegrados,
-  vincularCuentaFacturaSmart
+  vincularCuentaFacturaSmart,
+  obtenerDocumentoElectronicoFacturaSmart
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -179,7 +180,7 @@ export async function getEstadoIntegraciones(req, res) {
 }
 
 export async function postVincularFacturaSmart(req, res) {
-  try { res.json(await vincularCuentaFacturaSmart({ registrar: Boolean(req.body?.registrar) })); }
+  try { res.json(await vincularCuentaFacturaSmart()); }
   catch (e) { responderError(res, e, 502); }
 }
 
@@ -195,6 +196,16 @@ export async function getDocumentoFactura(req, res) {
     res.setHeader("Content-Disposition", `inline; filename="${documento.filename}"`);
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-EduControl-Document-Mode", documento.formatoEntregado || (documento.contentType?.includes('html') ? 'html' : 'pdf'));
+    res.send(documento.buffer);
+  } catch (e) { responderError(res, e, 502); }
+}
+
+export async function getDocumentoElectronico(req, res) {
+  try {
+    const documento = await obtenerDocumentoElectronicoFacturaSmart(req.params.id, req.query?.formato || 'xml');
+    res.setHeader('Content-Type', documento.contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${documento.filename}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
     res.send(documento.buffer);
   } catch (e) { responderError(res, e, 502); }
 }

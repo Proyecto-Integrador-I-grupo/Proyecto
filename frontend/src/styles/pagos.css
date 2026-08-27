@@ -2099,3 +2099,19 @@ body.theme-dark #modalConfigFacturacion .integration-console-footer{background:#
 .facturasmart-simple-footer > small {
   max-width: 420px;
 }
+
+/* Documentos entregados por la facturación integrada. */
+#pagos-view .finance-document-buttons {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:.45rem;
+  flex-wrap:wrap;
+}
+#pagos-view .finance-document-buttons .btn,
+#pagos-view .finance-document-buttons .badge {
+  white-space:nowrap;
+}
+@media (max-width: 799px) {
+  #pagos-view .finance-document-buttons { justify-content:flex-start; }
+}

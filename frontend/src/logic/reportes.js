@@ -490,7 +490,7 @@ function renderTablaPrincipal(data = {}) {
   const detalle = obtenerFilasReporte(data, 'matricula');
 
   if (modo === 'pre_matricula') {
-    head.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>';
+    head.innerHTML = '<th>Estudiante</th><th>ID</th><th>Estado</th><th>Tipo</th>';
     renderRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return;
   }
   if (modo === 'pagos') {
@@ -698,7 +698,7 @@ function renderPreviewTable(data) {
   const detalle = Array.isArray(data?.detalle) ? data.detalle : [];
   const agrupado = Array.isArray(data?.detalle_por_grupo) ? data.detalle_por_grupo : [];
   if (modo === 'auditoria') { renderAuditoria(body, header, detalle, true); return; }
-  if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>Cédula</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
+  if (modo === 'pre_matricula') { header.innerHTML = '<th>Estudiante</th><th>ID</th><th>Estado</th><th>Tipo</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula']); return; }
   if (modo === 'pagos') { header.innerHTML = '<th>Estudiante</th><th>Concepto / servicio</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Saldo</th><th>Estado</th>'; renderPreviewRows(body, detalle, r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)]); return; }
   if (modo === 'estudiantes') { header.innerHTML = '<th>Estudiante</th><th>Grupo / Sección</th><th>Profesor(es)</th><th>Asistencias</th><th>Presentes</th><th>Ausentes</th>'; renderPreviewRows(body, agrupado, r => [fullName(r), r.grupo_etiqueta || r.grupo || etiquetaGrupo(r), r.profesor ?? '-', r.asistencias_registradas ?? 0, r.presentes ?? 0, r.ausentes ?? 0]); return; }
   if (modo === 'profesores') { header.innerHTML = '<th>Profesor</th><th>Materia</th><th>Grupos</th><th>Secciones</th><th>Estado</th>'; renderPreviewRows(body, agrupado, r => [fullName(r, 'profesor'), r.materia ?? '-', r.grupos ?? '-', r.secciones ?? '-', normalizarEstadoActivo(r.estado ?? r.profesor_estado)]); return; }
@@ -802,7 +802,7 @@ function construirDatosPdf(modo, data, filtros, pageWidth) {
     filas: detalle.map(r => [fullName(r), r.descripcion || '-', r.id_factura_externa ?? '-', formatDate(r.fecha || r.fecha_emision), monedaPdf(r.total ?? 0), monedaPdf(r.saldo ?? 0), formatearEstadoPago(r.estado_pago || r.estado_cargo)])
   };
   if (modo === 'pre_matricula') return {
-    columnas: [{ label: 'Estudiante', width: 85 }, { label: 'Cédula', width: 30 }, { label: 'Estado', width: 30 }, { label: 'Tipo', width: usable - 145 }],
+    columnas: [{ label: 'Estudiante', width: 85 }, { label: 'ID', width: 30 }, { label: 'Estado', width: 30 }, { label: 'Tipo', width: usable - 145 }],
     filas: detalle.map(r => [fullName(r), r.id_estudiante ?? '-', normalizarEstadoActivo(r.estado), 'Pre-matrícula'])
   };
   if (modo === 'estudiantes') return {

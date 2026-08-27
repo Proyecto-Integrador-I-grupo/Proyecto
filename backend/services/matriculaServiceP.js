@@ -298,7 +298,7 @@ export async function obtenerGruposService(usuarioActual = null) {
          AND su.id_profesor_suplente = ? AND su.estado = TRUE
        WHERE g.estado = TRUE
          AND (gp.id_profesor = ? OR su.id_profesor_suplente = ?)
-       ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`,
+       ORDER BY g.id_grupo ASC`,
       [idProfesor, idProfesor, idProfesor, idProfesor]
     );
     return rows;
@@ -321,7 +321,7 @@ export async function obtenerGruposService(usuarioActual = null) {
      FROM grupo g
      INNER JOIN seccion s ON g.id_seccion = s.id_seccion
      WHERE g.estado = TRUE
-     ORDER BY s.periodo_lectivo DESC, s.nivel, g.nombre_grupo`
+     ORDER BY g.id_grupo ASC`
   );
   return rows;
 }

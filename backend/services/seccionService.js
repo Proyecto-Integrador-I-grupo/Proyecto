@@ -95,7 +95,7 @@ export const obtenerSeccionesService = async () => {
       SELECT id_seccion, nombre_seccion AS nombre, nivel, periodo_lectivo AS anio_lectivo, descripcion, estado
       FROM seccion
       WHERE estado = TRUE
-      ORDER BY periodo_lectivo DESC, nombre_seccion ASC
+      ORDER BY id_seccion ASC
     `);
 
     const anioActual = new Date().getFullYear();
@@ -130,7 +130,7 @@ export const obtenerSeccionesService = async () => {
       SELECT id_seccion, nombre_seccion AS nombre, nivel, periodo_lectivo AS anio_lectivo, descripcion, estado
       FROM seccion
       WHERE estado = TRUE
-      ORDER BY periodo_lectivo DESC, nombre_seccion ASC
+      ORDER BY id_seccion ASC
     `);
 
     return rows;

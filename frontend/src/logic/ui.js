@@ -1169,7 +1169,9 @@ function renderTablaUsuarios(usuarios) {
   if (!tbody) return;
 
   const usuariosPermisos = Array.isArray(usuarios)
-    ? usuarios.filter((u) => [1, 2].includes(Number(u.id_rol)))
+    ? usuarios
+        .filter((u) => [1, 2].includes(Number(u.id_rol)))
+        .sort((a, b) => Number(a.id_usuario || Number.MAX_SAFE_INTEGER) - Number(b.id_usuario || Number.MAX_SAFE_INTEGER))
     : [];
 
   if (!usuariosPermisos.length) {

@@ -75,7 +75,7 @@ export const obtenerEstudiantesService = async () => {
         SELECT 1 FROM grupo_estudiante ge
         WHERE ge.id_estudiante = e.id_estudiante AND ge.estado = TRUE
       )
-    ORDER BY e.id_estudiante DESC
+    ORDER BY e.id_estudiante ASC
   `;
   const [rows] = await conexionPromise.query(query);
   return rows;

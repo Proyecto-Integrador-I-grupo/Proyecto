@@ -31,15 +31,25 @@ function parseDays(value) {
   return [...new Set(String(value || '').split(',').map(normalizeText).filter(Boolean))];
 }
 
+function normalizarHoraEscolar(value) {
+  const [hRaw, mRaw] = String(value || '00:00').slice(0, 5).split(':').map(Number);
+  let h = Number.isFinite(hRaw) ? hRaw : 0;
+  const m = Number.isFinite(mRaw) ? mRaw : 0;
+
+  // En el contexto escolar, valores 01:00–05:59 representan la jornada de la tarde.
+  // Así 01:00 se presenta/ordena como 1:00 p. m. y nunca aparece antes de 8:00 a. m.
+  if (h >= 1 && h <= 5) h += 12;
+
+  return { h, m };
+}
+
 function minutes(value) {
-  const [h, m] = String(value || '00:00').slice(0, 5).split(':').map(Number);
-  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+  const { h, m } = normalizarHoraEscolar(value);
+  return h * 60 + m;
 }
 
 function fmtHour(value) {
-  const [hRaw, mRaw] = String(value || '00:00').slice(0, 5).split(':').map(Number);
-  const h = Number.isFinite(hRaw) ? hRaw : 0;
-  const m = Number.isFinite(mRaw) ? mRaw : 0;
+  const { h, m } = normalizarHoraEscolar(value);
   const suffix = h >= 12 ? 'p. m.' : 'a. m.';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;

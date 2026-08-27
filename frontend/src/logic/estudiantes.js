@@ -160,7 +160,11 @@ function renderPersonasTable(personas) {
     return;
   }
 
-  personas.forEach((p) => {
+  const personasOrdenadas = [...personas].sort(
+    (a, b) => Number(a.id_estudiante ?? a.id ?? Number.MAX_SAFE_INTEGER) - Number(b.id_estudiante ?? b.id ?? Number.MAX_SAFE_INTEGER)
+  );
+
+  personasOrdenadas.forEach((p) => {
     const id = p.id_estudiante ?? p.id ?? '';
     const nombreCompleto = `${p.nombre ?? ''} ${p.apellido1 ?? ''} ${p.apellido2 ?? ''}`.trim();
     const nac = p.fecha_nacimiento ? p.fecha_nacimiento.split('T')[0] : '-';

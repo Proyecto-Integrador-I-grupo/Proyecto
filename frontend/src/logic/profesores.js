@@ -333,7 +333,9 @@ function filtrarProfesores(profesores) {
     });
   }
 
-  return resultado;
+  return [...resultado].sort(
+    (a, b) => Number(a.id_profesor ?? a.id ?? Number.MAX_SAFE_INTEGER) - Number(b.id_profesor ?? b.id ?? Number.MAX_SAFE_INTEGER)
+  );
 }
 
 function actualizarStatsProfesores(profesores) {

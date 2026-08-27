@@ -231,7 +231,7 @@ export const obtenerProfesoresService = async () => {
     LEFT JOIN grupo g ON g.id_grupo = gp.id_grupo
     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
     GROUP BY pr.id_profesor
-    ORDER BY pr.id_profesor DESC
+    ORDER BY pr.id_profesor ASC
   `;
   const [rows] = await conexionPromise.query(query);
   return rows;

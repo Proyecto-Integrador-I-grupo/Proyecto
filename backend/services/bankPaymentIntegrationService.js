@@ -1,7 +1,7 @@
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import pool from '../config/database.js';
 import { registrarPago } from './finanzaService.js';
-import { obtenerConfiguracionInternaIntegraciones, registrarPagoBankyFacturaSmart } from './facturacionIntegrationService.js';
+import { obtenerConfiguracionInternaIntegraciones } from './facturacionIntegrationService.js';
 
 const DEFAULT_BANK_CHECKOUT_URL = 'https://bankyfinanzas.netlify.app/checkout';
 const BANK_CHANNEL = 'bankyfinanzas:checkout';
@@ -9,14 +9,6 @@ let schemaPromise = null;
 
 function clean(value, max = 250) {
   return String(value ?? '').trim().slice(0, max);
-}
-
-function bankyCustomerScope(responsable = {}, estudianteId = null) {
-  const documento = clean(responsable?.numero_identificacion, 80).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
-  const correo = clean(responsable?.correo, 180).toLowerCase();
-  const seed = documento || correo || `estudiante:${Number(estudianteId) || 0}`;
-  const hash = createHash('sha256').update(`educontrol|${seed}`).digest('hex').slice(0, 28);
-  return `EDUCLIENT-${hash.toUpperCase()}`;
 }
 
 function money(value, field = 'El monto') {
@@ -167,51 +159,12 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
   checkout.searchParams.set('returnUrl', `${origin}/?paymentReference=${encodeURIComponent(reference)}`);
   checkout.searchParams.set('merchantId', merchant);
   checkout.searchParams.set('merchant', merchant);
+  // Identificador efímero por intento. No cambia el contrato existente de Banky,
+  // pero evita que una integración que use sessionStorage/window.name confunda
+  // dos cobros consecutivos del mismo navegador.
+  checkout.searchParams.set('paymentSession', token);
   const merchantName = clean(config?.institucion_nombre || 'EduControl', 160);
   if (merchantName) checkout.searchParams.set('merchantName', merchantName);
-
-  // El bolsillo de tarjetas debe quedar aislado por RESPONSABLE, no por comercio
-  // ni por la pestaña del navegador. Usamos una clave opaca y estable derivada de
-  // identificación/correo: un responsable recurrente puede volver a ver SUS
-  // tarjetas, mientras un responsable nuevo recibe un contexto de cliente nuevo.
-  const responsable = datos?.responsable && typeof datos.responsable === 'object' ? datos.responsable : {};
-  const customerScope = bankyCustomerScope(responsable, cargo.id_estudiante);
-
-  // Banky ha tenido distintas variantes del contrato durante el laboratorio.
-  // Enviamos la misma clave bajo los alias de cliente más habituales para mantener
-  // compatibilidad sin exponer la identificación como identificador principal.
-  const customerAliases = {
-    customerId: customerScope,
-    customerReference: customerScope,
-    clientId: customerScope,
-    clientReference: customerScope,
-    clienteId: customerScope,
-    payerId: customerScope,
-    payerReference: customerScope,
-    walletOwnerId: customerScope,
-    cardOwnerId: customerScope,
-    cardScope: 'customer',
-    walletScope: 'customer',
-    savedCardsScope: 'customer',
-    checkoutSession: token
-  };
-  Object.entries(customerAliases).forEach(([key, value]) => checkout.searchParams.set(key, value));
-
-  const responsableNombre = clean(responsable.nombre, 160);
-  const responsableCorreo = clean(responsable.correo, 180).toLowerCase();
-  const responsableDocumento = clean(responsable.numero_identificacion, 80);
-  if (responsableNombre) {
-    checkout.searchParams.set('customerName', responsableNombre);
-    checkout.searchParams.set('payerName', responsableNombre);
-  }
-  if (responsableCorreo) {
-    checkout.searchParams.set('customerEmail', responsableCorreo);
-    checkout.searchParams.set('payerEmail', responsableCorreo);
-  }
-  if (responsableDocumento) {
-    checkout.searchParams.set('customerDocument', responsableDocumento);
-    checkout.searchParams.set('payerDocument', responsableDocumento);
-  }
 
   return {
     token,
@@ -221,8 +174,7 @@ export async function iniciarPagoBanco(idCargo, datos, idUsuario, requestOrigin)
     moneda: 'CRC',
     expectedOrigin: bankOrigin(checkoutUrl),
     channel: BANK_CHANNEL,
-    expiresAt: expiry.toISOString(),
-    customerScope
+    expiresAt: expiry.toISOString()
   };
 }
 
@@ -350,14 +302,6 @@ export async function confirmarPagoBanco(idCargo, datos, idUsuario) {
     [transactionCode, paymentId, externalIntentId, JSON.stringify(verified), intent.id_intento]
   );
 
-  // Si FacturaSmart ya generó la factura electrónica, asociamos el resultado real
-  // de Banky. Un fallo aquí no revierte el pago de EduControl.
-  const facturaSmartPago = await registrarPagoBankyFacturaSmart(cargoId, {
-    ...verified,
-    status: 'completed',
-    transactionCode
-  }).catch((error) => ({ ok: false, mensaje: error?.message }));
-
   return {
     ...resultado,
     banco: {
@@ -366,8 +310,7 @@ export async function confirmarPagoBanco(idCargo, datos, idUsuario) {
       transactionCode,
       paymentId,
       channel: BANK_CHANNEL
-    },
-    factura_smart_pago: facturaSmartPago
+    }
   };
 }
 

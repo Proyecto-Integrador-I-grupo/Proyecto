@@ -629,19 +629,35 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return { ok: true, id: rows[0].identificador_externo, estado: 'disponible' };
   }
 
+  // La identidad del emisor que acepta FacturaSmart es la de la cuenta
+  // autenticada. Consultarla antes de procesar evita que una base recreada o un
+  // dato escrito distinto en EduControl provoque un 4xx/502 en la integración.
+  // Los datos fiscales de EduControl no se sobrescriben: solo usamos el perfil
+  // remoto como fuente de verdad para ESTA petición electrónica.
+  let perfilFacturaSmart = null;
+  try {
+    perfilFacturaSmart = await consumirFacturaSmart(config, '/api/v1/clientes/me', { timeout: 20000 });
+  } catch (errorPerfil) {
+    console.warn(`FacturaSmart perfil (cargo ${idCargo}):`, errorPerfil?.message || errorPerfil);
+  }
+  const fiscalRemoto = datosFiscalesDesdePerfilFacturaSmart(perfilFacturaSmart);
+  const emisorFacturaSmart = {
+    nombre: fiscalRemoto.nombre || payloadBase.emisor.nombre,
+    identificacion: {
+      tipo: fiscalRemoto.tipoExterno || tipoIdentificacionFacturaSmart(payloadBase.emisor.identificacion?.tipo),
+      numero: fiscalRemoto.numero || payloadBase.emisor.identificacion?.numero
+    },
+    correo: fiscalRemoto.correo || String(config?.factura_electronica_correo || '').trim().toLowerCase() || payloadBase.emisor.correo
+  };
+
   const body = {
     id: uuidFacturaSmartCargo(idCargo),
     fecha: fechaFacturaSmart(payloadBase.fecha),
     moneda: payloadBase.moneda,
     condicionVenta: payloadBase.condicionVenta,
     medioPago: payloadBase.medioPago,
-    estadoPago: String(payloadBase.estadoPago || "").trim().toUpperCase() || undefined,
     tipoDocumento: 'FACTURA_ELECTRONICA',
-    emisor: {
-      nombre: payloadBase.emisor.nombre,
-      identificacion: { tipo: tipoIdentificacionFacturaSmart(payloadBase.emisor.identificacion?.tipo), numero: payloadBase.emisor.identificacion?.numero },
-      correo: payloadBase.emisor.correo
-    },
+    emisor: emisorFacturaSmart,
     receptor: {
       nombre: payloadBase.receptor.nombre,
       identificacion: payloadBase.receptor.identificacion ? { tipo: tipoIdentificacionFacturaSmart(payloadBase.receptor.identificacion.tipo), numero: payloadBase.receptor.identificacion.numero } : null,
@@ -690,8 +706,10 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     });
     return { ok: true, id, estado: 'disponible', respuesta };
   } catch (error) {
-    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: error?.message || 'No se pudo procesar la factura electrónica.' });
-    return { ok: false, estado: 'error', mensaje: error?.message || 'No se pudo procesar la factura electrónica.' };
+    const mensaje = error?.message || 'No se pudo procesar la factura electrónica.';
+    console.error(`FacturaSmart directo (cargo ${idCargo}):`, mensaje);
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: mensaje });
+    return { ok: false, estado: 'error', mensaje };
   }
 }
 
@@ -1206,47 +1224,57 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     // "Procesando..." después de que el cobro ya fue aprobado.
     void (async () => {
       let facturaElectronica = null;
-      try {
-        let passwordFacturaSmart = '';
-        try { passwordFacturaSmart = configGuardada?.factura_electronica_password ? descifrarSecreto(configGuardada.factura_electronica_password) : ''; } catch {}
-        if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && passwordFacturaSmart) {
-          const bodySync = {
-            baseUrl: raizFacturaSmart(configGuardada),
-            correo: String(configGuardada.factura_electronica_correo).trim().toLowerCase(),
-            password: passwordFacturaSmart
-          };
-          try {
-            const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
-            if (tokenFacturaSmart) bodySync.accessToken = tokenFacturaSmart;
-          } catch {}
 
-          const sync = await consumirServicio(
-            `${apiRoot}/api/facturas/${encodeURIComponent(respuesta.id)}/electronica/sincronizar`,
-            {
-              method: 'POST',
-              body: JSON.stringify(bodySync),
-              headers: integrationApiKey ? { 'X-Api-Key': integrationApiKey } : {},
-              timeout: Number(process.env.FACTURACION_ELECTRONICA_TIMEOUT_MS || 45000),
-              retry429: 1
-            }
-          );
-          facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, {
-            ok: Boolean(sync?.ok),
-            id: sync?.facturaSmartId || sync?.id,
-            xmlBase64: sync?.xmlBase64,
-            mimeType: sync?.mimeType,
-            estado: sync?.estado,
-            mensaje: sync?.mensaje
-          }, configGuardada).catch(() => null);
+      // PRIMER CAMINO: EduControl -> FacturaSmart directamente. Este es el flujo
+      // más corto y evita que un error 502 del puente de Factura Bonita impida
+      // generar el XML.
+      if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
+        try {
+          facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada);
+        } catch (errorDirecto) {
+          console.error(`FacturaSmart directo (cargo ${idCargo}):`, errorDirecto?.message || errorDirecto);
         }
-      } catch (errorSync) {
-        console.warn(`FacturaSmart vía api-factura (cargo ${idCargo}):`, errorSync?.message || errorSync);
       }
 
-      // Respaldo directo si api-factura todavía no puede sincronizar el XML.
-      if (!facturaElectronica?.ok && configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
-        await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada)
-          .catch((error) => console.warn(`FacturaSmart directo (cargo ${idCargo}):`, error?.message || error));
+      // RESPALDO: api-factura puede seguir sincronizando si el camino directo no
+      // pudo completar el XML. Un 502 aquí ya no bloquea el flujo principal.
+      if (!facturaElectronica?.ok) {
+        try {
+          let passwordFacturaSmart = '';
+          try { passwordFacturaSmart = configGuardada?.factura_electronica_password ? descifrarSecreto(configGuardada.factura_electronica_password) : ''; } catch {}
+          if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && passwordFacturaSmart) {
+            const bodySync = {
+              baseUrl: raizFacturaSmart(configGuardada),
+              correo: String(configGuardada.factura_electronica_correo).trim().toLowerCase(),
+              password: passwordFacturaSmart
+            };
+            try {
+              const tokenFacturaSmart = await loginFacturaSmart(configGuardada, { force: true });
+              if (tokenFacturaSmart) bodySync.accessToken = tokenFacturaSmart;
+            } catch {}
+
+            const sync = await consumirServicio(
+              `${apiRoot}/api/facturas/${encodeURIComponent(respuesta.id)}/electronica/sincronizar`,
+              {
+                method: 'POST',
+                body: JSON.stringify(bodySync),
+                headers: integrationApiKey ? { 'X-Api-Key': integrationApiKey } : {},
+                timeout: Number(process.env.FACTURACION_ELECTRONICA_TIMEOUT_MS || 45000),
+                retry429: 1
+              }
+            );
+            facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, {
+              ok: Boolean(sync?.ok),
+              id: sync?.facturaSmartId || sync?.id,
+              xmlBase64: sync?.xmlBase64,
+              mimeType: sync?.mimeType,
+              estado: sync?.estado,
+              mensaje: sync?.mensaje
+            }, configGuardada).catch(() => null);
+          }
+        } catch (errorSync) {
+          console.warn(`FacturaSmart vía api-factura (cargo ${idCargo}):`, errorSync?.message || errorSync);
+        }
       }
     })();
 

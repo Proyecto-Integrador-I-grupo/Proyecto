@@ -532,7 +532,7 @@ export default function Pagos() {
                     <div className="integration-card-footer">
                       <div className="d-flex gap-2 flex-wrap">
                         <a id="fin-firma-portal" className="btn btn-outline-secondary" href="https://hsm-sign-cr.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-box-arrow-up-right"></i> HSM Sign CR</a>
-                        <button type="button" className="btn btn-outline-primary" id="fin-firma-verificar" onClick={() => document.getElementById('fin-integracion-probar')?.click()}><i className="bi bi-shield-check"></i> Verificar certificado</button>
+                        <button type="button" className="btn btn-outline-primary" id="fin-firma-verificar"><i className="bi bi-shield-check"></i> Verificar certificado</button>
                       </div>
                       <small>El PIN no se almacena: se solicita únicamente al firmar cada XML.</small>
                     </div>

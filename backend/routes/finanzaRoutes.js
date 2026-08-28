@@ -5,7 +5,7 @@ import {
   getCargos, getFacturas, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
   getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
   getEstadoIntegraciones, getDocumentoFactura, getDocumentoElectronico, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco, postVincularFacturaSmart,
-  postRegistrarTributacion, postRevalidarTributacion, getAcuseTributacion, postFirmarFacturaElectronica
+  postRegistrarTributacion, postRevalidarTributacion, getAcuseTributacion, postFirmarFacturaElectronica, getEstadoFirmaDigital
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -48,6 +48,7 @@ router.post("/clases-extra", requireRole("administrador", "asistente"), postClas
 router.get("/configuracion", requireRole("administrador"), getConfiguracion);
 router.put("/configuracion", requireRole("administrador"), putConfiguracion);
 router.get("/integraciones/estado", requireRole("administrador", "asistente"), getEstadoIntegraciones);
+router.get("/integraciones/firma-digital/estado", requireRole("administrador", "asistente"), getEstadoFirmaDigital);
 router.post("/integraciones/facturasmart/vincular", requireRole("administrador"), postVincularFacturaSmart);
 router.post("/integraciones/tributacion/registrar", requireRole("administrador"), postRegistrarTributacion);
 

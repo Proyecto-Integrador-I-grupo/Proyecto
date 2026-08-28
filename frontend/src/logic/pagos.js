@@ -2253,7 +2253,7 @@ async function cargarConfiguracion() {
   try {
     const c = (await requestJson('/api/finanzas/configuracion')) || {};
     setValue('fin-config-nombre', c.institucion_nombre || '');
-    setValue('fin-config-tipo-id', c.tipo_identificacion || '02');
+    setValue('fin-config-tipo-id', c.tipo_identificacion || '');
     setValue('fin-config-numero-id', c.numero_identificacion || '');
     setValue('fin-config-correo', c.correo || '');
 

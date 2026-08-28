@@ -284,8 +284,8 @@ async function asegurarLogoConfiguracion() {
     // La integración debe poder recuperarse por sí sola antes de intentar ALTER/SELECT.
     await pool.query(`CREATE TABLE IF NOT EXISTS configuracion_facturacion (
       id_configuracion TINYINT NOT NULL PRIMARY KEY,
-      institucion_nombre VARCHAR(100) NOT NULL DEFAULT 'EduControl',
-      tipo_identificacion VARCHAR(10) NOT NULL DEFAULT '02',
+      institucion_nombre VARCHAR(100) NOT NULL DEFAULT '',
+      tipo_identificacion VARCHAR(10) NOT NULL DEFAULT '',
       numero_identificacion VARCHAR(30) NULL,
       correo VARCHAR(150) NULL,
       logo_data LONGTEXT NULL,
@@ -343,8 +343,8 @@ function normalizarLogoData(valor) {
 export async function obtenerConfiguracionFacturacion() {
   const actual = await obtenerConfigInterna();
   const base = actual || {
-    institucion_nombre: 'EduControl',
-    tipo_identificacion: '02',
+    institucion_nombre: '',
+    tipo_identificacion: '',
     numero_identificacion: '',
     correo: '',
     logo_data: null,
@@ -370,8 +370,8 @@ export async function actualizarConfiguracionFacturacion(datos) {
   await asegurarEsquemaIntegracion();
 
   const actual = (await obtenerConfigInterna()) || {};
-  const nombre = String(datos.institucion_nombre ?? actual.institucion_nombre ?? 'EduControl').trim().slice(0, 100);
-  const tipo = String(datos.tipo_identificacion ?? actual.tipo_identificacion ?? '02').trim();
+  const nombre = String(datos.institucion_nombre ?? actual.institucion_nombre ?? '').trim().slice(0, 100);
+  const tipo = String(datos.tipo_identificacion ?? actual.tipo_identificacion ?? '').trim();
   const numeroId = String(datos.numero_identificacion ?? actual.numero_identificacion ?? '').trim().slice(0, 30);
   const correo = String(datos.correo ?? actual.correo ?? '').trim().toLowerCase().slice(0, 150);
   const logoData = Object.prototype.hasOwnProperty.call(datos || {}, "logo_data")
@@ -449,18 +449,19 @@ export async function actualizarConfiguracionFacturacion(datos) {
   // Los datos fiscales se guardan en su tabla propia. Los endpoints/credenciales
   // permanecen únicamente en configuracion_integracion_servicios para evitar
   // duplicación y diferencias entre versiones de la base de datos.
-  if (nombre && tipo && numeroId && correo) await pool.query(
+  const emisorCompleto = Boolean(nombre && tipo && numeroId && correo);
+  await pool.query(
     `INSERT INTO configuracion_facturacion
       (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
-     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', TRUE)
+     VALUES (1, ?, ?, ?, ?, ?, 'CRC', '01', ?)
      ON DUPLICATE KEY UPDATE
        institucion_nombre = VALUES(institucion_nombre),
        tipo_identificacion = VALUES(tipo_identificacion),
        numero_identificacion = VALUES(numero_identificacion),
        correo = VALUES(correo),
        logo_data = VALUES(logo_data),
-       estado = TRUE`,
-    [nombre, tipo, numeroId, correo, logoData]
+       estado = VALUES(estado)`,
+    [nombre, tipo, numeroId, correo, logoData, emisorCompleto ? 1 : 0]
   );
 
   // Cualquier cambio de credenciales debe invalidar el token anterior. Esto es
@@ -572,35 +573,19 @@ function datosFiscalesDesdePerfilFacturaSmart(perfil) {
 
 async function sincronizarEmisorConPerfilFacturaSmart(perfil) {
   const fiscal = datosFiscalesDesdePerfilFacturaSmart(perfil);
-  if (!fiscal.tipoLocal || !fiscal.numero) return { sincronizado: false, ...fiscal };
+  if (!fiscal.tipoLocal || !fiscal.numero) return { sincronizado: false, coincide: null, ...fiscal };
 
-  // Para la factura electrónica, la identidad del emisor debe coincidir
-  // exactamente con la cuenta autenticada. FacturaSmart rechaza el comprobante
-  // si, por ejemplo, EduControl envía CEDULA_JURIDICA pero la cuenta fue creada
-  // como CEDULA_FISICA, aun cuando el número sea el mismo.
+  // El emisor de EduControl es configuración propia de la escuela. Nunca se
+  // sobrescribe automáticamente con el perfil remoto: al recrear las bases, el
+  // administrador debe capturarlo manualmente. FacturaSmart se consulta solo
+  // para avisar si los datos no coinciden antes de generar el XML.
   const [actualRows] = await pool.query(`SELECT * FROM configuracion_facturacion WHERE id_configuracion=1 LIMIT 1`);
   const actual = actualRows?.[0] || {};
-  await pool.query(
-    `INSERT INTO configuracion_facturacion
-      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, TRUE)
-     ON DUPLICATE KEY UPDATE
-       institucion_nombre=VALUES(institucion_nombre),
-       tipo_identificacion=VALUES(tipo_identificacion),
-       numero_identificacion=VALUES(numero_identificacion),
-       correo=VALUES(correo),
-       estado=TRUE`,
-    [
-      fiscal.nombre || actual.institucion_nombre || 'EduControl Escuela Privada',
-      fiscal.tipoLocal,
-      fiscal.numero,
-      fiscal.correo || actual.correo || '',
-      actual.logo_data || null,
-      actual.moneda || 'CRC',
-      actual.condicion_venta || '01'
-    ]
+  const coincide = Boolean(
+    String(actual.tipo_identificacion || '').trim() === String(fiscal.tipoLocal || '').trim() &&
+    String(actual.numero_identificacion || '').replace(/\D/g, '') === String(fiscal.numero || '').replace(/\D/g, '')
   );
-  return { sincronizado: true, ...fiscal };
+  return { sincronizado: false, coincide, ...fiscal };
 }
 
 export async function vincularCuentaFacturaSmart() {
@@ -680,22 +665,29 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return await guardarXmlRecuperado(idEsperado, 'recuperacion_por_id');
   } catch {}
 
-  // FacturaSmart exige que el emisor coincida EXACTAMENTE con la cuenta
-  // autenticada. Se usa siempre el perfil remoto como fuente de verdad; no se
-  // confía en datos fiscales antiguos que hayan quedado en una factura visual.
+  // El emisor se toma de los datos fiscales capturados manualmente en EduControl.
+  // El perfil de FacturaSmart solo se usa para validar que tipo y número coincidan;
+  // nunca modifica silenciosamente la configuración local.
   let emisorAutenticado = null;
   try {
     const perfilAutenticado = await consumirFacturaSmart(config, '/api/v1/clientes/me', { timeout: 20000 });
     const fiscal = datosFiscalesDesdePerfilFacturaSmart(perfilAutenticado);
-    if (fiscal.tipoLocal && fiscal.numero) {
-      emisorAutenticado = {
-        nombre: fiscal.nombre || payloadBase.emisor.nombre,
-        identificacion: { tipo: fiscal.tipoExterno, numero: fiscal.numero },
-        correo: fiscal.correo || payloadBase.emisor.correo
-      };
-      await sincronizarEmisorConPerfilFacturaSmart(perfilAutenticado).catch(() => null);
+    const tipoLocalPayload = String(payloadBase.emisor?.identificacion?.tipo || '').trim();
+    const numeroLocalPayload = String(payloadBase.emisor?.identificacion?.numero || '').replace(/\D/g, '');
+    const coincide = !fiscal.tipoLocal || !fiscal.numero || (
+      tipoLocalPayload === fiscal.tipoLocal &&
+      numeroLocalPayload === String(fiscal.numero).replace(/\D/g, '')
+    );
+    if (!coincide) {
+      throw new Error(`Los datos del emisor no coinciden con la cuenta de FacturaSmart. EduControl: ${tipoLocalPayload || 'sin tipo'} ${payloadBase.emisor?.identificacion?.numero || 'sin identificación'}; FacturaSmart: ${fiscal.tipoLocal} ${fiscal.numero}. Corrige Datos del emisor y vuelve a intentar.`);
     }
+    emisorAutenticado = {
+      nombre: payloadBase.emisor.nombre,
+      identificacion: { tipo: tipoIdentificacionFacturaSmart(tipoLocalPayload), numero: payloadBase.emisor.identificacion.numero },
+      correo: payloadBase.emisor.correo
+    };
   } catch (errorPerfil) {
+    if (/no coinciden con la cuenta de FacturaSmart/i.test(String(errorPerfil?.message || ''))) throw errorPerfil;
     console.warn(`FacturaSmart perfil (cargo ${idCargo}):`, errorPerfil?.message || errorPerfil);
   }
 
@@ -1129,23 +1121,27 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     institucion_nombre:
       configGuardada?.institucion_nombre ||
       process.env.FACTURACION_EMISOR_NOMBRE ||
-      "EduControl",
+      "",
     tipo_identificacion:
       configGuardada?.tipo_identificacion ||
       process.env.FACTURACION_EMISOR_TIPO_ID ||
-      "02",
+      "",
     numero_identificacion:
       configGuardada?.numero_identificacion ||
       process.env.FACTURACION_EMISOR_NUMERO_ID ||
-      "3101000000",
+      "",
     correo:
       configGuardada?.correo ||
       process.env.FACTURACION_EMISOR_CORREO ||
-      "facturacion@educontrol.com",
+      "",
     logo_data: configGuardada?.logo_data || null,
     moneda: configGuardada?.moneda || "CRC",
     condicion_venta: configGuardada?.condicion_venta || "01"
   };
+
+  if (!config.institucion_nombre || !config.tipo_identificacion || !config.numero_identificacion || !config.correo) {
+    throw new Error('Completa y guarda los Datos del emisor antes de generar comprobantes. La base nueva no trae datos fiscales precargados.');
+  }
 
   apiRoot = raizFacturaBonita(configGuardada);
   apiUrl = `${apiRoot}/api/facturas`;

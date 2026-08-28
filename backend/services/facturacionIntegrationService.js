@@ -1329,10 +1329,12 @@ export async function registrarContribuyenteTributacion() {
     return { ok: true, ya_registrado: true, contribuyente: existente, firma };
   }
 
+  const tipoContribuyente = tipoPersonaTributacion(config.tipo_identificacion);
   const body = {
     identificacion,
     nombreCompleto: nombre,
-    tipo: tipoPersonaTributacion(config.tipo_identificacion),
+    ...(tipoContribuyente === 'Persona jurídica' ? { razonSocial: nombre } : {}),
+    tipo: tipoContribuyente,
     provincia: config.tributacion_provincia,
     canton: config.tributacion_canton,
     distrito: config.tributacion_distrito,

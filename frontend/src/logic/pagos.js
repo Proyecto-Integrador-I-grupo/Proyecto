@@ -1159,9 +1159,6 @@ function renderFacturacion() {
            ${xmlDisponible
              ? `<button class="btn btn-sm btn-outline-primary" data-fin-documento-electronico="${c.id_cargo}" title="Abrir factura electrónica XML recibida por EduControl"><i class="bi bi-filetype-xml"></i> XML</button>`
              : `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="${esc(xmlDetalle)}"><i class="bi bi-filetype-xml"></i> XML pendiente</button>`}
-           ${xmlDisponible && !acuseDisponible
-             ? `<button class="btn btn-sm btn-outline-warning" data-fin-firmar="${c.id_cargo}" title="Firmar el XML con HSM Sign CR y enviarlo a Mini Tributación"><i class="bi bi-pen"></i> Firmar y enviar</button>`
-             : ''}
            ${acuseDisponible
              ? `<button class="btn btn-sm btn-outline-success" data-fin-acuse="${c.id_cargo}" title="Abrir respuesta y número de acuse de Mini Tributación"><i class="bi bi-patch-check"></i> Acuse${docs.acuse?.identificador_externo ? ` #${esc(docs.acuse.identificador_externo)}` : ''}</button>`
              : `<span class="badge rounded-pill text-bg-light border text-muted" title="${esc(docs.acuse?.error_mensaje || 'Mini Tributación aún no ha emitido un acuse')}"><i class="bi bi-hourglass-split me-1"></i>${String(docs.acuse?.estado || '').toLowerCase() === 'rechazado' ? 'Rechazado' : (String(docs.acuse?.estado || '').toLowerCase() === 'pendiente_firma' ? 'Firma pendiente' : 'Acuse pendiente')}</span>`}
@@ -1187,6 +1184,53 @@ function renderFacturacion() {
         <div class="finance-invoice-record-actions">${acciones}</div>
       </article>`;
   }).join('');
+
+  renderFirmasPendientesAdministrativas();
+}
+
+function renderFirmasPendientesAdministrativas() {
+  const container = document.getElementById('fin-firma-pendientes');
+  if (!container) return;
+
+  const pendientes = facturas.filter((c) => {
+    if (!c?.id_factura_externa) return false;
+    const docs = documentosIntegradosPorCargo.get(Number(c.id_cargo)) || {};
+    const xmlEstado = String(docs.factura_electronica?.estado || '').toLowerCase();
+    const xmlDisponible = ['disponible', 'remoto_disponible'].includes(xmlEstado);
+    const acuseDisponible = String(docs.acuse?.estado || '').toLowerCase() === 'disponible';
+    return xmlDisponible && !acuseDisponible;
+  });
+
+  if (!pendientes.length) {
+    container.innerHTML = `
+      <div class="small text-muted border-top pt-3">
+        <i class="bi bi-check-circle me-1"></i>No hay XML pendientes de firma y envío.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="border-top pt-3">
+      <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+        <div>
+          <strong class="d-block">Procesamiento fiscal pendiente</strong>
+          <small class="text-muted">Acción administrativa: firma el XML de la institución y lo envía a Mini Hacienda.</small>
+        </div>
+        <span class="badge rounded-pill text-bg-warning">${pendientes.length} pendiente${pendientes.length === 1 ? '' : 's'}</span>
+      </div>
+      <div class="d-grid gap-2">
+        ${pendientes.map((c) => `
+          <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap p-2 border rounded-3 bg-body-tertiary">
+            <div class="small">
+              <strong>${esc(c.estudiante_nombre || 'Estudiante')}</strong>
+              <span class="text-muted ms-1">${esc(c.concepto_nombre || c.descripcion || 'Factura')} · ${esc(c.id_factura_externa || '')}</span>
+            </div>
+            <button class="btn btn-sm btn-outline-warning" data-fin-firmar="${c.id_cargo}" title="Firmar el XML con HSM Sign CR y enviarlo a Mini Tributación">
+              <i class="bi bi-pen"></i> Firmar XML y enviar
+            </button>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function renderAdministracionCargos() {

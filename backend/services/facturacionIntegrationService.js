@@ -1126,6 +1126,11 @@ async function probarFirmaDigital(config) {
   }
 }
 
+export async function obtenerEstadoFirmaDigital() {
+  const config = await obtenerConfiguracionFacturacion();
+  return probarFirmaDigital(config);
+}
+
 function xmlTieneFirmaDigital(xml) {
   const texto = String(xml || '');
   return /<(?:[A-Za-z0-9_-]+:)?Signature\b/i.test(texto);

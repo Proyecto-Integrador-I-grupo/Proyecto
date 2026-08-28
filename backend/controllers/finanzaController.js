@@ -13,7 +13,8 @@ import {
   registrarContribuyenteTributacion,
   procesarFacturaTributacion,
   obtenerAcuseTributacion,
-  firmarFacturaElectronicaHSM
+  firmarFacturaElectronicaHSM,
+  obtenerEstadoFirmaDigital
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -194,6 +195,13 @@ export async function putConfiguracion(req, res) {
   catch (e) { responderError(res, e); }
 }
 
+
+export async function getEstadoFirmaDigital(req, res) {
+  try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.json(await obtenerEstadoFirmaDigital());
+  } catch (e) { responderError(res, e, 500); }
+}
 
 export async function getEstadoIntegraciones(req, res) {
   try {

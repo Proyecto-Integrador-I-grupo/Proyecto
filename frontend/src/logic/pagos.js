@@ -140,6 +140,7 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
+  wire('fin-firma-verificar', 'click', verificarCertificadoFirmaDigital);
   wire('fin-tributacion-registrar', 'click', registrarEduControlTributacion);
   wire('fin-config-factura-url', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-config-banco-merchant', 'input', previsualizarEstadoConfiguracionServicios);
@@ -2393,6 +2394,33 @@ function pintarEstadoServicio(prefijo, servicio) {
     detalle.textContent = servicio?.url
       ? (servicio.detalle || 'Módulo disponible en el backend.')
       : (servicio?.detalle || (servicio?.configurado ? 'Módulo configurado.' : 'Configuración pendiente.'));
+  }
+}
+
+
+async function verificarCertificadoFirmaDigital() {
+  const btn = document.getElementById('fin-firma-verificar');
+  if (!btn || btn.disabled) return;
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando…';
+  try {
+    const firma = await requestJson('/api/finanzas/integraciones/firma-digital/estado', { timeout: 30000 });
+    pintarEstadoServicio('firma', firma);
+    if (firma?.certificado_vigente) {
+      showToast('Certificado digital VIGENTE verificado correctamente.', 'success');
+    } else if (firma?.estado === 'certificado_no_vigente') {
+      showToast('EduControl está registrado en HSM, pero todavía no tiene un certificado VIGENTE.', 'warning');
+    } else if (firma?.estado === 'pendiente_registro') {
+      showToast('La identificación de EduControl aún no aparece en HSM Sign CR.', 'warning');
+    } else {
+      showToast(firma?.detalle || 'La verificación de Firma Digital terminó.', firma?.disponible === false ? 'error' : 'info');
+    }
+  } catch (e) {
+    showToast(e?.message || 'No se pudo verificar el certificado digital.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
   }
 }
 

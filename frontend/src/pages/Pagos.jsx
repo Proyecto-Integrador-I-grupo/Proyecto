@@ -510,13 +510,13 @@ export default function Pagos() {
 
                     <input id="fin-config-electronica-url" type="hidden" defaultValue="https://proyecto-facturaci-n-electr-nica.onrender.com" />
                     <div className="row g-2 mt-1">
-                      <div className="col-md-6"><label className="form-label">Correo</label><input id="fin-config-electronica-correo" type="email" className="form-control" autoComplete="username" placeholder="facturacion@educontrol.com" /></div>
+                      <div className="col-md-6"><label className="form-label">Correo</label><input id="fin-config-electronica-correo" type="email" className="form-control" autoComplete="off" name="facturasmart_correo_nuevo" placeholder="Correo de la cuenta de FacturaSmart" /></div>
                       <div className="col-md-6"><label className="form-label">Contraseña</label><input id="fin-config-electronica-password" type="password" className="form-control" autoComplete="new-password" placeholder="Guardada · escribe solo para reemplazar" /></div>
                     </div>
 
                     <div className="integration-card-footer facturasmart-simple-footer">
                       <div className="d-flex gap-2 flex-wrap">
-                        <a id="fin-facturasmart-portal" className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com" target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"></i> Ir a FacturaSmart</a>
+                        <a id="fin-facturasmart-portal" className="btn btn-outline-secondary" href="https://proyecto-facturaci-n-electr-nica.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-person-plus"></i> Crear cuenta en FacturaSmart</a>
                       </div>
                       <small>Los datos se guardan y validan con el botón general Guardar cambios.</small>
                     </div>

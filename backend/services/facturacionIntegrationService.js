@@ -463,6 +463,9 @@ export async function actualizarConfiguracionFacturacion(datos) {
     [nombre, tipo, numeroId, correo, logoData]
   );
 
+  // Cualquier cambio de credenciales debe invalidar el token anterior. Esto es
+  // especialmente importante si la cuenta externa fue recreada con el mismo correo.
+  if (typeof facturaSmartTokenCache !== 'undefined') facturaSmartTokenCache = { key: '', token: '', expiresAt: 0 };
   return obtenerConfiguracionFacturacion();
 }
 
@@ -529,7 +532,11 @@ async function loginFacturaSmart(config, { force = false } = {}) {
   let password = '';
   try { password = config?.factura_electronica_password ? descifrarSecreto(config.factura_electronica_password) : ''; } catch {}
   if (!correo || !password) throw new Error('Configura el correo y la contraseña de FacturaSmart antes de emitir factura electrónica.');
-  const key = `${root}|${correo}`;
+  // El mismo correo puede corresponder a una cuenta recreada con otra contraseña.
+  // Incluir una huella de la contraseña evita reutilizar durante 45 minutos el
+  // token de una cuenta anterior que ya fue eliminada/recreada en FacturaSmart.
+  const passwordFingerprint = createHash('sha256').update(password).digest('hex').slice(0, 16);
+  const key = `${root}|${correo}|${passwordFingerprint}`;
   if (!force && facturaSmartTokenCache.key === key && facturaSmartTokenCache.token && facturaSmartTokenCache.expiresAt > Date.now() + 30000) {
     return facturaSmartTokenCache.token;
   }
@@ -550,6 +557,50 @@ async function consumirFacturaSmart(config, ruta, options = {}) {
     token = await loginFacturaSmart(config, { force: true });
     return fetchFacturaSmart(root, ruta, { ...options, token });
   }
+}
+
+function datosFiscalesDesdePerfilFacturaSmart(perfil) {
+  const p = perfil?.cliente || perfil?.data || perfil || {};
+  const identificacion = p?.identificacion && typeof p.identificacion === 'object' ? p.identificacion : {};
+  const nombre = String(p.nombreRazonSocial ?? p.nombre_razon_social ?? p.nombre ?? '').trim();
+  const tipoExterno = String(p.tipoIdentificacion ?? p.tipo_identificacion ?? identificacion.tipo ?? '').trim().toUpperCase();
+  const numero = String(p.numeroIdentificacion ?? p.numero_identificacion ?? identificacion.numero ?? '').trim();
+  const correo = String(p.correo ?? p.email ?? '').trim().toLowerCase();
+  const tipoLocal = ({ CEDULA_FISICA: '01', CEDULA_JURIDICA: '02', DIMEX: '03', NITE: '04' })[tipoExterno] || null;
+  return { nombre, tipoExterno, tipoLocal, numero, correo };
+}
+
+async function sincronizarEmisorConPerfilFacturaSmart(perfil) {
+  const fiscal = datosFiscalesDesdePerfilFacturaSmart(perfil);
+  if (!fiscal.tipoLocal || !fiscal.numero) return { sincronizado: false, ...fiscal };
+
+  // Para la factura electrónica, la identidad del emisor debe coincidir
+  // exactamente con la cuenta autenticada. FacturaSmart rechaza el comprobante
+  // si, por ejemplo, EduControl envía CEDULA_JURIDICA pero la cuenta fue creada
+  // como CEDULA_FISICA, aun cuando el número sea el mismo.
+  const [actualRows] = await pool.query(`SELECT * FROM configuracion_facturacion WHERE id_configuracion=1 LIMIT 1`);
+  const actual = actualRows?.[0] || {};
+  await pool.query(
+    `INSERT INTO configuracion_facturacion
+      (id_configuracion, institucion_nombre, tipo_identificacion, numero_identificacion, correo, logo_data, moneda, condicion_venta, estado)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, TRUE)
+     ON DUPLICATE KEY UPDATE
+       institucion_nombre=VALUES(institucion_nombre),
+       tipo_identificacion=VALUES(tipo_identificacion),
+       numero_identificacion=VALUES(numero_identificacion),
+       correo=VALUES(correo),
+       estado=TRUE`,
+    [
+      fiscal.nombre || actual.institucion_nombre || 'EduControl Escuela Privada',
+      fiscal.tipoLocal,
+      fiscal.numero,
+      fiscal.correo || actual.correo || '',
+      actual.logo_data || null,
+      actual.moneda || 'CRC',
+      actual.condicion_venta || '01'
+    ]
+  );
+  return { sincronizado: true, ...fiscal };
 }
 
 export async function vincularCuentaFacturaSmart() {
@@ -573,12 +624,15 @@ export async function vincularCuentaFacturaSmart() {
   await pool.query(`UPDATE configuracion_integracion_servicios SET factura_electronica_cuenta_confirmada=TRUE WHERE id_configuracion=1`);
 
   let perfil = null;
+  let emisorSincronizado = null;
   try {
     perfil = await fetchFacturaSmart(root, '/api/v1/clientes/me', { token, timeout: 20000 });
-  } catch {
+    emisorSincronizado = await sincronizarEmisorConPerfilFacturaSmart(perfil);
+  } catch (errorPerfil) {
     perfil = null;
+    emisorSincronizado = { sincronizado: false, error: errorPerfil?.message || 'No se pudo consultar el perfil autenticado.' };
   }
-  return { ok: true, correo, url: root, perfil };
+  return { ok: true, correo, url: root, perfil, emisor_sincronizado: emisorSincronizado };
 }
 
 async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, config) {
@@ -593,6 +647,25 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return { ok: true, id: rows[0].identificador_externo, estado: 'disponible' };
   }
 
+  // FacturaSmart exige que el emisor coincida EXACTAMENTE con la cuenta
+  // autenticada. Consultamos el perfil antes de procesar para tolerar cuentas
+  // recreadas con el mismo correo pero nueva identificación/tipo.
+  let emisorAutenticado = null;
+  try {
+    const perfilAutenticado = await consumirFacturaSmart(config, '/api/v1/clientes/me', { timeout: 20000 });
+    const fiscal = datosFiscalesDesdePerfilFacturaSmart(perfilAutenticado);
+    if (fiscal.tipoLocal && fiscal.numero) {
+      emisorAutenticado = {
+        nombre: fiscal.nombre || payloadBase.emisor.nombre,
+        identificacion: { tipo: fiscal.tipoExterno, numero: fiscal.numero },
+        correo: fiscal.correo || payloadBase.emisor.correo
+      };
+      await sincronizarEmisorConPerfilFacturaSmart(perfilAutenticado).catch(() => null);
+    }
+  } catch {
+    emisorAutenticado = null;
+  }
+
   const body = {
     id: uuidFacturaSmartCargo(idCargo),
     fecha: fechaFacturaSmart(payloadBase.fecha),
@@ -601,7 +674,7 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     medioPago: payloadBase.medioPago,
     estadoPago: String(payloadBase.estadoPago || "").trim().toUpperCase() || undefined,
     tipoDocumento: 'FACTURA_ELECTRONICA',
-    emisor: {
+    emisor: emisorAutenticado || {
       nombre: payloadBase.emisor.nombre,
       identificacion: { tipo: tipoIdentificacionFacturaSmart(payloadBase.emisor.identificacion?.tipo), numero: payloadBase.emisor.identificacion?.numero },
       correo: payloadBase.emisor.correo

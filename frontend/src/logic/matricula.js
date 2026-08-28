@@ -708,8 +708,20 @@ async function populateSeccionesSelect() {
   try {
     const res = await apiFetch('/api/procesos/secciones');
     if (!res.ok) return [];
-    const secciones = await res.json();
-    allSecciones = Array.isArray(secciones) ? secciones : [];
+    const seccionesRespuesta = await res.json();
+    const collatorSecciones = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+    const secciones = (Array.isArray(seccionesRespuesta) ? seccionesRespuesta : []).slice().sort((a, b) => {
+      const nivelA = String(a?.nivel ?? '').trim();
+      const nivelB = String(b?.nivel ?? '').trim();
+      const porNivel = collatorSecciones.compare(nivelA, nivelB);
+      if (porNivel !== 0) return porNivel;
+      const nombreA = String(a?.nombre ?? '').trim();
+      const nombreB = String(b?.nombre ?? '').trim();
+      const porNombre = collatorSecciones.compare(nombreA, nombreB);
+      if (porNombre !== 0) return porNombre;
+      return collatorSecciones.compare(String(a?.anio_lectivo ?? ''), String(b?.anio_lectivo ?? ''));
+    });
+    allSecciones = secciones;
     const sel = document.getElementById('grupo-seccion');
     const deleteSel = document.getElementById('seccion-delete-select');
     const hint = document.getElementById('grupo-seccion-empty-hint');

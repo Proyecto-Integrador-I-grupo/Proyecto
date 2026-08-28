@@ -2103,7 +2103,7 @@ DELIMITER ;
 INSERT INTO concepto_cobro
     (codigo, nombre, descripcion, tipo, monto_base, impuesto_tarifa, moneda, estado)
 VALUES
-    ('MATRICULA', 'Matrícula', 'Derecho de matrícula del ciclo lectivo', 'matricula', 35000.00, 0.00, 'CRC', TRUE),
+    ('MATRICULA', 'Matrícula', 'Derecho de matrícula del ciclo lectivo', 'matricula', 35000.00, 13.00, 'CRC', TRUE),
     ('MENSUALIDAD', 'Mensualidad', 'Servicio educativo mensual', 'mensualidad', 45000.00, 0.00, 'CRC', TRUE),
     ('TRANSPORTE', 'Transporte', 'Servicio de transporte estudiantil', 'servicio', 20000.00, 0.00, 'CRC', TRUE),
     ('COMEDOR', 'Comedor', 'Servicio de comedor estudiantil', 'servicio', 25000.00, 0.00, 'CRC', TRUE),

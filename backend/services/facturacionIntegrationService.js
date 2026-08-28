@@ -1066,11 +1066,13 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
   const base = baseRegistrada > 0 ? baseRegistrada : total;
   const descuento = Math.min(descuentoRegistrado, base);
   const tarifa = Math.max(0, numero(cargo.impuesto_tarifa));
+  const impuestoBruto = Math.max(0, Math.round((base * tarifa / 100) * 100) / 100);
+  const proporcionDescuento = base > 0 ? Math.min(1, descuento / base) : 0;
+  const impuestoCubierto = Math.max(0, Math.round((impuestoBruto * proporcionDescuento) * 100) / 100);
+  const descuentoTotal = Math.max(0, Math.round((descuento + impuestoCubierto) * 100) / 100);
   const subtotal = Math.max(0, Math.round((base - descuento) * 100) / 100);
-  // El total persistido es la fuente de verdad del cargo ya cobrado. El impuesto
-  // se deriva de ese total para que línea, descuento y total del comprobante
-  // siempre cuadren, incluso con registros históricos/redondeos.
-  const impuesto = Math.max(0, Math.round((total - subtotal) * 100) / 100);
+  const impuesto = impuestoBruto;
+  const totalVentaNeta = Math.max(0, Math.round((base - descuentoTotal) * 100) / 100);
 
   const payload = {
     origen: "educontrol",
@@ -1105,17 +1107,29 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
         detalle: cargo.descripcion,
         cantidad: 1,
         precioUnitario: base,
+        // El descuento comercial se captura sobre la matrícula base. Cuando hay
+        // IVA, el mismo porcentaje de beneficio cubre también esa proporción del
+        // impuesto. Factura Bonita recibe ambos datos para que el IVA quede
+        // visible incluso si el total final es CRC 0.
         descuento,
-        impuesto: { tarifa },
+        impuesto: { tarifa, monto: impuestoBruto },
+        impuestoAsumidoEmisor: impuestoCubierto,
+        baseImponible: base,
         subtotal,
         montoTotalLinea: total
       }
     ],
     totales: {
-      totalGravado: tarifa > 0 ? subtotal : 0,
-      totalExento: tarifa > 0 ? 0 : subtotal,
-      totalDescuentos: descuento,
+      totalServiciosGravados: tarifa > 0 ? base : 0,
+      totalServiciosExentos: tarifa > 0 ? 0 : base,
+      totalGravado: tarifa > 0 ? base : 0,
+      totalExento: tarifa > 0 ? 0 : base,
+      totalVenta: base,
+      totalDescuentos: descuentoTotal,
+      totalVentaNeta,
       totalImpuesto: impuesto,
+      totalIVADevuelto: 0,
+      totalOtrosCargos: 0,
       totalComprobante: total
     }
   };

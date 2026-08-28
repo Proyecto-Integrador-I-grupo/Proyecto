@@ -23,6 +23,70 @@ function money(value, field, allowZero = false) {
   return Math.round(n * 100) / 100;
 }
 
+const IVA_MATRICULA = 13;
+
+function redondearDinero(valor) {
+  return Math.round((Number(valor) || 0) * 100) / 100;
+}
+
+function calcularTotalesConIvaYDescuento(baseValor, descuentoValor, tarifaValor) {
+  const base = Math.max(0, redondearDinero(baseValor));
+  const descuentoBase = Math.max(0, Math.min(base, redondearDinero(descuentoValor)));
+  const tarifa = Math.max(0, Number(tarifaValor) || 0);
+  const ivaBruto = redondearDinero(base * tarifa / 100);
+  const proporcionDescuento = base > 0 ? Math.min(1, descuentoBase / base) : 0;
+  const ivaCubiertoPorDescuento = redondearDinero(ivaBruto * proporcionDescuento);
+  const descuentoTotal = redondearDinero(descuentoBase + ivaCubiertoPorDescuento);
+  const totalAntesDescuento = redondearDinero(base + ivaBruto);
+  const total = Math.max(0, redondearDinero(totalAntesDescuento - descuentoTotal));
+  return {
+    base,
+    descuentoBase,
+    tarifa,
+    ivaBruto,
+    ivaCubiertoPorDescuento,
+    descuentoTotal,
+    totalAntesDescuento,
+    total
+  };
+}
+
+async function asegurarIvaMatricula() {
+  await pool.query(
+    `UPDATE concepto_cobro SET impuesto_tarifa = ? WHERE codigo = 'MATRICULA' AND impuesto_tarifa <> ?`,
+    [IVA_MATRICULA, IVA_MATRICULA]
+  );
+
+  // Los cargos de matrícula todavía pendientes y sin ningún abono pueden
+  // adoptar la tarifa nueva con seguridad. No tocamos pagos parciales, cargos
+  // ya pagados ni facturas históricas para no alterar movimientos cerrados.
+  await pool.query(
+    `UPDATE cargo_estudiante c
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto AND cc.codigo = 'MATRICULA'
+     LEFT JOIN (
+       SELECT id_cargo, COALESCE(SUM(monto), 0) AS pagado
+       FROM pago
+       WHERE estado = 'aplicado'
+       GROUP BY id_cargo
+     ) pg ON pg.id_cargo = c.id_cargo
+     SET c.impuesto = ROUND(c.monto_base * ? / 100, 2),
+         c.total = ROUND(
+           (c.monto_base + ROUND(c.monto_base * ? / 100, 2)) *
+           (1 - LEAST(1, GREATEST(0, c.descuento / NULLIF(c.monto_base, 0)))),
+           2
+         ),
+         c.saldo = ROUND(
+           (c.monto_base + ROUND(c.monto_base * ? / 100, 2)) *
+           (1 - LEAST(1, GREATEST(0, c.descuento / NULLIF(c.monto_base, 0)))),
+           2
+         )
+     WHERE c.estado = 'pendiente'
+       AND c.monto_base > 0
+       AND COALESCE(pg.pagado, 0) <= 0.001`,
+    [IVA_MATRICULA, IVA_MATRICULA, IVA_MATRICULA]
+  );
+}
+
 function esExoneracionTotal(montoBase, descuento, total = null) {
   const base = Number(montoBase || 0);
   const desc = Number(descuento || 0);
@@ -404,6 +468,7 @@ export async function prepararDatosFinancieros({ force = false } = {}) {
 
   preparacionFinancieraEnCurso = (async () => {
     const tareas = [
+      asegurarIvaMatricula,
       normalizarEstadosCargosPorPagos,
       anularCargosPendientesDeEstudiantesInactivos,
       normalizarCargosMatriculaDuplicados,
@@ -850,10 +915,15 @@ export async function crearCargo(datos, idUsuario) {
     : money(datos.monto_base, "El monto base", true);
   const descuento = money(datos.descuento ?? 0, "El descuento", true);
   if (descuento > base) throw new Error("El descuento no puede ser mayor al monto base.");
-  const subtotal = base - descuento;
-  const tarifa = Number(concepto.impuesto_tarifa || 0);
-  const impuesto = Math.round((subtotal * tarifa / 100) * 100) / 100;
-  const total = Math.round((subtotal + impuesto) * 100) / 100;
+  const tarifa = String(concepto.codigo || '').toUpperCase() === 'MATRICULA'
+    ? IVA_MATRICULA
+    : Number(concepto.impuesto_tarifa || 0);
+  const calculoFiscal = calcularTotalesConIvaYDescuento(base, descuento, tarifa);
+  // El IVA se calcula sobre el precio base completo. El porcentaje de descuento
+  // cubre la misma proporción del IVA, de modo que una exoneración del 100%
+  // refleja el impuesto, pero el total a pagar sigue siendo CRC 0.
+  const impuesto = calculoFiscal.ivaBruto;
+  const total = calculoFiscal.total;
   // Un descuento administrativo puede cubrir el 100% del cargo. En ese caso
   // el cargo queda saldado sin exigir un pago artificial de CRC 0.
   if (total < 0) throw new Error("El total del cargo no puede ser negativo.");
@@ -961,7 +1031,7 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
      ORDER BY (cc.codigo = 'MATRICULA') DESC, c.fecha_emision ASC`, [id]
   );
   const [matRows] = await pool.query(
-    `SELECT c.id_cargo, c.monto_base, c.descuento, c.total, c.saldo, c.estado,
+    `SELECT c.id_cargo, c.monto_base, c.descuento, c.impuesto, c.total, c.saldo, c.estado,
             COALESCE((SELECT SUM(pg.monto) FROM pago pg WHERE pg.id_cargo = c.id_cargo AND pg.estado = 'aplicado'), 0) AS pagado
      FROM cargo_estudiante c
      INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
@@ -984,7 +1054,7 @@ export async function obtenerEstadoFinancieroMatricula(idEstudiante, anio = null
     habilitado,
     abono_matricula: abonado,
     exonerado_total: exoneradoTotal,
-    monto_exonerado: exoneradoTotal ? Number(cargoMatricula?.descuento || cargoMatricula?.monto_base || 0) : 0,
+    monto_exonerado: exoneradoTotal ? redondearDinero(Number(cargoMatricula?.monto_base || 0) + Number(cargoMatricula?.impuesto || 0)) : 0,
     cargo_matricula: cargoMatricula,
     deudas,
     titulo: exoneradoTotal ? 'Matrícula exonerada' : (habilitado ? 'Matrícula habilitada' : 'Pago inicial pendiente'),
@@ -1006,7 +1076,7 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
   try {
     await connection.beginTransaction();
     const [rows] = await connection.query(
-      `SELECT c.*, cc.impuesto_tarifa FROM cargo_estudiante c INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto WHERE c.id_cargo = ? FOR UPDATE`, [id]
+      `SELECT c.*, cc.impuesto_tarifa, cc.codigo AS concepto_codigo FROM cargo_estudiante c INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto WHERE c.id_cargo = ? FOR UPDATE`, [id]
     );
     if (!rows.length) throw new Error('Cargo no encontrado.');
     const cargo = rows[0];
@@ -1026,9 +1096,12 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
       fechaVencimientoResultante = sumarDiasFecha(baseExtension, extensionDias);
     }
     await validarDescuentoVigente(fechaVencimientoResultante, descuento, connection);
-    const subtotal = base - descuento;
-    const impuesto = Math.round((subtotal * Number(cargo.impuesto_tarifa || 0) / 100) * 100) / 100;
-    const total = Math.round((subtotal + impuesto) * 100) / 100;
+    const tarifa = String(cargo.concepto_codigo || '').toUpperCase() === 'MATRICULA'
+      ? IVA_MATRICULA
+      : Number(cargo.impuesto_tarifa || 0);
+    const calculoFiscal = calcularTotalesConIvaYDescuento(base, descuento, tarifa);
+    const impuesto = calculoFiscal.ivaBruto;
+    const total = calculoFiscal.total;
     const exoneracionTotal = esExoneracionTotal(base, descuento, total);
     // Una exoneración total es un cierre por beneficio, no un pago en efectivo.
     // Para mantener el comprobante identificable pedimos y persistimos el

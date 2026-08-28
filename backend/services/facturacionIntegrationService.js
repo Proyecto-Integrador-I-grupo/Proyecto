@@ -642,14 +642,47 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return { ok: false, estado: 'pendiente_credenciales' };
   }
 
-  const [rows] = await pool.query(`SELECT identificador_externo, estado FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`, [Number(idCargo)]);
-  if (rows[0]?.identificador_externo && rows[0]?.estado === 'disponible') {
+  const [rows] = await pool.query(`SELECT identificador_externo, estado, contenido FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`, [Number(idCargo)]);
+  if (rows[0]?.identificador_externo && rows[0]?.estado === 'disponible' && rows[0]?.contenido) {
     return { ok: true, id: rows[0].identificador_externo, estado: 'disponible' };
   }
 
+  // El id es determinista por cargo. Esto permite recuperar una factura que
+  // FacturaSmart sí alcanzó a crear aunque EduControl no hubiera recibido el XML
+  // por un timeout o un reinicio del servicio.
+  const idEsperado = String(rows[0]?.identificador_externo || uuidFacturaSmartCargo(idCargo)).trim();
+  const root = raizFacturaSmart(config);
+
+  async function guardarXmlRecuperado(id, origen = 'facturasmart') {
+    const xml = await fetchFacturaSmartBinario(config, `/api/v1/facturas/${encodeURIComponent(id)}/xml`, 30000);
+    if (!xml?.buffer?.length) throw new Error('FacturaSmart devolvió un XML vacío.');
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+      estado: 'disponible',
+      identificador: id,
+      url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
+      mimeType: xml.contentType || 'application/xml',
+      contenido: xml.buffer.toString('base64'),
+      respuesta: { origen },
+      error: null
+    });
+    await upsertDocumentoIntegrado(idCargo, 'acuse', {
+      estado: 'pendiente_firma_dgtd',
+      identificador: id,
+      error: 'Factura electrónica XML disponible. Firma digital y acuse DGTD pendientes de integración externa.'
+    });
+    return { ok: true, id, estado: 'disponible', origen };
+  }
+
+  // Antes de volver a procesar, intentar recuperar el XML con el UUID del cargo.
+  // Evita duplicados y repara automáticamente pagos hechos mientras FacturaSmart
+  // estaba lento o recién desplegado.
+  try {
+    return await guardarXmlRecuperado(idEsperado, 'recuperacion_por_id');
+  } catch {}
+
   // FacturaSmart exige que el emisor coincida EXACTAMENTE con la cuenta
-  // autenticada. Consultamos el perfil antes de procesar para tolerar cuentas
-  // recreadas con el mismo correo pero nueva identificación/tipo.
+  // autenticada. Se usa siempre el perfil remoto como fuente de verdad; no se
+  // confía en datos fiscales antiguos que hayan quedado en una factura visual.
   let emisorAutenticado = null;
   try {
     const perfilAutenticado = await consumirFacturaSmart(config, '/api/v1/clientes/me', { timeout: 20000 });
@@ -662,17 +695,32 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
       };
       await sincronizarEmisorConPerfilFacturaSmart(perfilAutenticado).catch(() => null);
     }
-  } catch {
-    emisorAutenticado = null;
+  } catch (errorPerfil) {
+    console.warn(`FacturaSmart perfil (cargo ${idCargo}):`, errorPerfil?.message || errorPerfil);
   }
 
+  // Enviar a FacturaSmart únicamente el contrato JSON que ellos publicaron.
+  // Se eliminan campos internos de EduControl/Factura Bonita para evitar que un
+  // DTO estricto rechace la solicitud al cambiar de versión.
+  const items = (Array.isArray(payloadBase.items) ? payloadBase.items : []).map((item, index) => ({
+    numeroLinea: Number(item?.numeroLinea || index + 1),
+    detalle: String(item?.detalle || 'Servicio').trim(),
+    cantidad: Number(item?.cantidad || 1),
+    precioUnitario: Number(item?.precioUnitario || 0),
+    descuento: Number(item?.descuento || 0),
+    impuesto: { tarifa: Number(item?.impuesto?.tarifa || 0) },
+    subtotal: Number(item?.subtotal || 0),
+    montoTotalLinea: Number(item?.montoTotalLinea || 0)
+  }));
+
+  const totalesOrigen = payloadBase.totales || {};
   const body = {
-    id: uuidFacturaSmartCargo(idCargo),
+    id: idEsperado,
     fecha: fechaFacturaSmart(payloadBase.fecha),
     moneda: payloadBase.moneda,
     condicionVenta: payloadBase.condicionVenta,
     medioPago: payloadBase.medioPago,
-    estadoPago: String(payloadBase.estadoPago || "").trim().toUpperCase() || undefined,
+    estadoPago: String(payloadBase.estadoPago || '').trim().toUpperCase() || undefined,
     tipoDocumento: 'FACTURA_ELECTRONICA',
     emisor: emisorAutenticado || {
       nombre: payloadBase.emisor.nombre,
@@ -684,52 +732,70 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
       identificacion: payloadBase.receptor.identificacion ? { tipo: tipoIdentificacionFacturaSmart(payloadBase.receptor.identificacion.tipo), numero: payloadBase.receptor.identificacion.numero } : null,
       correo: payloadBase.receptor.correo
     },
-    items: payloadBase.items,
-    totales: payloadBase.totales
+    items,
+    totales: {
+      totalGravado: Number(totalesOrigen.totalGravado || 0),
+      totalExento: Number(totalesOrigen.totalExento || 0),
+      totalDescuentos: Number(totalesOrigen.totalDescuentos || 0),
+      totalImpuesto: Number(totalesOrigen.totalImpuesto || 0),
+      totalComprobante: Number(totalesOrigen.totalComprobante || 0)
+    }
   };
 
-  try {
-    const respuesta = await consumirFacturaSmart(config, '/api/v1/facturas/procesar', { method: 'POST', body, timeout: 60000 });
-    const id = String(respuesta?.id || respuesta?.facturaId || respuesta?.factura?.id || body.id).trim();
-    const root = raizFacturaSmart(config);
-
-    // La factura electrónica no debe quedar solamente "en FacturaSmart". En cuanto
-    // se procesa, EduControl intenta traer el XML y conservar una copia local en
-    // base64. Así el módulo de Facturación puede entregarlo directamente aunque el
-    // servicio externo esté temporalmente dormido más adelante.
-    let xmlLocal = null;
-    let xmlMime = 'application/xml';
-    let errorCopiaXml = null;
+  let respuesta = null;
+  let ultimoError = null;
+  for (let intento = 0; intento < 3; intento += 1) {
     try {
-      const xml = await fetchFacturaSmartBinario(config, `/api/v1/facturas/${encodeURIComponent(id)}/xml`, 30000);
-      xmlLocal = xml.buffer.toString('base64');
-      xmlMime = xml.contentType || 'application/xml';
-    } catch (errorXml) {
-      errorCopiaXml = errorXml?.message || 'El XML fue generado en FacturaSmart, pero EduControl todavía no pudo copiarlo.';
+      respuesta = await consumirFacturaSmart(config, '/api/v1/facturas/procesar', { method: 'POST', body, timeout: 60000 });
+      ultimoError = null;
+      break;
+    } catch (error) {
+      ultimoError = error;
+      const status = Number(error?.statusCode || 0);
+      // Si ya existe por idempotencia, recuperar el XML en vez de tratarlo como fallo.
+      if (status === 409 || /ya existe|duplicad/i.test(String(error?.message || ''))) {
+        try { return await guardarXmlRecuperado(idEsperado, 'recuperacion_duplicado'); } catch {}
+      }
+      const reintentable = status === 429 || status === 502 || status === 503 || status === 504 || error?.name === 'AbortError';
+      if (!reintentable || intento === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 1200 * (intento + 1)));
     }
-
-    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
-      estado: xmlLocal ? 'disponible' : 'remoto_disponible',
-      identificador: id,
-      url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
-      mimeType: xmlMime,
-      contenido: xmlLocal,
-      respuesta,
-      error: errorCopiaXml
-    });
-    // FacturaSmart puede generar y conservar el XML desde ahora. El acuse no se
-    // marca como error: queda expresamente pendiente hasta que exista firma digital
-    // y el flujo DGTD/Tributación esté habilitado por los otros grupos.
-    await upsertDocumentoIntegrado(idCargo, 'acuse', {
-      estado: 'pendiente_firma_dgtd',
-      identificador: id,
-      error: 'Factura electrónica generada. Firma digital y acuse DGTD pendientes de integración externa.'
-    });
-    return { ok: true, id, estado: 'disponible', respuesta };
-  } catch (error) {
-    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: error?.message || 'No se pudo procesar la factura electrónica.' });
-    return { ok: false, estado: 'error', mensaje: error?.message || 'No se pudo procesar la factura electrónica.' };
   }
+
+  if (!respuesta) {
+    const mensaje = ultimoError?.message || 'No se pudo procesar la factura electrónica.';
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', identificador: idEsperado, error: mensaje });
+    return { ok: false, estado: 'error', mensaje };
+  }
+
+  const id = String(respuesta?.id || respuesta?.facturaId || respuesta?.factura?.id || idEsperado).trim();
+
+  // Algunos despliegues crean primero la factura y publican el XML unos segundos
+  // después. Hacemos una espera breve y controlada antes de declararlo pendiente.
+  let ultimoErrorXml = null;
+  for (let intento = 0; intento < 4; intento += 1) {
+    try {
+      return await guardarXmlRecuperado(id, 'procesado_directo');
+    } catch (errorXml) {
+      ultimoErrorXml = errorXml;
+      if (intento < 3) await new Promise((resolve) => setTimeout(resolve, 1000 * (intento + 1)));
+    }
+  }
+
+  await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+    estado: 'remoto_disponible',
+    identificador: id,
+    url: `${root}/api/v1/facturas/${encodeURIComponent(id)}/xml`,
+    mimeType: 'application/xml',
+    respuesta,
+    error: ultimoErrorXml?.message || 'Factura registrada; XML pendiente de copiar a EduControl.'
+  });
+  await upsertDocumentoIntegrado(idCargo, 'acuse', {
+    estado: 'pendiente_firma_dgtd',
+    identificador: id,
+    error: 'Factura electrónica generada. Firma digital y acuse DGTD pendientes de integración externa.'
+  });
+  return { ok: true, id, estado: 'remoto_disponible', respuesta };
 }
 
 async function registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, datos, config) {
@@ -1239,47 +1305,58 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
     // "Procesando..." después de que el cobro ya fue aprobado.
     void (async () => {
       let facturaElectronica = null;
-      try {
-        let passwordFacturaSmart = '';
-        try { passwordFacturaSmart = configGuardada?.factura_electronica_password ? descifrarSecreto(configGuardada.factura_electronica_password) : ''; } catch {}
-        if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && passwordFacturaSmart) {
-          const bodySync = {
-            baseUrl: raizFacturaSmart(configGuardada),
-            correo: String(configGuardada.factura_electronica_correo).trim().toLowerCase(),
-            password: passwordFacturaSmart
-          };
-          try {
-            const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
-            if (tokenFacturaSmart) bodySync.accessToken = tokenFacturaSmart;
-          } catch {}
 
-          const sync = await consumirServicio(
-            `${apiRoot}/api/facturas/${encodeURIComponent(respuesta.id)}/electronica/sincronizar`,
-            {
-              method: 'POST',
-              body: JSON.stringify(bodySync),
-              headers: integrationApiKey ? { 'X-Api-Key': integrationApiKey } : {},
-              timeout: Number(process.env.FACTURACION_ELECTRONICA_TIMEOUT_MS || 45000),
-              retry429: 1
-            }
-          );
-          facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, {
-            ok: Boolean(sync?.ok),
-            id: sync?.facturaSmartId || sync?.id,
-            xmlBase64: sync?.xmlBase64,
-            mimeType: sync?.mimeType,
-            estado: sync?.estado,
-            mensaje: sync?.mensaje
-          }, configGuardada).catch(() => null);
+      // Camino principal: EduControl -> FacturaSmart. Así siempre se usa el
+      // perfil autenticado actual (incluyendo una cuenta recreada con el mismo
+      // correo pero distinta identificación) y no datos fiscales antiguos de un PDF.
+      if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
+        try {
+          facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada);
+        } catch (errorDirecto) {
+          console.warn(`FacturaSmart directo (cargo ${idCargo}):`, errorDirecto?.message || errorDirecto);
         }
-      } catch (errorSync) {
-        console.warn(`FacturaSmart vía api-factura (cargo ${idCargo}):`, errorSync?.message || errorSync);
       }
 
-      // Respaldo directo si api-factura todavía no puede sincronizar el XML.
-      if (!facturaElectronica?.ok && configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
-        await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada)
-          .catch((error) => console.warn(`FacturaSmart directo (cargo ${idCargo}):`, error?.message || error));
+      // Respaldo mediante api-factura. Se conserva por compatibilidad con el
+      // puente existente, pero ya no es el primer camino porque una factura visual
+      // antigua puede contener un emisor distinto a la cuenta FacturaSmart actual.
+      if (!facturaElectronica?.ok) {
+        try {
+          let passwordFacturaSmart = '';
+          try { passwordFacturaSmart = configGuardada?.factura_electronica_password ? descifrarSecreto(configGuardada.factura_electronica_password) : ''; } catch {}
+          if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && passwordFacturaSmart) {
+            const bodySync = {
+              baseUrl: raizFacturaSmart(configGuardada),
+              correo: String(configGuardada.factura_electronica_correo).trim().toLowerCase(),
+              password: passwordFacturaSmart
+            };
+            try {
+              const tokenFacturaSmart = await loginFacturaSmart(configGuardada);
+              if (tokenFacturaSmart) bodySync.accessToken = tokenFacturaSmart;
+            } catch {}
+
+            const sync = await consumirServicio(
+              `${apiRoot}/api/facturas/${encodeURIComponent(respuesta.id)}/electronica/sincronizar`,
+              {
+                method: 'POST',
+                body: JSON.stringify(bodySync),
+                headers: integrationApiKey ? { 'X-Api-Key': integrationApiKey } : {},
+                timeout: Number(process.env.FACTURACION_ELECTRONICA_TIMEOUT_MS || 45000),
+                retry429: 1
+              }
+            );
+            facturaElectronica = await registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, {
+              ok: Boolean(sync?.ok),
+              id: sync?.facturaSmartId || sync?.id,
+              xmlBase64: sync?.xmlBase64,
+              mimeType: sync?.mimeType,
+              estado: sync?.estado,
+              mensaje: sync?.mensaje
+            }, configGuardada).catch(() => null);
+          }
+        } catch (errorSync) {
+          console.warn(`FacturaSmart vía api-factura (cargo ${idCargo}):`, errorSync?.message || errorSync);
+        }
       }
     })();
 
@@ -1861,7 +1938,7 @@ export async function obtenerDocumentosIntegrados(idCargo) {
   // Esto recupera cargos ya pagados después de corregir/configurar FacturaSmart,
   // sin obligar al usuario a volver a cobrar ni a generar otro comprobante visual.
   const estadoXml = String(mapa.factura_electronica?.estado || '');
-  if (['pendiente_procesar', 'pendiente_credenciales', 'error'].includes(estadoXml)) {
+  if (['pendiente_procesar', 'pendiente_credenciales', 'pendiente_endpoint', 'error'].includes(estadoXml)) {
     const [[vinculo]] = await pool.query(`SELECT id_factura_externa FROM factura_cargo WHERE id_cargo=? LIMIT 1`, [cargoId]);
     if (vinculo?.id_factura_externa) {
       await generarFacturaDeCargo(cargoId, 'otro').catch(() => null);
@@ -1873,6 +1950,28 @@ export async function obtenerDocumentosIntegrados(idCargo) {
         [cargoId]
       );
       mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+    }
+  }
+  if (String(mapa.factura_electronica?.estado || '') === 'remoto_disponible') {
+    const config = await obtenerConfigInterna().catch(() => null);
+    const idRemoto = String(mapa.factura_electronica?.identificador_externo || '').trim();
+    if (config && idRemoto) {
+      try {
+        const xml = await fetchFacturaSmartBinario(config, `/api/v1/facturas/${encodeURIComponent(idRemoto)}/xml`, 20000);
+        if (xml?.buffer?.length) {
+          await upsertDocumentoIntegrado(cargoId, 'factura_electronica', {
+            estado: 'disponible', identificador: idRemoto,
+            mimeType: xml.contentType || 'application/xml', contenido: xml.buffer.toString('base64'), error: null
+          });
+          [rows] = await pool.query(
+            `SELECT tipo, estado, identificador_externo, url_documento, mime_type, error_mensaje, fecha_actualizacion
+               FROM documento_facturacion_integrada WHERE id_cargo=?
+               ORDER BY FIELD(tipo,'pdf_visual','factura_electronica','acuse')`,
+            [cargoId]
+          );
+          mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+        }
+      } catch {}
     }
   }
   if (['disponible','remoto_disponible'].includes(String(mapa.factura_electronica?.estado || ''))) {

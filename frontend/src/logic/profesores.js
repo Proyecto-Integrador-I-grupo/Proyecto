@@ -92,6 +92,44 @@ function validarHorasMaximasProfesor(valor) {
   return horas;
 }
 
+
+function mostrarErrorFormularioProfesor(mensaje, campoId = null) {
+  const box = document.getElementById('profesor-form-error');
+  if (box) {
+    box.textContent = String(mensaje || 'Revisa los datos del profesor.');
+    box.classList.remove('d-none');
+  }
+  if (campoId) {
+    const campo = document.getElementById(campoId);
+    campo?.classList.add('is-invalid');
+    try { campo?.focus({ preventScroll: true }); } catch { campo?.focus(); }
+  }
+  showToast(String(mensaje || 'Revisa los datos del profesor.'), 'error', 5000);
+}
+
+function limpiarErrorFormularioProfesor() {
+  const box = document.getElementById('profesor-form-error');
+  if (box) {
+    box.textContent = '';
+    box.classList.add('d-none');
+  }
+  document.querySelectorAll('#profesor-form .is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+}
+
+function validarNacimientoProfesor(valor) {
+  const fecha = String(valor || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error('Selecciona una fecha de nacimiento válida.');
+  const nacimiento = new Date(`${fecha}T00:00:00`);
+  if (Number.isNaN(nacimiento.getTime())) throw new Error('Selecciona una fecha de nacimiento válida.');
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const diferenciaMes = hoy.getMonth() - nacimiento.getMonth();
+  if (diferenciaMes < 0 || (diferenciaMes === 0 && hoy.getDate() < nacimiento.getDate())) edad -= 1;
+  if (edad < 18) throw new Error('El profesor debe ser mayor de 18 años.');
+  if (edad > 100) throw new Error('La fecha de nacimiento no es válida para un profesor activo.');
+  return fecha;
+}
+
 function wireProfesoresEvents() {
   configurarFechaIngresoProfesor();
   const modalProfesor = document.getElementById('modalProfesor');
@@ -101,6 +139,8 @@ function wireProfesoresEvents() {
     const prepararFormularioProfesor = () => {
       const form = document.getElementById('profesor-form');
       form?.reset();
+      if (form) delete form.dataset.submitting;
+      limpiarErrorFormularioProfesor();
       configurarFechaIngresoProfesor();
 
       const ingreso = document.getElementById('prof-fecha-ingreso');
@@ -126,7 +166,7 @@ function wireProfesoresEvents() {
       const submit = form?.querySelector('button[type="submit"]');
       if (submit) {
         submit.disabled = false;
-        submit.innerHTML = 'Guardar Profesor';
+        submit.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Guardar Profesor';
       }
 
       const toggle = document.getElementById('toggle-prof-password');
@@ -143,6 +183,8 @@ function wireProfesoresEvents() {
   if (profForm && !profForm.dataset.wired) {
     profForm.dataset.wired = '1';
     profForm.addEventListener('submit', handleProfesorSubmit);
+    profForm.addEventListener('input', () => limpiarErrorFormularioProfesor());
+    profForm.addEventListener('change', () => limpiarErrorFormularioProfesor());
   }
 
   const editForm = document.getElementById('editar-profesor-form');
@@ -508,20 +550,18 @@ async function handleProfesorSubmit(e) {
   const correo = document.getElementById('prof-correo')?.value.trim();
   const contrasena = document.getElementById('prof-contrasena')?.value || '';
 
-  if (!nombre || !apellido1 || !materia) {
-    showToast('Por favor completa el nombre, apellido y selecciona una materia.', 'error');
-    return;
-  }
-  if (!correo || !contrasena) {
-    showToast('Ingresa el correo y la contraseña de acceso del docente.', 'error');
-    return;
-  }
-  if (!isSchoolEmail(correo)) {
-    showToast(`El profesor debe utilizar un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
+  limpiarErrorFormularioProfesor();
+  if (!nombre) { mostrarErrorFormularioProfesor('Ingresa el nombre del profesor.', 'prof-nombre'); return; }
+  if (!apellido1) { mostrarErrorFormularioProfesor('Ingresa el primer apellido del profesor.', 'prof-apellido1'); return; }
+  if (!materia) { mostrarErrorFormularioProfesor('Selecciona la materia que imparte el profesor.', 'prof-materia'); return; }
+  if (!correo) { mostrarErrorFormularioProfesor('Ingresa el correo institucional del docente.', 'prof-correo'); return; }
+  if (!contrasena) { mostrarErrorFormularioProfesor('Ingresa la contraseña de acceso del docente.', 'prof-contrasena'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || !isSchoolEmail(correo)) {
+    mostrarErrorFormularioProfesor(`El correo debe terminar exactamente en @${SCHOOL_EMAIL_DOMAIN}.`, 'prof-correo');
     return;
   }
   if (contrasena.length < 6) {
-    showToast('La contraseña de acceso debe tener al menos 6 caracteres.', 'error');
+    mostrarErrorFormularioProfesor('La contraseña de acceso debe tener al menos 6 caracteres.', 'prof-contrasena');
     return;
   }
 
@@ -531,14 +571,21 @@ async function handleProfesorSubmit(e) {
     fechaIngreso = validarFechaIngresoProfesor(document.getElementById('prof-fecha-ingreso')?.value);
     horasMaximas = validarHorasMaximasProfesor(document.getElementById('prof-horas-max')?.value || 40);
   } catch (error) {
-    showToast(error.message, 'error');
+    const campo = String(error.message || '').toLowerCase().includes('carga máxima') ? 'prof-horas-max' : 'prof-fecha-ingreso';
+    mostrarErrorFormularioProfesor(error.message, campo);
     return;
   }
 
-  const fechaNacimiento = document.getElementById('prof-fecha-nac')?.value || '';
+  let fechaNacimiento;
+  try {
+    fechaNacimiento = validarNacimientoProfesor(document.getElementById('prof-fecha-nac')?.value || '');
+  } catch (error) {
+    mostrarErrorFormularioProfesor(error.message, 'prof-fecha-nac');
+    return;
+  }
   const genero = normalizeGenero(document.getElementById('prof-genero')?.value) || '';
-  if (!fechaNacimiento || !genero) {
-    showToast('Completa la fecha de nacimiento y el género del profesor.', 'error');
+  if (!genero) {
+    mostrarErrorFormularioProfesor('Selecciona el género del profesor.', 'prof-genero');
     return;
   }
 
@@ -570,7 +617,9 @@ async function handleProfesorSubmit(e) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      showToast(json.error || json.mensaje || 'Ocurrió un error registrando al profesor.', 'error', 5000);
+      const mensaje = json.error || json.mensaje || 'Ocurrió un error registrando al profesor.';
+      const campo = /correo/i.test(mensaje) ? 'prof-correo' : null;
+      mostrarErrorFormularioProfesor(mensaje, campo);
       return;
     }
 
@@ -584,12 +633,12 @@ async function handleProfesorSubmit(e) {
     showResultModal('success', 'Profesor registrado', 'El profesor fue agregado correctamente al cuerpo docente.');
   } catch (error) {
     console.error('Error registrando profesor:', error);
-    showToast(error?.message || 'No se pudo conectar con el servidor.', 'error', 5000);
+    mostrarErrorFormularioProfesor(error?.message || 'No se pudo conectar con el servidor.');
   } finally {
     delete form.dataset.submitting;
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Guardar Profesor';
+      submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Guardar Profesor';
     }
   }
 }
@@ -735,15 +784,23 @@ async function destituirProfesor(idProf, motivo, fecha_inicio, fecha_fin) {
 
 async function eliminarProfesor(idProf) {
   if (!idProf) return;
+  const boton = document.getElementById('confirmar-eliminar-btn');
+  if (boton?.dataset.busy === '1') return;
+  if (boton) {
+    boton.dataset.busy = '1';
+    boton.disabled = true;
+    boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Eliminando...';
+  }
   try {
     const res = await apiFetch(`/api/profesores/${idProf}`, { method: 'DELETE' });
     const json = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      showResultModal('success', 'Profesor eliminado', 'El profesor, su acceso y los registros asociados fueron eliminados permanentemente del sistema.');
-      await loadProfesores();
-      await populateProfesoresSelects();
-      await refreshDashboardCounts();
+      allProfesores = allProfesores.filter((p) => String(p.id_profesor ?? p.id) !== String(idProf));
+      profesorPagina = 1;
+      renderProfesoresTable(filtrarProfesores(allProfesores));
+      showResultModal('success', 'Profesor eliminado', 'El profesor dejó de aparecer en el cuerpo docente y su acceso fue desactivado. El historial académico previo se conserva.');
+      await Promise.allSettled([loadProfesores(), populateProfesoresSelects(), refreshDashboardCounts()]);
     } else {
       showResultModal('error', 'No se pudo eliminar', json.error || json.mensaje || 'Ocurrió un error al eliminar el profesor.');
     }
@@ -751,6 +808,11 @@ async function eliminarProfesor(idProf) {
     showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
   } finally {
     profesorPendienteId = null;
+    if (boton) {
+      delete boton.dataset.busy;
+      boton.disabled = false;
+      boton.innerHTML = '<i class="bi bi-trash3 me-1"></i>Eliminar';
+    }
   }
 }
 

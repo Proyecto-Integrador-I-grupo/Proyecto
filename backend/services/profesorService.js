@@ -166,6 +166,7 @@ export async function procesarSuplenciasVencidas() {
       `SELECT pr.id_profesor, pr.id_persona
        FROM profesor pr
        WHERE pr.estado = FALSE AND pr.inactivo_hasta IS NOT NULL AND pr.inactivo_hasta < CURDATE()
+         AND COALESCE(pr.motivo_inactividad, '') <> 'Baja lógica administrativa'
          AND NOT EXISTS (SELECT 1 FROM profesor_suplencia ps WHERE ps.id_profesor_titular = pr.id_profesor AND ps.estado = TRUE)`
     );
     for (const titular of titulares) {
@@ -230,6 +231,7 @@ export const obtenerProfesoresService = async () => {
     LEFT JOIN grupo_profesor gp ON gp.id_profesor = pr.id_profesor AND gp.estado = TRUE AND gp.fecha_fin IS NULL
     LEFT JOIN grupo g ON g.id_grupo = gp.id_grupo
     LEFT JOIN seccion s ON s.id_seccion = g.id_seccion
+    WHERE NOT (pr.estado = FALSE AND COALESCE(pr.motivo_inactividad, '') = 'Baja lógica administrativa')
     GROUP BY pr.id_profesor
     ORDER BY pr.id_profesor ASC
   `;
@@ -610,7 +612,12 @@ export const eliminarProfesorService = async (id_profesor) => {
       [id_profesor, id_profesor]
     );
     await connection.query(
-      `UPDATE profesor SET estado = FALSE, motivo_inactividad = COALESCE(motivo_inactividad, 'Baja lógica administrativa') WHERE id_profesor = ?`,
+      `UPDATE profesor
+       SET estado = FALSE,
+           motivo_inactividad = 'Baja lógica administrativa',
+           inactivo_desde = NULL,
+           inactivo_hasta = NULL
+       WHERE id_profesor = ?`,
       [id_profesor]
     );
     await connection.query(`UPDATE usuario SET estado = FALSE WHERE id_persona = ?`, [profesor.id_persona]);

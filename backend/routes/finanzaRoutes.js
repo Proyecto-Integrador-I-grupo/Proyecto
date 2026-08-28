@@ -4,7 +4,8 @@ import {
   getResumen, getConceptos, postConcepto, putConcepto,
   getCargos, getFacturas, postCargo, putCargo, getPagos, getEstadoCuentas, getEstudiantesFinanzas, postPago, putPago, postFacturar, getResponsable, getEstadoMatricula,
   getConfiguracion, putConfiguracion, getClasesExtra, getProfesoresExtra, getDisponibilidadClaseExtra, getEstudiantesProfesorExtra, postClaseExtra,
-  getEstadoIntegraciones, getDocumentoFactura, getDocumentoElectronico, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco, postVincularFacturaSmart
+  getEstadoIntegraciones, getDocumentoFactura, getDocumentoElectronico, getDocumentosIntegrados, postConfirmarFacturaCliente, postIniciarPagoBanco, postConfirmarPagoBanco, postResultadoPagoBanco, postVincularFacturaSmart,
+  postRegistrarTributacion, postRevalidarTributacion, getAcuseTributacion, postFirmarFacturaElectronica
 } from "../controllers/finanzaController.js";
 
 const router = express.Router();
@@ -34,6 +35,9 @@ router.post("/cargos/:id/facturar", requirePermission("finanzas.facturar_manual"
 router.post("/cargos/:id/factura-confirmar", requirePermission("finanzas.facturar_manual"), postConfirmarFacturaCliente);
 router.get("/cargos/:id/documento", requireRole("administrador", "asistente"), getDocumentoFactura);
 router.get("/cargos/:id/factura-electronica", requireRole("administrador", "asistente"), getDocumentoElectronico);
+router.get("/cargos/:id/acuse", requireRole("administrador", "asistente"), getAcuseTributacion);
+router.post("/cargos/:id/firma-digital/firmar", requireRole("administrador", "asistente"), postFirmarFacturaElectronica);
+router.post("/cargos/:id/tributacion/revalidar", requireRole("administrador", "asistente"), postRevalidarTributacion);
 router.get("/cargos/:id/documentos-integrados", requireRole("administrador", "asistente"), getDocumentosIntegrados);
 router.get("/clases-extra", requireRole("administrador", "asistente"), getClasesExtra);
 router.get("/profesores-extra", requireRole("administrador", "asistente"), getProfesoresExtra);
@@ -45,5 +49,6 @@ router.get("/configuracion", requireRole("administrador"), getConfiguracion);
 router.put("/configuracion", requireRole("administrador"), putConfiguracion);
 router.get("/integraciones/estado", requireRole("administrador", "asistente"), getEstadoIntegraciones);
 router.post("/integraciones/facturasmart/vincular", requireRole("administrador"), postVincularFacturaSmart);
+router.post("/integraciones/tributacion/registrar", requireRole("administrador"), postRegistrarTributacion);
 
 export default router;

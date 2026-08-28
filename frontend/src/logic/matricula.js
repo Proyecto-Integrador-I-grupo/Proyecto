@@ -162,7 +162,7 @@ function wireMatriculaEvents() {
       if (confirmarModalEl) {
         const btnConfSec = document.getElementById('btn-confirmar-borrado-seccion');
         if (btnConfSec) btnConfSec.dataset.idSeccion = idSeccion;
-        new bootstrap.Modal(confirmarModalEl).show();
+        bootstrap.Modal.getOrCreateInstance(confirmarModalEl).show();
       }
     });
   }

@@ -111,9 +111,27 @@ function initGlobalModalLock() {
   });
   document.addEventListener('hidden.bs.modal', (event) => {
     event.target?.classList.remove('edu-modal-compact-height');
-    window.setTimeout(unlockDocumentAfterModal, 0);
+    window.setTimeout(() => {
+      unlockDocumentAfterModal();
+      // Autorreparación de artefactos de Bootstrap: un backdrop huérfano o
+      // modal-open residual bloqueaba clics después de abrir/cerrar varias
+      // operaciones consecutivas.
+      if (!document.querySelector('.modal.show')) {
+        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+      }
+    }, 20);
   });
   window.addEventListener('resize', () => window.requestAnimationFrame(fitOpenModals));
+  const repairModalArtifacts = () => {
+    if (document.querySelector('.modal.show')) return;
+    document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+    document.body.classList.remove('modal-open');
+  };
+  window.addEventListener('pageshow', repairModalArtifacts);
+  window.addEventListener('focus', repairModalArtifacts);
 
   // La página de fondo queda inmóvil, pero el usuario sí puede usar rueda,
   // touch y teclado dentro de la ventana emergente. Antes se bloqueaba la

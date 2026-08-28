@@ -1276,62 +1276,54 @@ window.eliminarUsuario =
    4. UI Y NOTIFICACIONES COMPARTIDAS
    ========================================== */
 
-function showResultModal(
-  type,
-  titulo,
-  mensaje
-) {
-  const icono =
-    document.getElementById(
-      'resultado-icono'
-    );
+function showResultModal(type, titulo, mensaje) {
+  const abrirResultado = () => {
+    const icono = document.getElementById('resultado-icono');
+    const tituloEl = document.getElementById('resultado-titulo');
+    const mensajeEl = document.getElementById('resultado-mensaje');
 
-  const tituloEl =
-    document.getElementById(
-      'resultado-titulo'
-    );
-
-  const mensajeEl =
-    document.getElementById(
-      'resultado-mensaje'
-    );
-
-  if (icono) {
-    icono.className =
-      type === 'success'
+    if (icono) {
+      icono.className = type === 'success'
         ? 'bi bi-check-circle-fill text-success'
         : 'bi bi-x-circle-fill text-danger';
+      icono.style.fontSize = '42px';
+    }
+    if (tituloEl) tituloEl.textContent = titulo;
+    if (mensajeEl) mensajeEl.textContent = mensaje;
 
-    icono.style.fontSize =
-      '42px';
-  }
+    const modalEl = document.getElementById('modalResultado');
+    if (!modalEl || !window.bootstrap?.Modal) return;
 
-  if (tituloEl) {
-    tituloEl.textContent =
-      titulo;
-  }
+    // Nunca apilar el modal de resultado encima de otra ventana. Bootstrap
+    // puede dejar un backdrop/focus-trap activo y hacer que los botones dejen
+    // de responder después de una operación exitosa.
+    document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+      if (!document.querySelector('.modal.show')) backdrop.remove();
+    });
 
-  if (mensajeEl) {
-    mensajeEl.textContent =
-      mensaje;
-  }
-
-  const modalEl =
-    document.getElementById(
-      'modalResultado'
-    );
-
-  if (modalEl) {
-    const instance =
-      bootstrap.Modal.getInstance(
-        modalEl
-      ) ||
-      new bootstrap.Modal(
-        modalEl
-      );
-
+    const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
     instance.show();
+  };
+
+  const abierta = [...document.querySelectorAll('.modal.show')]
+    .find((modal) => modal.id !== 'modalResultado');
+
+  if (!abierta || !window.bootstrap?.Modal) {
+    abrirResultado();
+    return;
   }
+
+  const instance = bootstrap.Modal.getInstance(abierta) || bootstrap.Modal.getOrCreateInstance(abierta);
+  let opened = false;
+  const afterHidden = () => {
+    if (opened) return;
+    opened = true;
+    abierta.removeEventListener('hidden.bs.modal', afterHidden);
+    window.setTimeout(abrirResultado, 30);
+  };
+  abierta.addEventListener('hidden.bs.modal', afterHidden, { once: true });
+  instance.hide();
+  window.setTimeout(afterHidden, 750);
 }
 
 function showToast(

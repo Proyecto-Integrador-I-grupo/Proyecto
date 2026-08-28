@@ -2824,7 +2824,7 @@ function mostrarDetalleAsistencia(id) {
 
     const instancia =
       bootstrap.Modal.getInstance(modal) ||
-      new bootstrap.Modal(modal);
+      bootstrap.Modal.getOrCreateInstance(modal);
 
     instancia.show();
   }

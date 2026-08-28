@@ -1617,3 +1617,121 @@ body.theme-dark #profesor-form-error {
   border-color: #8f4d59 !important;
   color: #ffd7dd !important;
 }
+
+/* ===== 2026-08-28: contraste definitivo de botones al pasar el mouse =====
+   Las reglas base de acciones usan !important para conservar legibilidad.
+   Por ello los estados hover/focus también deben definir fondo + texto juntos,
+   evitando texto blanco sobre fondos claros. */
+:is(.view,.modal) .btn-outline-primary:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-primary:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-outline-primary:not(:disabled):active {
+  color: #fff !important;
+  background: #17658f !important;
+  border-color: #17658f !important;
+  box-shadow: 0 7px 16px rgba(23,101,143,.18) !important;
+}
+
+:is(.view,.modal) .btn-outline-info:not(:disabled) {
+  color: #12657a !important;
+  border-color: #9bcbd5 !important;
+  background: #f2fbfd !important;
+}
+:is(.view,.modal) .btn-outline-info:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-info:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-outline-info:not(:disabled):active {
+  color: #fff !important;
+  background: #16768b !important;
+  border-color: #16768b !important;
+  box-shadow: 0 7px 16px rgba(22,118,139,.17) !important;
+}
+
+:is(.view,.modal) .btn-outline-success:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-success:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-outline-success:not(:disabled):active {
+  color: #fff !important;
+  background: #23724f !important;
+  border-color: #23724f !important;
+  box-shadow: 0 7px 16px rgba(35,114,79,.16) !important;
+}
+
+:is(.view,.modal) .btn-outline-warning:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-warning:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-outline-warning:not(:disabled):active {
+  color: #1c2735 !important;
+  background: #f2c15e !important;
+  border-color: #d8a442 !important;
+  box-shadow: 0 7px 16px rgba(183,121,31,.15) !important;
+}
+
+:is(.view,.modal) .btn-outline-secondary:not(:disabled) {
+  color: #465b70 !important;
+  border-color: #c6d1dc !important;
+  background: #fff !important;
+}
+:is(.view,.modal) .btn-outline-secondary:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-secondary:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-outline-secondary:not(:disabled):active {
+  color: #24384b !important;
+  background: #e7edf3 !important;
+  border-color: #aebdca !important;
+  box-shadow: 0 7px 16px rgba(71,85,105,.10) !important;
+}
+
+/* Botones sólidos: el texto permanece contrastado también en hover/focus. */
+:is(.view,.modal) .btn-primary:not(:disabled):hover,
+:is(.view,.modal) .btn-primary:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-primary:not(:disabled):active {
+  color: #fff !important;
+  filter: brightness(.90);
+}
+:is(.view,.modal) .btn-success:not(:disabled):hover,
+:is(.view,.modal) .btn-success:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-success:not(:disabled):active {
+  color: #fff !important;
+  background: #256f4c !important;
+  border-color: #256f4c !important;
+}
+:is(.view,.modal) .btn-warning:not(:disabled):hover,
+:is(.view,.modal) .btn-warning:not(:disabled):focus-visible,
+:is(.view,.modal) .btn-warning:not(:disabled):active {
+  color: #172033 !important;
+  background: #e5ad3d !important;
+  border-color: #c99528 !important;
+}
+
+/* Iconos y spans siempre heredan el color legible del botón. */
+:is(.view,.modal) .btn:not(:disabled):is(:hover,:focus-visible,:active) :is(i,span,strong,svg) {
+  color: inherit !important;
+}
+
+/* En modo oscuro mantenemos el contraste sin introducir fondos claros. */
+body.theme-dark :is(.view,.modal) .btn-outline-primary:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #245f89 !important;
+  border-color: #4f91bd !important;
+}
+body.theme-dark :is(.view,.modal) .btn-outline-info:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #246d78 !important;
+  border-color: #4f9aa7 !important;
+}
+body.theme-dark :is(.view,.modal) .btn-outline-success:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #28664e !important;
+  border-color: #4a9073 !important;
+}
+body.theme-dark :is(.view,.modal) .btn-outline-warning:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #735b26 !important;
+  border-color: #a18442 !important;
+}
+body.theme-dark :is(.view,.modal) .btn-outline-danger:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #7e3641 !important;
+  border-color: #a85a66 !important;
+}
+body.theme-dark :is(.view,.modal) .btn-outline-secondary:not(:disabled):is(:hover,:focus-visible,:active) {
+  color: #fff !important;
+  background: #263b52 !important;
+  border-color: #617990 !important;
+}

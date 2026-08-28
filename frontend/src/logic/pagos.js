@@ -1039,9 +1039,19 @@ function renderFacturacion() {
   const hasta = String(document.getElementById('fin-facturas-hasta')?.value || '');
   const registros = todos.filter((c) => {
     const tieneFactura = Boolean(c.id_factura_externa);
-    const esError = !tieneFactura && String(c.estado_factura || '').toLowerCase() === 'error';
-    if (filtro === 'facturada' && !tieneFactura) return false;
-    if (filtro === 'pendiente' && tieneFactura) return false;
+    const docs = documentosIntegradosPorCargo.get(Number(c.id_cargo)) || {};
+    const xmlEstado = String(docs.factura_electronica?.estado || '').toLowerCase();
+    const xmlDisponible = ['disponible', 'remoto_disponible'].includes(xmlEstado);
+    const acuseEstado = String(docs.acuse?.estado || '').toLowerCase();
+    const acuseDisponible = acuseEstado === 'disponible';
+
+    if (filtro === 'pdf' && !tieneFactura) return false;
+    if (filtro === 'xml-disponible' && !xmlDisponible) return false;
+    if (filtro === 'xml-pendiente' && (!tieneFactura || xmlDisponible)) return false;
+    if (filtro === 'acuse-disponible' && !acuseDisponible) return false;
+    if (filtro === 'acuse-pendiente' && (!tieneFactura || acuseDisponible)) return false;
+    if (filtro === 'pendiente-generar' && tieneFactura) return false;
+
     const fecha = fechaIsoLocal(c.fecha_actualizacion || c.fecha_solicitud || c.fecha_emision);
     if (desde && fecha && fecha < desde) return false;
     if (hasta && fecha && fecha > hasta) return false;

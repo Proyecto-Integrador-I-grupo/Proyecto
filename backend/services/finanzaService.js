@@ -23,7 +23,7 @@ function money(value, field, allowZero = false) {
   return Math.round(n * 100) / 100;
 }
 
-const IVA_MATRICULA = 13;
+const IVA_SERVICIOS_EDUCONTROL = 13;
 
 function redondearDinero(valor) {
   return Math.round((Number(valor) || 0) * 100) / 100;
@@ -51,18 +51,22 @@ function calcularTotalesConIvaYDescuento(baseValor, descuentoValor, tarifaValor)
   };
 }
 
-async function asegurarIvaMatricula() {
+async function asegurarIvaServiciosEduControl() {
+  // En EduControl todos los conceptos activos se manejan con IVA del 13%.
+  // Esto mantiene una regla fiscal consistente para matrícula, comedor,
+  // transporte, mensualidad, materiales, actividades y cargos adicionales.
   await pool.query(
-    `UPDATE concepto_cobro SET impuesto_tarifa = ? WHERE codigo = 'MATRICULA' AND impuesto_tarifa <> ?`,
-    [IVA_MATRICULA, IVA_MATRICULA]
+    `UPDATE concepto_cobro
+     SET impuesto_tarifa = ?
+     WHERE estado = TRUE AND impuesto_tarifa <> ?`,
+    [IVA_SERVICIOS_EDUCONTROL, IVA_SERVICIOS_EDUCONTROL]
   );
 
-  // Los cargos de matrícula todavía pendientes y sin ningún abono pueden
-  // adoptar la tarifa nueva con seguridad. No tocamos pagos parciales, cargos
-  // ya pagados ni facturas históricas para no alterar movimientos cerrados.
+  // Solo recalculamos cargos pendientes sin abonos. Nunca modificamos cargos
+  // parciales, pagados o facturados para no alterar movimientos históricos.
   await pool.query(
     `UPDATE cargo_estudiante c
-     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto AND cc.codigo = 'MATRICULA'
+     INNER JOIN concepto_cobro cc ON cc.id_concepto = c.id_concepto
      LEFT JOIN (
        SELECT id_cargo, COALESCE(SUM(monto), 0) AS pagado
        FROM pago
@@ -83,7 +87,7 @@ async function asegurarIvaMatricula() {
      WHERE c.estado = 'pendiente'
        AND c.monto_base > 0
        AND COALESCE(pg.pagado, 0) <= 0.001`,
-    [IVA_MATRICULA, IVA_MATRICULA, IVA_MATRICULA]
+    [IVA_SERVICIOS_EDUCONTROL, IVA_SERVICIOS_EDUCONTROL, IVA_SERVICIOS_EDUCONTROL]
   );
 }
 
@@ -255,7 +259,7 @@ export async function crearConcepto(datos) {
   const nombre = String(datos.nombre || "").trim();
   const tipo = String(datos.tipo || "otro").trim().toLowerCase();
   const monto = money(datos.monto_base, "El monto base", true);
-  const tarifa = money(datos.impuesto_tarifa ?? 0, "La tarifa de impuesto", true);
+  const tarifa = money(datos.impuesto_tarifa ?? IVA_SERVICIOS_EDUCONTROL, "La tarifa de impuesto", true);
 
   if (!codigo || !nombre) throw new Error("Código y nombre son obligatorios.");
   if (!['matricula','mensualidad','servicio','otro'].includes(tipo)) throw new Error("Tipo de concepto no válido.");
@@ -274,7 +278,7 @@ export async function crearConcepto(datos) {
 export async function actualizarConcepto(id, datos) {
   const idConcepto = positiveInt(id, "El concepto");
   const monto = money(datos.monto_base, "El monto base", true);
-  const tarifa = money(datos.impuesto_tarifa ?? 0, "La tarifa de impuesto", true);
+  const tarifa = money(datos.impuesto_tarifa ?? IVA_SERVICIOS_EDUCONTROL, "La tarifa de impuesto", true);
   if (tarifa > 100) throw new Error("La tarifa de impuesto no puede superar 100%.");
 
   await pool.query(
@@ -468,7 +472,7 @@ export async function prepararDatosFinancieros({ force = false } = {}) {
 
   preparacionFinancieraEnCurso = (async () => {
     const tareas = [
-      asegurarIvaMatricula,
+      asegurarIvaServiciosEduControl,
       normalizarEstadosCargosPorPagos,
       anularCargosPendientesDeEstudiantesInactivos,
       normalizarCargosMatriculaDuplicados,
@@ -915,9 +919,7 @@ export async function crearCargo(datos, idUsuario) {
     : money(datos.monto_base, "El monto base", true);
   const descuento = money(datos.descuento ?? 0, "El descuento", true);
   if (descuento > base) throw new Error("El descuento no puede ser mayor al monto base.");
-  const tarifa = String(concepto.codigo || '').toUpperCase() === 'MATRICULA'
-    ? IVA_MATRICULA
-    : Number(concepto.impuesto_tarifa || 0);
+  const tarifa = Number(concepto.impuesto_tarifa || IVA_SERVICIOS_EDUCONTROL);
   const calculoFiscal = calcularTotalesConIvaYDescuento(base, descuento, tarifa);
   // El IVA se calcula sobre el precio base completo. El porcentaje de descuento
   // cubre la misma proporción del IVA, de modo que una exoneración del 100%
@@ -1096,9 +1098,7 @@ export async function actualizarCargo(idCargo, datos, idUsuario = null) {
       fechaVencimientoResultante = sumarDiasFecha(baseExtension, extensionDias);
     }
     await validarDescuentoVigente(fechaVencimientoResultante, descuento, connection);
-    const tarifa = String(cargo.concepto_codigo || '').toUpperCase() === 'MATRICULA'
-      ? IVA_MATRICULA
-      : Number(cargo.impuesto_tarifa || 0);
+    const tarifa = Number(cargo.impuesto_tarifa || IVA_SERVICIOS_EDUCONTROL);
     const calculoFiscal = calcularTotalesConIvaYDescuento(base, descuento, tarifa);
     const impuesto = calculoFiscal.ivaBruto;
     const total = calculoFiscal.total;
@@ -1475,7 +1475,7 @@ async function asegurarConceptoHorasExtra() {
       (codigo, nombre, descripcion, tipo, monto_base, impuesto_tarifa, moneda, estado)
      VALUES ('HORAS_EXTRA', 'Horas extra de clase',
              'Clase adicional programada fuera del horario regular del profesor.',
-             'servicio', 10000, 0, 'CRC', TRUE)`
+             'servicio', 10000, 13, 'CRC', TRUE)`
   );
   return { id_concepto: result.insertId, monto_base: 10000 };
 }

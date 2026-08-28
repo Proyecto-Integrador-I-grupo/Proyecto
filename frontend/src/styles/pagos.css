@@ -1287,7 +1287,7 @@
 /* Filtros compactos y lectura fluida */
 .finance-filter-row.finance-invoice-filter-row,
 #fin-historial-collapse .finance-filter-row {
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 180px) 145px 145px auto;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(175px, .8fr) minmax(155px, .7fr) minmax(170px, .75fr) 135px 135px auto;
 }
 
 .finance-date-filter {
@@ -1302,11 +1302,11 @@
 @media (max-width: 1199.98px) {
   .finance-filter-row.finance-invoice-filter-row,
   #fin-historial-collapse .finance-filter-row {
-    grid-template-columns: minmax(220px, 1fr) 160px 140px 140px;
+    grid-template-columns: minmax(220px, 1fr) 1fr 1fr;
   }
   .finance-filter-row.finance-invoice-filter-row > .btn,
   #fin-historial-collapse .finance-filter-row > .btn {
-    grid-column: 4;
+    grid-column: auto;
   }
 }
 

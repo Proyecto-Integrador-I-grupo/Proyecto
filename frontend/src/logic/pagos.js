@@ -2217,6 +2217,13 @@ async function cargarEstadoIntegraciones(notificar = false) {
     if (facturaRegistro && facturaBase) facturaRegistro.href = `${facturaBase}/?registro=1&returnUrl=${encodeURIComponent(window.location.origin)}`;
     if (facturaPortal && facturaBase) facturaPortal.href = facturaBase;
 
+    const facturaSmartPortal = document.getElementById('fin-facturasmart-portal');
+    if (facturaSmartPortal) {
+      facturaSmartPortal.href = 'https://proyecto-facturaci-n-electr-nica.onrender.com';
+      facturaSmartPortal.removeAttribute('data-correo');
+      facturaSmartPortal.removeAttribute('data-password');
+    }
+
     const bancoRegistro = document.getElementById('fin-banco-registro');
     const bancoLogin = document.getElementById('fin-banco-login');
     if (bancoRegistro && estado?.banco?.registro_url) bancoRegistro.href = estado.banco.registro_url;
@@ -2277,7 +2284,7 @@ async function cargarConfiguracion() {
     if (afiliado) afiliado.checked = Boolean(c.banco_afiliado);
     setValue('fin-config-firma-url', c.firma_digital_url || '');
     setValue('fin-config-electronica-url', c.factura_electronica_url || 'https://proyecto-facturaci-n-electr-nica.onrender.com');
-    setValue('fin-config-electronica-correo', c.factura_electronica_correo || c.correo || '');
+    setValue('fin-config-electronica-correo', c.factura_electronica_correo || '');
     setValue('fin-config-electronica-password', '');
     const passFs = document.getElementById('fin-config-electronica-password');
     if (passFs) passFs.placeholder = c.factura_electronica_password_configurada ? 'Contraseña guardada · escribe solo para reemplazar' : 'Contraseña de FacturaSmart';
@@ -2324,6 +2331,13 @@ async function cargarConfiguracion() {
     if (facturaBase) {
       if (facturaRegistro) facturaRegistro.href = `${facturaBase}/?registro=1&returnUrl=${encodeURIComponent(window.location.origin)}`;
       if (facturaPortal) facturaPortal.href = facturaBase;
+    }
+
+    const facturaSmartPortal = document.getElementById('fin-facturasmart-portal');
+    if (facturaSmartPortal) {
+      facturaSmartPortal.href = 'https://proyecto-facturaci-n-electr-nica.onrender.com';
+      facturaSmartPortal.removeAttribute('data-correo');
+      facturaSmartPortal.removeAttribute('data-password');
     }
 
     const bancoRegistro = document.getElementById('fin-banco-registro');

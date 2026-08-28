@@ -140,10 +140,14 @@ function wirePagosEvents() {
   wire('fin-config-logo', 'change', manejarLogoFactura);
   wire('fin-config-logo-remove', 'click', quitarLogoFactura);
   wire('fin-integracion-probar', 'click', () => cargarEstadoIntegraciones(true));
+  wire('fin-tributacion-registrar', 'click', registrarEduControlTributacion);
   wire('fin-config-factura-url', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-config-banco-merchant', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-config-electronica-url', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-config-electronica-correo', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-tributacion-provincia', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-tributacion-canton', 'input', previsualizarEstadoConfiguracionServicios);
+  wire('fin-config-tributacion-distrito', 'input', previsualizarEstadoConfiguracionServicios);
   wire('fin-cargo-concepto', 'change', sincronizarConceptoCargo);
   wire('fin-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-cargo-vencimiento', 'fin-cargo-descuento'));
   wire('fin-edit-cargo-vencimiento', 'change', () => sincronizarDescuentoConVencimiento('fin-edit-cargo-vencimiento', 'fin-edit-cargo-descuento'));
@@ -200,6 +204,8 @@ function wirePagosEvents() {
       const editar = event.target.closest('[data-fin-editar-cargo]');
       const documento = event.target.closest('[data-fin-documento]');
       const documentoElectronico = event.target.closest('[data-fin-documento-electronico]');
+      const acuseTributacion = event.target.closest('[data-fin-acuse]');
+      const firmarElectronica = event.target.closest('[data-fin-firmar]');
 
       if (descuento) {
         event.preventDefault();
@@ -224,6 +230,17 @@ function wirePagosEvents() {
       if (documentoElectronico) {
         event.preventDefault();
         await abrirDocumentoElectronico(Number(documentoElectronico.dataset.finDocumentoElectronico), documentoElectronico);
+        return;
+      }
+      if (firmarElectronica) {
+        event.preventDefault();
+        await firmarXmlYEnviarHacienda(Number(firmarElectronica.dataset.finFirmar), firmarElectronica);
+        return;
+      }
+      if (acuseTributacion) {
+        event.preventDefault();
+        await abrirAcuseTributacion(Number(acuseTributacion.dataset.finAcuse), acuseTributacion);
+        return;
       }
     });
   }
@@ -1141,9 +1158,12 @@ function renderFacturacion() {
            ${xmlDisponible
              ? `<button class="btn btn-sm btn-outline-primary" data-fin-documento-electronico="${c.id_cargo}" title="Abrir factura electrónica XML recibida por EduControl"><i class="bi bi-filetype-xml"></i> XML</button>`
              : `<button class="btn btn-sm btn-outline-secondary" type="button" disabled title="${esc(xmlDetalle)}"><i class="bi bi-filetype-xml"></i> XML pendiente</button>`}
+           ${xmlDisponible && !acuseDisponible
+             ? `<button class="btn btn-sm btn-outline-warning" data-fin-firmar="${c.id_cargo}" title="Firmar el XML con HSM Sign CR y enviarlo a Mini Tributación"><i class="bi bi-pen"></i> Firmar y enviar</button>`
+             : ''}
            ${acuseDisponible
-             ? `<span class="badge rounded-pill text-bg-success"><i class="bi bi-patch-check me-1"></i>Acuse disponible</span>`
-             : `<span class="badge rounded-pill text-bg-light border text-muted"><i class="bi bi-hourglass-split me-1"></i>Acuse pendiente</span>`}
+             ? `<button class="btn btn-sm btn-outline-success" data-fin-acuse="${c.id_cargo}" title="Abrir respuesta y número de acuse de Mini Tributación"><i class="bi bi-patch-check"></i> Acuse${docs.acuse?.identificador_externo ? ` #${esc(docs.acuse.identificador_externo)}` : ''}</button>`
+             : `<span class="badge rounded-pill text-bg-light border text-muted" title="${esc(docs.acuse?.error_mensaje || 'Mini Tributación aún no ha emitido un acuse')}"><i class="bi bi-hourglass-split me-1"></i>${String(docs.acuse?.estado || '').toLowerCase() === 'rechazado' ? 'Rechazado' : (String(docs.acuse?.estado || '').toLowerCase() === 'pendiente_firma' ? 'Firma pendiente' : 'Acuse pendiente')}</span>`}
          </div>`
       : '<span class="text-muted small"><i class="bi bi-arrow-repeat me-1"></i>Automático</span>';
 
@@ -1842,6 +1862,173 @@ async function reintentarFactura(idCargo, button = null) {
   }
 }
 
+
+async function registrarEduControlTributacion(event) {
+  const button = event?.currentTarget || document.getElementById('fin-tributacion-registrar');
+  const original = button?.innerHTML || '';
+  try {
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Registrando…';
+    }
+    await requestJson('/api/finanzas/configuracion', {
+      method: 'PUT',
+      body: JSON.stringify({
+        institucion_nombre: value('fin-config-nombre'),
+        tipo_identificacion: value('fin-config-tipo-id'),
+        numero_identificacion: value('fin-config-numero-id'),
+        correo: value('fin-config-correo'),
+        tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com',
+        tributacion_provincia: value('fin-config-tributacion-provincia'),
+        tributacion_canton: value('fin-config-tributacion-canton'),
+        tributacion_distrito: value('fin-config-tributacion-distrito'),
+        tributacion_otras_senas: value('fin-config-tributacion-senas'),
+        tributacion_telefono: value('fin-config-tributacion-telefono'),
+        tributacion_actividad_economica: value('fin-config-tributacion-actividad'),
+        tributacion_descripcion_servicio: value('fin-config-tributacion-descripcion')
+      })
+    });
+    const resultado = await requestJson('/api/finanzas/integraciones/tributacion/registrar', { method: 'POST', body: JSON.stringify({}), timeout: 70000 });
+    showToast(resultado?.ya_registrado ? 'EduControl ya estaba registrado en Mini Tributación.' : 'EduControl fue registrado correctamente en Mini Tributación.', 'success');
+    await Promise.allSettled([cargarConfiguracion(), cargarEstadoIntegraciones(false), cargarFacturas()]);
+    renderFacturacion();
+  } catch (error) {
+    const msg = error?.message || 'No se pudo registrar EduControl en Mini Tributación.';
+    showToast(msg, /firma digital/i.test(msg) ? 'warning' : 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = original || '<i class="bi bi-building-add"></i> Registrar EduControl';
+    }
+  }
+}
+
+
+async function solicitarPinFirmaDigital() {
+  return new Promise((resolve) => {
+    const anterior = document.getElementById('modalFirmaDigitalEduControl');
+    if (anterior) anterior.remove();
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="modal fade" id="modalFirmaDigitalEduControl" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div><h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Firmar factura electrónica</h5><small class="text-muted">HSM Sign CR</small></div>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="fin-firma-pin-form">
+              <div class="modal-body">
+                <p class="mb-3">Ingresa el PIN de la firma digital de EduControl. Se utilizará únicamente para esta operación y no se guardará.</p>
+                <label class="form-label" for="fin-firma-pin">PIN de firma</label>
+                <input id="fin-firma-pin" type="password" class="form-control" autocomplete="off" required autofocus />
+                <div id="fin-firma-pin-error" class="text-danger small mt-2 d-none"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button id="fin-firma-pin-confirmar" type="submit" class="btn btn-primary"><i class="bi bi-pen"></i> Firmar XML</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>`;
+    const modalEl = wrapper.firstElementChild;
+    document.body.appendChild(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    let resuelto = false;
+    const terminar = (valor) => {
+      if (resuelto) return;
+      resuelto = true;
+      resolve(valor);
+      modal.hide();
+    };
+    modalEl.addEventListener('shown.bs.modal', () => document.getElementById('fin-firma-pin')?.focus(), { once: true });
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      if (!resuelto) resolve(null);
+      modalEl.remove();
+    }, { once: true });
+    modalEl.querySelector('#fin-firma-pin-form')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const pin = String(modalEl.querySelector('#fin-firma-pin')?.value || '');
+      const error = modalEl.querySelector('#fin-firma-pin-error');
+      if (!pin) {
+        if (error) { error.textContent = 'Ingresa el PIN para continuar.'; error.classList.remove('d-none'); }
+        return;
+      }
+      terminar(pin);
+    });
+    modal.show();
+  });
+}
+
+async function firmarXmlYEnviarHacienda(idCargo, button = null) {
+  if (!idCargo) return;
+  const pin = await solicitarPinFirmaDigital();
+  if (!pin) return;
+  const original = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Firmando…';
+  }
+  try {
+    const resultado = await requestJson(`/api/finanzas/cargos/${idCargo}/firma-digital/firmar`, {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+      timeout: 120000
+    });
+    documentosIntegradosPorCargo.delete(Number(idCargo));
+    await cargarDocumentosIntegradosFacturas([{ id_cargo: Number(idCargo) }]);
+    renderFacturacion();
+    const acuse = resultado?.tributacion?.numeroAcuse || resultado?.tributacion?.respuesta?.numeroAcuse;
+    if (resultado?.tributacion?.ok) {
+      showToast(acuse ? `XML firmado y aceptado por Mini Hacienda. Acuse #${acuse}.` : 'XML firmado y aceptado por Mini Hacienda.', 'success');
+    } else {
+      showToast(resultado?.tributacion?.respuesta?.motivo || 'El XML quedó firmado, pero Mini Hacienda todavía no lo aceptó.', 'warning');
+    }
+  } catch (error) {
+    showToast(error?.message || 'No se pudo firmar la factura electrónica.', 'error');
+  } finally {
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.innerHTML = original || '<i class="bi bi-pen"></i> Firmar y enviar';
+    }
+  }
+}
+
+async function abrirAcuseTributacion(idCargo, button = null) {
+  const htmlOriginal = button?.innerHTML || '';
+  try {
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Abriendo…';
+    }
+    const res = await apiFetch(`/api/finanzas/cargos/${idCargo}/acuse`, { method: 'GET' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.mensaje || 'El acuse todavía no está disponible.');
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const nueva = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!nueva) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `acuse-tributacion-${idCargo}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    showToast(error?.message || 'No se pudo abrir el acuse.', 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = htmlOriginal;
+    }
+  }
+}
+
 async function abrirDocumentoElectronico(idCargo, button = null) {
   const clave = `${Number(idCargo)}:xml`;
   if (documentosFacturaEnCurso.has(clave)) return documentosFacturaEnCurso.get(clave);
@@ -1859,7 +2046,7 @@ async function abrirDocumentoElectronico(idCargo, button = null) {
         throw new Error(data.mensaje || data.error || 'La factura electrónica todavía no está disponible.');
       }
       const bytes = new Uint8Array(await res.arrayBuffer());
-      if (!bytes.length) throw new Error('FacturaSmart devolvió un XML vacío.');
+      if (!bytes.length) throw new Error('El servicio de factura digital devolvió un XML vacío.');
       const blob = new Blob([bytes], { type: res.headers.get('content-type') || 'application/xml' });
       const url = URL.createObjectURL(blob);
       const nueva = window.open(url, '_blank', 'noopener,noreferrer');
@@ -2119,6 +2306,25 @@ function estadoServicioTexto(servicio, prefijo = '') {
     return { texto: 'Pendiente', clase: 'pending', icono: 'bi-clock' };
   }
 
+  if (prefijo === 'firma' && remoto === 'vinculado') {
+    return { texto: 'Certificado vigente', clase: 'online', icono: 'bi-shield-check' };
+  }
+  if (prefijo === 'firma' && remoto === 'pendiente_registro') {
+    return { texto: 'Falta registro', clase: 'pending', icono: 'bi-person-plus' };
+  }
+  if (prefijo === 'firma' && remoto === 'certificado_no_vigente') {
+    return { texto: 'Certificado no vigente', clase: 'offline', icono: 'bi-shield-exclamation' };
+  }
+  if (prefijo === 'tributacion' && remoto === 'vinculado') {
+    return { texto: 'Registrado', clase: 'online', icono: 'bi-patch-check-fill' };
+  }
+  if (prefijo === 'tributacion' && remoto === 'pendiente_firma') {
+    return { texto: 'Falta firma', clase: 'pending', icono: 'bi-pen' };
+  }
+  if (prefijo === 'tributacion' && remoto === 'pendiente_registro') {
+    return { texto: 'Falta registro', clase: 'configured', icono: 'bi-building-add' };
+  }
+
   if (!servicio?.configurado || remoto === 'pendiente_endpoint') return { texto: 'Pendiente endpoint', clase: 'pending', icono: 'bi-clock' };
   if (remoto === 'configurado_sin_contrato') return { texto: 'Endpoint recibido', clase: 'configured', icono: 'bi-link-45deg' };
   if (prefijo === 'banco' && servicio?.disponible === true) {
@@ -2236,7 +2442,7 @@ async function cargarEstadoIntegraciones(notificar = false) {
         completa
           ? 'Todos los servicios están configurados para el flujo completo.'
           : actual
-            ? 'Factura Bonita y el servicio de pago responden. Los demás servicios siguen pendientes de endpoint.'
+            ? 'Factura Bonita y el banco responden. Revisa Factura Digital, Firma Digital y Mini Hacienda para completar el flujo.'
             : 'La verificación terminó; revisa los servicios marcados como pendientes.',
         completa ? 'success' : (actual ? 'info' : 'warning')
       );
@@ -2282,13 +2488,20 @@ async function cargarConfiguracion() {
     setValue('fin-config-banco-merchant', c.banco_merchant_id || '');
     const afiliado = document.getElementById('fin-config-banco-afiliado');
     if (afiliado) afiliado.checked = Boolean(c.banco_afiliado);
-    setValue('fin-config-firma-url', c.firma_digital_url || '');
+    setValue('fin-config-firma-url', c.firma_digital_url || 'https://hsm-sign-cr.onrender.com');
     setValue('fin-config-electronica-url', c.factura_electronica_url || 'https://proyecto-facturaci-n-electr-nica.onrender.com');
     setValue('fin-config-electronica-correo', c.factura_electronica_correo || '');
     setValue('fin-config-electronica-password', '');
     const passFs = document.getElementById('fin-config-electronica-password');
     if (passFs) passFs.placeholder = c.factura_electronica_password_configurada ? 'Contraseña guardada · escribe solo para reemplazar' : 'Contraseña de FacturaSmart';
-    setValue('fin-config-tributacion-url', c.tributacion_url || '');
+    setValue('fin-config-tributacion-url', c.tributacion_url || 'https://mini-tributacion-backend.onrender.com');
+    setValue('fin-config-tributacion-provincia', c.tributacion_provincia || '');
+    setValue('fin-config-tributacion-canton', c.tributacion_canton || '');
+    setValue('fin-config-tributacion-distrito', c.tributacion_distrito || '');
+    setValue('fin-config-tributacion-senas', c.tributacion_otras_senas || '');
+    setValue('fin-config-tributacion-telefono', c.tributacion_telefono || '');
+    setValue('fin-config-tributacion-actividad', c.tributacion_actividad_economica || '');
+    setValue('fin-config-tributacion-descripcion', c.tributacion_descripcion_servicio || '');
 
     // Refleja inmediatamente lo que ya quedó persistido, sin depender de una
     // prueba de red para mostrar Vinculado / Afiliado.
@@ -2310,6 +2523,13 @@ async function cargarConfiguracion() {
         ? 'Afiliación bancaria guardada para EduControl.'
         : 'Falta completar y guardar la afiliación bancaria.'
     });
+    pintarEstadoServicio('firma', {
+      configurado: true,
+      disponible: null,
+      estado: 'configurado_sin_contrato',
+      url: c.firma_digital_url || 'https://hsm-sign-cr.onrender.com',
+      detalle: 'HSM Sign CR está configurado. Usa Verificar conexiones para comprobar el certificado vigente de EduControl.'
+    });
     pintarEstadoServicio('electronica', {
       configurado: Boolean(c.factura_electronica_correo && c.factura_electronica_password_configurada),
       disponible: null,
@@ -2320,6 +2540,16 @@ async function cargarConfiguracion() {
         : (c.factura_electronica_correo && c.factura_electronica_password_configurada
           ? 'Datos guardados. Pulsa Guardar cambios para validar la cuenta.'
           : 'Ingresa la cuenta de FacturaSmart para activar el servicio.')
+    });
+
+    pintarEstadoServicio('tributacion', {
+      configurado: Boolean(c.tributacion_url),
+      disponible: null,
+      estado: c.tributacion_contribuyente_confirmado ? 'vinculado' : 'pendiente_registro',
+      url: c.tributacion_url || 'https://mini-tributacion-backend.onrender.com',
+      detalle: c.tributacion_contribuyente_confirmado
+        ? 'EduControl quedó registrado como contribuyente en Mini Tributación.'
+        : 'Guarda los datos y registra EduControl cuando la firma digital esté activa.'
     });
 
     logoFacturaData = c.logo_data || null;
@@ -2344,6 +2574,10 @@ async function cargarConfiguracion() {
     const bancoLogin = document.getElementById('fin-banco-login');
     if (bancoRegistro && c.banco_registro_url) bancoRegistro.href = c.banco_registro_url;
     if (bancoLogin && c.banco_login_url) bancoLogin.href = c.banco_login_url;
+    const firmaPortal = document.getElementById('fin-firma-portal');
+    if (firmaPortal) firmaPortal.href = 'https://hsm-sign-cr.onrender.com';
+    const tributacionPortal = document.getElementById('fin-tributacion-portal');
+    if (tributacionPortal) tributacionPortal.href = 'https://proyecto-mini-tributacion-directa.onrender.com';
   } catch (error) {
     logoFacturaData = null;
     renderLogoFacturaPreview();
@@ -2484,12 +2718,19 @@ async function guardarConfiguracion(event) {
       limpiar_factura_bonita_api_key: !facturaBonitaUrl,
       banco_merchant_id: bancoMerchant,
       banco_afiliado: Boolean(bancoMarcado && bancoMerchant),
-      firma_digital_url: value('fin-config-firma-url'),
+      firma_digital_url: value('fin-config-firma-url') || 'https://hsm-sign-cr.onrender.com',
       factura_electronica_url: facturaSmartUrl,
       factura_electronica_correo: facturaSmartCorreo,
       factura_electronica_password: facturaSmartPassword,
       limpiar_factura_electronica_password: !facturaSmartUrl || !facturaSmartCorreo,
-      tributacion_url: value('fin-config-tributacion-url')
+      tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com',
+      tributacion_provincia: value('fin-config-tributacion-provincia'),
+      tributacion_canton: value('fin-config-tributacion-canton'),
+      tributacion_distrito: value('fin-config-tributacion-distrito'),
+      tributacion_otras_senas: value('fin-config-tributacion-senas'),
+      tributacion_telefono: value('fin-config-tributacion-telefono'),
+      tributacion_actividad_economica: value('fin-config-tributacion-actividad'),
+      tributacion_descripcion_servicio: value('fin-config-tributacion-descripcion')
     };
 
     const guardada = await requestJson('/api/finanzas/configuracion', {

@@ -8,6 +8,9 @@ const DEFAULT_BANK_CHECKOUT_URL = "https://bankyfinanzas.netlify.app/checkout";
 const DEFAULT_BANK_LOGIN_URL = "https://bankyfinanzas.netlify.app/login";
 const DEFAULT_BANK_REGISTER_URL = "https://bankyfinanzas.netlify.app/registro/negocio";
 const DEFAULT_FACTURASMART_URL = "https://proyecto-facturaci-n-electr-nica.onrender.com";
+const DEFAULT_TRIBUTACION_API_URL = "https://mini-tributacion-backend.onrender.com";
+const DEFAULT_FIRMA_DIGITAL_URL = "https://hsm-sign-cr.onrender.com";
+const DEFAULT_TRIBUTACION_PORTAL_URL = "https://proyecto-mini-tributacion-directa.onrender.com";
 
 const METODOS_FACTURA = {
   efectivo: "01",
@@ -113,6 +116,14 @@ async function crearTablaConfiguracionIntegraciones() {
     factura_electronica_password LONGTEXT NULL,
     factura_electronica_cuenta_confirmada BOOLEAN NOT NULL DEFAULT FALSE,
     tributacion_url VARCHAR(500) NULL,
+    tributacion_provincia VARCHAR(80) NULL,
+    tributacion_canton VARCHAR(80) NULL,
+    tributacion_distrito VARCHAR(80) NULL,
+    tributacion_otras_senas VARCHAR(250) NULL,
+    tributacion_telefono VARCHAR(40) NULL,
+    tributacion_actividad_economica VARCHAR(160) NULL,
+    tributacion_descripcion_servicio VARCHAR(250) NULL,
+    tributacion_contribuyente_confirmado BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
@@ -120,7 +131,15 @@ async function crearTablaConfiguracionIntegraciones() {
     ["factura_electronica_correo", "VARCHAR(180) NULL"],
     ["factura_electronica_telefono", "VARCHAR(40) NULL"],
     ["factura_electronica_password", "LONGTEXT NULL"],
-    ["factura_electronica_cuenta_confirmada", "BOOLEAN NOT NULL DEFAULT FALSE"]
+    ["factura_electronica_cuenta_confirmada", "BOOLEAN NOT NULL DEFAULT FALSE"],
+    ["tributacion_provincia", "VARCHAR(80) NULL"],
+    ["tributacion_canton", "VARCHAR(80) NULL"],
+    ["tributacion_distrito", "VARCHAR(80) NULL"],
+    ["tributacion_otras_senas", "VARCHAR(250) NULL"],
+    ["tributacion_telefono", "VARCHAR(40) NULL"],
+    ["tributacion_actividad_economica", "VARCHAR(160) NULL"],
+    ["tributacion_descripcion_servicio", "VARCHAR(250) NULL"],
+    ["tributacion_contribuyente_confirmado", "BOOLEAN NOT NULL DEFAULT FALSE"]
   ];
   for (const [nombre, definicion] of columnas) {
     const [[row]] = await pool.query(
@@ -206,7 +225,7 @@ async function obtenerConfigInterna() {
   const integration = integrationRows[0] || {};
   const camposIntegracion = [
     'factura_bonita_url','factura_bonita_api_key','banco_checkout_url','banco_login_url','banco_registro_url',
-    'banco_merchant_id','banco_afiliado','firma_digital_url','factura_electronica_url','factura_electronica_correo','factura_electronica_telefono','factura_electronica_password','factura_electronica_cuenta_confirmada','tributacion_url'
+    'banco_merchant_id','banco_afiliado','firma_digital_url','factura_electronica_url','factura_electronica_correo','factura_electronica_telefono','factura_electronica_password','factura_electronica_cuenta_confirmada','tributacion_url','tributacion_provincia','tributacion_canton','tributacion_distrito','tributacion_otras_senas','tributacion_telefono','tributacion_actividad_economica','tributacion_descripcion_servicio','tributacion_contribuyente_confirmado'
   ];
   const merged = { ...fiscal };
   for (const campo of camposIntegracion) {
@@ -354,13 +373,21 @@ export async function obtenerConfiguracionFacturacion() {
     banco_registro_url: process.env.BANK_REGISTER_URL || DEFAULT_BANK_REGISTER_URL,
     banco_merchant_id: process.env.BANK_MERCHANT_ID || null,
     banco_afiliado: Boolean(process.env.BANK_MERCHANT_ID),
-    firma_digital_url: null,
+    firma_digital_url: DEFAULT_FIRMA_DIGITAL_URL,
     factura_electronica_url: DEFAULT_FACTURASMART_URL,
     factura_electronica_correo: null,
     factura_electronica_telefono: null,
     factura_electronica_password: null,
     factura_electronica_cuenta_confirmada: false,
-    tributacion_url: null
+    tributacion_url: DEFAULT_TRIBUTACION_API_URL,
+    tributacion_provincia: null,
+    tributacion_canton: null,
+    tributacion_distrito: null,
+    tributacion_otras_senas: null,
+    tributacion_telefono: null,
+    tributacion_actividad_economica: null,
+    tributacion_descripcion_servicio: null,
+    tributacion_contribuyente_confirmado: false
   };
   return ocultarApiKey(base);
 }
@@ -382,7 +409,7 @@ export async function actualizarConfiguracionFacturacion(datos) {
   const bancoCheckoutUrl = urlOpcional(datos.banco_checkout_url ?? actual?.banco_checkout_url ?? DEFAULT_BANK_CHECKOUT_URL, "Servicio de pago");
   const bancoLoginUrl = urlOpcional(datos.banco_login_url ?? actual?.banco_login_url ?? DEFAULT_BANK_LOGIN_URL, "Acceso al servicio de pago");
   const bancoRegistroUrl = urlOpcional(datos.banco_registro_url ?? actual?.banco_registro_url ?? DEFAULT_BANK_REGISTER_URL, "Afiliación al servicio de pago");
-  const firmaDigitalUrl = urlOpcional(datos.firma_digital_url ?? actual?.firma_digital_url, "Firma Digital");
+  const firmaDigitalUrl = urlOpcional(datos.firma_digital_url ?? actual?.firma_digital_url ?? DEFAULT_FIRMA_DIGITAL_URL, "Firma Digital");
   const facturaElectronicaUrl = urlOpcional(datos.factura_electronica_url ?? actual?.factura_electronica_url ?? DEFAULT_FACTURASMART_URL, "Facturación Electrónica");
   const facturaElectronicaCorreo = String(datos.factura_electronica_correo ?? actual?.factura_electronica_correo ?? '').trim().toLowerCase().slice(0, 180) || null;
   const facturaElectronicaTelefono = String(datos.factura_electronica_telefono ?? actual?.factura_electronica_telefono ?? "").trim().slice(0, 40) || null;
@@ -400,7 +427,15 @@ export async function actualizarConfiguracionFacturacion(datos) {
     facturaElectronicaCorreo &&
     facturaElectronicaPassword
   );
-  const tributacionUrl = urlOpcional(datos.tributacion_url ?? actual?.tributacion_url, "Tributación");
+  const tributacionUrl = urlOpcional(datos.tributacion_url ?? actual?.tributacion_url ?? DEFAULT_TRIBUTACION_API_URL, "Tributación");
+  const tributacionProvincia = String(datos.tributacion_provincia ?? actual?.tributacion_provincia ?? '').trim().slice(0, 80) || null;
+  const tributacionCanton = String(datos.tributacion_canton ?? actual?.tributacion_canton ?? '').trim().slice(0, 80) || null;
+  const tributacionDistrito = String(datos.tributacion_distrito ?? actual?.tributacion_distrito ?? '').trim().slice(0, 80) || null;
+  const tributacionOtrasSenas = String(datos.tributacion_otras_senas ?? actual?.tributacion_otras_senas ?? '').trim().slice(0, 250) || null;
+  const tributacionTelefono = String(datos.tributacion_telefono ?? actual?.tributacion_telefono ?? '').trim().slice(0, 40) || null;
+  const tributacionActividad = String(datos.tributacion_actividad_economica ?? actual?.tributacion_actividad_economica ?? '').trim().slice(0, 160) || null;
+  const tributacionDescripcion = String(datos.tributacion_descripcion_servicio ?? actual?.tributacion_descripcion_servicio ?? '').trim().slice(0, 250) || null;
+  const tributacionContribuyenteConfirmado = Boolean(actual?.tributacion_contribuyente_confirmado);
 
   let apiKeyCifrada = actual?.factura_bonita_api_key || null;
   if (datos.limpiar_factura_bonita_api_key === true) apiKeyCifrada = null;
@@ -433,17 +468,23 @@ export async function actualizarConfiguracionFacturacion(datos) {
   await pool.query(
     `INSERT INTO configuracion_integracion_servicios
       (id_configuracion, factura_bonita_url, factura_bonita_api_key, banco_checkout_url, banco_login_url, banco_registro_url,
-       banco_merchant_id, banco_afiliado, firma_digital_url, factura_electronica_url, factura_electronica_correo, factura_electronica_telefono, factura_electronica_password, factura_electronica_cuenta_confirmada, tributacion_url)
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       banco_merchant_id, banco_afiliado, firma_digital_url, factura_electronica_url, factura_electronica_correo, factura_electronica_telefono, factura_electronica_password, factura_electronica_cuenta_confirmada, tributacion_url,
+       tributacion_provincia, tributacion_canton, tributacion_distrito, tributacion_otras_senas, tributacion_telefono, tributacion_actividad_economica, tributacion_descripcion_servicio, tributacion_contribuyente_confirmado)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        factura_bonita_url=VALUES(factura_bonita_url), factura_bonita_api_key=VALUES(factura_bonita_api_key),
        banco_checkout_url=VALUES(banco_checkout_url), banco_login_url=VALUES(banco_login_url), banco_registro_url=VALUES(banco_registro_url),
        banco_merchant_id=VALUES(banco_merchant_id), banco_afiliado=VALUES(banco_afiliado),
        firma_digital_url=VALUES(firma_digital_url), factura_electronica_url=VALUES(factura_electronica_url),
        factura_electronica_correo=VALUES(factura_electronica_correo), factura_electronica_telefono=VALUES(factura_electronica_telefono), factura_electronica_password=VALUES(factura_electronica_password),
-       factura_electronica_cuenta_confirmada=VALUES(factura_electronica_cuenta_confirmada), tributacion_url=VALUES(tributacion_url)`,
+       factura_electronica_cuenta_confirmada=VALUES(factura_electronica_cuenta_confirmada), tributacion_url=VALUES(tributacion_url),
+       tributacion_provincia=VALUES(tributacion_provincia), tributacion_canton=VALUES(tributacion_canton), tributacion_distrito=VALUES(tributacion_distrito),
+       tributacion_otras_senas=VALUES(tributacion_otras_senas), tributacion_telefono=VALUES(tributacion_telefono),
+       tributacion_actividad_economica=VALUES(tributacion_actividad_economica), tributacion_descripcion_servicio=VALUES(tributacion_descripcion_servicio),
+       tributacion_contribuyente_confirmado=VALUES(tributacion_contribuyente_confirmado)`,
     [facturaBonitaUrl, apiKeyCifrada, bancoCheckoutUrl, bancoLoginUrl, bancoRegistroUrl, bancoMerchantId, bancoAfiliado ? 1 : 0,
-     firmaDigitalUrl, facturaElectronicaUrl, facturaElectronicaCorreo, facturaElectronicaTelefono, facturaElectronicaPassword, cuentaElectronicaConfirmada ? 1 : 0, tributacionUrl]
+     firmaDigitalUrl, facturaElectronicaUrl, facturaElectronicaCorreo, facturaElectronicaTelefono, facturaElectronicaPassword, cuentaElectronicaConfirmada ? 1 : 0, tributacionUrl,
+     tributacionProvincia, tributacionCanton, tributacionDistrito, tributacionOtrasSenas, tributacionTelefono, tributacionActividad, tributacionDescripcion, tributacionContribuyenteConfirmado ? 1 : 0]
   );
 
   // Los datos fiscales se guardan en su tabla propia. Los endpoints/credenciales
@@ -748,9 +789,12 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     // marca como error: queda expresamente pendiente hasta que exista firma digital
     // y el flujo DGTD/Tributación esté habilitado por los otros grupos.
     await upsertDocumentoIntegrado(idCargo, 'acuse', {
-      estado: 'pendiente_firma_dgtd',
+      estado: 'pendiente_tributacion',
       identificador: id,
-      error: 'Factura electrónica generada. Firma digital y acuse DGTD pendientes de integración externa.'
+      error: 'Factura electrónica generada. Pendiente de validación y acuse de Mini Tributación.'
+    });
+    await procesarFacturaTributacion(idCargo, payloadBase, config).catch((errorTributacion) => {
+      console.warn(`Mini Tributación (cargo ${idCargo}):`, errorTributacion?.message || errorTributacion);
     });
     return { ok: true, id, estado: 'disponible', respuesta };
   } catch (error) {
@@ -795,10 +839,11 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
             error: null
           });
           await upsertDocumentoIntegrado(idCargo, 'acuse', {
-            estado: 'pendiente_firma_dgtd',
+            estado: 'pendiente_tributacion',
             identificador: idExistente,
-            error: 'Factura electrónica XML recuperada. Firma digital y acuse DGTD pendientes de integración externa.'
+            error: 'Factura electrónica XML recuperada. Pendiente de validación y acuse de Mini Tributación.'
           });
+          await procesarFacturaTributacion(idCargo, payloadBase, config).catch(() => null);
           console.log(`FacturaSmart recuperada (cargo ${idCargo}): ${idExistente}`);
           return { ok: true, id: idExistente, estado: 'disponible', recuperada: true };
         }
@@ -837,10 +882,11 @@ async function registrarElectronicaRecibidaDesdeFacturaBonita(idCargo, datos, co
     error: null
   });
   await upsertDocumentoIntegrado(idCargo, 'acuse', {
-    estado: 'pendiente_firma_dgtd',
+    estado: 'pendiente_tributacion',
     identificador: id,
-    error: 'Factura electrónica XML disponible. Firma digital y acuse DGTD pendientes de integración externa.'
+    error: 'Factura electrónica XML disponible. Pendiente de validación y acuse de Mini Tributación.'
   });
+  await procesarFacturaTributacion(idCargo, null, config).catch(() => null);
   return { ok: true, id, estado: 'disponible', origen: 'api-factura' };
 }
 
@@ -988,6 +1034,575 @@ export async function registrarPagoBankyFacturaSmart(idCargo, payload = {}) {
   } catch (error) {
     console.warn(`FacturaSmart: no se pudo registrar Banky para cargo ${idCargo}:`, error?.message || error);
     return { ok: false, id, mensaje: error?.message || 'No se pudo registrar el pago Banky.' };
+  }
+}
+
+
+
+
+function raizFirmaDigital(config) {
+  return urlOpcional(config?.firma_digital_url || DEFAULT_FIRMA_DIGITAL_URL, 'Firma Digital') || DEFAULT_FIRMA_DIGITAL_URL;
+}
+
+async function fetchFirmaDigital(config, ruta, { method = 'GET', body = null, timeout = 30000 } = {}) {
+  const root = raizFirmaDigital(config);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`${root}${ruta}`, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json; charset=utf-8' } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text ? { mensaje: text } : null; }
+    if (!response.ok) {
+      const error = new Error(data?.error || data?.mensaje || data?.message || data?.motivo || `Firma Digital respondió HTTP ${response.status}.`);
+      error.statusCode = response.status;
+      error.responseData = data;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Firma Digital tardó demasiado en responder.');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function listaCertificadosFirma(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.certificados)) return data.certificados;
+  if (data && typeof data === 'object') return [data];
+  return [];
+}
+
+async function consultarCertificadoFirma(config, identificacion) {
+  const id = String(identificacion || '').trim();
+  if (!id) return { encontrado: false, vigente: false, certificados: [] };
+  try {
+    const data = await fetchFirmaDigital(config, `/api/documentos/certificados/por-identificacion/${encodeURIComponent(id)}`, { timeout: 25000 });
+    const certificados = listaCertificadosFirma(data);
+    const vigente = certificados.find((item) =>
+      String(item?.certificado?.estado || item?.estado || '').trim().toUpperCase() === 'VIGENTE' || item?.firmaVigente === true
+    ) || null;
+    return { encontrado: certificados.length > 0, vigente: Boolean(vigente), certificado: vigente, certificados };
+  } catch (error) {
+    if (Number(error?.statusCode) === 404) return { encontrado: false, vigente: false, certificados: [] };
+    throw error;
+  }
+}
+
+async function probarFirmaDigital(config) {
+  const url = raizFirmaDigital(config);
+  const identificacion = String(config?.numero_identificacion || '').trim();
+  if (!identificacion) {
+    return { configurado: true, disponible: true, estado: 'pendiente_identificacion', url, portal_url: DEFAULT_FIRMA_DIGITAL_URL, certificado_vigente: false, detalle: 'Completa la identificación fiscal de EduControl para verificar la firma digital.' };
+  }
+  try {
+    const resultado = await consultarCertificadoFirma(config, identificacion);
+    return {
+      configurado: true,
+      disponible: true,
+      estado: resultado.vigente ? 'vinculado' : (resultado.encontrado ? 'certificado_no_vigente' : 'pendiente_registro'),
+      url,
+      portal_url: DEFAULT_FIRMA_DIGITAL_URL,
+      certificado_vigente: resultado.vigente,
+      certificado: resultado.certificado || null,
+      detalle: resultado.vigente
+        ? 'EduControl está registrado en HSM Sign CR y posee un certificado VIGENTE.'
+        : resultado.encontrado
+          ? 'EduControl aparece en HSM Sign CR, pero no tiene un certificado VIGENTE.'
+          : 'La identificación de EduControl todavía no aparece registrada en HSM Sign CR.'
+    };
+  } catch (error) {
+    return { configurado: true, disponible: false, estado: 'error', url, portal_url: DEFAULT_FIRMA_DIGITAL_URL, certificado_vigente: false, detalle: error?.message || 'No fue posible consultar Firma Digital.' };
+  }
+}
+
+function xmlTieneFirmaDigital(xml) {
+  const texto = String(xml || '');
+  return /<(?:[A-Za-z0-9_-]+:)?Signature\b/i.test(texto);
+}
+
+export async function firmarFacturaElectronicaHSM(idCargo, pin) {
+  const cargoId = Number(idCargo);
+  if (!Number.isFinite(cargoId) || cargoId <= 0) throw new Error('Cargo inválido.');
+  const pinLimpio = String(pin || '');
+  if (!pinLimpio) {
+    const error = new Error('Ingresa el PIN de Firma Digital para firmar el XML.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const config = await obtenerConfigInterna();
+  const identificacion = String(config?.numero_identificacion || '').trim();
+  if (!identificacion) throw new Error('Falta la identificación fiscal de EduControl.');
+
+  const certificado = await consultarCertificadoFirma(config, identificacion);
+  if (!certificado.vigente) {
+    const error = new Error(certificado.encontrado ? 'EduControl no tiene un certificado VIGENTE en Firma Digital.' : 'EduControl no está registrado en Firma Digital.');
+    error.statusCode = 400;
+    error.code = 'FIRMA_DIGITAL_NO_VIGENTE';
+    throw error;
+  }
+
+  const documento = await obtenerDocumentoElectronicoFacturaSmart(cargoId, 'xml');
+  const xmlOriginal = documento.buffer.toString('utf8');
+  if (!xmlOriginal.trim()) throw new Error('La factura XML todavía no está disponible.');
+
+  if (xmlTieneFirmaDigital(xmlOriginal)) {
+    const validacion = await fetchFirmaDigital(config, '/api/documentos/validar', { method: 'POST', body: { xmlFirmado: xmlOriginal }, timeout: 45000 });
+    if (validacion?.esValida === true) {
+      const tributacion = await procesarFacturaTributacion(cargoId, null, config);
+      return { ok: true, ya_firmado: true, validacion, tributacion };
+    }
+  }
+
+  const firma = await fetchFirmaDigital(config, '/api/documentos/firmar', {
+    method: 'POST',
+    body: { identificacion, pin: pinLimpio, xmlFactura: xmlOriginal },
+    timeout: 60000
+  });
+  const xmlFirmado = String(firma?.xmlFirmado || '').trim();
+  if (!firma?.success || !xmlFirmado) throw new Error(firma?.error || firma?.mensaje || 'Firma Digital no devolvió el XML firmado.');
+
+  const validacion = await fetchFirmaDigital(config, '/api/documentos/validar', {
+    method: 'POST', body: { xmlFirmado }, timeout: 45000
+  });
+  if (validacion?.esValida !== true) {
+    const error = new Error(validacion?.motivo || 'El XML fue firmado, pero HSM Sign CR no pudo validar la firma.');
+    error.statusCode = 422;
+    throw error;
+  }
+
+  const [rows] = await pool.query(`SELECT identificador_externo FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`, [cargoId]);
+  const identificador = String(rows[0]?.identificador_externo || '').trim() || null;
+  await upsertDocumentoIntegrado(cargoId, 'factura_electronica', {
+    estado: 'disponible',
+    identificador,
+    mimeType: 'application/xml',
+    contenido: Buffer.from(xmlFirmado, 'utf8').toString('base64'),
+    respuesta: {
+      firmado: true,
+      servicio: 'HSM Sign CR',
+      hashDocumento: firma?.hashDocumento || null,
+      serialCertificado: firma?.serialCertificado || validacion?.serialCertificado || null,
+      signerId: validacion?.signerId || identificacion,
+      signerName: validacion?.signerName || null,
+      certificateStatus: validacion?.certificateStatus || 'VIGENTE',
+      signatureDate: validacion?.signatureDate || new Date().toISOString()
+    },
+    error: null
+  });
+
+  await upsertDocumentoIntegrado(cargoId, 'acuse', {
+    estado: 'pendiente_tributacion',
+    error: 'XML firmado correctamente. Enviando a Mini Tributación.'
+  });
+
+  const tributacion = await procesarFacturaTributacion(cargoId, null, config);
+  return {
+    ok: true,
+    firmado: true,
+    hashDocumento: firma?.hashDocumento || null,
+    serialCertificado: firma?.serialCertificado || null,
+    validacion,
+    tributacion
+  };
+}
+
+function raizTributacion(config) {
+  return urlOpcional(config?.tributacion_url || DEFAULT_TRIBUTACION_API_URL, 'Tributación') || DEFAULT_TRIBUTACION_API_URL;
+}
+
+async function fetchTributacion(config, ruta, { method = 'GET', body = null, timeout = 30000 } = {}) {
+  const root = raizTributacion(config);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`${root}${ruta}`, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json; charset=utf-8' } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text ? { mensaje: text } : null; }
+    if (!response.ok) {
+      const error = new Error(data?.mensaje || data?.message || data?.motivo || `Mini Tributación respondió HTTP ${response.status}.`);
+      error.statusCode = response.status;
+      error.responseData = data;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Mini Tributación tardó demasiado en responder.');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function tipoPersonaTributacion(tipo) {
+  const limpio = String(tipo || '').trim().toUpperCase();
+  if (['01', 'CEDULA_FISICA', 'FISICA', 'FÍSICA'].includes(limpio)) return 'Persona física';
+  if (['02', 'CEDULA_JURIDICA', 'JURIDICA', 'JURÍDICA'].includes(limpio)) return 'Persona jurídica';
+  if (['03', 'DIMEX'].includes(limpio)) return 'DIMEX';
+  if (['04', 'NITE'].includes(limpio)) return 'NITE';
+  return 'Persona jurídica';
+}
+
+async function consultarContribuyenteTributacion(config, identificacion) {
+  const id = String(identificacion || '').trim();
+  if (!id) return null;
+  try {
+    return await fetchTributacion(config, `/api/contribuyentes/${encodeURIComponent(id)}`, { timeout: 20000 });
+  } catch (error) {
+    if (Number(error?.statusCode) === 404) return null;
+    throw error;
+  }
+}
+
+async function validarFirmaDesdeTributacion(config, identificacion) {
+  const id = String(identificacion || '').trim();
+  if (!id) return { valido: false, mensaje: 'Falta la identificación del emisor.' };
+  return fetchTributacion(config, '/api/contribuyentes/validar-firma-digital', {
+    method: 'POST', body: { identificacion: id }, timeout: 30000
+  });
+}
+
+export async function registrarContribuyenteTributacion() {
+  await asegurarEsquemaIntegracion();
+  const config = await obtenerConfigInterna();
+  if (!config) throw new Error('Guarda primero los datos de integración.');
+
+  const identificacion = String(config.numero_identificacion || '').trim();
+  const nombre = String(config.institucion_nombre || '').trim();
+  const correo = String(config.correo || '').trim().toLowerCase();
+  if (!identificacion || !nombre || !correo || !config.tipo_identificacion) {
+    throw new Error('Completa primero los Datos del emisor de EduControl.');
+  }
+
+  const requeridos = [
+    ['provincia', config.tributacion_provincia],
+    ['cantón', config.tributacion_canton],
+    ['distrito', config.tributacion_distrito],
+    ['teléfono', config.tributacion_telefono],
+    ['actividad económica', config.tributacion_actividad_economica],
+    ['descripción del servicio', config.tributacion_descripcion_servicio]
+  ];
+  const faltantes = requeridos.filter(([, valor]) => !String(valor || '').trim()).map(([nombreCampo]) => nombreCampo);
+  if (faltantes.length) {
+    throw new Error(`Completa los datos de Mini Tributación: ${faltantes.join(', ')}.`);
+  }
+
+  const firma = await validarFirmaDesdeTributacion(config, identificacion);
+  if (firma?.valido !== true) {
+    const error = new Error(firma?.mensaje || 'La escuela todavía no posee una firma digital válida.');
+    error.statusCode = 400;
+    error.code = 'FIRMA_DIGITAL_REQUERIDA';
+    throw error;
+  }
+
+  const existente = await consultarContribuyenteTributacion(config, identificacion);
+  if (existente) {
+    if (String(existente.estado || '').toLowerCase() === 'desinscrito') {
+      await fetchTributacion(config, `/api/contribuyentes/${encodeURIComponent(identificacion)}/reinscribir`, { method: 'PUT', timeout: 30000 });
+    }
+    await pool.query(`UPDATE configuracion_integracion_servicios SET tributacion_contribuyente_confirmado=TRUE WHERE id_configuracion=1`);
+    return { ok: true, ya_registrado: true, contribuyente: existente, firma };
+  }
+
+  const body = {
+    identificacion,
+    nombreCompleto: nombre,
+    tipo: tipoPersonaTributacion(config.tipo_identificacion),
+    provincia: config.tributacion_provincia,
+    canton: config.tributacion_canton,
+    distrito: config.tributacion_distrito,
+    otrasSenas: config.tributacion_otras_senas || '',
+    correo,
+    telefono: config.tributacion_telefono,
+    actividadEconomica: config.tributacion_actividad_economica,
+    descripcionServicio: config.tributacion_descripcion_servicio,
+    sucursales: [],
+    metodoFacturacion: 'Factura electrónica'
+  };
+  const respuesta = await fetchTributacion(config, '/api/contribuyentes', { method: 'POST', body, timeout: 45000 });
+  await pool.query(`UPDATE configuracion_integracion_servicios SET tributacion_contribuyente_confirmado=TRUE WHERE id_configuracion=1`);
+  return { ok: true, firma, ...respuesta };
+}
+
+async function construirPayloadTributacionDesdeCargo(idCargo) {
+  const cargoId = Number(idCargo);
+  const config = await obtenerConfigInterna();
+  const [[cargo]] = await pool.query(
+    `SELECT c.id_cargo, c.descripcion, c.monto_base, c.descuento, c.impuesto, c.total,
+            ce.impuesto_tarifa,
+            p.nombre, p.apellido1, p.apellido2,
+            rp.nombre AS responsable_nombre, rp.tipo_identificacion AS responsable_tipo_id,
+            rp.numero_identificacion AS responsable_numero_id, rp.correo AS responsable_correo,
+            fc.id_factura_externa
+       FROM cargo_estudiante c
+       INNER JOIN estudiante e ON e.id_estudiante=c.id_estudiante
+       INNER JOIN persona p ON p.id_persona=e.id_persona
+       INNER JOIN concepto_cobro ce ON ce.id_concepto=c.id_concepto
+       LEFT JOIN responsable_pago rp ON rp.id_estudiante=e.id_estudiante AND rp.principal=TRUE AND rp.estado=TRUE
+       LEFT JOIN factura_cargo fc ON fc.id_cargo=c.id_cargo
+      WHERE c.id_cargo=? LIMIT 1`,
+    [cargoId]
+  );
+  if (!cargo) throw new Error('No se encontró el cargo para enviarlo a Mini Tributación.');
+
+  const base = Math.max(0, numero(cargo.monto_base));
+  const descuento = Math.max(0, Math.min(base, numero(cargo.descuento)));
+  const tarifa = Math.max(0, numero(cargo.impuesto_tarifa));
+  const impuestoBruto = Math.max(0, Math.round((base * tarifa / 100) * 100) / 100);
+  const proporcionDescuento = base > 0 ? Math.min(1, descuento / base) : 0;
+  const impuestoCubierto = Math.max(0, Math.round((impuestoBruto * proporcionDescuento) * 100) / 100);
+  const descuentoTotal = Math.max(0, Math.round((descuento + impuestoCubierto) * 100) / 100);
+  const total = Math.max(0, numero(cargo.total));
+  const receptorNombre = String(cargo.responsable_nombre || [cargo.nombre, cargo.apellido1, cargo.apellido2].filter(Boolean).join(' ')).trim();
+  const receptorCorreo = String(cargo.responsable_correo || config?.correo || '').trim().toLowerCase();
+  const receptorNumero = String(cargo.responsable_numero_id || '').trim();
+
+  return {
+    facturaVisualId: String(cargo.id_factura_externa || `cargo-${cargoId}`).trim(),
+    fecha: new Date().toISOString(),
+    moneda: String(config?.moneda || 'CRC'),
+    condicionVenta: String(config?.condicion_venta || '01'),
+    medioPago: '99',
+    emisor: {
+      nombre: String(config?.institucion_nombre || '').trim(),
+      identificacion: { tipo: String(config?.tipo_identificacion || '02'), numero: String(config?.numero_identificacion || '').trim() },
+      correo: String(config?.correo || '').trim().toLowerCase()
+    },
+    receptor: {
+      nombre: receptorNombre,
+      identificacion: receptorNumero ? { tipo: String(cargo.responsable_tipo_id || '01'), numero: receptorNumero } : null,
+      correo: receptorCorreo
+    },
+    items: [{ detalle: String(cargo.descripcion || 'Servicio educativo'), cantidad: 1, precioUnitario: base, montoTotalLinea: total }],
+    totales: {
+      totalGravado: tarifa > 0 ? base : 0,
+      totalExento: tarifa > 0 ? 0 : base,
+      totalDescuentos: descuentoTotal,
+      totalImpuesto: impuestoBruto,
+      totalComprobante: total
+    }
+  };
+}
+
+async function buscarFacturaTributacionPorIdExterno(config, identificacion, idExterno) {
+  const lista = await fetchTributacion(config, `/api/facturas/contribuyente/${encodeURIComponent(identificacion)}`, { timeout: 30000 }).catch(() => []);
+  const items = Array.isArray(lista) ? lista : [];
+  return items.find((item) => String(item?.idExterno || item?.id || '').trim() === String(idExterno || '').trim()) || null;
+}
+
+async function guardarResultadoTributacion(idCargo, respuesta, estadoForzado = null) {
+  const estadoRemoto = String(estadoForzado || respuesta?.estado || '').trim().toLowerCase();
+  const aceptada = estadoRemoto === 'aceptada' || estadoRemoto === 'aceptado' || Boolean(respuesta?.numeroAcuse);
+  const numeroAcuse = respuesta?.numeroAcuse ?? respuesta?.numero_acuse ?? respuesta?.factura?.numeroAcuse ?? null;
+  const motivo = respuesta?.motivo || respuesta?.mensaje || respuesta?.acuseRecibido || null;
+  await upsertDocumentoIntegrado(idCargo, 'acuse', {
+    estado: aceptada ? 'disponible' : 'rechazado',
+    identificador: numeroAcuse != null ? String(numeroAcuse) : (respuesta?.factura?.id != null ? String(respuesta.factura.id) : null),
+    mimeType: 'application/json',
+    contenido: Buffer.from(JSON.stringify(respuesta || {}, null, 2), 'utf8').toString('base64'),
+    respuesta: respuesta || {},
+    error: aceptada ? null : (motivo || 'Mini Tributación rechazó la factura.')
+  });
+  return { ok: aceptada, estado: aceptada ? 'disponible' : 'rechazado', numeroAcuse, respuesta };
+}
+
+export async function procesarFacturaTributacion(idCargo, payloadBase = null, configEntrada = null) {
+  const cargoId = Number(idCargo);
+  const config = configEntrada || await obtenerConfigInterna();
+  if (!config?.tributacion_url) {
+    await upsertDocumentoIntegrado(cargoId, 'acuse', { estado: 'pendiente_endpoint', error: 'Falta configurar Mini Tributación.' });
+    return { ok: false, estado: 'pendiente_endpoint' };
+  }
+
+  const payload = payloadBase || await construirPayloadTributacionDesdeCargo(cargoId);
+  const identificacion = String(payload?.emisor?.identificacion?.numero || config?.numero_identificacion || '').trim();
+  const idExterno = String(payload?.facturaVisualId || payload?.idFacturaVisual || '').trim() || `EDUCONTROL-${cargoId}`;
+  if (!identificacion) throw new Error('Falta la identificación fiscal de EduControl para Mini Tributación.');
+
+  let xmlBuffer = null;
+  const [[xmlRow]] = await pool.query(`SELECT contenido, mime_type FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='factura_electronica' LIMIT 1`, [cargoId]);
+  if (xmlRow?.contenido) xmlBuffer = Buffer.from(String(xmlRow.contenido), 'base64');
+  if (!xmlBuffer?.length) {
+    try { xmlBuffer = (await obtenerDocumentoElectronicoFacturaSmart(cargoId, 'xml')).buffer; } catch {}
+  }
+  if (!xmlBuffer?.length) {
+    await upsertDocumentoIntegrado(cargoId, 'acuse', { estado: 'pendiente_xml', error: 'Mini Tributación espera el XML; la factura electrónica todavía no está disponible.' });
+    return { ok: false, estado: 'pendiente_xml' };
+  }
+
+  if (!xmlTieneFirmaDigital(xmlBuffer.toString('utf8'))) {
+    await upsertDocumentoIntegrado(cargoId, 'acuse', { estado: 'pendiente_firma', error: 'El XML ya está disponible, pero todavía debe firmarse digitalmente antes de enviarlo a Mini Tributación.' });
+    return { ok: false, estado: 'pendiente_firma' };
+  }
+
+  const firma = await validarFirmaDesdeTributacion(config, identificacion).catch((error) => ({ valido: false, mensaje: error?.message || 'No se pudo validar la firma digital.' }));
+  if (firma?.valido !== true) {
+    const rechazo = {
+      mensaje: 'Factura electrónica rechazada.', estado: 'Rechazada',
+      motivo: firma?.mensaje || 'La firma digital del emisor no es válida.',
+      codigo: 'FIRMA_DIGITAL_INVALIDA', firma
+    };
+    await guardarResultadoTributacion(cargoId, rechazo, 'Rechazada');
+    return { ok: false, estado: 'rechazado_firma', respuesta: rechazo };
+  }
+
+  const contribuyente = await consultarContribuyenteTributacion(config, identificacion).catch(() => null);
+  if (!contribuyente) {
+    const rechazo = {
+      mensaje: 'Factura electrónica rechazada.', estado: 'Rechazada',
+      motivo: 'EduControl todavía no está registrado como contribuyente en Mini Tributación.',
+      codigo: 'CONTRIBUYENTE_NO_REGISTRADO'
+    };
+    await guardarResultadoTributacion(cargoId, rechazo, 'Rechazada');
+    return { ok: false, estado: 'pendiente_registro_tributacion', respuesta: rechazo };
+  }
+
+  const existente = await buscarFacturaTributacionPorIdExterno(config, identificacion, idExterno).catch(() => null);
+  if (existente?.id != null) {
+    if (String(existente.estado || '').toLowerCase() === 'aceptada') {
+      return guardarResultadoTributacion(cargoId, existente, 'Aceptada');
+    }
+    try {
+      const revalidada = await fetchTributacion(config, `/api/facturas/${encodeURIComponent(existente.id)}/revalidar`, { method: 'POST', timeout: 45000 });
+      return guardarResultadoTributacion(cargoId, revalidada);
+    } catch (error) {
+      const data = error?.responseData || { mensaje: error?.message, estado: 'Rechazada', motivo: error?.message };
+      return guardarResultadoTributacion(cargoId, data, 'Rechazada');
+    }
+  }
+
+  const body = {
+    id: idExterno,
+    fecha: payload?.fecha || new Date().toISOString(),
+    moneda: String(payload?.moneda || 'CRC'),
+    condicionVenta: String(payload?.condicionVenta || '01'),
+    medioPago: String(payload?.medioPago || '99'),
+    tipoDocumento: 'Factura electrónica',
+    emisor: {
+      nombre: payload?.emisor?.nombre,
+      identificacion: { tipo: tipoIdentificacionFacturaSmart(payload?.emisor?.identificacion?.tipo), numero: identificacion },
+      correo: payload?.emisor?.correo
+    },
+    receptor: {
+      nombre: payload?.receptor?.nombre || 'Cliente EduControl',
+      identificacion: payload?.receptor?.identificacion ? {
+        tipo: tipoIdentificacionFacturaSmart(payload.receptor.identificacion.tipo),
+        numero: String(payload.receptor.identificacion.numero || '').trim()
+      } : { tipo: 'CEDULA_FISICA', numero: '000000000' },
+      correo: payload?.receptor?.correo || config?.correo
+    },
+    items: (Array.isArray(payload?.items) ? payload.items : []).map((item) => ({
+      detalle: String(item?.detalle || 'Servicio educativo'),
+      cantidad: Math.max(1, numero(item?.cantidad) || 1),
+      precioUnitario: Math.max(0, numero(item?.precioUnitario)),
+      montoTotalLinea: Math.max(0, numero(item?.montoTotalLinea))
+    })),
+    totales: {
+      totalGravado: Math.max(0, numero(payload?.totales?.totalGravado)),
+      totalExento: Math.max(0, numero(payload?.totales?.totalExento)),
+      totalDescuentos: Math.max(0, numero(payload?.totales?.totalDescuentos)),
+      totalImpuesto: Math.max(0, numero(payload?.totales?.totalImpuesto)),
+      totalComprobante: Math.max(0, numero(payload?.totales?.totalComprobante))
+    },
+    archivoXML: xmlBuffer.toString('utf8')
+  };
+
+  try {
+    const respuesta = await fetchTributacion(config, '/api/facturas', { method: 'POST', body, timeout: 60000 });
+    return guardarResultadoTributacion(cargoId, respuesta);
+  } catch (error) {
+    if (Number(error?.statusCode) === 409) {
+      const encontrada = await buscarFacturaTributacionPorIdExterno(config, identificacion, idExterno).catch(() => null);
+      if (encontrada?.id != null) {
+        try {
+          const revalidada = await fetchTributacion(config, `/api/facturas/${encodeURIComponent(encontrada.id)}/revalidar`, { method: 'POST', timeout: 45000 });
+          return guardarResultadoTributacion(cargoId, revalidada);
+        } catch {}
+      }
+    }
+    const data = error?.responseData || { mensaje: 'Factura electrónica rechazada.', estado: 'Rechazada', motivo: error?.message || 'Mini Tributación rechazó la factura.' };
+    await guardarResultadoTributacion(cargoId, data, 'Rechazada');
+    return { ok: false, estado: 'rechazado', respuesta: data };
+  }
+}
+
+export async function obtenerAcuseTributacion(idCargo) {
+  const cargoId = Number(idCargo);
+  await procesarFacturaTributacion(cargoId).catch(() => null);
+  const [[row]] = await pool.query(`SELECT estado, identificador_externo, contenido, respuesta_json, error_mensaje FROM documento_facturacion_integrada WHERE id_cargo=? AND tipo='acuse' LIMIT 1`, [cargoId]);
+  if (!row) throw new Error('El acuse todavía no está disponible.');
+  let data = null;
+  if (row.respuesta_json) {
+    try { data = typeof row.respuesta_json === 'string' ? JSON.parse(row.respuesta_json) : row.respuesta_json; } catch {}
+  }
+  if (!data && row.contenido) {
+    try { data = JSON.parse(Buffer.from(String(row.contenido), 'base64').toString('utf8')); } catch {}
+  }
+  data ||= { estado: row.estado, numeroAcuse: row.identificador_externo || null, motivo: row.error_mensaje || null };
+  return {
+    buffer: Buffer.from(JSON.stringify(data, null, 2), 'utf8'),
+    contentType: 'application/json; charset=utf-8',
+    filename: `acuse-tributacion-cargo-${cargoId}.json`,
+    estado: row.estado
+  };
+}
+
+async function probarMiniTributacion(config) {
+  const url = raizTributacion(config);
+  try {
+    const health = await fetchTributacion(config, '/api/health', { timeout: 15000 });
+    const identificacion = String(config?.numero_identificacion || '').trim();
+    let contribuyente = null;
+    let firma = null;
+    if (identificacion) {
+      [contribuyente, firma] = await Promise.all([
+        consultarContribuyenteTributacion(config, identificacion).catch(() => null),
+        validarFirmaDesdeTributacion(config, identificacion).catch(() => null)
+      ]);
+    }
+    const registrado = Boolean(contribuyente && String(contribuyente.estado || '').toLowerCase() !== 'desinscrito');
+    const firmaValida = firma?.valido === true;
+    return {
+      configurado: true,
+      disponible: true,
+      estado: registrado && firmaValida ? 'vinculado' : (firmaValida ? 'pendiente_registro' : 'pendiente_firma'),
+      url,
+      portal_url: DEFAULT_TRIBUTACION_PORTAL_URL,
+      contribuyente_registrado: registrado,
+      firma_valida: firmaValida,
+      health,
+      detalle: registrado && firmaValida
+        ? 'EduControl está registrado en Mini Tributación y la firma digital es válida.'
+        : firmaValida
+          ? 'Mini Tributación responde y la firma es válida. Falta registrar a EduControl como contribuyente.'
+          : 'Mini Tributación responde, pero EduControl aún no tiene una firma digital válida; el registro fiscal será rechazado hasta contar con ella.'
+    };
+  } catch (error) {
+    return {
+      configurado: true, disponible: false, estado: 'error', url,
+      portal_url: DEFAULT_TRIBUTACION_PORTAL_URL,
+      detalle: error?.message || 'No fue posible conectar con Mini Tributación.'
+    };
   }
 }
 
@@ -1617,6 +2232,11 @@ export async function obtenerEstadoServiciosFacturacion() {
       : `Pendiente de recibir el endpoint de ${nombre}.`
   });
 
+  const [tributacion, firmaDigital] = await Promise.all([
+    probarMiniTributacion(config),
+    probarFirmaDigital(config)
+  ]);
+
   return {
     facturacion: {
       ...facturacion,
@@ -1628,7 +2248,7 @@ export async function obtenerEstadoServiciosFacturacion() {
     },
     documentos: { ...documentos, url: documentosRoot },
     banco,
-    firma_digital: pendiente(config?.firma_digital_url, 'Firma Digital'),
+    firma_digital: firmaDigital,
     factura_electronica: {
       configurado: true,
       disponible: Boolean(config?.factura_electronica_cuenta_confirmada && config?.factura_electronica_password),
@@ -1636,16 +2256,17 @@ export async function obtenerEstadoServiciosFacturacion() {
       url: raizFacturaSmart(config),
       cuenta_vinculada: Boolean(config?.factura_electronica_cuenta_confirmada),
       detalle: config?.factura_electronica_cuenta_confirmada
-        ? 'Cuenta oficial de FacturaSmart vinculada. Las facturas electrónicas XML se registran en el portal; firma y acuse DGTD siguen pendientes.'
+        ? 'FacturaSmart está vinculado y EduControl recibe el XML para enviarlo a Mini Tributación.'
         : 'Crea o inicia sesión en el portal oficial de FacturaSmart y después vincula esa misma cuenta en EduControl.'
     },
-    tributacion: pendiente(config?.tributacion_url, 'Tributación'),
+    tributacion,
     flujo: {
       listo_actual: Boolean(facturacion.disponible && config?.factura_bonita_api_key && banco.listo_cobro),
       listo_completo: Boolean(
         facturacion.disponible && config?.factura_bonita_api_key &&
         banco.listo_cobro &&
-        config?.firma_digital_url && config?.factura_electronica_url && config?.factura_electronica_cuenta_confirmada && config?.tributacion_url
+        config?.factura_electronica_url && config?.factura_electronica_cuenta_confirmada &&
+        firmaDigital?.certificado_vigente && tributacion?.contribuyente_registrado && tributacion?.firma_valida
       )
     }
   };
@@ -1945,8 +2566,8 @@ async function registrarDocumentosIntegracionInicial(idCargo, idFactura, apiRoot
   }
   if (!tipos.has('acuse')) {
     await upsertDocumentoIntegrado(idCargo, 'acuse', {
-      estado: 'pendiente_firma_dgtd',
-      error: 'Pendiente de firma digital y del flujo DGTD/Tributación.'
+      estado: config?.tributacion_url ? 'pendiente_xml' : 'pendiente_endpoint',
+      error: config?.tributacion_url ? 'Pendiente de XML y validación en Mini Tributación.' : 'Pendiente de configurar Mini Tributación.'
     });
   }
 }
@@ -2004,10 +2625,23 @@ export async function obtenerDocumentosIntegrados(idCargo) {
       } catch {}
     }
   }
+  const estadoXmlFinal = String(mapa.factura_electronica?.estado || '');
+  const estadoAcuse = String(mapa.acuse?.estado || '');
+  if (['disponible','remoto_disponible'].includes(estadoXmlFinal) && estadoAcuse !== 'disponible') {
+    await procesarFacturaTributacion(cargoId).catch(() => null);
+    [rows] = await pool.query(
+      `SELECT tipo, estado, identificador_externo, url_documento, mime_type, error_mensaje, fecha_actualizacion
+         FROM documento_facturacion_integrada WHERE id_cargo=?
+         ORDER BY FIELD(tipo,'pdf_visual','factura_electronica','acuse')`,
+      [cargoId]
+    );
+    mapa = Object.fromEntries(rows.map((r) => [r.tipo, r]));
+  }
   if (['disponible','remoto_disponible'].includes(String(mapa.factura_electronica?.estado || ''))) {
     mapa.factura_electronica.url_xml_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=xml`;
     mapa.factura_electronica.url_pdf_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/factura-electronica?formato=pdf`;
   }
+  if (mapa.acuse) mapa.acuse.url_acuse_educontrol = `/api/finanzas/cargos/${Number(idCargo)}/acuse`;
   return {
     completo: ['pdf_visual','factura_electronica','acuse'].every((tipo) => mapa[tipo]?.estado === 'disponible'),
     documentos: mapa

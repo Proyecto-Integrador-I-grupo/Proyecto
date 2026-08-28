@@ -476,7 +476,6 @@ export default function Pagos() {
 
             <ul className="nav nav-pills integration-tabs-nav" id="fin-integration-tabs" role="tablist">
               <li className="nav-item" role="presentation"><button className="nav-link active" id="fin-tab-activos" data-bs-toggle="pill" data-bs-target="#fin-pane-activos" type="button" role="tab" aria-controls="fin-pane-activos" aria-selected="true"><i className="bi bi-check-circle"></i><span>Servicios activos</span></button></li>
-              <li className="nav-item" role="presentation"><button className="nav-link" id="fin-tab-futuros" data-bs-toggle="pill" data-bs-target="#fin-pane-futuros" type="button" role="tab" aria-controls="fin-pane-futuros" aria-selected="false"><i className="bi bi-hourglass-split"></i><span>Próximas integraciones</span></button></li>
               <li className="nav-item" role="presentation"><button className="nav-link" id="fin-tab-emisor" data-bs-toggle="pill" data-bs-target="#fin-pane-emisor" type="button" role="tab" aria-controls="fin-pane-emisor" aria-selected="false"><i className="bi bi-building"></i><span>Datos del emisor</span></button></li>
             </ul>
 
@@ -522,6 +521,49 @@ export default function Pagos() {
                     </div>
                   </article>
 
+                  <article className="integration-service-card invoice-service signature-service">
+                    <div className="integration-card-head">
+                      <span className="integration-row-icon"><i className="bi bi-shield-lock"></i></span>
+                      <div><small>FIRMA DIGITAL</small><strong>HSM Sign CR</strong></div>
+                      <span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    </div>
+                    <p id="fin-service-firma-detail" className="integration-card-detail">Verifica que EduControl tenga un certificado vigente y firma el XML antes de enviarlo a Mini Hacienda.</p>
+                    <input id="fin-config-firma-url" type="hidden" defaultValue="https://hsm-sign-cr.onrender.com" />
+                    <div className="integration-card-footer">
+                      <div className="d-flex gap-2 flex-wrap">
+                        <a id="fin-firma-portal" className="btn btn-outline-secondary" href="https://hsm-sign-cr.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-box-arrow-up-right"></i> HSM Sign CR</a>
+                        <button type="button" className="btn btn-outline-primary" id="fin-firma-verificar" onClick={() => document.getElementById('fin-integracion-probar')?.click()}><i className="bi bi-shield-check"></i> Verificar certificado</button>
+                      </div>
+                      <small>El PIN no se almacena: se solicita únicamente al firmar cada XML.</small>
+                    </div>
+                  </article>
+
+                  <article className="integration-service-card invoice-service tax-service">
+                    <div className="integration-card-head">
+                      <span className="integration-row-icon"><i className="bi bi-bank2"></i></span>
+                      <div><small>MINI HACIENDA</small><strong>Mini Tributación Directa</strong></div>
+                      <span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
+                    </div>
+                    <p id="fin-service-tributacion-detail" className="integration-card-detail">Valida contribuyente, firma digital y factura XML; devuelve aceptación, rechazo y acuse.</p>
+                    <input id="fin-config-tributacion-url" type="hidden" defaultValue="https://mini-tributacion-backend.onrender.com" />
+                    <div className="row g-2 mt-1">
+                      <div className="col-md-4"><label className="form-label">Provincia</label><input id="fin-config-tributacion-provincia" className="form-control" maxLength="80" placeholder="Ej. Puntarenas" /></div>
+                      <div className="col-md-4"><label className="form-label">Cantón</label><input id="fin-config-tributacion-canton" className="form-control" maxLength="80" placeholder="Ej. Puntarenas" /></div>
+                      <div className="col-md-4"><label className="form-label">Distrito</label><input id="fin-config-tributacion-distrito" className="form-control" maxLength="80" placeholder="Ej. Barranca" /></div>
+                      <div className="col-md-4"><label className="form-label">Teléfono</label><input id="fin-config-tributacion-telefono" className="form-control" maxLength="40" placeholder="8888-1234" /></div>
+                      <div className="col-md-4"><label className="form-label">Actividad económica</label><input id="fin-config-tributacion-actividad" className="form-control" maxLength="160" placeholder="Servicios educativos" /></div>
+                      <div className="col-md-4"><label className="form-label">Descripción del servicio</label><input id="fin-config-tributacion-descripcion" className="form-control" maxLength="250" placeholder="Servicios educativos y matrícula" /></div>
+                      <div className="col-12"><label className="form-label">Otras señas <span className="text-muted">(opcional)</span></label><input id="fin-config-tributacion-senas" className="form-control" maxLength="250" placeholder="Dirección o referencia" /></div>
+                    </div>
+                    <div className="integration-card-footer">
+                      <div className="d-flex gap-2 flex-wrap">
+                        <button id="fin-tributacion-registrar" type="button" className="btn btn-outline-primary"><i className="bi bi-building-add"></i> Registrar EduControl</button>
+                        <a id="fin-tributacion-portal" className="btn btn-outline-secondary" href="https://proyecto-mini-tributacion-directa.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-box-arrow-up-right"></i> Portal Mini Hacienda</a>
+                      </div>
+                      <small>El registro solo puede completarse cuando la identificación de EduControl exista con firma digital activa.</small>
+                    </div>
+                  </article>
+
                   <article className="integration-service-card bank-service">
                     <div className="integration-card-head">
                       <span className="integration-row-icon bank"><i className="bi bi-credit-card"></i></span>
@@ -539,14 +581,6 @@ export default function Pagos() {
                     </div>
                   </article>
                 </div>
-              </div>
-
-              <div className="tab-pane fade" id="fin-pane-futuros" role="tabpanel" aria-labelledby="fin-tab-futuros" tabIndex="0">
-                <div className="integration-future-grid">
-                  <article className="integration-future-card"><div className="integration-future-head"><span><i className="bi bi-pen"></i></span><div><strong>Firma Digital</strong><small id="fin-service-firma-detail">Pendiente de endpoint.</small></div><span id="fin-service-firma-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span></div><label className="form-label">Endpoint</label><input id="fin-config-firma-url" className="form-control" placeholder="Se configurará cuando el equipo entregue el endpoint" /></article>
-                  <article className="integration-future-card"><div className="integration-future-head"><span><i className="bi bi-bank2"></i></span><div><strong>Tributación</strong><small id="fin-service-tributacion-detail">Pendiente de endpoint.</small></div><span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span></div><label className="form-label">Endpoint</label><input id="fin-config-tributacion-url" className="form-control" placeholder="Se configurará cuando el equipo entregue el endpoint" /></article>
-                </div>
-                <div className="integration-tab-note"><i className="bi bi-info-circle"></i> Firma Digital y Tributación continúan preparadas para conectarse cuando sus equipos entreguen los contratos REST/JSON definitivos.</div>
               </div>
 
               <div className="tab-pane fade" id="fin-pane-emisor" role="tabpanel" aria-labelledby="fin-tab-emisor" tabIndex="0">

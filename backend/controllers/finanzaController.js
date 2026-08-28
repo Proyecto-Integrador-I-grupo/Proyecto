@@ -9,7 +9,11 @@ import {
   confirmarFacturaGeneradaDesdeCliente,
   obtenerDocumentosIntegrados,
   vincularCuentaFacturaSmart,
-  obtenerDocumentoElectronicoFacturaSmart
+  obtenerDocumentoElectronicoFacturaSmart,
+  registrarContribuyenteTributacion,
+  procesarFacturaTributacion,
+  obtenerAcuseTributacion,
+  firmarFacturaElectronicaHSM
 } from "../services/facturacionIntegrationService.js";
 
 function responderError(res, error, status = 400) {
@@ -245,4 +249,30 @@ export async function postConfirmarPagoBanco(req, res) {
 export async function postResultadoPagoBanco(req, res) {
   try { res.json(await registrarResultadoNoCompletadoBanco(req.params.id, req.body || {})); }
   catch (e) { responderError(res, e); }
+}
+
+export async function postFirmarFacturaElectronica(req, res) {
+  try {
+    res.json(await firmarFacturaElectronicaHSM(req.params.id, req.body?.pin));
+  } catch (e) { responderError(res, e, 502); }
+}
+
+export async function postRegistrarTributacion(req, res) {
+  try { res.status(201).json(await registrarContribuyenteTributacion()); }
+  catch (e) { responderError(res, e); }
+}
+
+export async function postRevalidarTributacion(req, res) {
+  try { res.json(await procesarFacturaTributacion(req.params.id)); }
+  catch (e) { responderError(res, e, 502); }
+}
+
+export async function getAcuseTributacion(req, res) {
+  try {
+    const documento = await obtenerAcuseTributacion(req.params.id);
+    res.setHeader('Content-Type', documento.contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${documento.filename}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(documento.buffer);
+  } catch (e) { responderError(res, e, 502); }
 }

@@ -650,21 +650,61 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     correo: fiscalRemoto.correo || String(config?.factura_electronica_correo || '').trim().toLowerCase() || payloadBase.emisor.correo
   };
 
+  // FacturaSmart publica un contrato JSON estricto para /facturas/procesar.
+  // Desde que EduControl incorporó IVA, el payload visual de Factura Bonita
+  // empezó a incluir campos adicionales (monto del impuesto, baseImponible,
+  // impuestoAsumidoEmisor, totales extendidos, etc.). Esos campos son válidos
+  // para nuestro PDF, pero NO forman parte del DTO público de FacturaSmart y
+  // pueden hacer que Spring/Jackson rechace la solicitud antes de registrarla.
+  // Construimos aquí un DTO limpio exactamente con el contrato de integración.
+  const itemsFacturaSmart = (Array.isArray(payloadBase.items) ? payloadBase.items : []).map((item, index) => {
+    const precioUnitario = Math.max(0, numero(item?.precioUnitario));
+    const descuento = Math.max(0, numero(item?.descuento));
+    const tarifa = Math.max(0, numero(item?.impuesto?.tarifa));
+    const subtotal = Math.max(0, Math.round((precioUnitario * Math.max(1, numero(item?.cantidad) || 1) - descuento) * 100) / 100);
+    const montoTotalLinea = Math.max(0, numero(item?.montoTotalLinea));
+    return {
+      numeroLinea: Number(item?.numeroLinea || index + 1),
+      detalle: String(item?.detalle || 'Servicio educativo').trim(),
+      cantidad: Math.max(1, numero(item?.cantidad) || 1),
+      precioUnitario,
+      descuento,
+      impuesto: { tarifa },
+      subtotal,
+      montoTotalLinea
+    };
+  });
+
+  const totalGravado = Math.max(0, numero(payloadBase?.totales?.totalGravado));
+  const totalExento = Math.max(0, numero(payloadBase?.totales?.totalExento));
+  const totalDescuentos = Math.max(0, numero(payloadBase?.totales?.totalDescuentos));
+  const totalImpuesto = Math.max(0, numero(payloadBase?.totales?.totalImpuesto));
+  const totalComprobante = Math.max(0, numero(payloadBase?.totales?.totalComprobante));
+
   const body = {
     id: uuidFacturaSmartCargo(idCargo),
     fecha: fechaFacturaSmart(payloadBase.fecha),
-    moneda: payloadBase.moneda,
-    condicionVenta: payloadBase.condicionVenta,
-    medioPago: payloadBase.medioPago,
+    moneda: String(payloadBase.moneda || 'CRC'),
+    condicionVenta: String(payloadBase.condicionVenta || '01'),
+    medioPago: String(payloadBase.medioPago || '01'),
     tipoDocumento: 'FACTURA_ELECTRONICA',
     emisor: emisorFacturaSmart,
     receptor: {
       nombre: payloadBase.receptor.nombre,
-      identificacion: payloadBase.receptor.identificacion ? { tipo: tipoIdentificacionFacturaSmart(payloadBase.receptor.identificacion.tipo), numero: payloadBase.receptor.identificacion.numero } : null,
+      identificacion: payloadBase.receptor.identificacion ? {
+        tipo: tipoIdentificacionFacturaSmart(payloadBase.receptor.identificacion.tipo),
+        numero: String(payloadBase.receptor.identificacion.numero || '').trim()
+      } : null,
       correo: payloadBase.receptor.correo
     },
-    items: payloadBase.items,
-    totales: payloadBase.totales
+    items: itemsFacturaSmart,
+    totales: {
+      totalGravado,
+      totalExento,
+      totalDescuentos,
+      totalImpuesto,
+      totalComprobante
+    }
   };
 
   try {
@@ -707,7 +747,7 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return { ok: true, id, estado: 'disponible', respuesta };
   } catch (error) {
     const mensaje = error?.message || 'No se pudo procesar la factura electrónica.';
-    console.error(`FacturaSmart directo (cargo ${idCargo}):`, mensaje);
+    console.error(`FacturaSmart directo (cargo ${idCargo}):`, mensaje, error?.responseData ? JSON.stringify(error.responseData) : '');
     await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: mensaje });
     return { ok: false, estado: 'error', mensaje };
   }

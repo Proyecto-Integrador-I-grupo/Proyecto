@@ -536,6 +536,7 @@ export default function Pagos() {
                       </div>
                       <small>El PIN no se almacena: se solicita únicamente al firmar cada XML.</small>
                     </div>
+                    <div id="fin-firma-pendientes" className="mt-3"></div>
                   </article>
 
                   <article className="integration-service-card invoice-service tax-service">

@@ -118,6 +118,8 @@ function wirePagosEvents() {
   wire('fin-filtro-estado', 'change', renderCargos);
   wire('fin-facturas-busqueda', 'input', debounce(renderFacturacion, 160));
   wire('fin-facturas-filtro', 'change', renderFacturacion);
+  wire('fin-facturas-estudiante', 'change', renderFacturacion);
+  wire('fin-facturas-concepto', 'change', renderFacturacion);
   wire('fin-facturas-desde', 'change', renderFacturacion);
   wire('fin-facturas-hasta', 'change', renderFacturacion);
   wire('fin-facturas-limpiar', 'click', limpiarFiltrosFacturas);
@@ -347,7 +349,7 @@ async function cargarConceptos() {
   if (!select) return;
   select.innerHTML = '<option value="">Seleccionar concepto</option>';
   conceptos.filter((c) => Number(c.estado) === 1).forEach((c) => {
-    const op = new Option(`${c.nombre} · ${moneda(c.monto_base)}`, c.id_concepto);
+    const op = new Option(`${c.nombre} · ${moneda(c.monto_base)} · IVA ${Number(c.impuesto_tarifa ?? 13)}%`, c.id_concepto);
     select.add(op);
   });
   const existente = document.getElementById('fin-concepto-existente');
@@ -892,8 +894,43 @@ async function cargarFacturas() {
   // electrónico y, cuando llegue la integración externa, acuse DGTD.
   await cargarDocumentosIntegradosFacturas(facturas).catch(() => {});
 
+  actualizarOpcionesFiltrosFacturas();
   const facturacion = document.getElementById('fin-facturacion-collapse');
   if (facturacion?.classList.contains('show')) renderFacturacion();
+}
+
+function actualizarOpcionesFiltrosFacturas() {
+  const registros = obtenerCargosPagados();
+  const estudianteSelect = document.getElementById('fin-facturas-estudiante');
+  const conceptoSelect = document.getElementById('fin-facturas-concepto');
+
+  if (estudianteSelect) {
+    const actual = estudianteSelect.value;
+    const mapa = new Map();
+    registros.forEach((r) => {
+      const id = Number(r.id_estudiante || 0);
+      if (id > 0) mapa.set(id, r.estudiante_nombre || `Estudiante #${id}`);
+    });
+    estudianteSelect.innerHTML = '<option value="">Todos los estudiantes</option>';
+    [...mapa.entries()]
+      .sort((a,b) => String(a[1]).localeCompare(String(b[1]), 'es'))
+      .forEach(([id,nombre]) => estudianteSelect.add(new Option(nombre, String(id))));
+    if ([...estudianteSelect.options].some((o) => o.value === actual)) estudianteSelect.value = actual;
+  }
+
+  if (conceptoSelect) {
+    const actual = conceptoSelect.value;
+    const mapa = new Map();
+    registros.forEach((r) => {
+      const key = String(r.concepto_codigo || r.id_concepto || r.concepto_nombre || '').trim();
+      if (key) mapa.set(key, r.concepto_nombre || r.descripcion || key);
+    });
+    conceptoSelect.innerHTML = '<option value="">Todos los conceptos</option>';
+    [...mapa.entries()]
+      .sort((a,b) => String(a[1]).localeCompare(String(b[1]), 'es'))
+      .forEach(([id,nombre]) => conceptoSelect.add(new Option(nombre, id)));
+    if ([...conceptoSelect.options].some((o) => o.value === actual)) conceptoSelect.value = actual;
+  }
 }
 
 async function cargarDocumentosIntegradosFacturas(registros = []) {
@@ -1035,6 +1072,8 @@ function renderFacturacion() {
 
   const busqueda = textoFiltro(document.getElementById('fin-facturas-busqueda')?.value);
   const filtro = textoFiltro(document.getElementById('fin-facturas-filtro')?.value);
+  const estudianteFiltro = Number(document.getElementById('fin-facturas-estudiante')?.value || 0);
+  const conceptoFiltro = String(document.getElementById('fin-facturas-concepto')?.value || '').trim();
   const desde = String(document.getElementById('fin-facturas-desde')?.value || '');
   const hasta = String(document.getElementById('fin-facturas-hasta')?.value || '');
   const registros = todos.filter((c) => {
@@ -1044,6 +1083,12 @@ function renderFacturacion() {
     const xmlDisponible = ['disponible', 'remoto_disponible'].includes(xmlEstado);
     const acuseEstado = String(docs.acuse?.estado || '').toLowerCase();
     const acuseDisponible = acuseEstado === 'disponible';
+
+    if (estudianteFiltro && Number(c.id_estudiante || 0) !== estudianteFiltro) return false;
+    if (conceptoFiltro) {
+      const conceptoActual = String(c.concepto_codigo || c.id_concepto || c.concepto_nombre || '').trim();
+      if (conceptoActual !== conceptoFiltro) return false;
+    }
 
     if (filtro === 'pdf' && !tieneFactura) return false;
     if (filtro === 'xml-disponible' && !xmlDisponible) return false;
@@ -1679,7 +1724,38 @@ async function guardarPago(event) {
     else showToast(`Pago aplicado. ${fact?.mensaje || ''}`, 'success');
 
     documentosIntegradosPorCargo.delete(idCargo);
+    if (fact?.ok && fact?.id_factura) {
+      const cargoActual = cargos.find((c) => Number(c.id_cargo) === idCargo) || {};
+      const previo = facturas.find((f) => Number(f.id_cargo) === idCargo) || {};
+      const registro = {
+        ...cargoActual,
+        ...previo,
+        id_cargo: idCargo,
+        id_estudiante: cargoActual.id_estudiante || previo.id_estudiante,
+        id_concepto: cargoActual.id_concepto || previo.id_concepto,
+        concepto_codigo: cargoActual.concepto_codigo || previo.concepto_codigo,
+        concepto_nombre: cargoActual.concepto_nombre || previo.concepto_nombre,
+        estudiante_nombre: cargoActual.estudiante_nombre || previo.estudiante_nombre,
+        descripcion: cargoActual.descripcion || previo.descripcion,
+        id_factura_externa: fact.id_factura,
+        estado_factura: fact.estado || 'generada',
+        fecha_actualizacion: new Date().toISOString(),
+        estado_cargo: 'pagado',
+        saldo: 0
+      };
+      const pos = facturas.findIndex((f) => Number(f.id_cargo) === idCargo);
+      if (pos >= 0) facturas[pos] = registro; else facturas.unshift(registro);
+      actualizarOpcionesFiltrosFacturas();
+      renderFacturacion();
+    }
     await refrescarDespuesDePago();
+    // Segundo refresco breve para absorber cualquier vínculo que el backend
+    // haya terminado de persistir inmediatamente después de responder al pago.
+    if (r.estado_cargo === 'pagado') {
+      setTimeout(() => {
+        cargarFacturas().catch(() => {});
+      }, 700);
+    }
 
   } catch (e) {
     if (popupBanco && !popupBanco.closed) {
@@ -1716,7 +1792,7 @@ async function guardarPago(event) {
 }
 
 function limpiarFiltrosFacturas() {
-  ['fin-facturas-busqueda','fin-facturas-filtro','fin-facturas-desde','fin-facturas-hasta'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['fin-facturas-busqueda','fin-facturas-estudiante','fin-facturas-concepto','fin-facturas-filtro','fin-facturas-desde','fin-facturas-hasta'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
   renderFacturacion();
 }
 
@@ -1967,7 +2043,7 @@ function seleccionarConceptoExistente() {
   setValue('fin-concepto-tipo', c?.tipo || 'servicio');
   setValue('fin-concepto-nombre', c?.nombre || '');
   setValue('fin-concepto-monto', c ? Number(c.monto_base || 0) : '');
-  setValue('fin-concepto-impuesto', c ? Number(c.impuesto_tarifa || 0) : 0);
+  setValue('fin-concepto-impuesto', c ? Number(c.impuesto_tarifa ?? 13) : 13);
   setValue('fin-concepto-descripcion', c?.descripcion || '');
   const estado = document.getElementById('fin-concepto-estado'); if (estado) estado.checked = c ? Number(c.estado) === 1 : true;
   const codigo = document.getElementById('fin-concepto-codigo'); if (codigo) codigo.readOnly = !!c;
@@ -1979,7 +2055,7 @@ async function guardarConcepto(event) {
   try {
     const id = Number(value('fin-concepto-id') || 0);
     const payload = { codigo:value('fin-concepto-codigo'), nombre:value('fin-concepto-nombre'), tipo:value('fin-concepto-tipo'),
-      monto_base:value('fin-concepto-monto'), impuesto_tarifa:value('fin-concepto-impuesto') || 0, descripcion:value('fin-concepto-descripcion'),
+      monto_base:value('fin-concepto-monto'), impuesto_tarifa:value('fin-concepto-impuesto') || 13, descripcion:value('fin-concepto-descripcion'),
       estado:document.getElementById('fin-concepto-estado')?.checked !== false };
     await requestJson(id ? `/api/finanzas/conceptos/${id}` : '/api/finanzas/conceptos', { method:id ? 'PUT' : 'POST', body:JSON.stringify(payload) });
     showToast(id ? 'Concepto actualizado correctamente.' : 'Concepto creado correctamente.', 'success');

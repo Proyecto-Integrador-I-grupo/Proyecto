@@ -105,8 +105,14 @@ export default function Pagos() {
                   <span className="input-group-text"><i className="bi bi-search"></i></span>
                   <input id="fin-facturas-busqueda" className="form-control" placeholder="Estudiante, concepto o número de factura" />
                 </div>
+                <select id="fin-facturas-estudiante" className="form-select form-select-sm finance-state-filter" defaultValue="">
+                  <option value="">Todos los estudiantes</option>
+                </select>
+                <select id="fin-facturas-concepto" className="form-select form-select-sm finance-state-filter" defaultValue="">
+                  <option value="">Todos los conceptos</option>
+                </select>
                 <select id="fin-facturas-filtro" className="form-select form-select-sm finance-state-filter" defaultValue="">
-                  <option value="">Todos los comprobantes</option>
+                  <option value="">Todos los documentos</option>
                   <option value="pdf">PDF disponible</option>
                   <option value="xml-disponible">XML disponible</option>
                   <option value="xml-pendiente">XML pendiente</option>
@@ -282,7 +288,7 @@ export default function Pagos() {
               </div>
               <div className="col-md-4 finance-discount-field">
                 <label className="form-label">Descuento</label>
-                <div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-cargo-descuento" type="number" min="0" step="0.01" className="form-control" defaultValue="0" /></div>
+                <div className="input-group"><span className="input-group-text" title="Monto en colones"><i className="bi bi-cash-coin"></i></span><input id="fin-cargo-descuento" type="number" min="0" step="0.01" className="form-control" defaultValue="13" /></div>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Vencimiento</label>
@@ -449,7 +455,7 @@ export default function Pagos() {
             <div className="col-md-6"><label className="form-label">Tipo</label><select id="fin-concepto-tipo" className="form-select"><option value="servicio">Servicio</option><option value="matricula">Matrícula</option><option value="mensualidad">Mensualidad</option><option value="otro">Otro</option></select></div>
             <div className="col-12"><label className="form-label">Nombre</label><input id="fin-concepto-nombre" className="form-control" maxLength="100" required /></div>
             <div className="col-md-6"><label className="form-label">Monto base</label><input id="fin-concepto-monto" type="number" min="0" step="0.01" className="form-control" required /></div>
-            <div className="col-md-6"><label className="form-label">Impuesto %</label><input id="fin-concepto-impuesto" type="number" min="0" max="100" step="0.01" className="form-control" defaultValue="0" /></div>
+            <div className="col-md-6"><label className="form-label">Impuesto %</label><input id="fin-concepto-impuesto" type="number" min="0" max="100" step="0.01" className="form-control" defaultValue="13" /></div>
             <div className="col-12"><label className="form-label">Descripción</label><textarea id="fin-concepto-descripcion" className="form-control" rows="2" maxLength="250"></textarea></div><div className="col-12"><div className="form-check form-switch"><input id="fin-concepto-estado" className="form-check-input" type="checkbox" defaultChecked /><label className="form-check-label" htmlFor="fin-concepto-estado">Concepto activo</label></div></div>
           </div></div>
           <div className="modal-footer"><button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" className="btn btn-primary">Guardar concepto</button></div>

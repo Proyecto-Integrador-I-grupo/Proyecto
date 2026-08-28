@@ -342,7 +342,7 @@ async function handlePersonaTableClick(e) {
       if (submitEl) submitEl.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar Cambios';
 
       const modalEl = document.getElementById('modalEstudiante');
-      if (modalEl) new bootstrap.Modal(modalEl).show();
+      if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
     } catch {
       showResultModal('error', 'Error', 'No se pudo obtener la información del estudiante.');
     }
@@ -354,7 +354,7 @@ async function handlePersonaTableClick(e) {
     if (nombreEl) nombreEl.textContent = deleteButton.dataset.nombre || '';
 
     const modalEl = document.getElementById('modalEliminarEstudiante');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 }
 

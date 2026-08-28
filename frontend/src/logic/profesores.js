@@ -98,59 +98,45 @@ function wireProfesoresEvents() {
   if (modalProfesor && !modalProfesor.dataset.cleanWired) {
     modalProfesor.dataset.cleanWired = '1';
 
-    const limpiarCredencialesProfesor = () => {
+    const prepararFormularioProfesor = () => {
+      const form = document.getElementById('profesor-form');
+      form?.reset();
+      configurarFechaIngresoProfesor();
+
+      const ingreso = document.getElementById('prof-fecha-ingreso');
+      if (ingreso) ingreso.value = fechaLocalISO();
+
       const correo = document.getElementById('prof-correo');
       const clave = document.getElementById('prof-contrasena');
       if (correo) {
         correo.value = '';
-        correo.setAttribute('readonly', 'readonly');
+        correo.readOnly = false;
+        correo.disabled = false;
       }
       if (clave) {
         clave.value = '';
         clave.type = 'password';
-        clave.setAttribute('readonly', 'readonly');
+        clave.readOnly = false;
+        clave.disabled = false;
       }
+
+      const horas = document.getElementById('prof-horas-max');
+      if (horas && !horas.value) horas.value = '40';
+
+      const submit = form?.querySelector('button[type="submit"]');
+      if (submit) {
+        submit.disabled = false;
+        submit.innerHTML = 'Guardar Profesor';
+      }
+
       const toggle = document.getElementById('toggle-prof-password');
       const icon = toggle?.querySelector('i');
       icon?.classList.add('bi-eye');
       icon?.classList.remove('bi-eye-slash');
     };
 
-    const habilitarCredencialesProfesor = () => {
-      const correo = document.getElementById('prof-correo');
-      const clave = document.getElementById('prof-contrasena');
-      if (correo) {
-        correo.value = '';
-        correo.removeAttribute('readonly');
-      }
-      if (clave) {
-        clave.value = '';
-        clave.removeAttribute('readonly');
-      }
-    };
-
-    modalProfesor.addEventListener('show.bs.modal', () => {
-      document.getElementById('profesor-form')?.reset();
-      configurarFechaIngresoProfesor();
-      const ingreso = document.getElementById('prof-fecha-ingreso');
-      if (ingreso) ingreso.value = fechaLocalISO();
-      limpiarCredencialesProfesor();
-    });
-
-    modalProfesor.addEventListener('shown.bs.modal', () => {
-      window.setTimeout(habilitarCredencialesProfesor, 80);
-      window.setTimeout(() => {
-        const correo = document.getElementById('prof-correo');
-        const clave = document.getElementById('prof-contrasena');
-        if (correo && !correo.matches(':focus')) correo.value = '';
-        if (clave && !clave.matches(':focus')) clave.value = '';
-      }, 350);
-    });
-
-    modalProfesor.addEventListener('hidden.bs.modal', () => {
-      document.getElementById('profesor-form')?.reset();
-      limpiarCredencialesProfesor();
-    });
+    modalProfesor.addEventListener('show.bs.modal', prepararFormularioProfesor);
+    modalProfesor.addEventListener('hidden.bs.modal', prepararFormularioProfesor);
   }
 
   const profForm = document.getElementById('profesor-form');
@@ -245,7 +231,7 @@ function wireProfesoresEvents() {
   const cerrarModalYEsperar = (modalId) => new Promise((resolve) => {
     const modalEl = document.getElementById(modalId);
     if (!modalEl || !window.bootstrap?.Modal) { resolve(); return; }
-    const instance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
     if (!modalEl.classList.contains('show')) { resolve(); return; }
     const terminar = () => {
       modalEl.removeEventListener('hidden.bs.modal', terminar);
@@ -489,8 +475,32 @@ function renderProfesoresTable(profesores) {
   });
 }
 
+async function ocultarModalYEsperar(modalId) {
+  const modalEl = document.getElementById(modalId);
+  if (!modalEl || !window.bootstrap?.Modal) return;
+  const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+  if (!modalEl.classList.contains('show')) return;
+
+  await new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      modalEl.removeEventListener('hidden.bs.modal', finish);
+      resolve();
+    };
+    modalEl.addEventListener('hidden.bs.modal', finish, { once: true });
+    instance.hide();
+    window.setTimeout(finish, 700);
+  });
+}
+
 async function handleProfesorSubmit(e) {
   e.preventDefault();
+
+  const form = e.currentTarget;
+  const submitBtn = form?.querySelector('button[type="submit"]');
+  if (form?.dataset.submitting === '1') return;
 
   const nombre = document.getElementById('prof-nombre')?.value.trim();
   const apellido1 = document.getElementById('prof-apellido1')?.value.trim();
@@ -502,17 +512,14 @@ async function handleProfesorSubmit(e) {
     showToast('Por favor completa el nombre, apellido y selecciona una materia.', 'error');
     return;
   }
-
   if (!correo || !contrasena) {
     showToast('Ingresa el correo y la contraseña de acceso del docente.', 'error');
     return;
   }
-
   if (!isSchoolEmail(correo)) {
     showToast(`El profesor debe utilizar un correo institucional @${SCHOOL_EMAIL_DOMAIN}.`, 'error');
     return;
   }
-
   if (contrasena.length < 6) {
     showToast('La contraseña de acceso debe tener al menos 6 caracteres.', 'error');
     return;
@@ -536,17 +543,23 @@ async function handleProfesorSubmit(e) {
   }
 
   const payload = {
-    nombre: nombre,
-    apellido1: apellido1,
+    nombre,
+    apellido1,
     apellido2: document.getElementById('prof-apellido2')?.value.trim() || '',
     fecha_nacimiento: fechaNacimiento,
     genero,
-    materia: materia,
+    materia,
     fecha_ingreso: fechaIngreso,
-    correo: correo,
-    contrasena: contrasena,
+    correo,
+    contrasena,
     horas_maximas_semana: horasMaximas
   };
+
+  form.dataset.submitting = '1';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando...';
+  }
 
   try {
     const res = await apiFetch('/api/profesores', {
@@ -554,26 +567,30 @@ async function handleProfesorSubmit(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-
     const json = await res.json().catch(() => ({}));
 
-    if (res.ok) {
-      const modalEl = document.getElementById('modalProfesor');
-      if (modalEl) {
-        const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-        modalInstance.hide();
-      }
-
-      document.getElementById('profesor-form')?.reset();
-      await loadProfesores();
-      await populateProfesoresSelects();
-      await refreshDashboardCounts();
-      showResultModal('success', 'Profesor registrado', 'El profesor fue agregado correctamente al cuerpo docente.');
-    } else {
-      showResultModal('error', 'No se pudo registrar', json.error || json.mensaje || 'Ocurrió un error registrando al profesor.');
+    if (!res.ok) {
+      showToast(json.error || json.mensaje || 'Ocurrió un error registrando al profesor.', 'error', 5000);
+      return;
     }
-  } catch {
-    showResultModal('error', 'Error de conexión', 'No se pudo conectar con el servidor.');
+
+    await ocultarModalYEsperar('modalProfesor');
+    form.reset();
+    await Promise.allSettled([
+      loadProfesores(),
+      populateProfesoresSelects(),
+      refreshDashboardCounts()
+    ]);
+    showResultModal('success', 'Profesor registrado', 'El profesor fue agregado correctamente al cuerpo docente.');
+  } catch (error) {
+    console.error('Error registrando profesor:', error);
+    showToast(error?.message || 'No se pudo conectar con el servidor.', 'error', 5000);
+  } finally {
+    delete form.dataset.submitting;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Guardar Profesor';
+    }
   }
 }
 
@@ -601,7 +618,7 @@ function handleProfesorTableClick(e) {
     if (motivoEl) motivoEl.value = 'Incapacidad médica / Salida';
 
     const modalEl = document.getElementById('modalDestituir');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
   if (btnEliminar) {
@@ -610,7 +627,7 @@ function handleProfesorTableClick(e) {
     if (nombreEl) nombreEl.textContent = btnEliminar.dataset.nombre || '';
 
     const modalEl = document.getElementById('modalEliminarProfesor');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
   if (btnReintegrar) {
@@ -619,7 +636,7 @@ function handleProfesorTableClick(e) {
     if (nombreEl) nombreEl.textContent = btnReintegrar.dataset.nombre || '';
 
     const modalEl = document.getElementById('modalReintegrar');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
   if (btnSustituto) {
@@ -650,7 +667,7 @@ function abrirEdicionProfesor(idProf) {
   configurarFechaIngresoProfesor();
   set('edit-prof-fecha-ingreso', String(profesor.fecha_ingreso || '').slice(0, 10));
   const modalEl = document.getElementById('modalEditarProfesor');
-  if (modalEl) new bootstrap.Modal(modalEl).show();
+  if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 async function guardarEdicionProfesor(event) {
@@ -767,7 +784,7 @@ async function abrirModalAsignarSustituto(idProfTitular, nombreTitular) {
   if (nombreEl) nombreEl.textContent = nombreTitular || '';
 
   const modalEl = document.getElementById('modalAsignarSustituto');
-  if (modalEl) new bootstrap.Modal(modalEl).show();
+  if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
   const lista = document.getElementById('sustituto-lista');
   if (lista) lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando grupos pendientes...</p>';
@@ -970,7 +987,7 @@ async function abrirModalAsignarGrupos(idProf, nombreProf, materiaProf) {
   if (btnConfirmar) btnConfirmar.dataset.idProf = idProf;
 
   const modalEl = document.getElementById('modalAsignarGrupos');
-  if (modalEl) new bootstrap.Modal(modalEl).show();
+  if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
   const lista = document.getElementById('asignar-grupos-lista');
   if (lista) lista.innerHTML = '<p class="text-muted text-center py-3 mb-0">Cargando grupos...</p>';

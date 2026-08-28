@@ -554,7 +554,7 @@ export default function Pagos() {
                   <div className="integration-emitter-head"><span><i className="bi bi-building-check"></i></span><div><strong>Datos fiscales de EduControl</strong><small>Se envían como emisor cuando se genera un comprobante.</small></div></div>
                   <div className="row g-3">
                     <div className="col-md-6"><label className="form-label">Nombre de la institución</label><input id="fin-config-nombre" className="form-control" maxLength="100" /></div>
-                    <div className="col-md-3"><label className="form-label">Tipo ID</label><select id="fin-config-tipo-id" className="form-select"><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
+                    <div className="col-md-3"><label className="form-label">Tipo ID</label><select id="fin-config-tipo-id" className="form-select"><option value="">Seleccionar tipo</option><option value="02">Jurídica</option><option value="01">Física</option><option value="03">DIMEX</option><option value="04">NITE</option></select></div>
                     <div className="col-md-3"><label className="form-label">Identificación</label><input id="fin-config-numero-id" className="form-control" maxLength="30" /></div>
                     <div className="col-md-6"><label className="form-label">Correo de facturación</label><input id="fin-config-correo" type="email" className="form-control" maxLength="150" /></div>
                   </div>

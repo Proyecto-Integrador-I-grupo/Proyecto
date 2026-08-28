@@ -477,8 +477,13 @@ function raizFacturaSmart(config) {
   return urlOpcional(config?.factura_electronica_url || DEFAULT_FACTURASMART_URL, 'Facturación Electrónica') || DEFAULT_FACTURASMART_URL;
 }
 
-function uuidFacturaSmartCargo(idCargo) {
-  const hex = createHash('sha256').update(`educontrol:cargo:${Number(idCargo)}`).digest('hex').slice(0, 32).split('');
+function uuidFacturaSmartCargo(idCargo, referenciaUnica = '') {
+  // No usamos solamente id_cargo: al recrear la base de datos MySQL, los IDs
+  // vuelven a 1, 2, 3... y chocan con facturas antiguas que FacturaSmart aún
+  // conserva. La factura visual de Factura Bonita (F-XXXXXXXX) sí es única y
+  // estable para cada cobro, por eso forma parte del identificador remoto.
+  const referencia = String(referenciaUnica || '').trim() || `cargo:${Number(idCargo)}`;
+  const hex = createHash('sha256').update(`educontrol:factura:${referencia}`).digest('hex').slice(0, 32).split('');
   hex[12] = '4';
   hex[16] = ['8','9','a','b'][parseInt(hex[16], 16) % 4];
   const h = hex.join('');
@@ -681,8 +686,11 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
   const totalImpuesto = Math.max(0, numero(payloadBase?.totales?.totalImpuesto));
   const totalComprobante = Math.max(0, numero(payloadBase?.totales?.totalComprobante));
 
+  const facturaVisualId = String(payloadBase?.facturaVisualId || payloadBase?.idFacturaVisual || '').trim();
+  const idFacturaSmartEsperado = uuidFacturaSmartCargo(idCargo, facturaVisualId);
+
   const body = {
-    id: uuidFacturaSmartCargo(idCargo),
+    id: idFacturaSmartEsperado,
     fecha: fechaFacturaSmart(payloadBase.fecha),
     moneda: String(payloadBase.moneda || 'CRC'),
     condicionVenta: String(payloadBase.condicionVenta || '01'),
@@ -747,8 +755,68 @@ async function procesarFacturaElectronicaFacturaSmart(idCargo, payloadBase, conf
     return { ok: true, id, estado: 'disponible', respuesta };
   } catch (error) {
     const mensaje = error?.message || 'No se pudo procesar la factura electrónica.';
+    const status = Number(error?.statusCode || 0);
+    const detalle = String(error?.responseData?.message || error?.responseData?.mensaje || mensaje || '');
+    const esDuplicada = [400, 409].includes(status) && /ya existe una factura|already exists|duplicad/i.test(detalle);
+
+    // FacturaSmart actualmente puede responder 400 (no solo 409) cuando el ID
+    // ya existe. Eso no debe dejar la factura en error: significa que un intento
+    // anterior alcanzó a registrar el comprobante. Recuperamos directamente su
+    // XML y lo vinculamos al cargo local sin volver a cobrar ni borrar datos.
+    if (esDuplicada) {
+      try {
+        const idExistente = idFacturaSmartEsperado;
+        let existente = null;
+        try {
+          existente = await consumirFacturaSmart(config, `/api/v1/facturas/${encodeURIComponent(idExistente)}`, { timeout: 30000 });
+        } catch {}
+
+        let xml = null;
+        let ultimoErrorXml = null;
+        for (const espera of [0, 700, 1500, 3000]) {
+          if (espera) await new Promise((resolve) => setTimeout(resolve, espera));
+          try {
+            xml = await fetchFacturaSmartBinario(config, `/api/v1/facturas/${encodeURIComponent(idExistente)}/xml`, 30000);
+            if (xml?.buffer?.length) break;
+          } catch (errorXml) {
+            ultimoErrorXml = errorXml;
+          }
+        }
+
+        if (xml?.buffer?.length) {
+          const root = raizFacturaSmart(config);
+          await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+            estado: 'disponible',
+            identificador: idExistente,
+            url: `${root}/api/v1/facturas/${encodeURIComponent(idExistente)}/xml`,
+            mimeType: xml.contentType || 'application/xml',
+            contenido: xml.buffer.toString('base64'),
+            respuesta: existente || error?.responseData || { recuperada: true },
+            error: null
+          });
+          await upsertDocumentoIntegrado(idCargo, 'acuse', {
+            estado: 'pendiente_firma_dgtd',
+            identificador: idExistente,
+            error: 'Factura electrónica XML recuperada. Firma digital y acuse DGTD pendientes de integración externa.'
+          });
+          console.log(`FacturaSmart recuperada (cargo ${idCargo}): ${idExistente}`);
+          return { ok: true, id: idExistente, estado: 'disponible', recuperada: true };
+        }
+
+        if (ultimoErrorXml) {
+          console.warn(`FacturaSmart existente sin XML recuperable (cargo ${idCargo}):`, ultimoErrorXml?.message || ultimoErrorXml);
+        }
+      } catch (errorRecuperacion) {
+        console.warn(`FacturaSmart recuperación (cargo ${idCargo}):`, errorRecuperacion?.message || errorRecuperacion);
+      }
+    }
+
     console.error(`FacturaSmart directo (cargo ${idCargo}):`, mensaje, error?.responseData ? JSON.stringify(error.responseData) : '');
-    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', { estado: 'error', error: mensaje });
+    await upsertDocumentoIntegrado(idCargo, 'factura_electronica', {
+      estado: 'error',
+      identificador: idFacturaSmartEsperado,
+      error: mensaje
+    });
     return { ok: false, estado: 'error', mensaje };
   }
 }
@@ -1270,7 +1338,11 @@ export async function generarFacturaDeCargo(idCargo, metodoPago = "otro") {
       // generar el XML.
       if (configGuardada?.factura_electronica_url && configGuardada?.factura_electronica_correo && configGuardada?.factura_electronica_password) {
         try {
-          facturaElectronica = await procesarFacturaElectronicaFacturaSmart(idCargo, payload, configGuardada);
+          facturaElectronica = await procesarFacturaElectronicaFacturaSmart(
+            idCargo,
+            { ...payload, facturaVisualId: respuesta.id },
+            configGuardada
+          );
         } catch (errorDirecto) {
           console.error(`FacturaSmart directo (cargo ${idCargo}):`, errorDirecto?.message || errorDirecto);
         }

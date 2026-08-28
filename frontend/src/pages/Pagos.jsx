@@ -544,23 +544,14 @@ export default function Pagos() {
                       <div><small>MINI HACIENDA</small><strong>Mini Tributación Directa</strong></div>
                       <span id="fin-service-tributacion-status" className="billing-service-status pending"><i className="bi bi-clock"></i> Pendiente</span>
                     </div>
-                    <p id="fin-service-tributacion-detail" className="integration-card-detail">Valida contribuyente, firma digital y factura XML; devuelve aceptación, rechazo y acuse.</p>
+                    <p id="fin-service-tributacion-detail" className="integration-card-detail">EduControl consulta si la institución ya está inscrita en Mini Tributación y usa ese registro para enviar las facturas electrónicas y recibir el acuse.</p>
                     <input id="fin-config-tributacion-url" type="hidden" defaultValue="https://mini-tributacion-backend.onrender.com" />
-                    <div className="row g-2 mt-1">
-                      <div className="col-md-4"><label className="form-label">Provincia</label><input id="fin-config-tributacion-provincia" className="form-control" maxLength="80" placeholder="Ej. Puntarenas" /></div>
-                      <div className="col-md-4"><label className="form-label">Cantón</label><input id="fin-config-tributacion-canton" className="form-control" maxLength="80" placeholder="Ej. Puntarenas" /></div>
-                      <div className="col-md-4"><label className="form-label">Distrito</label><input id="fin-config-tributacion-distrito" className="form-control" maxLength="80" placeholder="Ej. Barranca" /></div>
-                      <div className="col-md-4"><label className="form-label">Teléfono</label><input id="fin-config-tributacion-telefono" className="form-control" maxLength="40" placeholder="8888-1234" /></div>
-                      <div className="col-md-4"><label className="form-label">Actividad económica</label><input id="fin-config-tributacion-actividad" className="form-control" maxLength="160" placeholder="Servicios educativos" /></div>
-                      <div className="col-md-4"><label className="form-label">Descripción del servicio</label><input id="fin-config-tributacion-descripcion" className="form-control" maxLength="250" placeholder="Servicios educativos y matrícula" /></div>
-                      <div className="col-12"><label className="form-label">Otras señas <span className="text-muted">(opcional)</span></label><input id="fin-config-tributacion-senas" className="form-control" maxLength="250" placeholder="Dirección o referencia" /></div>
-                    </div>
                     <div className="integration-card-footer">
                       <div className="d-flex gap-2 flex-wrap">
-                        <button id="fin-tributacion-registrar" type="button" className="btn btn-outline-primary"><i className="bi bi-building-add"></i> Registrar EduControl</button>
-                        <a id="fin-tributacion-portal" className="btn btn-outline-secondary" href="https://proyecto-mini-tributacion-directa.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-box-arrow-up-right"></i> Portal Mini Hacienda</a>
+                        <a id="fin-tributacion-portal" className="btn btn-outline-secondary" href="https://proyecto-mini-tributacion-directa.onrender.com" target="_blank" rel="noopener noreferrer"><i className="bi bi-box-arrow-up-right"></i> Inscribirse / Portal Mini Hacienda</a>
+                        <button id="fin-tributacion-registrar" type="button" className="btn btn-outline-primary"><i className="bi bi-patch-check"></i> Verificar registro</button>
                       </div>
-                      <small>El registro solo puede completarse cuando la identificación de EduControl exista con firma digital activa.</small>
+                      <small>La inscripción se realiza directamente en Mini Tributación. Después, EduControl verifica por API la misma identificación fiscal del emisor.</small>
                     </div>
                   </article>
 

@@ -1509,3 +1509,111 @@ body.theme-dark #usuarios-view .table-hover > tbody > tr:hover > * {
 
 #mat-ir-financiero { white-space:nowrap; }
 .perfil-photo-trigger { min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:.45rem; }
+
+/* ===== 2026-08-28: acciones visibles y clicables ===== */
+/*
+   Algunas hojas de estilo anteriores dejaban texto blanco sobre fondos muy
+   claros en botones semánticos. Al cargarse este archivo al final, estas
+   reglas garantizan contraste estable sin alterar la lógica de Bootstrap.
+*/
+.modal .modal-footer .btn-primary:not(:disabled),
+.modal .modal-footer .btn-success:not(:disabled),
+.modal .modal-footer .btn-danger:not(:disabled),
+.view .btn-primary:not(:disabled),
+.view .btn-success:not(:disabled),
+.view .btn-danger:not(:disabled) {
+  color: #fff !important;
+}
+
+.modal .modal-footer .btn-danger:not(:disabled),
+.view .btn-danger:not(:disabled) {
+  background: #b84b55 !important;
+  border-color: #a74651 !important;
+  color: #fff !important;
+  opacity: 1 !important;
+}
+.modal .modal-footer .btn-danger:not(:disabled):hover,
+.modal .modal-footer .btn-danger:not(:disabled):focus-visible,
+.view .btn-danger:not(:disabled):hover,
+.view .btn-danger:not(:disabled):focus-visible {
+  background: #9f3f49 !important;
+  border-color: #8f3542 !important;
+  color: #fff !important;
+}
+
+.modal .modal-footer .btn-warning:not(:disabled),
+.view .btn-warning:not(:disabled) {
+  background: #d69b2d !important;
+  border-color: #bd8520 !important;
+  color: #172033 !important;
+  opacity: 1 !important;
+}
+
+:is(.view,.modal) .btn-outline-danger:not(:disabled) {
+  color: #9f3f49 !important;
+  border-color: #dcaab1 !important;
+  background: #fff7f8 !important;
+}
+:is(.view,.modal) .btn-outline-danger:not(:disabled):hover,
+:is(.view,.modal) .btn-outline-danger:not(:disabled):focus-visible {
+  color: #fff !important;
+  border-color: #a74651 !important;
+  background: #b84b55 !important;
+}
+:is(.view,.modal) .btn-outline-warning:not(:disabled) {
+  color: #79510f !important;
+  border-color: #e2c27f !important;
+  background: #fffaf0 !important;
+}
+:is(.view,.modal) .btn-outline-success:not(:disabled) {
+  color: #116b43 !important;
+  border-color: #9ed2bc !important;
+  background: #f3fbf7 !important;
+}
+:is(.view,.modal) .btn-outline-primary:not(:disabled) {
+  color: #165f8f !important;
+  border-color: #a6cede !important;
+  background: #f4fbfd !important;
+}
+
+/* Un botón habilitado nunca debe quedar sin eventos por reglas visuales. */
+button.btn:not(:disabled):not([data-busy="1"]) {
+  pointer-events: auto;
+}
+
+/* Confirmación destructiva: visible incluso si otro tema modifica .btn-danger. */
+#modalEliminarProfesor #confirmar-eliminar-btn:not(:disabled) {
+  min-width: 118px;
+  background: #b84b55 !important;
+  border-color: #a74651 !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  box-shadow: 0 8px 18px rgba(167,70,81,.16) !important;
+}
+#modalEliminarProfesor #confirmar-eliminar-btn:disabled {
+  min-width: 118px;
+  background: #ecd7da !important;
+  border-color: #d9b7bc !important;
+  color: #6e4b50 !important;
+  opacity: 1 !important;
+}
+
+/* Error de alta docente: queda dentro del modal y no puede pasar inadvertido. */
+#profesor-form-error {
+  border-radius: .75rem;
+  border: 1px solid #e7b3ba;
+  background: #fff4f5;
+  color: #8f3542;
+  font-weight: 650;
+}
+#profesor-form .form-control.is-invalid,
+#profesor-form .form-select.is-invalid {
+  border-color: #c2414b !important;
+  box-shadow: 0 0 0 .2rem rgba(194,65,75,.10) !important;
+}
+
+body.theme-dark #profesor-form-error {
+  background: #351f28 !important;
+  border-color: #8f4d59 !important;
+  color: #ffd7dd !important;
+}

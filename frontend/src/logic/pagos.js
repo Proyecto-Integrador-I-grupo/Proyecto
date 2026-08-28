@@ -1870,8 +1870,9 @@ async function registrarEduControlTributacion(event) {
   try {
     if (button) {
       button.disabled = true;
-      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Registrando…';
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando…';
     }
+
     await requestJson('/api/finanzas/configuracion', {
       method: 'PUT',
       body: JSON.stringify({
@@ -1879,27 +1880,30 @@ async function registrarEduControlTributacion(event) {
         tipo_identificacion: value('fin-config-tipo-id'),
         numero_identificacion: value('fin-config-numero-id'),
         correo: value('fin-config-correo'),
-        tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com',
-        tributacion_provincia: value('fin-config-tributacion-provincia'),
-        tributacion_canton: value('fin-config-tributacion-canton'),
-        tributacion_distrito: value('fin-config-tributacion-distrito'),
-        tributacion_otras_senas: value('fin-config-tributacion-senas'),
-        tributacion_telefono: value('fin-config-tributacion-telefono'),
-        tributacion_actividad_economica: value('fin-config-tributacion-actividad'),
-        tributacion_descripcion_servicio: value('fin-config-tributacion-descripcion')
+        tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com'
       })
     });
-    const resultado = await requestJson('/api/finanzas/integraciones/tributacion/registrar', { method: 'POST', body: JSON.stringify({}), timeout: 70000 });
-    showToast(resultado?.ya_registrado ? 'EduControl ya estaba registrado en Mini Tributación.' : 'EduControl fue registrado correctamente en Mini Tributación.', 'success');
-    await Promise.allSettled([cargarConfiguracion(), cargarEstadoIntegraciones(false), cargarFacturas()]);
-    renderFacturacion();
+
+    const estado = await requestJson('/api/finanzas/integraciones/estado', { timeout: 80000 });
+    const tributacion = estado?.tributacion || {};
+    pintarEstadoServicio('tributacion', tributacion);
+
+    if (tributacion.contribuyente_registrado) {
+      showToast(
+        tributacion.firma_valida
+          ? 'EduControl está inscrito y activo en Mini Tributación; la firma digital también es válida.'
+          : 'EduControl está inscrito en Mini Tributación, pero la firma digital aún no aparece válida.',
+        tributacion.firma_valida ? 'success' : 'warning'
+      );
+    } else {
+      showToast('EduControl todavía no aparece inscrito en Mini Tributación. Completa la inscripción en el portal y vuelve a verificar.', 'warning');
+    }
   } catch (error) {
-    const msg = error?.message || 'No se pudo registrar EduControl en Mini Tributación.';
-    showToast(msg, /firma digital/i.test(msg) ? 'warning' : 'error');
+    showToast(error?.message || 'No se pudo verificar el registro de EduControl en Mini Tributación.', 'error');
   } finally {
     if (button) {
       button.disabled = false;
-      button.innerHTML = original || '<i class="bi bi-building-add"></i> Registrar EduControl';
+      button.innerHTML = original || '<i class="bi bi-patch-check"></i> Verificar registro';
     }
   }
 }
@@ -2751,14 +2755,7 @@ async function guardarConfiguracion(event) {
       factura_electronica_correo: facturaSmartCorreo,
       factura_electronica_password: facturaSmartPassword,
       limpiar_factura_electronica_password: !facturaSmartUrl || !facturaSmartCorreo,
-      tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com',
-      tributacion_provincia: value('fin-config-tributacion-provincia'),
-      tributacion_canton: value('fin-config-tributacion-canton'),
-      tributacion_distrito: value('fin-config-tributacion-distrito'),
-      tributacion_otras_senas: value('fin-config-tributacion-senas'),
-      tributacion_telefono: value('fin-config-tributacion-telefono'),
-      tributacion_actividad_economica: value('fin-config-tributacion-actividad'),
-      tributacion_descripcion_servicio: value('fin-config-tributacion-descripcion')
+      tributacion_url: value('fin-config-tributacion-url') || 'https://mini-tributacion-backend.onrender.com'
     };
 
     const guardada = await requestJson('/api/finanzas/configuracion', {

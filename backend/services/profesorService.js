@@ -761,51 +761,128 @@ export const reasignarGrupoProfesorService = async (id_grupo, id_nuevo_profesor,
  * profesores por grupo.
  */
 
+function normalizarDiaAgenda(valor) {
+  return String(valor || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().toLowerCase();
+}
+
+function minutosAgenda(valor) {
+  const [h, m] = String(valor || '').slice(0, 5).split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return (h * 60) + m;
+}
+
+function bloquesAgendaSeSuperponen(a, b) {
+  if (normalizarDiaAgenda(a.dia_semana) !== normalizarDiaAgenda(b.dia_semana)) return false;
+  const inicioA = minutosAgenda(a.hora_inicio);
+  const finA = minutosAgenda(a.hora_fin);
+  const inicioB = minutosAgenda(b.hora_inicio);
+  const finB = minutosAgenda(b.hora_fin);
+  if ([inicioA, finA, inicioB, finB].some((n) => n === null)) return false;
+  return inicioA < finB && finA > inicioB;
+}
+
+function horasBloqueAgenda(bloque) {
+  const inicio = minutosAgenda(bloque.hora_inicio);
+  const fin = minutosAgenda(bloque.hora_fin);
+  if (inicio === null || fin === null || fin <= inicio) return 0;
+  return (fin - inicio) / 60;
+}
+
 async function validarAsignacionMateriaGrupo(connection, idProfesor, materia, grupo) {
   await asegurarTablaHorarioAcademico();
+
   const [slots] = await connection.query(
-    `SELECT dia_semana, TIME_FORMAT(hora_inicio,'%H:%i') AS hora_inicio, TIME_FORMAT(hora_fin,'%H:%i') AS hora_fin
+    `SELECT dia_semana,
+            TIME_FORMAT(hora_inicio,'%H:%i') AS hora_inicio,
+            TIME_FORMAT(hora_fin,'%H:%i') AS hora_fin
      FROM grupo_horario_academico
-     WHERE id_grupo = ? AND estado = TRUE AND LOWER(TRIM(materia)) = LOWER(TRIM(?))
-     ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes'), hora_inicio`,
+     WHERE id_grupo = ?
+       AND estado = TRUE
+       AND LOWER(TRIM(materia)) = LOWER(TRIM(?))
+     ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes','sabado'), hora_inicio`,
     [grupo.id_grupo, materia]
   );
-  // El profesor puede quedar asignado al grupo antes de construir el horario.
-  // Si todavía no existen bloques de su materia, la asignación se conserva
-  // y comenzará a aparecer en Horarios cuando esa materia sea programada.
+
+  // Un grupo solo puede tener un profesor activo por materia.
   const [ocupada] = await connection.query(
-    `SELECT gp.id_profesor, CONCAT_WS(' ',p.nombre,p.apellido1) AS profesor_nombre
+    `SELECT gp.id_profesor, CONCAT_WS(' ',p.nombre,p.apellido1,NULLIF(p.apellido2,'')) AS profesor_nombre
      FROM grupo_profesor gp
-     INNER JOIN profesor pr ON pr.id_profesor=gp.id_profesor
-     INNER JOIN persona p ON p.id_persona=pr.id_persona
-     WHERE gp.id_grupo=? AND gp.estado=TRUE AND (gp.fecha_fin IS NULL OR gp.fecha_fin>=CURDATE())
-       AND LOWER(TRIM(pr.materia))=LOWER(TRIM(?)) AND gp.id_profesor<>?
+     INNER JOIN profesor pr ON pr.id_profesor = gp.id_profesor
+     INNER JOIN persona p ON p.id_persona = pr.id_persona
+     WHERE gp.id_grupo = ?
+       AND gp.estado = TRUE
+       AND (gp.fecha_fin IS NULL OR gp.fecha_fin >= CURDATE())
+       AND LOWER(TRIM(pr.materia)) = LOWER(TRIM(?))
+       AND gp.id_profesor <> ?
      LIMIT 1`,
     [grupo.id_grupo, materia, idProfesor]
   );
-  if (ocupada.length) throw new Error(`${materia} en ${grupo.nombre_grupo} ya está cubierta por ${ocupada[0].profesor_nombre}.`);
-
-  const [existentes] = await connection.query(
-    `SELECT g.id_grupo,g.nombre_grupo,gha.dia_semana,
-            TIME_FORMAT(gha.hora_inicio,'%H:%i') AS hora_inicio,
-            TIME_FORMAT(gha.hora_fin,'%H:%i') AS hora_fin
-     FROM grupo_profesor gp
-     INNER JOIN grupo g ON g.id_grupo=gp.id_grupo AND g.estado=TRUE
-     INNER JOIN seccion s ON s.id_seccion=g.id_seccion
-     INNER JOIN grupo_horario_academico gha ON gha.id_grupo=g.id_grupo AND gha.estado=TRUE
-     WHERE gp.id_profesor=? AND gp.estado=TRUE AND (gp.fecha_fin IS NULL OR gp.fecha_fin>=CURDATE())
-       AND g.id_grupo<>? AND s.periodo_lectivo=? AND LOWER(TRIM(gha.materia))=LOWER(TRIM(?))`,
-    [idProfesor, grupo.id_grupo, grupo.periodo_lectivo, materia]
-  );
-  for (const slot of slots) {
-    const choque = existentes.find((e) => e.dia_semana === slot.dia_semana && String(slot.hora_inicio) < String(e.hora_fin) && String(slot.hora_fin) > String(e.hora_inicio));
-    if (choque) throw new Error(`El profesor ya tiene ${materia} en ${choque.nombre_grupo} el ${slot.dia_semana} de ${choque.hora_inicio} a ${choque.hora_fin}.`);
+  if (ocupada.length) {
+    throw new Error(`${materia} en ${grupo.nombre_grupo} ya está cubierta por ${ocupada[0].profesor_nombre}.`);
   }
-  const horas = slots.reduce((sum, slot) => {
-    const mins = (v) => { const [h,m]=String(v).split(':').map(Number); return h*60+m; };
-    return sum + Math.max(0, mins(slot.hora_fin)-mins(slot.hora_inicio))/60;
-  },0);
-  return { slots, horas };
+
+  // Cuando la materia todavía no tiene bloques académicos, reservamos la
+  // jornada general del grupo. Así nunca se permite asignar al mismo docente
+  // a dos grupos simultáneos solo porque uno aún no terminó de configurar su horario.
+  let agenda = slots.map((slot) => ({
+    dia_semana: normalizarDiaAgenda(slot.dia_semana),
+    hora_inicio: String(slot.hora_inicio).slice(0, 5),
+    hora_fin: String(slot.hora_fin).slice(0, 5),
+    origen: 'academico'
+  }));
+
+  if (!agenda.length) {
+    const dias = normalizarDiasSemana(grupo.dias_semana, grupo.nombre_grupo);
+    const inicio = grupo.hora_inicio ? String(grupo.hora_inicio).slice(0, 5) : '';
+    const fin = grupo.hora_fin ? String(grupo.hora_fin).slice(0, 5) : '';
+    if (dias.length && inicio && fin) {
+      agenda = dias.map((dia) => ({
+        dia_semana: normalizarDiaAgenda(dia),
+        hora_inicio: inicio,
+        hora_fin: fin,
+        origen: 'jornada'
+      }));
+    }
+  }
+
+  return {
+    slots,
+    agenda,
+    horas: agenda.reduce((sum, bloque) => sum + horasBloqueAgenda(bloque), 0)
+  };
+}
+
+function validarChoquesAgendaSeleccionada(grupos, validaciones, materia, profesorNombre = 'El profesor') {
+  const agenda = [];
+  for (const grupo of grupos) {
+    const validacion = validaciones.get(Number(grupo.id_grupo));
+    for (const bloque of validacion?.agenda || []) {
+      agenda.push({
+        ...bloque,
+        id_grupo: Number(grupo.id_grupo),
+        nombre_grupo: grupo.nombre_grupo,
+        periodo_lectivo: Number(grupo.periodo_lectivo)
+      });
+    }
+  }
+
+  for (let i = 0; i < agenda.length; i++) {
+    for (let j = i + 1; j < agenda.length; j++) {
+      const a = agenda[i];
+      const b = agenda[j];
+      if (a.id_grupo === b.id_grupo) continue;
+      if (a.periodo_lectivo !== b.periodo_lectivo) continue;
+      if (!bloquesAgendaSeSuperponen(a, b)) continue;
+
+      const dia = normalizarDiaAgenda(a.dia_semana);
+      throw new Error(
+        `${profesorNombre} no puede impartir ${materia} en ${a.nombre_grupo} y ${b.nombre_grupo}: ` +
+        `los horarios se superponen el ${dia} (${a.hora_inicio}-${a.hora_fin} y ${b.hora_inicio}-${b.hora_fin}).`
+      );
+    }
+  }
 }
 
 export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) => {
@@ -840,15 +917,49 @@ export const asignarGruposProfesorService = async (id_profesor, idsGrupos = []) 
       );
       if (gruposValidos.length !== listaGrupos.length) throw new Error("Uno o más grupos seleccionados no existen o están inactivos.");
       const materiaProfesor = String(profRows[0].materia || '').trim();
+      const validaciones = new Map();
       let cargaPropuesta = 0;
+
       for (const grupo of gruposValidos) {
-        const validacion = await validarAsignacionMateriaGrupo(connection, Number(id_profesor), materiaProfesor, grupo);
+        await validarPeriodoNoCerrado(connection, Number(grupo.periodo_lectivo));
+        const validacion = await validarAsignacionMateriaGrupo(
+          connection,
+          Number(id_profesor),
+          materiaProfesor,
+          grupo
+        );
+        validaciones.set(Number(grupo.id_grupo), validacion);
         cargaPropuesta += validacion.horas;
       }
-      const [[limiteCarga]] = await connection.query(`SELECT horas_maximas_semana FROM profesor WHERE id_profesor = ? LIMIT 1`, [id_profesor]);
+
+      const [[personaProfesor]] = await connection.query(
+        `SELECT CONCAT_WS(' ', p.nombre, p.apellido1, NULLIF(p.apellido2,'')) AS nombre
+         FROM profesor pr
+         INNER JOIN persona p ON p.id_persona = pr.id_persona
+         WHERE pr.id_profesor = ? LIMIT 1`,
+        [id_profesor]
+      );
+
+      // Validación sobre el estado FINAL propuesto, no solamente contra lo que
+      // ya existe en BD. Esto cubre el caso crítico de seleccionar 5-B y 6-B
+      // en la misma operación cuando ambos tienen Matemáticas martes/jueves 1-3.
+      validarChoquesAgendaSeleccionada(
+        gruposValidos,
+        validaciones,
+        materiaProfesor,
+        personaProfesor?.nombre || 'El profesor'
+      );
+
+      const [[limiteCarga]] = await connection.query(
+        `SELECT horas_maximas_semana FROM profesor WHERE id_profesor = ? LIMIT 1`,
+        [id_profesor]
+      );
       const maximo = Number(limiteCarga?.horas_maximas_semana || 40);
       if (cargaPropuesta > maximo + 0.001) {
-        throw new Error(`La asignación propuesta suma ${cargaPropuesta.toFixed(1)} horas semanales y supera el máximo permitido de ${maximo.toFixed(1)} horas.`);
+        throw new Error(
+          `La asignación propuesta suma ${cargaPropuesta.toFixed(1)} horas semanales y supera ` +
+          `el máximo permitido de ${maximo.toFixed(1)} horas.`
+        );
       }
     }
 

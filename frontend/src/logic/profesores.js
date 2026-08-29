@@ -1056,6 +1056,8 @@ async function abrirModalAsignarGrupos(idProf, nombreProf, materiaProf) {
 
   const searchInput = document.getElementById('asignar-grupos-search');
   if (searchInput) searchInput.value = '';
+  const errorEl = document.getElementById('asignar-grupos-error');
+  if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('d-none'); }
 
   const profesor = allProfesores.find((p) => String(p.id_profesor ?? p.id) === String(idProf));
   profesorGruposActualesIds = (profesor?.grupos_ids || '')
@@ -1144,15 +1146,23 @@ async function guardarAsignacionGrupos(idProf) {
     const json = await res.json().catch(() => ({}));
 
     if (res.ok) {
+      const errorEl = document.getElementById('asignar-grupos-error');
+      if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('d-none'); }
       showToast('Grupos del profesor actualizados correctamente.', 'success');
       const modalEl = document.getElementById('modalAsignarGrupos');
       if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
       await loadProfesores();
     } else {
-      showToast(json.error || 'No se pudo actualizar la asignación de grupos.', 'error');
+      const mensaje = json.error || json.mensaje || 'No se pudo actualizar la asignación de grupos.';
+      const errorEl = document.getElementById('asignar-grupos-error');
+      if (errorEl) { errorEl.textContent = mensaje; errorEl.classList.remove('d-none'); }
+      showToast(mensaje, 'error');
     }
   } catch {
-    showToast('Error de conexión al asignar los grupos.', 'error');
+    const mensaje = 'Error de conexión al asignar los grupos.';
+    const errorEl = document.getElementById('asignar-grupos-error');
+    if (errorEl) { errorEl.textContent = mensaje; errorEl.classList.remove('d-none'); }
+    showToast(mensaje, 'error');
   } finally {
     if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="bi bi-check2-circle"></i> Guardar asignación'; }
   }
